@@ -1,4 +1,7 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
 @import 'tailwindcss';
+@plugin "daisyui";
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -6,6 +9,41 @@
 @source '../**/*.js';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: "Open Sans", sans-serif;
+}
+
+
+@plugin "daisyui/theme" {
+  name: "sodexo";
+  default: true;
+  prefersdark: false;
+  color-scheme: "light";
+  --color-base-100: #F5F7FB;
+  --color-base-200: #F6F8FC;
+  --color-base-300: #E9EDF5;
+  --color-base-content: #27306F;
+  --color-primary: #2E348C;
+  --color-primary-content: #F5F7FB;
+  --color-secondary: #5D6BC0;
+  --color-secondary-content: #F5F7FB;
+  --color-accent: #DA2020;
+  --color-accent-content: #F5F7FB;
+  --color-neutral: #1F2559;
+  --color-neutral-content: #F5F7FB;
+  --color-info: oklch(88.263% 0.093 212.846);
+  --color-info-content: oklch(17.652% 0.018 212.846);
+  --color-success: oklch(87.099% 0.219 148.024);
+  --color-success-content: oklch(17.419% 0.043 148.024);
+  --color-warning: oklch(95.533% 0.134 112.757);
+  --color-warning-content: oklch(19.106% 0.026 112.757);
+  --color-error: oklch(68.22% 0.206 24.43);
+  --color-error-content: oklch(13.644% 0.041 24.43);
+  --radius-selector: 1rem;
+  --radius-field: 0.5rem;
+  --radius-box: 1rem;
+  --size-selector: 0.3125rem;
+  --size-field: 0.3125rem;
+  --border: 1.5px;
+  --depth: 1;
+  --noise: 0;
 }
