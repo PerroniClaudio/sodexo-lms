@@ -91,4 +91,13 @@ class CourseController extends Controller
             ->route('admin.courses.edit', $course)
             ->with('status', __('Corso aggiornato con successo.'));
     }
+
+    public function destroy(Course $course): RedirectResponse
+    {
+        $course->delete();
+
+        return redirect()
+            ->route('admin.courses.index')
+            ->with('status', __('Corso eliminato con successo.'));
+    }
 }

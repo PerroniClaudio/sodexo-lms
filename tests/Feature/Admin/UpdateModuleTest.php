@@ -19,15 +19,41 @@ it('updates a module', function () {
     $response = $this->put(route('admin.courses.modules.update', [$course, $module]), [
         'title' => 'Titolo aggiornato',
         'description' => 'Descrizione aggiornata',
+        'status' => 'published',
     ]);
 
-    $response->assertRedirect(route('admin.courses.modules.edit', [$course, $module]));
+    $response->assertRedirect(route('admin.courses.edit', $course));
     $response->assertSessionHas('status', 'Modulo aggiornato con successo.');
 
     $module->refresh();
 
     expect($module->title)->toBe('Titolo aggiornato');
     expect($module->description)->toBe('Descrizione aggiornata');
+    expect($module->status)->toBe('published');
+});
+
+it('allows updating a module without a description', function () {
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'title' => 'Titolo iniziale',
+        'description' => 'Descrizione iniziale',
+        'type' => 'video',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $response = $this->put(route('admin.courses.modules.update', [$course, $module]), [
+        'title' => 'Titolo aggiornato',
+        'description' => '',
+        'status' => 'draft',
+    ]);
+
+    $response->assertRedirect(route('admin.courses.edit', $course));
+    $response->assertSessionHas('status', 'Modulo aggiornato con successo.');
+
+    $module->refresh();
+
+    expect($module->title)->toBe('Titolo aggiornato');
+    expect($module->description)->toBe('');
 });
 
 it('updates appointment details for live modules', function () {
@@ -43,17 +69,19 @@ it('updates appointment details for live modules', function () {
     $response = $this->put(route('admin.courses.modules.update', [$course, $module]), [
         'title' => 'Modulo live aggiornato',
         'description' => 'Descrizione live aggiornata',
+        'status' => 'archived',
         'appointment_date' => '2026-05-20',
         'appointment_start_time' => '14:30',
         'appointment_end_time' => '16:00',
     ]);
 
-    $response->assertRedirect(route('admin.courses.modules.edit', [$course, $module]));
+    $response->assertRedirect(route('admin.courses.edit', $course));
 
     $module->refresh();
 
     expect($module->title)->toBe('Modulo live aggiornato');
     expect($module->description)->toBe('Descrizione live aggiornata');
+    expect($module->status)->toBe('archived');
     expect($module->appointment_date?->format('Y-m-d H:i:s'))->toBe('2026-05-20 00:00:00');
     expect($module->appointment_start_time?->format('Y-m-d H:i:s'))->toBe('2026-05-20 14:30:00');
     expect($module->appointment_end_time?->format('Y-m-d H:i:s'))->toBe('2026-05-20 16:00:00');
@@ -70,6 +98,7 @@ it('validates appointment details for residential modules', function () {
         ->put(route('admin.courses.modules.update', [$course, $module]), [
             'title' => 'Modulo residenziale',
             'description' => 'Descrizione aggiornata',
+            'status' => 'published',
             'appointment_date' => '2026-05-20',
             'appointment_start_time' => '16:00',
             'appointment_end_time' => '14:30',
@@ -89,12 +118,14 @@ it('keeps the automatic title for quiz modules on update', function () {
 
     $response = $this->put(route('admin.courses.modules.update', [$course, $module]), [
         'description' => 'Descrizione quiz aggiornata',
+        'status' => 'published',
     ]);
 
-    $response->assertRedirect(route('admin.courses.modules.edit', [$course, $module]));
+    $response->assertRedirect(route('admin.courses.edit', $course));
 
     $module->refresh();
 
     expect($module->title)->toBe('Quiz di apprendimento');
     expect($module->description)->toBe('Descrizione quiz aggiornata');
+    expect($module->status)->toBe('published');
 });

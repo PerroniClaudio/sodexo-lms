@@ -29,6 +29,10 @@ it('shows the edit module page', function () {
     $response->assertSeeText('Corso: Corso sicurezza. Tipologia: Live.');
     $response->assertSee('value="Modulo iniziale"', escape: false);
     $response->assertSeeText('Descrizione modulo');
+    $response->assertSee('name="status"', escape: false);
+    $response->assertSeeText('Bozza');
+    $response->assertSeeText('Pubblicato');
+    $response->assertSeeText('Archiviato');
     $response->assertSee('name="appointment_date"', escape: false);
     $response->assertSee('value="2026-05-20"', escape: false);
     $response->assertSee('name="appointment_start_time"', escape: false);

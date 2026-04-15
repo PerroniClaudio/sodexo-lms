@@ -43,8 +43,8 @@ class StoreModuleRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'type' => __('Tipologia modulo'),
-            'title' => __('Titolo del modulo'),
+            'type' => __('Module type'),
+            'title' => __('Module title'),
         ];
     }
 }

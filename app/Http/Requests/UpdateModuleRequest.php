@@ -37,7 +37,8 @@ class UpdateModuleRequest extends FormRequest
                 'string',
                 'max:255',
             ],
-            'description' => ['required', 'string'],
+            'description' => ['nullable', 'string'],
+            'status' => ['required', 'string', Rule::in(Module::availableStatuses())],
             'appointment_date' => [
                 Rule::requiredIf($requiresAppointmentDetails),
                 'nullable',
@@ -70,11 +71,12 @@ class UpdateModuleRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'title' => __('Titolo del modulo'),
-            'description' => __('Descrizione'),
-            'appointment_date' => __('Giorno'),
-            'appointment_start_time' => __('Orario di inizio'),
-            'appointment_end_time' => __('Orario di fine'),
+            'title' => __('Module title'),
+            'description' => __('Description'),
+            'status' => __('Status'),
+            'appointment_date' => __('Day'),
+            'appointment_start_time' => __('Start time'),
+            'appointment_end_time' => __('End time'),
         ];
     }
 }

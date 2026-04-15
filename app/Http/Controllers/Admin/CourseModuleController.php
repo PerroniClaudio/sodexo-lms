@@ -38,7 +38,7 @@ class CourseModuleController extends Controller
 
         return redirect()
             ->route('admin.courses.modules.edit', [$course, $module])
-            ->with('status', __('Modulo creato con successo.'));
+            ->with('status', __('Module created successfully.'));
     }
 
     public function edit(Course $course, Module $module): View
@@ -49,6 +49,7 @@ class CourseModuleController extends Controller
             'course' => $course,
             'module' => $module,
             'moduleTypeLabels' => Module::availableTypeLabels(),
+            'moduleStatusLabels' => Module::availableStatusLabels(),
             'requiresManualTitle' => Module::requiresManualTitle($module->type),
             'requiresAppointmentDetails' => Module::requiresAppointmentDetails($module->type),
         ]);
@@ -64,7 +65,8 @@ class CourseModuleController extends Controller
             'title' => Module::requiresManualTitle($module->type)
                 ? $validated['title']
                 : Module::defaultTitleForType($module->type),
-            'description' => $validated['description'],
+            'description' => $validated['description'] ?? '',
+            'status' => $validated['status'],
         ];
 
         if (Module::requiresAppointmentDetails($module->type)) {
@@ -84,8 +86,19 @@ class CourseModuleController extends Controller
         $module->update($moduleAttributes);
 
         return redirect()
-            ->route('admin.courses.modules.edit', [$course, $module])
-            ->with('status', __('Modulo aggiornato con successo.'));
+            ->route('admin.courses.edit', $course)
+            ->with('status', __('Module updated successfully.'));
+    }
+
+    public function destroy(Course $course, Module $module): RedirectResponse
+    {
+        abort_unless($module->belongsTo === (string) $course->getKey(), 404);
+
+        $module->delete();
+
+        return redirect()
+            ->route('admin.courses.edit', $course)
+            ->with('status', __('Module deleted successfully.'));
     }
 
     public function reorder(ReorderCourseModulesRequest $request, Course $course): JsonResponse
@@ -103,7 +116,7 @@ class CourseModuleController extends Controller
         });
 
         return response()->json([
-            'message' => __('Ordine moduli aggiornato con successo.'),
+            'message' => __('Module order updated successfully.'),
         ]);
     }
 }

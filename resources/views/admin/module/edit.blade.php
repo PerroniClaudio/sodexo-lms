@@ -1,14 +1,14 @@
 <x-layouts.admin>
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
-        <x-page-header :title="__('Modifica modulo')">
+        <x-page-header :title="__('Edit module')">
             <x-slot:actions>
                 <a href="{{ route('admin.courses.edit', $course) }}" class="btn btn-ghost">
                     <x-lucide-arrow-left class="h-4 w-4" />
-                    <span>{{ __('Torna al corso') }}</span>
+                    <span>{{ __('Back to course') }}</span>
                 </a>
             </x-slot:actions>
 
-            {{ __('Corso: :course. Tipologia: :type.', ['course' => $course->title, 'type' => $moduleTypeLabels[$module->type] ?? $module->type]) }}
+            {{ __('Course: :course. Type: :type.', ['course' => $course->title, 'type' => $moduleTypeLabels[$module->type] ?? $module->type]) }}
         </x-page-header>
 
         <div class="card border border-base-300 bg-base-100 shadow-sm">
@@ -21,7 +21,7 @@
                         @if ($requiresManualTitle)
                             <div class="form-control flex flex-col gap-2">
                                 <label for="title" class="label p-0">
-                                    <span class="label-text font-medium">{{ __('Titolo del modulo') }}</span>
+                                    <span class="label-text font-medium">{{ __('Module title') }}</span>
                                 </label>
                                 <input
                                     id="title"
@@ -38,7 +38,7 @@
                         @else
                             <div class="form-control flex flex-col gap-2">
                                 <label class="label p-0">
-                                    <span class="label-text font-medium">{{ __('Titolo del modulo') }}</span>
+                                    <span class="label-text font-medium">{{ __('Module title') }}</span>
                                 </label>
                                 <input
                                     type="text"
@@ -51,15 +51,35 @@
 
                         <div class="form-control flex flex-col gap-2">
                             <label for="description" class="label p-0">
-                                <span class="label-text font-medium">{{ __('Descrizione') }}</span>
+                                <span class="label-text font-medium">{{ __('Description') }}</span>
                             </label>
                             <textarea
                                 id="description"
                                 name="description"
                                 class="textarea textarea-bordered min-h-32 w-full @error('description') textarea-error @enderror"
-                                required
                             >{{ old('description', $module->description) }}</textarea>
                             @error('description')
+                                <p class="text-sm text-error">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="form-control flex flex-col gap-2">
+                            <label for="status" class="label p-0">
+                                <span class="label-text font-medium">{{ __('Status') }}</span>
+                            </label>
+                            <select
+                                id="status"
+                                name="status"
+                                class="select select-bordered w-full @error('status') select-error @enderror"
+                                required
+                            >
+                                @foreach ($moduleStatusLabels as $moduleStatus => $moduleStatusLabel)
+                                    <option value="{{ $moduleStatus }}" @selected(old('status', $module->status) === $moduleStatus)>
+                                        {{ $moduleStatusLabel }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('status')
                                 <p class="text-sm text-error">{{ $message }}</p>
                             @enderror
                         </div>
@@ -68,7 +88,7 @@
                             <div class="grid gap-6 md:grid-cols-3">
                                 <div class="form-control flex flex-col gap-2">
                                     <label for="appointment_date" class="label p-0">
-                                        <span class="label-text font-medium">{{ __('Giorno') }}</span>
+                                        <span class="label-text font-medium">{{ __('Day') }}</span>
                                     </label>
                                     <input
                                         id="appointment_date"
@@ -85,7 +105,7 @@
 
                                 <div class="form-control flex flex-col gap-2">
                                     <label for="appointment_start_time" class="label p-0">
-                                        <span class="label-text font-medium">{{ __('Orario di inizio') }}</span>
+                                        <span class="label-text font-medium">{{ __('Start time') }}</span>
                                     </label>
                                     <input
                                         id="appointment_start_time"
@@ -102,7 +122,7 @@
 
                                 <div class="form-control flex flex-col gap-2">
                                     <label for="appointment_end_time" class="label p-0">
-                                        <span class="label-text font-medium">{{ __('Orario di fine') }}</span>
+                                        <span class="label-text font-medium">{{ __('End time') }}</span>
                                     </label>
                                     <input
                                         id="appointment_end_time"
@@ -122,7 +142,7 @@
 
                     <div class="flex justify-end">
                         <button type="submit" class="btn btn-primary">
-                            <span>{{ __('Salva modulo') }}</span>
+                            <span>{{ __('Save module') }}</span>
                             <x-lucide-save class="h-4 w-4" />
                         </button>
                     </div>

@@ -31,6 +31,8 @@ class Module extends Model
 
     public const STATUSES = [
         'draft',
+        'published',
+        'archived',
     ];
 
     /**
@@ -92,11 +94,21 @@ class Module extends Model
     {
         return [
             'video' => __('Video'),
-            'res' => __('Residenziale'),
+            'res' => __('Residential'),
             'live' => __('Live'),
-            'learning_quiz' => __('Quiz di apprendimento'),
-            'satisfaction_quiz' => __('Quiz di gradimento'),
+            'learning_quiz' => __('Learning quiz'),
+            'satisfaction_quiz' => __('Satisfaction quiz'),
         ];
+    }
+
+    /**
+     * Get the available module statuses.
+     *
+     * @return array<int, string>
+     */
+    public static function availableStatuses(): array
+    {
+        return self::STATUSES;
     }
 
     /**
@@ -107,7 +119,9 @@ class Module extends Model
     public static function availableStatusLabels(): array
     {
         return [
-            'draft' => __('Bozza'),
+            'draft' => __('Draft'),
+            'published' => __('Published'),
+            'archived' => __('Archived'),
         ];
     }
 

@@ -14,7 +14,14 @@
         data-course-edit-page
         data-has-create-module-errors="{{ $errors->has('type') || $errors->has('title') ? 'true' : 'false' }}"
     >
-        <x-page-header :title="__('Modifica corso')" />
+        <x-page-header :title="__('Modifica corso')">
+            <x-slot:actions>
+                <button type="button" class="btn btn-accent btn-outline" data-open-delete-course-modal>
+                    <x-lucide-trash-2 class="h-4 w-4" />
+                    <span>{{ __('Delete course') }}</span>
+                </button>
+            </x-slot:actions>
+        </x-page-header>
 
         <div class="flex flex-col gap-6">
             <div class="card border border-base-300 bg-base-100 shadow-sm">
@@ -148,7 +155,7 @@
                             class="btn btn-primary"
                             data-open-module-modal
                         >
-                            <span>{{ __('Nuovo modulo') }}</span>
+                            <span>{{ __('New module') }}</span>
                             <x-lucide-plus class="h-4 w-4" />
                         </button>
                     </div>
@@ -196,12 +203,54 @@
                                             <span class="badge badge-ghost">
                                                 {{ $moduleStatusLabels[$module->status] ?? $module->status }}
                                             </span>
-                                            <a href="{{ route('admin.courses.modules.edit', [$course, $module]) }}" class="btn btn-ghost btn-sm">
-                                                {{ __('Modifica') }}
+                                            <a href="{{ route('admin.courses.modules.edit', [$course, $module]) }}" class="btn btn-secondary btn-sm">
+                                                <x-lucide-pencil class="h-4 w-4" />
+                                                {{ __('Edit') }}
                                             </a>
+                                            <button
+                                                type="button"
+                                                class="btn btn-accent btn-sm"
+                                                data-open-delete-module-modal
+                                                data-modal-target="#delete-module-modal-{{ $module->id }}"
+                                            >
+                                                <x-lucide-trash-2 class="h-4 w-4" />
+                                                {{ __('Delete') }}
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
+
+                                <dialog id="delete-module-modal-{{ $module->id }}" class="modal">
+                                    <div class="modal-box max-w-lg">
+                                        <div class="space-y-2">
+                                            <h3 class="text-lg font-semibold">{{ __('Delete module') }}</h3>
+                                            <p class="text-sm text-base-content/70">
+                                                {{ __('This action will move the module to the trash. Do you want to continue?') }}
+                                            </p>
+                                        </div>
+
+                                        <div class="modal-action mt-6">
+                                            <form method="dialog">
+                                                <button type="submit" class="btn btn-ghost">
+                                                    {{ __('Cancel') }}
+                                                </button>
+                                            </form>
+                                            <form method="POST" action="{{ route('admin.courses.modules.destroy', [$course, $module]) }}">
+                                                @csrf
+                                                @method('DELETE')
+
+                                                <button type="submit" class="btn btn-accent">
+                                                    <span>{{ __('Confirm deletion') }}</span>
+                                                    <x-lucide-trash-2 class="h-4 w-4" />
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+
+                                    <form method="dialog" class="modal-backdrop">
+                                        <button type="submit">{{ __('Close') }}</button>
+                                    </form>
+                                </dialog>
                             @endforeach
                         </div>
                     @endif
@@ -209,9 +258,9 @@
                     <dialog id="create-module-modal" class="modal">
                         <div class="modal-box max-w-2xl">
                             <div class="space-y-2">
-                                <h3 class="text-lg font-semibold">{{ __('Nuovo modulo') }}</h3>
+                                <h3 class="text-lg font-semibold">{{ __('New module') }}</h3>
                                 <p class="text-sm text-base-content/70">
-                                    {{ __('Seleziona una tipologia, poi conferma per creare il modulo.') }}
+                                    {{ __('Select a type, then confirm to create the module.') }}
                                 </p>
                             </div>
 
@@ -220,7 +269,7 @@
 
                                 <fieldset class="space-y-3">
                                     <legend class="text-sm font-medium text-base-content">
-                                        {{ __('Tipologia modulo') }}
+                                        {{ __('Module type') }}
                                     </legend>
 
                                     <div class="grid gap-3 sm:grid-cols-2">
@@ -247,7 +296,7 @@
 
                                 <div id="module-title-field" class="form-control flex flex-col gap-2">
                                     <label for="module-title" class="label p-0">
-                                        <span class="label-text font-medium">{{ __('Titolo del modulo') }}</span>
+                                        <span class="label-text font-medium">{{ __('Module title') }}</span>
                                     </label>
                                     <input
                                         id="module-title"
@@ -267,10 +316,10 @@
                                         class="btn btn-ghost"
                                         data-close-module-modal
                                     >
-                                        {{ __('Annulla') }}
+                                        {{ __('Cancel') }}
                                     </button>
                                     <button type="submit" class="btn btn-primary">
-                                        <span>{{ __('Conferma') }}</span>
+                                        <span>{{ __('Confirm') }}</span>
                                         <x-lucide-check class="h-4 w-4" />
                                     </button>
                                 </div>
@@ -278,7 +327,39 @@
                         </div>
 
                         <form method="dialog" class="modal-backdrop">
-                            <button type="submit">{{ __('Chiudi') }}</button>
+                            <button type="submit">{{ __('Close') }}</button>
+                        </form>
+                    </dialog>
+
+                    <dialog id="delete-course-modal" class="modal">
+                        <div class="modal-box max-w-lg">
+                            <div class="space-y-2">
+                                <h3 class="text-lg font-semibold">{{ __('Delete course') }}</h3>
+                                <p class="text-sm text-base-content/70">
+                                    {{ __('This action will move the course to the trash. Do you want to continue?') }}
+                                </p>
+                            </div>
+
+                            <div class="modal-action mt-6">
+                                <form method="dialog">
+                                    <button type="submit" class="btn btn-ghost" data-close-delete-course-modal>
+                                        {{ __('Cancel') }}
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ route('admin.courses.destroy', $course) }}">
+                                    @csrf
+                                    @method('DELETE')
+
+                                    <button type="submit" class="btn btn-accent">
+                                        <span>{{ __('Confirm deletion') }}</span>
+                                        <x-lucide-trash-2 class="h-4 w-4" />
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <form method="dialog" class="modal-backdrop">
+                            <button type="submit">{{ __('Close') }}</button>
                         </form>
                     </dialog>
                 </div>

@@ -65,7 +65,7 @@ class ReorderCourseModulesRequest extends FormRequest
                     || $submittedModuleIds->diff($expectedModuleIds)->isNotEmpty()
                     || $expectedModuleIds->diff($submittedModuleIds)->isNotEmpty()
                 ) {
-                    $validator->errors()->add('modules', __('L\'ordinamento dei moduli non è valido.'));
+                    $validator->errors()->add('modules', __('The module order is invalid.'));
                 }
             },
         ];
@@ -79,7 +79,7 @@ class ReorderCourseModulesRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'modules' => __('Moduli'),
+            'modules' => __('Modules'),
         ];
     }
 }

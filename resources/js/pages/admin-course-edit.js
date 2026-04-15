@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initializeCreateModuleDialog(courseEditPage);
+    initializeDeleteCourseDialog(courseEditPage);
+    initializeDeleteModuleDialogs(courseEditPage);
     initializeModuleSorting(courseEditPage);
 });
 
@@ -52,6 +54,37 @@ function initializeCreateModuleDialog(courseEditPage) {
     }
 
     syncTitleFieldVisibility();
+}
+
+function initializeDeleteCourseDialog(courseEditPage) {
+    const deleteCourseModal = courseEditPage.querySelector('#delete-course-modal');
+    const openDeleteCourseModalButton = courseEditPage.querySelector('[data-open-delete-course-modal]');
+
+    if (!deleteCourseModal || !openDeleteCourseModalButton) {
+        return;
+    }
+
+    openDeleteCourseModalButton.addEventListener('click', () => {
+        deleteCourseModal.showModal();
+    });
+}
+
+function initializeDeleteModuleDialogs(courseEditPage) {
+    const openDeleteModuleModalButtons = courseEditPage.querySelectorAll('[data-open-delete-module-modal]');
+
+    if (openDeleteModuleModalButtons.length === 0) {
+        return;
+    }
+
+    openDeleteModuleModalButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const modal = courseEditPage.querySelector(button.dataset.modalTarget);
+
+            if (modal) {
+                modal.showModal();
+            }
+        });
+    });
 }
 
 function initializeModuleSorting(courseEditPage) {
