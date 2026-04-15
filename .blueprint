@@ -1,2 +1,11 @@
+created:
+    - database/factories/CourseFactory.php
+    - database/factories/ModuleFactory.php
+    - database/migrations/2026_04_15_083922_create_courses_table.php
+    - database/migrations/2026_04_15_083923_create_modules_table.php
+    - app/Models/Course.php
+    - app/Models/Module.php
 models:
     User: { name: string, email: string, email_verified_at: 'datetime nullable', password: string, remember_token: 'string nullable' }
+    Course: { title: string, description: string, type: "enum('fad', 'res', 'blended', 'fsc', 'async')", year: integer, expiry_date: datetime, status: "enum('draft', 'published', 'archived')", hasMany: Module, softdeletes: softDeletes }
+    Module: { title: string, description: string, type: "enum('video', 'res', 'live', 'quiz', 'gradimento')", order: integer, appointment_date: datetime, appointment_start_time: datetime, appointment_end_time: datetime, status: "enum('draft', 'published', 'archived')", belongsTo: Course, softdeletes: softDeletes }

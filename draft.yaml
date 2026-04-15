@@ -1,5 +1,27 @@
 models:
   # ...
+  Course:
+    title: string
+    description: string
+    type: enum('fad', 'res', 'blended', 'fsc', 'async')
+    year: integer
+    expiry_date: datetime
+    status: enum('draft', 'published', 'archived')
+    hasMany: Module
+    softDeletes
+
+  Module:
+    title: string
+    description: string
+    type: enum('video', 'res', 'live', 'quiz', 'gradimento')
+    order: integer
+    appointment_date: datetime
+    appointment_start_time: datetime
+    appointment_end_time: datetime
+    status: enum('draft', 'published', 'archived')
+    belongsTo: Course
+    softDeletes
+    
 
 controllers:
   # ...
