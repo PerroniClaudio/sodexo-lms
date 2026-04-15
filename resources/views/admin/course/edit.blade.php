@@ -1,5 +1,19 @@
 <x-layouts.admin>
-    <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    @php
+        $moduleTypeIcons = [
+            'video' => 'lucide-clapperboard',
+            'res' => 'lucide-users',
+            'live' => 'lucide-monitor-play',
+            'learning_quiz' => 'lucide-badge-help',
+            'satisfaction_quiz' => 'lucide-message-square-heart',
+        ];
+    @endphp
+
+    <div
+        class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8"
+        data-course-edit-page
+        data-has-create-module-errors="{{ $errors->has('type') || $errors->has('title') ? 'true' : 'false' }}"
+    >
         <x-page-header :title="__('Modifica corso')" />
 
         <div class="flex flex-col gap-6">
@@ -120,15 +134,157 @@
             </div>
 
             <div class="card border border-base-300 bg-base-100 shadow-sm">
-                <div class="card-body gap-4">
-                    <div>
-                        <h2 class="card-title">{{ __('Moduli') }}</h2>
-                        <p class="text-sm text-base-content/70">
-                            {{ __('La gestione dei moduli verrà sviluppata in seguito.') }}
-                        </p>
+                <div class="card-body gap-6">
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <h2 class="card-title">{{ __('Moduli') }}</h2>
+                            <p class="text-sm text-base-content/70">
+                                {{ __('Aggiungi un nuovo modulo scegliendo la tipologia da creare.') }}
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            data-open-module-modal
+                        >
+                            <span>{{ __('Nuovo modulo') }}</span>
+                            <x-lucide-plus class="h-4 w-4" />
+                        </button>
                     </div>
+
+                    @if ($modules->isEmpty())
+                        <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-center text-sm text-base-content/70">
+                            {{ __('Nessun modulo presente per questo corso.') }}
+                        </div>
+                    @else
+                        <div
+                            class="grid gap-4"
+                            data-modules-sortable-list
+                            data-reorder-url="{{ route('admin.courses.modules.reorder', $course) }}"
+                        >
+                            @foreach ($modules as $module)
+                                <div
+                                    class="rounded-box border border-base-300 bg-base-100 p-4 transition-shadow"
+                                    draggable="true"
+                                    data-module-item
+                                    data-module-id="{{ $module->id }}"
+                                >
+                                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                        <div class="flex items-start gap-3">
+                                            <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-base-300 text-base-content/60 cursor-move">
+                                                <x-lucide-move class="h-4 w-4" />
+                                            </div>
+
+                                            <div class="space-y-1">
+                                                <p class="text-sm font-semibold text-base-content">
+                                                    {{ $module->title }}
+                                                </p>
+                                                <div class="flex flex-wrap items-center gap-2 text-sm text-base-content/70">
+                                                    <span class="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/8 px-3 py-1 text-xs font-medium tracking-wide text-primary">
+                                                        <x-dynamic-component
+                                                            :component="$moduleTypeIcons[$module->type] ?? 'lucide-shapes'"
+                                                            class="h-3.5 w-3.5"
+                                                        />
+                                                        <span>{{ $moduleTypeLabels[$module->type] ?? $module->type }}</span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center gap-2">
+                                            <span class="badge badge-ghost">
+                                                {{ $moduleStatusLabels[$module->status] ?? $module->status }}
+                                            </span>
+                                            <a href="{{ route('admin.courses.modules.edit', [$course, $module]) }}" class="btn btn-ghost btn-sm">
+                                                {{ __('Modifica') }}
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    <dialog id="create-module-modal" class="modal">
+                        <div class="modal-box max-w-2xl">
+                            <div class="space-y-2">
+                                <h3 class="text-lg font-semibold">{{ __('Nuovo modulo') }}</h3>
+                                <p class="text-sm text-base-content/70">
+                                    {{ __('Seleziona una tipologia, poi conferma per creare il modulo.') }}
+                                </p>
+                            </div>
+
+                            <form method="POST" action="{{ route('admin.courses.modules.store', $course) }}" class="mt-6 space-y-6">
+                                @csrf
+
+                                <fieldset class="space-y-3">
+                                    <legend class="text-sm font-medium text-base-content">
+                                        {{ __('Tipologia modulo') }}
+                                    </legend>
+
+                                    <div class="grid gap-3 sm:grid-cols-2">
+                                        @foreach ($moduleTypeLabels as $moduleType => $moduleTypeLabel)
+                                            <label class="cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="type"
+                                                    value="{{ $moduleType }}"
+                                                    class="peer sr-only"
+                                                    @checked(old('type') === $moduleType)
+                                                >
+                                                <span class="flex min-h-24 items-center rounded-box border border-base-300 bg-base-100 px-4 py-3 text-sm font-medium transition peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary hover:border-primary/40">
+                                                    {{ $moduleTypeLabel }}
+                                                </span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+
+                                    @error('type')
+                                        <p class="text-sm text-error">{{ $message }}</p>
+                                    @enderror
+                                </fieldset>
+
+                                <div id="module-title-field" class="form-control flex flex-col gap-2">
+                                    <label for="module-title" class="label p-0">
+                                        <span class="label-text font-medium">{{ __('Titolo del modulo') }}</span>
+                                    </label>
+                                    <input
+                                        id="module-title"
+                                        name="title"
+                                        type="text"
+                                        value="{{ old('title') }}"
+                                        class="input input-bordered w-full @error('title') input-error @enderror"
+                                    >
+                                    @error('title')
+                                        <p class="text-sm text-error">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                <div class="modal-action mt-0">
+                                    <button
+                                        type="button"
+                                        class="btn btn-ghost"
+                                        data-close-module-modal
+                                    >
+                                        {{ __('Annulla') }}
+                                    </button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <span>{{ __('Conferma') }}</span>
+                                        <x-lucide-check class="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <form method="dialog" class="modal-backdrop">
+                            <button type="submit">{{ __('Chiudi') }}</button>
+                        </form>
+                    </dialog>
                 </div>
             </div>
         </div>
     </div>
+
+    @vite('resources/js/pages/admin-course-edit.js')
 </x-layouts.admin>

@@ -12,18 +12,15 @@ class CourseSeeder extends Seeder
      */
     public function run(): void
     {
-        $statuses = [
-            'Bozza',
-            'Pubblicato',
-            'Archiviato',
-        ];
+        $types = Course::availableTypes();
+        $statuses = Course::availableStatuses();
 
         Course::factory()
             ->count(40)
             ->sequence(fn ($sequence) => [
                 'title' => fake()->unique()->sentence(3),
                 'description' => fake()->paragraph(),
-                'type' => Course::availableTypes()[$sequence->index % count(Course::availableTypes())],
+                'type' => $types[$sequence->index % count($types)],
                 'year' => now()->subYears($sequence->index % 5)->year,
                 'expiry_date' => now()->addDays(fake()->numberBetween(30, 365)),
                 'status' => $statuses[$sequence->index % count($statuses)],

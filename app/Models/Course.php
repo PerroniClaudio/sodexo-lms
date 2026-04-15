@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Course extends Model
@@ -100,5 +101,13 @@ class Course extends Model
             'published' => __('Pubblicato'),
             'archived' => __('Archiviato'),
         ];
+    }
+
+    /**
+     * Get the modules that belong to the course.
+     */
+    public function modules(): HasMany
+    {
+        return $this->hasMany(Module::class, 'belongsTo')->orderBy('order');
     }
 }

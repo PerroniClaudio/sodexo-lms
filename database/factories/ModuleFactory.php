@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Module;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ModuleFactory extends Factory
@@ -14,13 +15,13 @@ class ModuleFactory extends Factory
         return [
             'title' => fake()->sentence(4),
             'description' => fake()->text(),
-            'type' => fake()->word(),
-            'order' => fake()->numberBetween(-10000, 10000),
+            'type' => fake()->randomElement(Module::availableTypes()),
+            'order' => fake()->numberBetween(1, 10),
             'appointment_date' => fake()->dateTime(),
             'appointment_start_time' => fake()->dateTime(),
             'appointment_end_time' => fake()->dateTime(),
-            'status' => fake()->word(),
-            'belongsTo' => fake()->word(),
+            'status' => 'draft',
+            'belongsTo' => (string) fake()->numberBetween(1, 100),
         ];
     }
 }

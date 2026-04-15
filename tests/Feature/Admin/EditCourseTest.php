@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Course;
+use App\Models\Module;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -13,6 +14,12 @@ it('shows the edit course page with the update form and modules card', function 
         'expiry_date' => now()->addMonth(),
         'status' => 'draft',
     ]);
+    Module::factory()->create([
+        'title' => 'Modulo prova',
+        'type' => 'video',
+        'order' => 1,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
 
     $response = $this->get(route('admin.courses.edit', $course));
 
@@ -21,6 +28,11 @@ it('shows the edit course page with the update form and modules card', function 
     $response->assertDontSeeText('Corso prova');
     $response->assertSeeText('Dati anagrafici');
     $response->assertSeeText('Moduli');
+    $response->assertSeeText('Nuovo modulo');
+    $response->assertSeeText('Aggiungi un nuovo modulo scegliendo la tipologia da creare.');
+    $response->assertSeeText('Titolo del modulo');
+    $response->assertSee('data-modules-sortable-list', escape: false);
+    $response->assertSee(route('admin.courses.modules.reorder', $course), escape: false);
     $response->assertSeeText('Bozza');
     $response->assertSeeText('Pubblicato');
     $response->assertSeeText('Archiviato');

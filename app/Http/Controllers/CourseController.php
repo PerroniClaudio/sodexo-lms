@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreCourseRequest;
 use App\Http\Requests\UpdateCourseRequest;
 use App\Models\Course;
+use App\Models\Module;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -21,10 +22,13 @@ class CourseController extends Controller
     public function index(Request $request): View
     {
         $allowedSorts = ['id', 'title', 'status', 'year'];
-        $sort = in_array($request->string('sort')->toString(), $allowedSorts, true)
-            ? $request->string('sort')->toString()
-            : 'id';
-        $direction = $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc';
+        $courseStatusLabels = Course::availableStatusLabels();
+        $requestedSort = $request->string('sort')->toString();
+        $hasValidSort = in_array($requestedSort, $allowedSorts, true);
+        $sort = $hasValidSort ? $requestedSort : 'id';
+        $direction = $hasValidSort
+            ? ($request->string('direction')->toString() === 'asc' ? 'asc' : 'desc')
+            : 'desc';
         $search = trim($request->string('search')->toString());
 
         return view('admin.course.index', [
@@ -40,6 +44,11 @@ class CourseController extends Controller
                 })
                 ->orderBy($sort, $direction)
                 ->paginate(20)
+                ->through(function (Course $course) use ($courseStatusLabels): Course {
+                    $course->status = $courseStatusLabels[$course->status] ?? $course->status;
+
+                    return $course;
+                })
                 ->withQueryString(),
             'tableSort' => $sort,
             'tableDirection' => $direction,
@@ -68,6 +77,9 @@ class CourseController extends Controller
         return view('admin.course.edit', [
             'course' => $course,
             'courseStatusLabels' => Course::availableStatusLabels(),
+            'moduleTypeLabels' => Module::availableTypeLabels(),
+            'moduleStatusLabels' => Module::availableStatusLabels(),
+            'modules' => $course->modules()->get(),
         ]);
     }
 
