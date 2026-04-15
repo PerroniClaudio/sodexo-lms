@@ -3,6 +3,7 @@
 use App\Models\Course;
 use App\Models\Module;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
@@ -15,6 +16,9 @@ it('shows the edit module page', function () {
         'description' => 'Descrizione modulo',
         'type' => 'live',
         'status' => 'draft',
+        'appointment_date' => Carbon::parse('2026-05-20 00:00:00'),
+        'appointment_start_time' => Carbon::parse('2026-05-20 14:30:00'),
+        'appointment_end_time' => Carbon::parse('2026-05-20 16:00:00'),
         'belongsTo' => (string) $course->getKey(),
     ]);
 
@@ -25,6 +29,12 @@ it('shows the edit module page', function () {
     $response->assertSeeText('Corso: Corso sicurezza. Tipologia: Live.');
     $response->assertSee('value="Modulo iniziale"', escape: false);
     $response->assertSeeText('Descrizione modulo');
+    $response->assertSee('name="appointment_date"', escape: false);
+    $response->assertSee('value="2026-05-20"', escape: false);
+    $response->assertSee('name="appointment_start_time"', escape: false);
+    $response->assertSee('value="14:30"', escape: false);
+    $response->assertSee('name="appointment_end_time"', escape: false);
+    $response->assertSee('value="16:00"', escape: false);
     $response->assertSeeText('Salva modulo');
 });
 
@@ -40,4 +50,7 @@ it('does not show the editable title field for quiz modules', function () {
 
     $response->assertOk();
     $response->assertDontSee('name="title"', escape: false);
+    $response->assertDontSee('name="appointment_date"', escape: false);
+    $response->assertDontSee('name="appointment_start_time"', escape: false);
+    $response->assertDontSee('name="appointment_end_time"', escape: false);
 });

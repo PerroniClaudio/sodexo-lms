@@ -11,6 +11,11 @@ class Module extends Model
 {
     use HasFactory, SoftDeletes;
 
+    public const TYPES_WITH_APPOINTMENT = [
+        'res',
+        'live',
+    ];
+
     public const TYPES_WITHOUT_MANUAL_TITLE = [
         'learning_quiz',
         'satisfaction_quiz',
@@ -112,6 +117,14 @@ class Module extends Model
     public static function requiresManualTitle(string $type): bool
     {
         return ! in_array($type, self::TYPES_WITHOUT_MANUAL_TITLE, true);
+    }
+
+    /**
+     * Determine if the given module type requires appointment details.
+     */
+    public static function requiresAppointmentDetails(string $type): bool
+    {
+        return in_array($type, self::TYPES_WITH_APPOINTMENT, true);
     }
 
     /**

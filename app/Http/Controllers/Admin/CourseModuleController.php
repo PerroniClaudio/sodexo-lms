@@ -8,6 +8,7 @@ use App\Http\Requests\StoreModuleRequest;
 use App\Http\Requests\UpdateModuleRequest;
 use App\Models\Course;
 use App\Models\Module;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -49,6 +50,7 @@ class CourseModuleController extends Controller
             'module' => $module,
             'moduleTypeLabels' => Module::availableTypeLabels(),
             'requiresManualTitle' => Module::requiresManualTitle($module->type),
+            'requiresAppointmentDetails' => Module::requiresAppointmentDetails($module->type),
         ]);
     }
 
@@ -56,12 +58,30 @@ class CourseModuleController extends Controller
     {
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
 
-        $module->update([
+        $validated = $request->validated();
+
+        $moduleAttributes = [
             'title' => Module::requiresManualTitle($module->type)
-                ? $request->validated('title')
+                ? $validated['title']
                 : Module::defaultTitleForType($module->type),
-            'description' => $request->validated('description'),
-        ]);
+            'description' => $validated['description'],
+        ];
+
+        if (Module::requiresAppointmentDetails($module->type)) {
+            $appointmentDate = CarbonImmutable::createFromFormat('Y-m-d', $validated['appointment_date']);
+
+            $moduleAttributes['appointment_date'] = $appointmentDate->startOfDay();
+            $moduleAttributes['appointment_start_time'] = CarbonImmutable::createFromFormat(
+                'Y-m-d H:i',
+                sprintf('%s %s', $validated['appointment_date'], $validated['appointment_start_time']),
+            );
+            $moduleAttributes['appointment_end_time'] = CarbonImmutable::createFromFormat(
+                'Y-m-d H:i',
+                sprintf('%s %s', $validated['appointment_date'], $validated['appointment_end_time']),
+            );
+        }
+
+        $module->update($moduleAttributes);
 
         return redirect()
             ->route('admin.courses.modules.edit', [$course, $module])
