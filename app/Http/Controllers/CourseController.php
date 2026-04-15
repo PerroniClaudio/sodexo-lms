@@ -6,6 +6,7 @@ use App\Http\Requests\StoreCourseRequest;
 use App\Http\Requests\UpdateCourseRequest;
 use App\Models\Course;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class CourseController extends Controller
@@ -17,12 +18,32 @@ class CourseController extends Controller
         ]);
     }
 
-    public function index(): View
+    public function index(Request $request): View
     {
+        $allowedSorts = ['id', 'title', 'status', 'year'];
+        $sort = in_array($request->string('sort')->toString(), $allowedSorts, true)
+            ? $request->string('sort')->toString()
+            : 'id';
+        $direction = $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc';
+        $search = trim($request->string('search')->toString());
+
         return view('admin.course.index', [
             'courses' => Course::query()
-                ->orderByDesc('id')
-                ->paginate(20),
+                ->when($search !== '', function ($query) use ($search) {
+                    $query->where(function ($query) use ($search) {
+                        $query
+                            ->where('id', 'like', "%{$search}%")
+                            ->orWhere('title', 'like', "%{$search}%")
+                            ->orWhere('status', 'like', "%{$search}%")
+                            ->orWhere('year', 'like', "%{$search}%");
+                    });
+                })
+                ->orderBy($sort, $direction)
+                ->paginate(20)
+                ->withQueryString(),
+            'tableSort' => $sort,
+            'tableDirection' => $direction,
+            'tableSearch' => $search,
         ]);
     }
 
