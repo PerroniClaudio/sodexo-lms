@@ -3,6 +3,7 @@
 .env
 .env.backup
 .env.production
+.env.local
 .phpactor.json
 .phpunit.result.cache
 /.fleet
@@ -23,3 +24,44 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+.github
+
+# Database locale per sviluppo
+/database/database.sqlite
+/database/database.sqlite-journal
+
+# File temporanei di sviluppo
+/storage/dev-uploads/
+/storage/temp/
+/public/temp-uploads/
+
+# Log e debug locali
+/storage/logs/laravel-*.log
+/storage/debugbar/
+telescope-toolbar.js
+
+# Backup locali
+*.backup
+*.bak
+*.tmp
+
+# IDE e editor files
+.vscode/settings.json
+.idea/workspace.xml
+*.swp
+*.swo
+*~
+
+# Docker (opzionale)
+docker-compose.override.yml
+docker-compose.dev.yml
+.env.docker
+/data/
+/redis-data/
+/minio-data/
+
+# File di setup sviluppo personali
+Makefile
+dev-setup.ps1
+DEVELOPMENT.md
+.env.local
