@@ -48,10 +48,9 @@ class CourseModuleController extends Controller
         return view('admin.module.edit', [
             'course' => $course,
             'module' => $module,
+            'moduleEditView' => $this->moduleEditView($module),
             'moduleTypeLabels' => Module::availableTypeLabels(),
             'moduleStatusLabels' => Module::availableStatusLabels(),
-            'requiresManualTitle' => Module::requiresManualTitle($module->type),
-            'requiresAppointmentDetails' => Module::requiresAppointmentDetails($module->type),
         ]);
     }
 
@@ -118,5 +117,10 @@ class CourseModuleController extends Controller
         return response()->json([
             'message' => __('Module order updated successfully.'),
         ]);
+    }
+
+    private function moduleEditView(Module $module): string
+    {
+        return sprintf('admin.module.types.%s', $module->type);
     }
 }

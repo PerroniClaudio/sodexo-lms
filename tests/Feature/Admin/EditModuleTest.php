@@ -25,6 +25,7 @@ it('shows the edit module page', function () {
     $response = $this->get(route('admin.courses.modules.edit', [$course, $module]));
 
     $response->assertOk();
+    $response->assertViewHas('moduleEditView', 'admin.module.types.live');
     $response->assertSeeText('Modifica modulo');
     $response->assertSeeText('Corso: Corso sicurezza. Tipologia: Live.');
     $response->assertSee('value="Modulo iniziale"', escape: false);
@@ -53,8 +54,24 @@ it('does not show the editable title field for quiz modules', function () {
     $response = $this->get(route('admin.courses.modules.edit', [$course, $module]));
 
     $response->assertOk();
+    $response->assertViewHas('moduleEditView', 'admin.module.types.satisfaction_quiz');
     $response->assertDontSee('name="title"', escape: false);
     $response->assertDontSee('name="appointment_date"', escape: false);
     $response->assertDontSee('name="appointment_start_time"', escape: false);
     $response->assertDontSee('name="appointment_end_time"', escape: false);
+});
+
+it('resolves the dedicated edit view for video modules', function () {
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => 'video',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $response = $this->get(route('admin.courses.modules.edit', [$course, $module]));
+
+    $response->assertOk();
+    $response->assertViewHas('moduleEditView', 'admin.module.types.video');
+    $response->assertSee('name="title"', escape: false);
+    $response->assertDontSee('name="appointment_date"', escape: false);
 });
