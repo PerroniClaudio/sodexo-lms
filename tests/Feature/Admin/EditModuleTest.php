@@ -7,6 +7,10 @@ use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    actingAsRole('admin');
+});
+
 it('shows the edit module page', function () {
     $course = Course::factory()->create([
         'title' => 'Corso sicurezza',

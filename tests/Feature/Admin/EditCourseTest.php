@@ -6,6 +6,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    actingAsRole('admin');
+});
+
 it('shows the edit course page with the update form and modules card', function () {
     $course = Course::factory()->create([
         'title' => 'Corso prova',

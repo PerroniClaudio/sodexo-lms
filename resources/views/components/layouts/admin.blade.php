@@ -16,17 +16,53 @@
         </div>
         <div class="drawer-side">
             <label for="my-drawer-3" aria-label="close sidebar" class="drawer-overlay"></label>
-            <ul class="menu bg-base-200 min-h-full w-80 p-4">
-                <li>
-                    <a
-                        href="{{ route('admin.courses.index') }}"
-                        @class(['menu-active' => request()->routeIs('admin.courses.*')])
-                    >
-                        {{ __('Corsi') }}
-                    </a>
-                </li>
+            <div class="flex min-h-full w-80 flex-col bg-base-200 p-4">
+                <ul class="menu gap-1">
+                    <li>
+                        <a
+                            href="{{ route('admin.courses.index') }}"
+                            @class(['menu-active' => request()->routeIs('admin.courses.*')])
+                        >
+                            {{ __('Corsi') }}
+                        </a>
+                    </li>
+                </ul>
 
-            </ul>
+                @auth
+                    @php
+                        $user = auth()->user();
+                        $userName = trim($user->full_name ?: $user->name);
+                        $initials = collect(preg_split('/\s+/', $userName, -1, PREG_SPLIT_NO_EMPTY))
+                            ->take(2)
+                            ->map(fn (string $part): string => mb_strtoupper(mb_substr($part, 0, 1)))
+                            ->implode('');
+                    @endphp
+
+                    <div class="mt-auto pt-6">
+                        <div class="card border border-base-300 bg-base-100 shadow-sm">
+                            <div class="card-body flex-row items-center gap-3 p-4">
+                                <div class="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary font-semibold text-primary-content">
+                                    {{ $initials }}
+                                </div>
+
+                                <div class="min-w-0 flex-1">
+                                    <p class="truncate text-sm font-semibold text-base-content">
+                                        {{ $userName }}
+                                    </p>
+                                </div>
+
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+
+                                    <button type="submit" class="btn btn-ghost btn-sm btn-circle" aria-label="{{ __('Logout') }}">
+                                        <x-lucide-power class="h-4 w-4" />
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                @endauth
+            </div>
         </div>
     </div>
 </x-layouts.app>

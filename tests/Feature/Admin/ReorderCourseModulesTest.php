@@ -6,6 +6,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    actingAsRole('admin');
+});
+
 it('reorders course modules and updates every order value', function () {
     $course = Course::factory()->create();
     $firstModule = Module::factory()->create([

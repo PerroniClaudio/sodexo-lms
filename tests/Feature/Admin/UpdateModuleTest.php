@@ -7,6 +7,10 @@ use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    actingAsRole('admin');
+});
+
 it('updates a module', function () {
     $course = Course::factory()->create();
     $module = Module::factory()->create([

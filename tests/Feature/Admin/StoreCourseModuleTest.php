@@ -6,6 +6,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    actingAsRole('admin');
+});
+
 it('creates a module for the selected course', function () {
     $course = Course::factory()->create();
 

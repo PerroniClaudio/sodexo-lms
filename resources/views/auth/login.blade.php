@@ -22,45 +22,54 @@
                     <form method="POST" action="{{ route('login') }}" class="flex flex-col gap-4">
                         @csrf
 
-                        <div class="form-control">
-                            <label for="email" class="label">
-                                <span class="label-text font-medium">{{ __('Email') }}</span>
-                            </label>
+                        <fieldset class="fieldset">
+                            <legend class="fieldset-legend">{{ __('Email') }}</legend>
                             <input
                                 id="email"
                                 name="email"
                                 type="email"
                                 value="{{ old('email') }}"
-                                class="input input-bordered @error('email') input-error @enderror"
+                                class="input w-full @error('email') input-error @enderror"
+                                placeholder="{{ __('Inserisci la tua email') }}"
                                 required
                                 autofocus
                                 autocomplete="username"
                             >
                             @error('email')
-                                <label class="label">
-                                    <span class="label-text-alt text-error">{{ $message }}</span>
-                                </label>
+                                <p class="label text-error">{{ $message }}</p>
                             @enderror
-                        </div>
+                        </fieldset>
 
-                        <div class="form-control">
-                            <label for="password" class="label">
-                                <span class="label-text font-medium">{{ __('Password') }}</span>
-                            </label>
-                            <input
-                                id="password"
-                                name="password"
-                                type="password"
-                                class="input input-bordered @error('password') input-error @enderror"
-                                required
-                                autocomplete="current-password"
-                            >
-                            @error('password')
-                                <label class="label">
-                                    <span class="label-text-alt text-error">{{ $message }}</span>
+                        <fieldset class="fieldset">
+                            <legend class="fieldset-legend">{{ __('Password') }}</legend>
+                            <label class="input w-full @error('password') input-error @enderror">
+                                <input
+                                    id="password"
+                                    name="password"
+                                    type="password"
+                                    class="grow"
+                                    placeholder="{{ __('Inserisci la tua password') }}"
+                                    required
+                                    autocomplete="current-password"
+                                    data-password-input
+                                >
+                                <label class="swap swap-rotate cursor-pointer text-base-content/60">
+                                    <input
+                                        type="checkbox"
+                                        class="sr-only"
+                                        data-password-toggle
+                                        data-show-label="{{ __('Mostra password') }}"
+                                        data-hide-label="{{ __('Nascondi password') }}"
+                                        aria-label="{{ __('Mostra password') }}"
+                                    >
+                                    <x-lucide-eye class="swap-off h-4 w-4" data-password-icon="show" />
+                                    <x-lucide-eye-off class="swap-on h-4 w-4" data-password-icon="hide" />
                                 </label>
+                            </label>
+                            @error('password')
+                                <p class="label text-error">{{ $message }}</p>
                             @enderror
-                        </div>
+                        </fieldset>
 
                         <div class="form-control">
                             <label class="label cursor-pointer justify-start gap-3">
@@ -97,4 +106,25 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const passwordInput = document.querySelector('[data-password-input]');
+            const toggleInput = document.querySelector('[data-password-toggle]');
+
+            if (! passwordInput || ! toggleInput) {
+                return;
+            }
+
+            const showLabel = toggleInput.dataset.showLabel;
+            const hideLabel = toggleInput.dataset.hideLabel;
+
+            toggleInput.addEventListener('change', () => {
+                const passwordIsVisible = toggleInput.checked;
+
+                passwordInput.type = passwordIsVisible ? 'text' : 'password';
+                toggleInput.setAttribute('aria-label', passwordIsVisible ? hideLabel : showLabel);
+            });
+        });
+    </script>
 </x-layouts.app>

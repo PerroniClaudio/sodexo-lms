@@ -33,6 +33,25 @@
                 </div>
             @endsession
 
+            @session('error')
+                <div class="pointer-events-none fixed right-4 bottom-4 z-50 sm:right-6 sm:bottom-6">
+                    <input id="flash-error-dismiss" type="checkbox" class="peer sr-only">
+
+                    <div class="alert alert-error pointer-events-auto flex w-full max-w-sm items-center gap-3 pr-3 shadow-lg peer-checked:hidden">
+                        <x-lucide-circle-alert class="h-5 w-5 shrink-0" />
+                        <span class="flex-1">{{ $value }}</span>
+
+                        <label
+                            for="flash-error-dismiss"
+                            class="cursor-pointer transition-transform hover:scale-110"
+                            aria-label="{{ __('Chiudi notifica') }}"
+                        >
+                            <x-lucide-x class="h-4 w-4" />
+                        </label>
+                    </div>
+                </div>
+            @endsession
+
             {{ $slot }}
         </div>
     </body>

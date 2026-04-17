@@ -5,6 +5,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    $this->adminUser = actingAsRole('admin');
+});
+
 it('shows the courses index page with paginated results', function () {
     Course::factory()->count(25)->create();
 
@@ -18,6 +22,8 @@ it('shows the courses index page with paginated results', function () {
     $response->assertSeeText('Crea nuovo');
     $response->assertSeeText('Cerca');
     $response->assertSee(route('admin.courses.create'), escape: false);
+    $response->assertSeeText($this->adminUser->full_name);
+    $response->assertSee(route('logout'), escape: false);
     $response->assertViewHas('courses', fn ($courses) => $courses->count() === 20 && $courses->total() === 25);
 });
 
