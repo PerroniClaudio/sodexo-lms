@@ -15,6 +15,7 @@ it('shows the edit module page', function () {
         'title' => 'Modulo iniziale',
         'description' => 'Descrizione modulo',
         'type' => 'live',
+        'is_live_teacher' => true,
         'status' => 'draft',
         'appointment_date' => Carbon::parse('2026-05-20 00:00:00'),
         'appointment_start_time' => Carbon::parse('2026-05-20 14:30:00'),
@@ -34,6 +35,8 @@ it('shows the edit module page', function () {
     $response->assertSeeText('Bozza');
     $response->assertSeeText('Pubblicato');
     $response->assertSeeText('Archiviato');
+    $response->assertSee('name="is_live_teacher"', escape: false);
+    $response->assertSee('checked', escape: false);
     $response->assertSee('name="appointment_date"', escape: false);
     $response->assertSee('value="2026-05-20"', escape: false);
     $response->assertSee('name="appointment_start_time"', escape: false);
@@ -56,6 +59,7 @@ it('does not show the editable title field for quiz modules', function () {
     $response->assertOk();
     $response->assertViewHas('moduleEditView', 'admin.module.types.satisfaction_quiz');
     $response->assertDontSee('name="title"', escape: false);
+    $response->assertDontSee('name="is_live_teacher"', escape: false);
     $response->assertDontSee('name="appointment_date"', escape: false);
     $response->assertDontSee('name="appointment_start_time"', escape: false);
     $response->assertDontSee('name="appointment_end_time"', escape: false);
@@ -73,5 +77,6 @@ it('resolves the dedicated edit view for video modules', function () {
     $response->assertOk();
     $response->assertViewHas('moduleEditView', 'admin.module.types.video');
     $response->assertSee('name="title"', escape: false);
+    $response->assertDontSee('name="is_live_teacher"', escape: false);
     $response->assertDontSee('name="appointment_date"', escape: false);
 });

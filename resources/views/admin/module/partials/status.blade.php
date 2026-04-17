@@ -1,6 +1,6 @@
 <div class="form-control flex flex-col gap-2">
     <label for="status" class="label p-0">
-        <span class="label-text font-medium">{{ __('Status') }}</span>
+        <span class="label-text font-medium">{{ __('Stato') }}</span>
     </label>
     <select
         id="status"

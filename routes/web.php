@@ -8,3 +8,6 @@ Route::get('/', function () {
 
 include 'admin.php';
 include 'auth.php';
+include 'teacher.php';
+include 'tutor.php';
+include 'user.php';

@@ -39,6 +39,10 @@ class UpdateModuleRequest extends FormRequest
             ],
             'description' => ['nullable', 'string'],
             'status' => ['required', 'string', Rule::in(Module::availableStatuses())],
+            'is_live_teacher' => [
+                Rule::requiredIf($module?->type === 'live'),
+                'boolean',
+            ],
             'appointment_date' => [
                 Rule::requiredIf($requiresAppointmentDetails),
                 'nullable',
@@ -72,8 +76,9 @@ class UpdateModuleRequest extends FormRequest
     {
         return [
             'title' => __('Module title'),
-            'description' => __('Description'),
-            'status' => __('Status'),
+            'description' => __('Descrizione'),
+            'status' => __('Stato'),
+            'is_live_teacher' => __('Live con docente'),
             'appointment_date' => __('Day'),
             'appointment_start_time' => __('Start time'),
             'appointment_end_time' => __('End time'),

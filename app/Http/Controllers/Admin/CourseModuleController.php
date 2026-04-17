@@ -82,6 +82,10 @@ class CourseModuleController extends Controller
             );
         }
 
+        if ($module->type === 'live') {
+            $moduleAttributes['is_live_teacher'] = $request->boolean('is_live_teacher');
+        }
+
         $module->update($moduleAttributes);
 
         return redirect()
