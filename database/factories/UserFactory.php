@@ -32,8 +32,6 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
-        $jobUnit = JobUnit::inRandomOrder()->first() ?? JobUnit::factory()->create();
-
         return [
             // Autenticazione
             'email' => fake()->unique()->safeEmail(),
@@ -63,16 +61,16 @@ class UserFactory extends Factory
             'address' => fake()->optional()->streetAddress(),
             'postal_code' => fake()->optional()->postcode(),
 
-            // Job relations
-            'job_unit_id' => $jobUnit->id,
-            'job_country' => $jobUnit->country,
-            'job_region' => $jobUnit->region,
-            'job_province' => $jobUnit->province,
-            'job_category_id' => JobCategory::inRandomOrder()->first()?->id,
-            'job_level_id' => JobLevel::inRandomOrder()->first()?->id,
-            'job_title_id' => JobTitle::inRandomOrder()->first()?->id ?? JobTitle::factory(),
-            'job_role_id' => JobRole::inRandomOrder()->first()?->id ?? JobRole::factory(),
-            'job_sector_id' => JobSector::inRandomOrder()->first()?->id ?? JobSector::factory(),
+            // Job relations - NULL di default (solo user normali li richiedono)
+            'job_unit_id' => null,
+            'job_country' => null,
+            'job_region' => null,
+            'job_province' => null,
+            'job_category_id' => null,
+            'job_level_id' => null,
+            'job_title_id' => null,
+            'job_role_id' => null,
+            'job_sector_id' => null,
 
             'is_foreigner_or_immigrant' => fake()->boolean(20),
             'notes' => fake()->optional()->paragraph(),
@@ -131,6 +129,31 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'is_foreigner_or_immigrant' => true,
         ]);
+    }
+
+    /**
+     * User con dati job completi (obbligatori per utenti normali con ruolo 'user')
+     */
+    public function withJobData(): static
+    {
+        return $this->state(function (array $attributes) {
+            $jobUnit = JobUnit::inRandomOrder()->first() ?? JobUnit::factory()->create();
+
+            return [
+                // Job relations obbligatori
+                'job_unit_id' => $jobUnit->id,
+                'job_country' => $jobUnit->country,
+                'job_region' => $jobUnit->region,
+                'job_province' => $jobUnit->province,
+                'job_title_id' => JobTitle::inRandomOrder()->first()?->id ?? JobTitle::factory(),
+                'job_role_id' => JobRole::inRandomOrder()->first()?->id ?? JobRole::factory(),
+                'job_sector_id' => JobSector::inRandomOrder()->first()?->id ?? JobSector::factory(),
+
+                // Job relations opzionali
+                'job_category_id' => JobCategory::inRandomOrder()->first()?->id,
+                'job_level_id' => JobLevel::inRandomOrder()->first()?->id,
+            ];
+        });
     }
 
     /**
