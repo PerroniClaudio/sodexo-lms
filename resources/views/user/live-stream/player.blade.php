@@ -1,4 +1,5 @@
 <x-layouts.app>
+    @vite('resources/js/livestream-user.js')
     <section class="h-screen w-full overflow-hidden">
         <div class="grid h-full min-h-0 lg:grid-cols-3">
             <div class="min-h-0 lg:col-span-2">
