@@ -45,6 +45,7 @@ class Module extends Model
         'description',
         'type',
         'order',
+        'is_live_teacher',
         'appointment_date',
         'appointment_start_time',
         'appointment_end_time',
@@ -61,6 +62,7 @@ class Module extends Model
     {
         return [
             'id' => 'integer',
+            'is_live_teacher' => 'boolean',
             'appointment_date' => 'datetime',
             'appointment_start_time' => 'datetime',
             'appointment_end_time' => 'datetime',

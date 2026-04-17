@@ -17,6 +17,7 @@ class ModuleFactory extends Factory
             'description' => fake()->text(),
             'type' => fake()->randomElement(Module::availableTypes()),
             'order' => fake()->numberBetween(1, 10),
+            'is_live_teacher' => fake()->boolean(),
             'appointment_date' => fake()->dateTime(),
             'appointment_start_time' => fake()->dateTime(),
             'appointment_end_time' => fake()->dateTime(),
