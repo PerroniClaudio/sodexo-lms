@@ -86,6 +86,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Application Theme
+    |--------------------------------------------------------------------------
+    |
+    | This value determines which DaisyUI theme is applied to the application.
+    | The theme controls the color scheme and visual appearance. Each client
+    | deployment can have its own theme by setting this value in the .env file.
+    |
+    | Available themes are defined in resources/css/app.css
+    |
+    */
+
+    'theme' => env('APP_THEME', 'sodexo'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Encryption Key
     |--------------------------------------------------------------------------
     |

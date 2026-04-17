@@ -47,3 +47,39 @@
   --depth: 1;
   --noise: 0;
 }
+
+/* Example Theme - Template per nuovi clienti (Verde) */
+@plugin "daisyui/theme" {
+  name: "example";
+  default: false;
+  prefersdark: false;
+  color-scheme: "light";
+  --color-base-100: #FFFFFF;
+  --color-base-200: #F0FDF4;
+  --color-base-300: #DCFCE7;
+  --color-base-content: #14532D;
+  --color-primary: #16A34A;
+  --color-primary-content: #FFFFFF;
+  --color-secondary: #10B981;
+  --color-secondary-content: #FFFFFF;
+  --color-accent: #8B5CF6;
+  --color-accent-content: #FFFFFF;
+  --color-neutral: #374151;
+  --color-neutral-content: #FFFFFF;
+  --color-info: oklch(88.263% 0.093 212.846);
+  --color-info-content: oklch(17.652% 0.018 212.846);
+  --color-success: oklch(87.099% 0.219 148.024);
+  --color-success-content: oklch(17.419% 0.043 148.024);
+  --color-warning: oklch(95.533% 0.134 112.757);
+  --color-warning-content: oklch(19.106% 0.026 112.757);
+  --color-error: oklch(68.22% 0.206 24.43);
+  --color-error-content: oklch(13.644% 0.041 24.43);
+  --radius-selector: 0.75rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+  --size-selector: 0.3125rem;
+  --size-field: 0.3125rem;
+  --border: 2px;
+  --depth: 1;
+  --noise: 0;
+}

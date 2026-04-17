@@ -7,3 +7,4 @@ Route::get('/', function () {
 });
 
 include 'admin.php';
+include 'auth.php';
