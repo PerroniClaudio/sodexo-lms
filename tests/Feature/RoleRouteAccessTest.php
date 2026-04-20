@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Course;
+use App\Models\CourseEnrollment;
 use App\Models\Module;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -92,8 +93,13 @@ it('forbids access to user routes for non user roles', function () {
 });
 
 it('allows users to access user routes', function () {
-    actingAsRole('user');
+    $user = actingAsRole('user');
     $module = liveStreamModule();
 
-    $this->get(route('user.live-stream.player', $module))->assertOk();
+    CourseEnrollment::factory()->create([
+        'user_id' => $user->getKey(),
+        'course_id' => (int) $module->belongsTo,
+    ]);
+
+    $this->actingAs($user)->get(route('user.live-stream.player', $module))->assertOk();
 });

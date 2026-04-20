@@ -10,7 +10,7 @@
                     </h1>
 
                     <p class="mt-3 text-base-content/70">
-                        {{ __('La diretta comincia all\'orario stabilito. Potrai accedere alla live a partire da :datetime.', ['datetime' => $module->appointment_start_time?->format('d/m/Y H:i')]) }}
+                        {{ $waitingMessage ?: __('La diretta comincia all\'orario stabilito. Potrai accedere alla live a partire da :datetime.', ['datetime' => $module->appointment_start_time?->format('d/m/Y H:i')]) }}
                     </p>
                 </div>
 
