@@ -24,6 +24,8 @@ it('shows the courses index page with paginated results', function () {
     $response->assertSee(route('admin.courses.create'), escape: false);
     $response->assertSeeText($this->adminUser->full_name);
     $response->assertSee(route('logout'), escape: false);
+    $response->assertSee('class="menu w-full gap-1"', escape: false);
+    $response->assertSee('class="w-full"', escape: false);
     $response->assertViewHas('courses', fn ($courses) => $courses->count() === 20 && $courses->total() === 25);
 });
 

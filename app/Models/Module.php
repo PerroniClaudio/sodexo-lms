@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Module extends Model
@@ -88,6 +89,24 @@ class Module extends Model
     public function progressRecords(): HasMany
     {
         return $this->hasMany(ModuleProgress::class);
+    }
+
+    /**
+     * Get the live stream sessions for the module.
+     */
+    public function liveStreamSessions(): HasMany
+    {
+        return $this->hasMany(LiveStreamSession::class);
+    }
+
+    /**
+     * Get the active live stream session for the module.
+     */
+    public function activeLiveStreamSession(): HasOne
+    {
+        return $this->hasOne(LiveStreamSession::class)
+            ->where('status', LiveStreamSession::STATUS_LIVE)
+            ->latestOfMany();
     }
 
     /**

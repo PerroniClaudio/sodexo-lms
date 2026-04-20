@@ -1,50 +1,51 @@
 <x-layouts.app>
     @vite('resources/js/livestream-user.js')
-    <section class="h-screen w-full overflow-hidden">
-        <div class="grid h-full min-h-0 lg:grid-cols-3">
-            <div class="min-h-0 lg:col-span-2">
+
+    <section class="min-h-screen w-full bg-base-100" data-live-stream-root>
+        <script type="application/json" data-live-stream-config>@json($liveStreamConfig)</script>
+
+        <div class="grid min-h-screen xl:grid-cols-[minmax(0,1fr)_24rem]">
+            <div class="min-h-0">
                 <div
-                    class="h-full min-h-0 overflow-y-auto bg-base-200 lg:border-r lg:border-base-300"
+                    class="h-full min-h-0 overflow-y-auto bg-base-100 xl:border-r xl:border-base-300"
                     data-livestream-user-main-scroll
                 >
-                    <div class="flex min-h-screen flex-col p-6 lg:p-8">
-                        <div class="flex flex-1 flex-col gap-4">
-                            <div class="flex min-h-0 flex-1 items-center justify-center border border-base-300 bg-neutral text-neutral-content">
-                                <div class="flex h-full w-full items-center justify-center">
-                                    <p class="text-center text-2xl font-semibold">{{ __('Player video principale') }}</p>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-3 xl:grid-cols-5">
-                                <div class="border border-base-300 bg-neutral px-3 py-10 text-center text-sm text-neutral-content/70">
-                                    {{ __('Camera 1') }}
-                                </div>
-                                <div class="border border-base-300 bg-neutral px-3 py-10 text-center text-sm text-neutral-content/70">
-                                    {{ __('Camera 2') }}
-                                </div>
-                                <div class="border border-base-300 bg-neutral px-3 py-10 text-center text-sm text-neutral-content/70">
-                                    {{ __('Camera 3') }}
-                                </div>
-                                <div class="border border-base-300 bg-neutral px-3 py-10 text-center text-sm text-neutral-content/70">
-                                    {{ __('Camera 4') }}
-                                </div>
-                                <div class="border border-base-300 bg-neutral px-3 py-10 text-center text-sm text-neutral-content/70">
-                                    {{ __('Camera 5') }}
-                                </div>
-                            </div>
-
-                            <button
-                                type="button"
-                                class="flex items-center justify-center py-2 text-base-content/60"
-                                aria-label="{{ __('Vai ai dettagli live') }}"
-                                data-livestream-user-scroll-details
+                    <div class="px-4 py-4 sm:px-6 sm:py-6 xl:px-8 xl:py-8">
+                        <div class="mx-auto flex w-full max-w-6xl flex-col gap-5">
+                            <div
+                                class="aspect-video w-full overflow-hidden rounded-[1.75rem]"
+                                data-live-stream-main-stage
                             >
-                                <x-lucide-chevron-down class="h-5 w-5" />
-                            </button>
+                                <div class="flex h-full w-full items-center justify-center rounded-[1.75rem] bg-[#24285f] px-6 py-12 text-center text-white">
+                                    <div class="space-y-2">
+                                        <p class="text-sm font-semibold">{{ __('Docente non connesso') }}</p>
+                                        <p class="text-xs text-white/70">{{ __('Il feed apparirà qui appena il docente entra in diretta') }}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between gap-3 px-1">
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-base-content/45">{{ __('Telecamere live') }}</p>
+                                        <p class="mt-1 text-sm text-base-content/60">{{ __('I partecipanti collegati compaiono qui sotto.') }}</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="flex items-center justify-center rounded-full border border-base-300 px-3 py-2 text-base-content/60 transition hover:border-base-content/20 hover:text-base-content"
+                                        aria-label="{{ __('Vai ai dettagli live') }}"
+                                        data-livestream-user-scroll-details
+                                    >
+                                        <x-lucide-chevron-down class="h-4 w-4" />
+                                    </button>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5" data-live-stream-strip></div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="px-6 pb-6 lg:px-8 lg:pb-8" data-livestream-user-details-section>
+                    <div class="mx-auto w-full max-w-6xl px-4 pb-6 sm:px-6 xl:px-8 xl:pb-8" data-livestream-user-details-section>
                         <div class="tabs tabs-lift">
                             <input
                                 type="radio"
@@ -55,43 +56,32 @@
                             />
                             <div class="tab-content border-base-300 bg-base-100 p-6">
                                 <div>
-                                    <div>
-                                        <h2 class="mt-2 text-3xl font-semibold">{{ __('Live in corso') }}</h2>
-                                        <p class="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">
-                                            {{ __('Docente') }}
-                                        </p>
-                                        <p class="mt-2 text-base font-medium">{{ __('Da definire') }}</p>
-                                        <p class="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">
-                                            {{ __('Descrizione') }}
-                                        </p>
-                                        <p class="mt-2 max-w-3xl text-sm leading-6 text-base-content/70">
-                                            {{ __('Descrizione della live disponibile in questa sezione, con informazioni utili per seguire la sessione e consultare i contenuti condivisi dal docente.') }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <input
-                                type="radio"
-                                name="live-stream-tabs"
-                                class="tab"
-                                aria-label="{{ __('File allegati') }}"
-                            />
-                            <div class="tab-content border-base-300 bg-base-100 p-6">
-                                <div class="space-y-4">
-                                    <div class="border border-base-300 bg-base-200 p-4">
-                                        <p class="text-sm font-medium">{{ __('Materiale lezione.pdf') }}</p>
-                                        <p class="mt-1 text-sm text-base-content/70">
-                                            {{ __('Documento allegato disponibile per il download.') }}
-                                        </p>
+                                    <div class="grid gap-4 md:grid-cols-3">
+                                        <div>
+                                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">{{ __('Corso') }}</p>
+                                            <p class="mt-2 text-sm font-medium">{{ $course?->title ?? __('Corso non disponibile') }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">{{ __('Programmazione') }}</p>
+                                            <p class="mt-2 text-sm font-medium">
+                                                {{ $module->appointment_start_time?->format('d/m/Y H:i') }}
+                                                @if ($module->appointment_end_time !== null)
+                                                    {{ __('-') }} {{ $module->appointment_end_time->format('H:i') }}
+                                                @endif
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">{{ __('Stato richiesta') }}</p>
+                                            <p class="mt-2 text-sm font-medium" data-live-stream-hand-raise-status>{{ __('Nessuna richiesta attiva') }}</p>
+                                        </div>
                                     </div>
 
-                                    <div class="border border-base-300 bg-base-200 p-4">
-                                        <p class="text-sm font-medium">{{ __('Slide live.pptx') }}</p>
-                                        <p class="mt-1 text-sm text-base-content/70">
-                                            {{ __('Presentazione condivisa durante la sessione.') }}
-                                        </p>
-                                    </div>
+                                    <p class="mt-6 text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">
+                                        {{ __('Descrizione') }}
+                                    </p>
+                                    <p class="mt-2 max-w-3xl text-sm leading-6 text-base-content/70">
+                                        {{ $module->description ?: __('Nessuna descrizione disponibile per questo modulo live.') }}
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -99,8 +89,8 @@
                 </div>
             </div>
 
-            <aside class="min-h-0 lg:col-span-1">
-                <div class="h-full min-h-[32rem] bg-base-100 p-2">
+            <aside class="min-h-0 border-t border-base-300 xl:border-t-0">
+                <div class="h-full min-h-[32rem] bg-base-100 p-2 xl:sticky xl:top-0 xl:max-h-screen">
                     <div class="tabs tabs-lift h-full flex-wrap content-start">
                         <input
                             type="radio"
@@ -113,22 +103,8 @@
                             <div class="flex h-full flex-col border border-base-300 bg-base-200">
                                 <div
                                     class="flex-1 space-y-3 overflow-y-auto px-4 py-4"
-                                    data-livestream-user-chat-messages
+                                    data-live-stream-chat-messages
                                 ></div>
-
-                                <div class="border-t border-base-300 px-4 py-3">
-                                    <div class="flex items-center gap-3">
-                                        <input
-                                            type="text"
-                                            class="input input-bordered w-full"
-                                            value="{{ __('Scrivi un messaggio...') }}"
-                                            readonly
-                                        >
-                                        <button type="button" class="btn btn-primary" disabled>
-                                            {{ __('Invia') }}
-                                        </button>
-                                    </div>
-                                </div>
                             </div>
                         </div>
 
@@ -139,93 +115,78 @@
                             aria-label="{{ __('Discenti') }}"
                         />
                         <div class="tab-content h-[calc(100%-4rem)] border-base-300 bg-base-100 p-4">
-                            <div class="h-full space-y-4">
+                            <div class="h-full overflow-y-auto space-y-4">
                                 <div class="card rounded-box border border-base-300 bg-base-100">
                                     <div class="card-body gap-4 p-4">
                                         <div class="flex items-center justify-between gap-3">
-                                        <div class="flex items-center gap-3">
-                                            <div class="avatar">
-                                                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-content">
-                                                    <span>{{ __('MB') }}</span>
-                                                </div>
-                                            </div>
                                             <div>
-                                                <p class="text-sm font-medium">{{ __('Marco Bianchi') }}</p>
-                                                <p class="text-xs text-base-content/60">{{ __('Tu') }}</p>
+                                                <h3 class="text-sm font-semibold">{{ __('Dispositivi') }}</h3>
+                                                <p class="text-xs text-base-content/60">{{ __('Controlla la tua anteprima') }}</p>
                                             </div>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            class="btn btn-ghost btn-sm btn-square"
-                                            aria-label="{{ __('Impostazioni') }}"
-                                            data-livestream-user-settings-open
-                                        >
-                                            <x-lucide-settings class="h-4 w-4" />
-                                        </button>
+                                            <button
+                                                type="button"
+                                                class="btn btn-ghost btn-sm btn-square"
+                                                aria-label="{{ __('Impostazioni') }}"
+                                                data-live-stream-preview-toggle
+                                            >
+                                                <x-lucide-settings class="h-4 w-4" />
+                                            </button>
                                         </div>
 
-                                        <div class="hidden space-y-3" data-livestream-user-settings-panel>
+                                        <div class="hidden space-y-3" data-live-stream-preview-panel>
                                             <div class="overflow-hidden rounded-box border border-base-300 bg-neutral">
                                                 <video
                                                     class="aspect-video w-full bg-neutral object-cover"
                                                     autoplay
                                                     muted
                                                     playsinline
-                                                    data-livestream-user-preview
+                                                    data-live-stream-preview
                                                 ></video>
                                                 <div
-                                                    class="hidden aspect-video w-full items-center justify-center bg-neutral text-center text-sm text-neutral-content/70"
-                                                    data-livestream-user-preview-empty
+                                                    class="hidden aspect-video w-full items-center justify-center bg-neutral px-6 text-center text-sm text-neutral-content/70"
+                                                    data-live-stream-preview-empty
                                                 >
                                                     {{ __('Anteprima video non disponibile') }}
                                                 </div>
                                             </div>
 
                                             <div class="rounded-box border border-base-300 bg-base-200 p-4">
-                                                <p class="text-sm font-medium">{{ __('Microfono') }}</p>
-
-                                                <div class="mt-4 space-y-3">
-                                                    <progress
-                                                        class="progress progress-primary w-full"
-                                                        value="0"
-                                                        max="100"
-                                                        data-livestream-user-mic-meter
-                                                    ></progress>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <p class="text-sm font-medium">{{ __('Microfono') }}</p>
+                                                    <span class="text-xs text-base-content/60" data-live-stream-mic-label></span>
                                                 </div>
+                                                <progress class="progress progress-primary mt-3 w-full" value="0" max="100" data-live-stream-mic-meter></progress>
                                             </div>
 
-                                            <p class="text-sm text-base-content/60" data-livestream-user-device-status>
-                                                {{ __('Consenti l’accesso a videocamera e microfono per visualizzare l’anteprima.') }}
+                                            <p class="text-sm text-base-content/60" data-live-stream-device-status>
+                                                {{ __('Consenti l\'accesso a videocamera e microfono per visualizzare l\'anteprima.') }}
                                             </p>
+                                        </div>
+
+                                        <div class="flex flex-wrap gap-2">
+                                            <button type="button" class="btn btn-primary" data-live-stream-join-button>
+                                                {{ __('Entra nella diretta') }}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="btn btn-square btn-outline hidden"
+                                                aria-label="{{ __('Alza la mano') }}"
+                                                title="{{ __('Alza la mano') }}"
+                                                data-live-stream-hand-raise-button
+                                            >
+                                                <x-lucide-hand class="h-4 w-4" />
+                                                <span class="sr-only">{{ __('Alza la mano') }}</span>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="space-y-4">
-                                        <div class="flex items-center gap-3">
-                                            <div class="avatar">
-                                                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-base-200 text-sm font-semibold text-base-content">
-                                                    <span>{{ __('GR') }}</span>
-                                                </div>
-                                            </div>
-                                            <span class="text-sm font-medium">{{ __('Giulia R.') }}</span>
-                                        </div>
-                                        <div class="flex items-center gap-3">
-                                            <div class="avatar">
-                                                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-base-200 text-sm font-semibold text-base-content">
-                                                    <span>{{ __('LB') }}</span>
-                                                </div>
-                                            </div>
-                                            <span class="text-sm font-medium">{{ __('Luca B.') }}</span>
-                                        </div>
-                                        <div class="flex items-center gap-3">
-                                            <div class="avatar">
-                                                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-base-200 text-sm font-semibold text-base-content">
-                                                    <span>{{ __('EV') }}</span>
-                                                </div>
-                                            </div>
-                                            <span class="text-sm font-medium">{{ __('Elena V.') }}</span>
-                                        </div>
+                                <div>
+                                    <div class="mb-3 flex items-center justify-between gap-3 px-1">
+                                        <h3 class="text-sm font-semibold">{{ __('Discenti connessi') }}</h3>
+                                        <span class="text-xs text-base-content/60" data-live-stream-participant-count>0</span>
+                                    </div>
+                                    <div class="space-y-3" data-live-stream-participant-list></div>
                                 </div>
                             </div>
                         </div>
@@ -234,7 +195,9 @@
             </aside>
         </div>
 
-        <template data-livestream-user-chat-template>
+        <div class="hidden" data-live-stream-audio-stage></div>
+
+        <template data-live-stream-chat-template>
             <article class="chat chat-start">
                 <div class="chat-image avatar">
                     <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-content">
@@ -245,7 +208,9 @@
                     <span class="font-semibold" data-chat-author></span>
                     <time class="text-xs text-base-content/50" data-chat-time></time>
                 </div>
-                <div class="chat-bubble rounded-none bg-base-100 text-base-content" data-chat-body data-chat-bubble></div>
+                <div class="chat-bubble rounded-none bg-base-100 text-base-content" data-chat-bubble>
+                    <p data-chat-body></p>
+                </div>
             </article>
         </template>
     </section>
