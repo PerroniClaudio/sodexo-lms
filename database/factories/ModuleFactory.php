@@ -22,6 +22,8 @@ class ModuleFactory extends Factory
             'appointment_start_time' => fake()->dateTime(),
             'appointment_end_time' => fake()->dateTime(),
             'status' => 'draft',
+            'passing_score' => null,
+            'max_score' => null,
             'belongsTo' => (string) fake()->numberBetween(1, 100),
         ];
     }

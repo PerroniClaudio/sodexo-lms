@@ -29,6 +29,7 @@ class UpdateModuleRequest extends FormRequest
         $module = $this->module();
         $requiresAppointmentDetails = $module !== null
             && Module::requiresAppointmentDetails($module->type);
+        $requiresQuizScores = $module?->isQuiz() ?? false;
 
         return [
             'title' => [
@@ -59,6 +60,19 @@ class UpdateModuleRequest extends FormRequest
                 'date_format:H:i',
                 'after:appointment_start_time',
             ],
+            'passing_score' => [
+                Rule::requiredIf($requiresQuizScores),
+                'nullable',
+                'integer',
+                'min:0',
+            ],
+            'max_score' => [
+                Rule::requiredIf($requiresQuizScores),
+                'nullable',
+                'integer',
+                'gte:passing_score',
+                'min:1',
+            ],
         ];
     }
 
@@ -82,6 +96,8 @@ class UpdateModuleRequest extends FormRequest
             'appointment_date' => __('Day'),
             'appointment_start_time' => __('Start time'),
             'appointment_end_time' => __('End time'),
+            'passing_score' => __('Passing score'),
+            'max_score' => __('Maximum score'),
         ];
     }
 }

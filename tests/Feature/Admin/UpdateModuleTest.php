@@ -153,6 +153,8 @@ it('keeps the automatic title for quiz modules on update', function () {
 
     $response = $this->put(route('admin.courses.modules.update', [$course, $module]), [
         'description' => 'Descrizione quiz aggiornata',
+        'passing_score' => 7,
+        'max_score' => 10,
         'status' => 'published',
     ]);
 
@@ -162,5 +164,24 @@ it('keeps the automatic title for quiz modules on update', function () {
 
     expect($module->title)->toBe('Quiz di apprendimento');
     expect($module->description)->toBe('Descrizione quiz aggiornata');
+    expect($module->passing_score)->toBe(7);
+    expect($module->max_score)->toBe(10);
     expect($module->status)->toBe('published');
+});
+
+it('requires quiz scoring thresholds when updating quiz modules', function () {
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => 'learning_quiz',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $response = $this->from(route('admin.courses.modules.edit', [$course, $module]))
+        ->put(route('admin.courses.modules.update', [$course, $module]), [
+            'description' => 'Descrizione quiz aggiornata',
+            'status' => 'draft',
+        ]);
+
+    $response->assertRedirect(route('admin.courses.modules.edit', [$course, $module]));
+    $response->assertSessionHasErrors(['passing_score', 'max_score']);
 });

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -109,5 +110,34 @@ class Course extends Model
     public function modules(): HasMany
     {
         return $this->hasMany(Module::class, 'belongsTo')->orderBy('order');
+    }
+
+    /**
+     * Get the course enrollments.
+     */
+    public function enrollments(): HasMany
+    {
+        return $this->hasMany(CourseEnrollment::class);
+    }
+
+    /**
+     * Get the users enrolled in the course.
+     */
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'course_user')
+            ->withPivot([
+                'id',
+                'current_module_id',
+                'status',
+                'assigned_at',
+                'started_at',
+                'completed_at',
+                'expires_at',
+                'last_accessed_at',
+                'completion_percentage',
+                'deleted_at',
+            ])
+            ->withTimestamps();
     }
 }

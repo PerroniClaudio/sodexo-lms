@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -121,6 +123,35 @@ class User extends Authenticatable implements MustVerifyEmail
     public function jobSector(): BelongsTo
     {
         return $this->belongsTo(JobSector::class);
+    }
+
+    /**
+     * Get the course enrollments for the user.
+     */
+    public function courseEnrollments(): HasMany
+    {
+        return $this->hasMany(CourseEnrollment::class);
+    }
+
+    /**
+     * Get the courses assigned to the user.
+     */
+    public function courses(): BelongsToMany
+    {
+        return $this->belongsToMany(Course::class, 'course_user')
+            ->withPivot([
+                'id',
+                'current_module_id',
+                'status',
+                'assigned_at',
+                'started_at',
+                'completed_at',
+                'expires_at',
+                'last_accessed_at',
+                'completion_percentage',
+                'deleted_at',
+            ])
+            ->withTimestamps();
     }
 
     /**

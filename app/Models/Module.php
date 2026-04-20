@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Module extends Model
@@ -50,6 +51,8 @@ class Module extends Model
         'appointment_start_time',
         'appointment_end_time',
         'status',
+        'passing_score',
+        'max_score',
         'belongsTo',
     ];
 
@@ -66,6 +69,8 @@ class Module extends Model
             'appointment_date' => 'datetime',
             'appointment_start_time' => 'datetime',
             'appointment_end_time' => 'datetime',
+            'passing_score' => 'integer',
+            'max_score' => 'integer',
         ];
     }
 
@@ -75,6 +80,14 @@ class Module extends Model
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class, 'belongsTo');
+    }
+
+    /**
+     * Get the progress records for the module.
+     */
+    public function progressRecords(): HasMany
+    {
+        return $this->hasMany(ModuleProgress::class);
     }
 
     /**
@@ -149,5 +162,24 @@ class Module extends Model
     public static function defaultTitleForType(string $type): string
     {
         return self::availableTypeLabels()[$type] ?? $type;
+    }
+
+    /**
+     * Determine if the module is a quiz.
+     */
+    public function isQuiz(): bool
+    {
+        return in_array($this->type, [
+            'learning_quiz',
+            'satisfaction_quiz',
+        ], true);
+    }
+
+    /**
+     * Determine if the module is a video.
+     */
+    public function isVideo(): bool
+    {
+        return $this->type === 'video';
     }
 }

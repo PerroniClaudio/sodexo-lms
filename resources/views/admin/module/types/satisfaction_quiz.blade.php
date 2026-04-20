@@ -3,4 +3,5 @@
 </div>
 @include('admin.module.partials.readonly-title')
 @include('admin.module.partials.description')
+@include('admin.module.partials.quiz-thresholds')
 @include('admin.module.partials.status')
