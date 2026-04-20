@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
     Route::group(['prefix' => 'admin', 'as' => 'admin.'], function () {
-        Route::get('/live-stream/player', [LiveStreamController::class, 'adminPlayer'])->name('live-stream.player');
+        Route::get('/live-stream/{module}/player', [LiveStreamController::class, 'adminPlayer'])->name('live-stream.player');
         Route::get('/courses/create', [CourseController::class, 'create'])->name('courses.create');
         Route::post('/courses', [CourseController::class, 'store'])->name('courses.store');
         Route::get('/courses/{course}/edit', [CourseController::class, 'edit'])->name('courses.edit');

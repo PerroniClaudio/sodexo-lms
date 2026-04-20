@@ -60,16 +60,25 @@
                                 checked="checked"
                             />
                             <div class="tab-content border-base-300 bg-base-100 p-6">
-                                <h2 class="text-3xl font-semibold">{{ __('Live in corso') }}</h2>
+                                <h2 class="text-3xl font-semibold">{{ $module->title }}</h2>
                                 <p class="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">
-                                    {{ __('Docente') }}
+                                    {{ __('Corso') }}
                                 </p>
-                                <p class="mt-2 text-base font-medium">{{ __('Docente') }}</p>
+                                <p class="mt-2 text-base font-medium">{{ $course?->title ?? __('Corso non disponibile') }}</p>
+                                <p class="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">
+                                    {{ __('Programmazione') }}
+                                </p>
+                                <p class="mt-2 text-base font-medium">
+                                    {{ $module->appointment_start_time?->format('d/m/Y H:i') }}
+                                    @if ($module->appointment_end_time !== null)
+                                        {{ __('-') }} {{ $module->appointment_end_time->format('H:i') }}
+                                    @endif
+                                </p>
                                 <p class="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">
                                     {{ __('Descrizione') }}
                                 </p>
                                 <p class="mt-2 max-w-3xl text-sm leading-6 text-base-content/70">
-                                    {{ __('Vista docente della live, con monitoraggio dei discenti collegati e accesso ai materiali della sessione.') }}
+                                    {{ $module->description ?: __('Nessuna descrizione disponibile per questo modulo live.') }}
                                 </p>
                             </div>
 
