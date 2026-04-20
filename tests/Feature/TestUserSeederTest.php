@@ -24,6 +24,5 @@ test('it creates one test user for each configured role', function () {
         expect($user)->not->toBeNull();
         expect($user->hasRole($role))->toBeTrue();
         expect($user->account_state)->toBe(UserStatus::ACTIVE);
-        expect($user->account_type)->toBe($role);
     }
 });

@@ -14,7 +14,7 @@ class JobSectorController extends Controller
 {
     public function index(Request $request): View
     {
-        $allowedSorts = ['id', 'name', 'code', 'is_active'];
+        $allowedSorts = ['id', 'name', 'code', 'status'];
         $requestedSort = $request->string('sort')->toString();
         $hasValidSort = in_array($requestedSort, $allowedSorts, true);
         $sort = $hasValidSort ? $requestedSort : 'id';
@@ -22,9 +22,13 @@ class JobSectorController extends Controller
             ? ($request->string('direction')->toString() === 'asc' ? 'asc' : 'desc')
             : 'desc';
         $search = trim($request->string('search')->toString());
+        $showTrashed = $request->boolean('show_trashed');
 
         return view('admin.job-sector.index', [
             'sectors' => JobSector::query()
+                ->when($showTrashed, function ($query) {
+                    $query->withTrashed();
+                })
                 ->when($search !== '', function ($query) use ($search) {
                     $query->where(function ($query) use ($search) {
                         $query
@@ -33,11 +37,21 @@ class JobSectorController extends Controller
                             ->orWhere('code', 'like', "%{$search}%");
                     });
                 })
-                ->orderBy($sort, $direction)
-                ->paginate(20)
+                ->when($sort === 'status', function ($query) use ($direction) {
+                    // Per status: ordina per deleted_at IS NULL (attivi prima) poi per deleted_at
+                    if ($direction === 'asc') {
+                        $query->orderByRaw('deleted_at IS NOT NULL ASC, deleted_at ASC');
+                    } else {
+                        $query->orderByRaw('deleted_at IS NULL ASC, deleted_at DESC');
+                    }
+                }, function ($query) use ($sort, $direction) {
+                    $query->orderBy($sort, $direction);
+                })
+                ->paginate(10)
                 ->withQueryString(),
             'tableSort' => $sort,
             'tableDirection' => $direction,
+            'showTrashed' => $showTrashed,
             'tableSearch' => $search,
         ]);
     }
@@ -49,10 +63,7 @@ class JobSectorController extends Controller
 
     public function store(StoreJobSectorRequest $request): RedirectResponse
     {
-        $sector = JobSector::query()->create([
-            ...$request->validated(),
-            'is_active' => $request->boolean('is_active', true),
-        ]);
+        $sector = JobSector::query()->create($request->validated());
 
         return redirect()
             ->route('admin.job-sectors.edit', $sector)
@@ -68,10 +79,7 @@ class JobSectorController extends Controller
 
     public function update(UpdateJobSectorRequest $request, JobSector $jobSector): RedirectResponse
     {
-        $jobSector->update([
-            ...$request->validated(),
-            'is_active' => $request->boolean('is_active', false),
-        ]);
+        $jobSector->update($request->validated());
 
         return redirect()
             ->route('admin.job-sectors.edit', $jobSector)
@@ -85,5 +93,15 @@ class JobSectorController extends Controller
         return redirect()
             ->route('admin.job-sectors.index')
             ->with('status', __('Settore eliminato con successo.'));
+    }
+
+    public function restore($id): RedirectResponse
+    {
+        $sector = JobSector::withTrashed()->findOrFail($id);
+        $sector->restore();
+
+        return redirect()
+            ->route('admin.job-sectors.index')
+            ->with('status', __('Settore ripristinato con successo.'));
     }
 }

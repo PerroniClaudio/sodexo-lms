@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Hash;
 
 class TestUserSeeder extends Seeder
 {
@@ -39,8 +40,7 @@ class TestUserSeeder extends Seeder
                 'name' => ucfirst($role),
                 'surname' => 'Test',
                 'email_verified_at' => $verifiedAt,
-                'password' => self::DEFAULT_PASSWORD,
-                'account_type' => $role,
+                'password' => Hash::make(self::DEFAULT_PASSWORD),
                 'account_state' => UserStatus::ACTIVE,
                 'profile_completed_at' => $verifiedAt,
                 'fiscal_code' => $this->fiscalCodeForRole($role),

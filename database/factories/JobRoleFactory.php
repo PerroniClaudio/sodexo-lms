@@ -21,7 +21,6 @@ class JobRoleFactory extends Factory
             'name' => fake()->randomElement(['Lavoratore', 'Preposto', 'Dirigente', 'RSPP', 'RLS']),
             'code' => strtoupper(fake()->unique()->lexify('ROL???')),
             'description' => fake()->optional()->sentence(),
-            'is_active' => true,
         ];
     }
 }

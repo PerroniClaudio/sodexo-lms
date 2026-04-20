@@ -17,7 +17,6 @@ class StoreJobLevelRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'code' => ['nullable', 'string', 'max:50', 'unique:job_levels,code'],
             'description' => ['nullable', 'string', 'max:1000'],
-            'is_active' => ['boolean'],
         ];
     }
 
@@ -27,7 +26,6 @@ class StoreJobLevelRequest extends FormRequest
             'name' => __('Nome'),
             'code' => __('Codice'),
             'description' => __('Descrizione'),
-            'is_active' => __('Attivo'),
         ];
     }
 }

@@ -6,6 +6,7 @@
     'search' => '',
     'searchPlaceholder' => __('Cerca'),
     'emptyMessage' => __('Nessun elemento disponibile.'),
+    'showSearch' => true,
 ])
 
 @php
@@ -15,6 +16,11 @@
 
 <div class="card border border-base-300 bg-base-100 shadow-sm">
     <div class="card-body gap-4">
+        @isset($filters)
+            {{ $filters }}
+        @endisset
+
+        @if($showSearch)
         <div class="flex justify-end">
             <form method="GET" class="flex w-full max-w-md items-center gap-2">
                 @foreach (request()->query() as $key => $value)
@@ -38,6 +44,7 @@
                 </button>
             </form>
         </div>
+        @endif
 
         <div class="overflow-x-auto">
             <table class="table table-zebra">
@@ -48,12 +55,35 @@
                                 $columnKey = $column['key'];
                                 $columnIsSortable = $column['sortable'] ?? false;
                                 $columnIsActive = $sort === $columnKey;
-                                $nextDirection = $columnIsActive && $currentDirection === 'asc' ? 'desc' : 'asc';
-                                $columnUrl = request()->fullUrlWithQuery([
-                                    'sort' => $columnKey,
-                                    'direction' => $nextDirection,
-                                    'page' => null,
-                                ]);
+                                
+                                // Ciclo di ordinamento a 3 stati: ASC → DESC → Nessun ordinamento
+                                if (!$columnIsActive) {
+                                    // Colonna non attiva → ASC
+                                    $nextDirection = 'asc';
+                                    $nextSort = $columnKey;
+                                } elseif ($columnIsActive && $currentDirection === 'asc') {
+                                    // ASC → DESC
+                                    $nextDirection = 'desc';
+                                    $nextSort = $columnKey;
+                                } else {
+                                    // DESC → Rimuovi ordinamento (torna al default)
+                                    $nextDirection = null;
+                                    $nextSort = null;
+                                }
+                                
+                                // Genera URL con o senza parametri di ordinamento
+                                if ($nextSort && $nextDirection) {
+                                    $columnUrl = request()->fullUrlWithQuery([
+                                        'sort' => $nextSort,
+                                        'direction' => $nextDirection,
+                                        'page' => null,
+                                    ]);
+                                } else {
+                                    // Rimuovi parametri di ordinamento per tornare al default
+                                    $params = request()->query();
+                                    unset($params['sort'], $params['direction'], $params['page']);
+                                    $columnUrl = request()->url() . ($params ? '?' . http_build_query($params) : '');
+                                }
                             @endphp
 
                             <th class="{{ $column['class'] ?? '' }}">

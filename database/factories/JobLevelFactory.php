@@ -21,7 +21,6 @@ class JobLevelFactory extends Factory
             'name' => fake()->randomElement(['1° Livello', '2° Livello', '3° Livello', 'B1', 'B2', 'C1']),
             'code' => strtoupper(fake()->unique()->lexify('LVL???')),
             'description' => fake()->optional()->sentence(),
-            'is_active' => true,
         ];
     }
 }

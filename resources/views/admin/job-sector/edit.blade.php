@@ -3,7 +3,28 @@
         <x-page-header
             :title="__('Modifica settore')"
             :description="__('Gestisci i settori.')"
-        />
+        >
+            <x-slot:actions>
+                @if($sector->trashed())
+                    <form method="POST" action="{{ route('admin.job-sectors.restore', $sector->id) }}" class="inline">
+                        @csrf
+                        <button type="submit" class="btn btn-success btn-outline">
+                            <x-lucide-refresh-cw class="h-4 w-4" />
+                            <span>{{ __('Ripristina settore') }}</span>
+                        </button>
+                    </form>
+                @else
+                    <form method="POST" action="{{ route('admin.job-sectors.destroy', $sector) }}" onsubmit="return confirm('{{ __('Sei sicuro di voler eliminare questo settore?') }}')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-error btn-outline">
+                            <x-lucide-trash-2 class="h-4 w-4" />
+                            <span>{{ __('Elimina settore') }}</span>
+                        </button>
+                    </form>
+                @endif
+            </x-slot:actions>
+        </x-page-header>
 
         <div class="card border border-base-300 bg-base-100 shadow-sm">
             <div class="card-body gap-6">
@@ -61,49 +82,15 @@
                         @enderror
                     </div>
 
-                    <div class="form-control">
-                        <label class="label cursor-pointer justify-start gap-3">
-                            <input
-                                type="checkbox"
-                                name="is_active"
-                                value="1"
-                                class="checkbox"
-                                @checked(old('is_active', $sector->is_active))
-                            >
-                            <span class="label-text font-medium">{{ __('Attivo') }}</span>
-                        </label>
-                    </div>
-
-                    <div class="flex justify-between gap-3">
-                        <button
-                            type="button"
-                            onclick="document.getElementById('delete-form').submit()"
-                            class="btn btn-error"
-                        >
-                            <x-lucide-trash-2 class="h-4 w-4" />
-                            <span>{{ __('Elimina settore') }}</span>
+                    <div class="flex justify-end gap-3">
+                        <a href="{{ route('admin.job-sectors.index') }}" class="btn btn-ghost">
+                            {{ __('Cancel') }}
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <span>{{ __('Salva modifiche') }}</span>
+                            <x-lucide-check class="h-4 w-4" />
                         </button>
-
-                        <div class="flex gap-3">
-                            <a href="{{ route('admin.job-sectors.index') }}" class="btn btn-ghost">
-                                {{ __('Cancel') }}
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <span>{{ __('Salva modifiche') }}</span>
-                                <x-lucide-check class="h-4 w-4" />
-                            </button>
-                        </div>
                     </div>
-                </form>
-
-                <form
-                    id="delete-form"
-                    method="POST"
-                    action="{{ route('admin.job-sectors.destroy', $sector) }}"
-                    class="hidden"
-                >
-                    @csrf
-                    @method('DELETE')
                 </form>
             </div>
         </div>

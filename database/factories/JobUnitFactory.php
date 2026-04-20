@@ -19,7 +19,6 @@ class JobUnitFactory extends Factory
     {
         return [
             'name' => 'Sede '.fake()->city(),
-            'code' => strtoupper(fake()->unique()->lexify('UNIT???')),
             'description' => fake()->optional()->sentence(),
             'country' => 'IT',
             'region' => fake()->state(),
@@ -27,7 +26,6 @@ class JobUnitFactory extends Factory
             'city' => fake()->city(),
             'address' => fake()->streetAddress(),
             'postal_code' => fake()->postcode(),
-            'is_active' => true,
         ];
     }
 }

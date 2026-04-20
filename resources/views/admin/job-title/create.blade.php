@@ -57,19 +57,6 @@
                         @enderror
                     </div>
 
-                    <div class="form-control">
-                        <label class="label cursor-pointer justify-start gap-3">
-                            <input
-                                type="checkbox"
-                                name="is_active"
-                                value="1"
-                                class="checkbox"
-                                @checked(old('is_active', true))
-                            >
-                            <span class="label-text font-medium">{{ __('Attivo') }}</span>
-                        </label>
-                    </div>
-
                     <div class="flex justify-end gap-3">
                         <a href="{{ route('admin.job-titles.index') }}" class="btn btn-ghost">
                             {{ __('Cancel') }}

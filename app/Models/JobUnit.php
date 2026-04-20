@@ -3,40 +3,53 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['name', 'code', 'description', 'country', 'region', 'province', 'city', 'address', 'postal_code', 'is_active'])]
+#[Fillable(['name', 'description', 'country_id', 'region_id', 'province_id', 'city_id', 'address', 'postal_code'])]
 class JobUnit extends Model
 {
-    use HasFactory;
-
-    protected function casts(): array
-    {
-        return [
-            'is_active' => 'boolean',
-        ];
-    }
+    use HasFactory, SoftDeletes;
 
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
     }
 
-    public function scopeActive($query)
+    public function country(): BelongsTo
     {
-        return $query->where('is_active', true);
+        return $this->belongsTo(WorldCountry::class, 'country_id');
     }
 
-    public function getFullAddressAttribute(): string
+    public function region(): BelongsTo
     {
-        return collect([
-            $this->address,
-            $this->postal_code ? "{$this->postal_code} {$this->city}" : $this->city,
-            $this->province,
-            $this->region,
-            $this->country,
-        ])->filter()->implode(', ');
+        return $this->belongsTo(WorldDivision::class, 'region_id');
+    }
+
+    public function province(): BelongsTo
+    {
+        return $this->belongsTo(Province::class, 'province_id');
+    }
+
+    public function city(): BelongsTo
+    {
+        return $this->belongsTo(WorldCity::class, 'city_id');
+    }
+
+    protected function fullAddress(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => collect([
+                $this->address,
+                $this->postal_code ? "{$this->postal_code} {$this->city?->name}" : $this->city?->name,
+                $this->province?->name,
+                $this->region?->name,
+                $this->country?->name,
+            ])->filter()->implode(', ')
+        );
     }
 }

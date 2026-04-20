@@ -14,7 +14,7 @@ class JobCategoryController extends Controller
 {
     public function index(Request $request): View
     {
-        $allowedSorts = ['id', 'name', 'code', 'is_active'];
+        $allowedSorts = ['id', 'name', 'code', 'status'];
         $requestedSort = $request->string('sort')->toString();
         $hasValidSort = in_array($requestedSort, $allowedSorts, true);
         $sort = $hasValidSort ? $requestedSort : 'id';
@@ -22,9 +22,13 @@ class JobCategoryController extends Controller
             ? ($request->string('direction')->toString() === 'asc' ? 'asc' : 'desc')
             : 'desc';
         $search = trim($request->string('search')->toString());
+        $showTrashed = $request->boolean('show_trashed');
 
         return view('admin.job-category.index', [
             'categories' => JobCategory::query()
+                ->when($showTrashed, function ($query) {
+                    $query->withTrashed();
+                })
                 ->when($search !== '', function ($query) use ($search) {
                     $query->where(function ($query) use ($search) {
                         $query
@@ -33,11 +37,21 @@ class JobCategoryController extends Controller
                             ->orWhere('code', 'like', "%{$search}%");
                     });
                 })
-                ->orderBy($sort, $direction)
-                ->paginate(20)
+                ->when($sort === 'status', function ($query) use ($direction) {
+                    // Per status: ordina per deleted_at IS NULL (attivi prima) poi per deleted_at
+                    if ($direction === 'asc') {
+                        $query->orderByRaw('deleted_at IS NOT NULL ASC, deleted_at ASC');
+                    } else {
+                        $query->orderByRaw('deleted_at IS NULL ASC, deleted_at DESC');
+                    }
+                }, function ($query) use ($sort, $direction) {
+                    $query->orderBy($sort, $direction);
+                })
+                ->paginate(10)
                 ->withQueryString(),
             'tableSort' => $sort,
             'tableDirection' => $direction,
+            'showTrashed' => $showTrashed,
             'tableSearch' => $search,
         ]);
     }
@@ -49,10 +63,7 @@ class JobCategoryController extends Controller
 
     public function store(StoreJobCategoryRequest $request): RedirectResponse
     {
-        $category = JobCategory::query()->create([
-            ...$request->validated(),
-            'is_active' => $request->boolean('is_active', true),
-        ]);
+        $category = JobCategory::query()->create($request->validated());
 
         return redirect()
             ->route('admin.job-categories.edit', $category)
@@ -68,10 +79,7 @@ class JobCategoryController extends Controller
 
     public function update(UpdateJobCategoryRequest $request, JobCategory $jobCategory): RedirectResponse
     {
-        $jobCategory->update([
-            ...$request->validated(),
-            'is_active' => $request->boolean('is_active', false),
-        ]);
+        $jobCategory->update($request->validated());
 
         return redirect()
             ->route('admin.job-categories.edit', $jobCategory)
@@ -85,5 +93,15 @@ class JobCategoryController extends Controller
         return redirect()
             ->route('admin.job-categories.index')
             ->with('status', __('Categoria di lavoro eliminata con successo.'));
+    }
+
+    public function restore($id): RedirectResponse
+    {
+        $category = JobCategory::withTrashed()->findOrFail($id);
+        $category->restore();
+
+        return redirect()
+            ->route('admin.job-categories.index')
+            ->with('status', __('Categoria di lavoro ripristinata con successo.'));
     }
 }

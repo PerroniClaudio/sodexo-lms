@@ -21,7 +21,7 @@ class JobTitleFactory extends Factory
             'name' => fake()->jobTitle(),
             'code' => strtoupper(fake()->unique()->lexify('JOB???')),
             'description' => fake()->optional()->sentence(),
-            'is_active' => true,
+
         ];
     }
 }

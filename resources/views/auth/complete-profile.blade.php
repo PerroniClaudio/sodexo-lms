@@ -216,15 +216,25 @@
                                 <label for="postal_code" class="label">
                                     <span class="label-text">{{ __('CAP') }}</span>
                                 </label>
-                                <input
-                                    id="postal_code"
-                                    name="postal_code"
-                                    type="text"
-                                    value="{{ old('postal_code', $user->postal_code) }}"
-                                    class="input input-bordered @error('postal_code') input-error @enderror"
-                                    placeholder="20100"
-                                    maxlength="10"
-                                >
+                                <div class="relative">
+                                    <input
+                                        id="postal_code"
+                                        name="postal_code"
+                                        type="text"
+                                        value="{{ old('postal_code', $user->postal_code) }}"
+                                        class="input input-bordered @error('postal_code') input-error @enderror w-full"
+                                        placeholder="20100"
+                                        maxlength="10"
+                                    >
+                                    <span class="absolute inset-y-0 right-3 items-center pointer-events-none hidden" id="postal-code-loading">
+                                        <span class="loading loading-spinner loading-sm"></span>
+                                    </span>
+                                </div>
+                                <label class="label">
+                                    <span class="label-text-alt text-base-content/70">
+                                        {{ __('Per l\'Italia, inserisci il CAP per compilare automaticamente i campi sopra') }}
+                                    </span>
+                                </label>
                                 @error('postal_code')
                                     <label class="label">
                                         <span class="label-text-alt text-error">{{ $message }}</span>
@@ -262,4 +272,207 @@
             </div>
         </div>
     </div>
+
+    @push('scripts')
+    <script>
+    (function() {
+        'use strict';
+        
+        // Elementi del form
+        const nationInput = document.getElementById('nation');
+        const regionInput = document.getElementById('region');
+        const provinceInput = document.getElementById('province');
+        const cityInput = document.getElementById('city');
+        const postalCodeInput = document.getElementById('postal_code');
+        const postalCodeLoading = document.getElementById('postal-code-loading');
+        
+        let postalCodeLookupTimeout = null;
+        
+        /**
+         * Show/hide loading indicator for postal code
+         */
+        function setPostalCodeLoading(isLoading) {
+            if (postalCodeLoading) {
+                if (isLoading) {
+                    postalCodeLoading.classList.remove('hidden');
+                    postalCodeLoading.classList.add('flex');
+                } else {
+                    postalCodeLoading.classList.remove('flex');
+                    postalCodeLoading.classList.add('hidden');
+                }
+            }
+            if (postalCodeInput) {
+                postalCodeInput.disabled = isLoading;
+            }
+        }
+        
+        /**
+         * Lookup geographic data from postal code (Italy only)
+         */
+        async function lookupPostalCode(postalCode) {
+            const countryCode = (nationInput.value || 'IT').toLowerCase();
+            
+            // Solo per l'Italia per ora
+            if (countryCode !== 'it') {
+                return;
+            }
+            
+            // Validazione formato CAP italiano (5 cifre)
+            if (!/^\d{5}$/.test(postalCode)) {
+                return;
+            }
+            
+            setPostalCodeLoading(true);
+            
+            try {
+                const response = await fetch(`/api/geographic/lookup/postal-code/${postalCode}?country=${countryCode}`);
+                
+                if (!response.ok) {
+                    console.log('CAP non trovato:', postalCode);
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                // Popola i campi automaticamente
+                if (data.region && data.region.name) {
+                    regionInput.value = data.region.name;
+                    regionInput.classList.add('input-success');
+                    setTimeout(() => regionInput.classList.remove('input-success'), 2000);
+                }
+                
+                if (data.province && data.province.code) {
+                    provinceInput.value = data.province.code;
+                    provinceInput.classList.add('input-success');
+                    setTimeout(() => provinceInput.classList.remove('input-success'), 2000);
+                }
+                
+                if (data.city && data.city.name) {
+                    cityInput.value = data.city.name;
+                    cityInput.classList.add('input-success');
+                    setTimeout(() => cityInput.classList.remove('input-success'), 2000);
+                }
+                
+                console.log('✓ Dati geografici popolati da CAP:', postalCode);
+                
+            } catch (error) {
+                console.error('Errore nel lookup del CAP:', error);
+            } finally {
+                setPostalCodeLoading(false);
+            }
+        }
+        
+        /**
+         * Event listener per il campo CAP
+         * Quando l'utente esce dal campo, cerca i dati geografici
+         */
+        if (postalCodeInput) {
+            postalCodeInput.addEventListener('blur', function() {
+                const postalCode = this.value.trim();
+                
+                if (postalCode) {
+                    lookupPostalCode(postalCode);
+                }
+            });
+            
+            // Anche on input con debounce per una UX migliore
+            postalCodeInput.addEventListener('input', function() {
+                const postalCode = this.value.trim();
+                
+                // Clear previous timeout
+                if (postalCodeLookupTimeout) {
+                    clearTimeout(postalCodeLookupTimeout);
+                }
+                
+                // Solo se ha 5 cifre (CAP completo)
+                if (/^\d{5}$/.test(postalCode)) {
+                    postalCodeLookupTimeout = setTimeout(() => {
+                        lookupPostalCode(postalCode);
+                    }, 500);
+                }
+            });
+        }
+        
+        /**
+         * Event listener per campi geografici superiori
+         * Quando cambiano nazione, regione o provincia, pulisci il CAP
+         */
+        if (nationInput) {
+            nationInput.addEventListener('change', function() {
+                if (postalCodeInput) {
+                    postalCodeInput.value = '';
+                    postalCodeInput.classList.remove('input-success', 'input-error');
+                }
+            });
+        }
+        
+        if (regionInput) {
+            regionInput.addEventListener('blur', function() {
+                if (postalCodeInput) {
+                    postalCodeInput.value = '';
+                    postalCodeInput.classList.remove('input-success', 'input-error');
+                }
+            });
+        }
+        
+        if (provinceInput) {
+            provinceInput.addEventListener('blur', function() {
+                if (postalCodeInput) {
+                    postalCodeInput.value = '';
+                    postalCodeInput.classList.remove('input-success', 'input-error');
+                }
+            });
+        }
+        
+        /**
+         * Event listener per il campo città
+         * Quando l'utente esce dal campo, pulisce il CAP e cerca se la città ha un solo CAP
+         */
+        if (cityInput) {
+            cityInput.addEventListener('blur', async function() {
+                const cityName = this.value.trim();
+                const countryCode = (nationInput.value || 'IT').toLowerCase();
+                
+                // Pulisci sempre il CAP quando cambia la città
+                if (postalCodeInput) {
+                    postalCodeInput.value = '';
+                    postalCodeInput.classList.remove('input-success', 'input-error');
+                }
+                
+                // Solo per l'Italia e se c'è un nome città
+                if (countryCode !== 'it' || !cityName || cityName.length < 2) {
+                    return;
+                }
+                
+                try {
+                    // Cerca i CAP per nome città
+                    const postalResponse = await fetch(`/api/geographic/postal-codes-by-city?city=${encodeURIComponent(cityName)}&country=${countryCode}`);
+                    
+                    if (!postalResponse.ok) {
+                        console.log(`Nessun CAP trovato per ${cityName}`);
+                        return;
+                    }
+                    
+                    const postalCodes = await postalResponse.json();
+                    
+                    // Se c'è un solo CAP, inseriscilo automaticamente
+                    if (postalCodes && postalCodes.length === 1 && postalCodeInput) {
+                        postalCodeInput.value = postalCodes[0];
+                        postalCodeInput.classList.add('input-success');
+                        setTimeout(() => postalCodeInput.classList.remove('input-success'), 2000);
+                        
+                        console.log(`✓ CAP unico inserito per ${cityName}:`, postalCodes[0]);
+                    } else if (postalCodes && postalCodes.length > 1) {
+                        console.log(`⚠️ ${cityName} ha ${postalCodes.length} CAP - campo lasciato vuoto per scelta manuale`);
+                    }
+                    
+                } catch (error) {
+                    console.error('Errore nella ricerca città:', error);
+                }
+            });
+        }
+        
+    })();
+    </script>
+    @endpush
 </x-layouts.app>

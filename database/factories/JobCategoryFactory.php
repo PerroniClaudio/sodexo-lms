@@ -21,7 +21,6 @@ class JobCategoryFactory extends Factory
             'name' => fake()->jobTitle(),
             'code' => strtoupper(fake()->unique()->lexify('CAT???')),
             'description' => fake()->optional()->sentence(),
-            'is_active' => true,
         ];
     }
 }

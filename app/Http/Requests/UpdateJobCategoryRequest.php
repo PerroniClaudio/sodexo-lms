@@ -27,7 +27,6 @@ class UpdateJobCategoryRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'code' => ['nullable', 'string', 'max:50', Rule::unique('job_categories', 'code')->ignore($this->route('job_category'))],
             'description' => ['nullable', 'string', 'max:1000'],
-            'is_active' => ['boolean'],
         ];
     }
 
@@ -42,7 +41,6 @@ class UpdateJobCategoryRequest extends FormRequest
             'name' => __('Nome'),
             'code' => __('Codice'),
             'description' => __('Descrizione'),
-            'is_active' => __('Attivo'),
         ];
     }
 }

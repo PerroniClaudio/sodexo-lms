@@ -26,6 +26,58 @@
                             {{ __('Corsi') }}
                         </a>
                     </li>
+
+                    @role('superadmin')
+                        <li>
+                            <details @class(['open' => request()->routeIs('admin.job-*')])>
+                                <summary @class(['menu-active' => request()->routeIs('admin.job-*')])>
+                                    {{ __('Configurazione Lavori') }}
+                                </summary>
+                                <ul>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.job-categories.index') }}"
+                                            @class(['menu-active' => request()->routeIs('admin.job-categories.*')])
+                                        >
+                                            {{ __('Categorie') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.job-levels.index') }}"
+                                            @class(['menu-active' => request()->routeIs('admin.job-levels.*')])
+                                        >
+                                            {{ __('Livelli') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.job-roles.index') }}"
+                                            @class(['menu-active' => request()->routeIs('admin.job-roles.*')])
+                                        >
+                                            {{ __('Ruoli') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.job-sectors.index') }}"
+                                            @class(['menu-active' => request()->routeIs('admin.job-sectors.*')])
+                                        >
+                                            {{ __('Settori') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.job-units.index') }}"
+                                            @class(['menu-active' => request()->routeIs('admin.job-units.*')])
+                                        >
+                                            {{ __('Unità Lavorative') }}
+                                        </a>
+                                    </li>
+                                </ul>
+                            </details>
+                        </li>
+                    @endrole
                 </ul>
 
                 @auth

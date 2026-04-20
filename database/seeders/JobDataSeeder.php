@@ -8,6 +8,9 @@ use App\Models\JobRole;
 use App\Models\JobSector;
 use App\Models\JobTitle;
 use App\Models\JobUnit;
+use App\Models\Province;
+use App\Models\WorldCity;
+use App\Models\WorldCountry;
 use Illuminate\Database\Seeder;
 
 class JobDataSeeder extends Seeder
@@ -86,41 +89,74 @@ class JobDataSeeder extends Seeder
         }
 
         // Job Units (Unità Lavorative)
+        // Get Italy country ID
+        $italy = WorldCountry::where('code', 'it')->first();
+
+        if (! $italy) {
+            $this->command->warn('Italia non trovata. Saltata creazione unità lavorative.');
+
+            return;
+        }
+
         $units = [
             [
                 'name' => 'Sede Milano Centro',
-                'code' => 'MI-001',
-                'country' => 'IT',
-                'region' => 'Lombardia',
-                'province' => 'MI',
-                'city' => 'Milano',
+                'province_code' => 'MI',
+                'city_name' => 'Milano',
                 'address' => 'Via Roma 123',
                 'postal_code' => '20100',
             ],
             [
                 'name' => 'Sede Roma EUR',
-                'code' => 'RM-001',
-                'country' => 'IT',
-                'region' => 'Lazio',
-                'province' => 'RM',
-                'city' => 'Roma',
+                'province_code' => 'RM',
+                'city_name' => 'Roma',
                 'address' => 'Via Cristoforo Colombo 456',
                 'postal_code' => '00144',
             ],
             [
                 'name' => 'Stabilimento Torino',
-                'code' => 'TO-001',
-                'country' => 'IT',
-                'region' => 'Piemonte',
-                'province' => 'TO',
-                'city' => 'Torino',
+                'province_code' => 'TO',
+                'city_name' => 'Torino',
                 'address' => 'Corso Francia 789',
                 'postal_code' => '10141',
             ],
         ];
 
-        foreach ($units as $unit) {
-            JobUnit::create($unit);
+        foreach ($units as $unitData) {
+            // Find province
+            $province = Province::where('code', $unitData['province_code'])
+                ->where('country_id', $italy->id)
+                ->first();
+
+            if (! $province) {
+                $this->command->warn("Provincia {$unitData['province_code']} non trovata per {$unitData['name']}");
+
+                continue;
+            }
+
+            // Find city
+            $city = WorldCity::where('name', $unitData['city_name'])
+                ->where('country_id', $italy->id)
+                ->where('province_id', $province->id)
+                ->first();
+
+            if (! $city) {
+                $this->command->warn("Città {$unitData['city_name']} non trovata per {$unitData['name']}");
+
+                continue;
+            }
+
+            JobUnit::create([
+                'name' => $unitData['name'],
+                'country_id' => $italy->id,
+                'region_id' => $province->region_id,
+                'province_id' => $province->id,
+                'city_id' => $city->id,
+                'address' => $unitData['address'],
+                'postal_code' => $unitData['postal_code'],
+            ]);
         }
+
+        $this->command->info('✓ Unità lavorative create correttamente');
     }
 }

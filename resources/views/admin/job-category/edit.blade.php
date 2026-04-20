@@ -2,14 +2,24 @@
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
         <x-page-header :title="__('Modifica categoria di lavoro')">
             <x-slot:actions>
-                <form method="POST" action="{{ route('admin.job-categories.destroy', $category) }}" onsubmit="return confirm('{{ __('Confirm deletion') }}')">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-error btn-outline">
-                        <x-lucide-trash-2 class="h-4 w-4" />
-                        <span>{{ __('Elimina categoria') }}</span>
-                    </button>
-                </form>
+                @if($category->trashed())
+                    <form method="POST" action="{{ route('admin.job-categories.restore', $category->id) }}" class="inline">
+                        @csrf
+                        <button type="submit" class="btn btn-success btn-outline">
+                            <x-lucide-refresh-cw class="h-4 w-4" />
+                            <span>{{ __('Ripristina categoria') }}</span>
+                        </button>
+                    </form>
+                @else
+                    <form method="POST" action="{{ route('admin.job-categories.destroy', $category) }}" onsubmit="return confirm('{{ __('Sei sicuro di voler eliminare questa categoria?') }}')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-error btn-outline">
+                            <x-lucide-trash-2 class="h-4 w-4" />
+                            <span>{{ __('Elimina categoria') }}</span>
+                        </button>
+                    </form>
+                @endif
             </x-slot:actions>
         </x-page-header>
 
@@ -76,19 +86,6 @@
                         @error('description')
                             <p class="text-sm text-error">{{ $message }}</p>
                         @enderror
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label cursor-pointer justify-start gap-3">
-                            <input
-                                type="checkbox"
-                                name="is_active"
-                                value="1"
-                                class="checkbox"
-                                @checked(old('is_active', $category->is_active))
-                            >
-                            <span class="label-text font-medium">{{ __('Attivo') }}</span>
-                        </label>
                     </div>
 
                     <div class="flex justify-end">
