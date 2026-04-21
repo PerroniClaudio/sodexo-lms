@@ -1,4 +1,4 @@
-import { Hand, Mic, MicOff, Pin, ScreenShare } from 'lucide';
+import { Hand, Mic, MicOff, Pin, ScreenShare, Trash2 } from 'lucide';
 
 const LIVE_STREAM_ICON_NODES = {
     hand: Hand,
@@ -6,6 +6,7 @@ const LIVE_STREAM_ICON_NODES = {
     'mic-off': MicOff,
     pin: Pin,
     'screen-share': ScreenShare,
+    trash: Trash2,
 };
 
 export function getLiveStreamRoot() {
@@ -28,7 +29,7 @@ export function getLiveStreamConfig(root) {
     }
 }
 
-export function renderChatMessages(root, messages = []) {
+export function renderChatMessages(root, messages = [], options = {}) {
     const messagesContainer = root.querySelector('[data-live-stream-chat-messages]');
     const messageTemplate = root.querySelector('[data-live-stream-chat-template]');
 
@@ -54,6 +55,7 @@ export function renderChatMessages(root, messages = []) {
         const bodyElement = fragment.querySelector('[data-chat-body]');
         const initialsElement = fragment.querySelector('[data-chat-initials]');
         const bubbleElement = fragment.querySelector('[data-chat-bubble]');
+        const deleteButton = fragment.querySelector('[data-chat-delete]');
 
         if (
             !(authorElement instanceof HTMLElement) ||
@@ -75,12 +77,94 @@ export function renderChatMessages(root, messages = []) {
             bubbleElement.classList.remove('bg-base-200', 'bg-base-100', 'text-base-content');
         }
 
+        if (deleteButton instanceof HTMLButtonElement) {
+            const canModerateMessages = Boolean(options.canModerateMessages);
+
+            deleteButton.classList.toggle('hidden', !canModerateMessages);
+            deleteButton.disabled = !canModerateMessages;
+
+            if (canModerateMessages && typeof options.onDeleteMessage === 'function') {
+                deleteButton.addEventListener('click', async () => {
+                    await options.onDeleteMessage(message);
+                });
+            }
+        }
+
         messagesContainer.appendChild(fragment);
     });
 
     if (shouldStickToBottom) {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
+}
+
+export function renderDocuments(root, documents = [], options = {}) {
+    const documentsContainer = root.querySelector('[data-live-stream-documents-list]');
+    const emptyStateElement = root.querySelector('[data-live-stream-documents-empty]');
+
+    if (!(documentsContainer instanceof HTMLElement)) {
+        return;
+    }
+
+    documentsContainer.replaceChildren();
+
+    if (emptyStateElement instanceof HTMLElement) {
+        emptyStateElement.classList.toggle('hidden', documents.length > 0);
+    }
+
+    documents.forEach((documentItem) => {
+        const item = document.createElement('article');
+        item.className = 'rounded-box border border-base-300 bg-base-100 p-4';
+
+        const infoWrapper = document.createElement('div');
+        infoWrapper.className = 'flex flex-col gap-3 md:flex-row md:items-start md:justify-between';
+
+        const content = document.createElement('div');
+        content.className = 'min-w-0';
+
+        const title = document.createElement('p');
+        title.className = 'truncate text-sm font-semibold';
+        title.textContent = documentItem.name;
+
+        const meta = document.createElement('p');
+        meta.className = 'mt-1 text-xs text-base-content/60';
+        meta.textContent = [
+            formatFileSize(documentItem.size_bytes),
+            formatUploadTime(documentItem.uploaded_at),
+            documentItem.uploaded_by ? `Caricato da ${documentItem.uploaded_by}` : null,
+        ].filter(Boolean).join(' • ');
+
+        content.append(title, meta);
+
+        const actions = document.createElement('div');
+        actions.className = 'flex shrink-0 flex-wrap items-center gap-2';
+
+        const downloadLink = document.createElement('a');
+        downloadLink.className = 'btn btn-outline btn-sm';
+        downloadLink.href = documentItem.download_url;
+        downloadLink.target = '_blank';
+        downloadLink.rel = 'noopener';
+        downloadLink.textContent = 'Scarica';
+
+        actions.appendChild(downloadLink);
+
+        const canDeleteDocument = Boolean(options.canDeleteDocuments) && typeof options.onDeleteDocument === 'function';
+
+        if (canDeleteDocument) {
+            const deleteButton = document.createElement('button');
+            deleteButton.type = 'button';
+            deleteButton.className = 'btn btn-ghost btn-sm text-error';
+            deleteButton.textContent = 'Rimuovi';
+            deleteButton.addEventListener('click', async () => {
+                await options.onDeleteDocument(documentItem);
+            });
+            actions.appendChild(deleteButton);
+        }
+
+        infoWrapper.append(content, actions);
+        item.appendChild(infoWrapper);
+        documentsContainer.appendChild(item);
+    });
 }
 
 export function getLiveStreamIconSvg(iconName, classNames = 'h-4 w-4') {
@@ -147,6 +231,38 @@ function formatChatMessageTime(value) {
     }).format(date);
 }
 
+function formatUploadTime(value) {
+    if (!value) {
+        return null;
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return null;
+    }
+
+    return new Intl.DateTimeFormat('it-IT', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    }).format(date);
+}
+
+function formatFileSize(value) {
+    const size = Number(value);
+
+    if (!Number.isFinite(size) || size <= 0) {
+        return 'PDF';
+    }
+
+    return new Intl.NumberFormat('it-IT', {
+        maximumFractionDigits: size >= 1_000_000 ? 1 : 0,
+    }).format(size >= 1_000_000 ? size / 1_000_000 : size / 1_000).concat(size >= 1_000_000 ? ' MB' : ' KB');
+}
+
 export function createPreviewController(root, options = {}) {
     const openButton = root.querySelector('[data-live-stream-preview-toggle]');
     const requestButton = root.querySelector('[data-live-stream-preview-request]');
@@ -163,6 +279,10 @@ export function createPreviewController(root, options = {}) {
     let analyserNode = null;
     let animationFrameId = null;
     let microphoneSource = null;
+
+    function hasVideoTrack() {
+        return (mediaStream?.getVideoTracks().length ?? 0) > 0;
+    }
 
     function notifyAudioStateChange() {
         if (typeof options.onAudioStateChange === 'function') {
@@ -238,7 +358,7 @@ export function createPreviewController(root, options = {}) {
         }
 
         if (statusElement instanceof HTMLElement) {
-            statusElement.textContent = 'Consenti l’accesso a videocamera e microfono per visualizzare l’anteprima.';
+            statusElement.textContent = 'Consenti l’accesso a videocamera e microfono per visualizzare l’anteprima. Puoi continuare anche senza videocamera.';
         }
 
         notifyAudioStateChange();
@@ -331,7 +451,9 @@ export function createPreviewController(root, options = {}) {
             }
 
             if (statusElement instanceof HTMLElement) {
-                statusElement.textContent = hasVideoTrack ? 'Anteprima attiva. Videocamera e microfono sono collegati.' : '';
+                statusElement.textContent = hasVideoTrack
+                    ? 'Anteprima attiva. Videocamera e microfono sono collegati.'
+                    : 'Microfono collegato. Nessuna videocamera disponibile: puoi comunque entrare nella diretta.';
             }
 
             startMicrophoneMeter(mediaStream);
@@ -389,6 +511,7 @@ export function createPreviewController(root, options = {}) {
         hasAudioTrack() {
             return mediaStream?.getAudioTracks().length > 0;
         },
+        hasVideoTrack,
         isAudioEnabled() {
             return mediaStream?.getAudioTracks()[0]?.enabled ?? false;
         },
@@ -408,6 +531,26 @@ export function createPreviewController(root, options = {}) {
             resetPreview();
         },
     };
+}
+
+export function shouldRetryLiveStreamConnectWithoutCamera(error) {
+    if (!error || typeof error !== 'object') {
+        return false;
+    }
+
+    const errorName = typeof error.name === 'string' ? error.name : '';
+    const errorMessage = typeof error.message === 'string' ? error.message.toLowerCase() : '';
+
+    if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError' || errorName === 'OverconstrainedError') {
+        return true;
+    }
+
+    return errorMessage.includes('video') && (
+        errorMessage.includes('not found')
+        || errorMessage.includes('notavailableerror')
+        || errorMessage.includes('source unavailable')
+        || errorMessage.includes('could not start video source')
+    );
 }
 
 export function deterministicShuffle(items, seed) {

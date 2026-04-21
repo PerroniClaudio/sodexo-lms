@@ -2,6 +2,8 @@
 
 use App\Models\Course;
 use App\Models\CourseEnrollment;
+use App\Models\CourseTeacherEnrollment;
+use App\Models\CourseTutorEnrollment;
 use App\Models\Module;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -61,10 +63,23 @@ it('forbids access to teacher routes for non docente roles', function () {
 });
 
 it('allows docenti to access teacher routes', function () {
-    actingAsRole('docente');
+    $teacher = actingAsRole('docente');
+    $module = liveStreamModule();
+    CourseTeacherEnrollment::factory()->create([
+        'user_id' => $teacher->getKey(),
+        'course_id' => (int) $module->belongsTo,
+    ]);
+
+    $this->actingAs($teacher)->get(route('teacher.live-stream.player', $module))->assertOk();
+});
+
+it('forbids teacher routes for docenti not assigned to the course', function () {
+    $teacher = actingAsRole('docente');
     $module = liveStreamModule();
 
-    $this->get(route('teacher.live-stream.player', $module))->assertOk();
+    $this->actingAs($teacher)
+        ->get(route('teacher.live-stream.player', $module))
+        ->assertForbidden();
 });
 
 it('forbids access to tutor routes for non tutor roles', function () {
@@ -77,10 +92,23 @@ it('forbids access to tutor routes for non tutor roles', function () {
 });
 
 it('allows tutors to access tutor routes', function () {
-    actingAsRole('tutor');
+    $tutor = actingAsRole('tutor');
+    $module = liveStreamModule();
+    CourseTutorEnrollment::factory()->create([
+        'user_id' => $tutor->getKey(),
+        'course_id' => (int) $module->belongsTo,
+    ]);
+
+    $this->actingAs($tutor)->get(route('tutor.live-stream.player', $module))->assertOk();
+});
+
+it('forbids tutor routes for tutors not assigned to the course', function () {
+    $tutor = actingAsRole('tutor');
     $module = liveStreamModule();
 
-    $this->get(route('tutor.live-stream.player', $module))->assertOk();
+    $this->actingAs($tutor)
+        ->get(route('tutor.live-stream.player', $module))
+        ->assertForbidden();
 });
 
 it('forbids access to user routes for non user roles', function () {

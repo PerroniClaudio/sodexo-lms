@@ -2,6 +2,7 @@
     @vite('resources/js/livestream-user.js')
 
     @php($canRaiseHand = (bool) data_get($liveStreamConfig, 'capabilities.canRaiseHand', false))
+    @php($canModerateChat = (bool) data_get($liveStreamConfig, 'capabilities.canModerateChat', false))
 
     <section class="min-h-screen w-full bg-base-100" data-live-stream-root>
         <script type="application/json" data-live-stream-config>@json($liveStreamConfig)</script>
@@ -88,51 +89,39 @@
                                     </p>
                                 </div>
                             </div>
+
+                            <input
+                                type="radio"
+                                name="live-stream-tabs"
+                                class="tab"
+                                aria-label="{{ __('Materiale didattico') }}"
+                            />
+                            <div class="tab-content border-base-300 bg-base-100 p-6">
+                                <div class="space-y-4">
+                                    <div>
+                                        <h2 class="text-xl font-semibold">{{ __('Materiale didattico') }}</h2>
+                                    </div>
+
+                                    <div class="space-y-3" data-live-stream-documents-list></div>
+                                    <p class="text-sm text-base-content/60" data-live-stream-documents-empty>
+                                        {{ __('Nessun materiale didattico condiviso') }}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <aside class="min-h-0 border-t border-base-300 xl:border-t-0">
-                <div class="h-full min-h-[32rem] bg-base-100 p-2 xl:sticky xl:top-0 xl:max-h-screen">
+                <div class="h-full min-h-128 bg-base-100 p-2 xl:sticky xl:top-0 xl:max-h-screen">
                     <div class="tabs tabs-lift h-full flex-wrap content-start">
                         <input
                             type="radio"
                             name="live-stream-sidebar-tabs"
                             class="tab"
-                            aria-label="{{ __('Chat') }}"
-                            checked="checked"
-                        />
-                        <div class="tab-content h-[calc(100%-4rem)] border-base-300 bg-base-100 p-4">
-                            <div class="flex h-full flex-col border border-base-300 bg-base-200">
-                                <div
-                                    class="flex-1 space-y-3 overflow-y-auto px-4 py-4"
-                                    data-live-stream-chat-messages
-                                ></div>
-
-                                <form class="border-t border-base-300 px-4 py-3" data-live-stream-chat-form>
-                                    <div class="flex items-center gap-3">
-                                        <input
-                                            type="text"
-                                            name="body"
-                                            class="input input-bordered w-full"
-                                            placeholder="{{ __('Scrivi un messaggio...') }}"
-                                            maxlength="1000"
-                                            data-live-stream-chat-input
-                                        >
-                                        <button type="submit" class="btn btn-primary" data-live-stream-chat-submit>
-                                            {{ __('Invia') }}
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-
-                        <input
-                            type="radio"
-                            name="live-stream-sidebar-tabs"
-                            class="tab"
                             aria-label="{{ __('Discenti') }}"
+                            checked="checked"
                         />
                         <div class="tab-content h-[calc(100%-4rem)] border-base-300 bg-base-100 p-4">
                             <div class="h-full overflow-y-auto space-y-4">
@@ -179,7 +168,7 @@
                                             </div>
 
                                             <p class="text-sm text-base-content/60" data-live-stream-device-status>
-                                                {{ __('Consenti l\'accesso a videocamera e microfono per visualizzare l\'anteprima.') }}
+                                                {{ __('Consenti l\'accesso a videocamera e microfono per visualizzare l\'anteprima. Puoi continuare anche senza videocamera.') }}
                                             </p>
                                         </div>
 
@@ -212,6 +201,37 @@
                                 </div>
                             </div>
                         </div>
+
+                        <input
+                            type="radio"
+                            name="live-stream-sidebar-tabs"
+                            class="tab"
+                            aria-label="{{ __('Chat') }}"
+                        />
+                        <div class="tab-content h-[calc(100%-4rem)] border-base-300 bg-base-100 p-4">
+                            <div class="flex h-full flex-col border border-base-300 bg-base-200">
+                                <div
+                                    class="flex-1 space-y-3 overflow-y-auto px-4 py-4"
+                                    data-live-stream-chat-messages
+                                ></div>
+
+                                <form class="border-t border-base-300 px-4 py-3" data-live-stream-chat-form>
+                                    <div class="flex items-center gap-3">
+                                        <input
+                                            type="text"
+                                            name="body"
+                                            class="input input-bordered w-full"
+                                            placeholder="{{ __('Scrivi un messaggio...') }}"
+                                            maxlength="1000"
+                                            data-live-stream-chat-input
+                                        >
+                                        <button type="submit" class="btn btn-primary" data-live-stream-chat-submit>
+                                            {{ __('Invia') }}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </aside>
@@ -229,11 +249,48 @@
                 <div class="chat-header mb-1 flex items-center gap-2 text-sm">
                     <span class="font-semibold" data-chat-author></span>
                     <time class="text-xs text-base-content/50" data-chat-time></time>
+                    @if ($canModerateChat)
+                        <button
+                            type="button"
+                            class="btn btn-ghost btn-xs ml-auto hidden"
+                            data-chat-delete
+                            aria-label="{{ __('Rimuovi messaggio') }}"
+                            title="{{ __('Rimuovi messaggio') }}"
+                        >
+                            <x-lucide-trash-2 class="h-3.5 w-3.5" />
+                            <span class="sr-only">{{ __('Rimuovi messaggio') }}</span>
+                        </button>
+                    @endif
                 </div>
                 <div class="chat-bubble rounded-none bg-base-100 text-base-content" data-chat-bubble>
                     <p data-chat-body></p>
                 </div>
             </article>
         </template>
+
+        @if (data_get($liveStreamConfig, 'role') === 'user')
+            <div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/55 px-4 py-6" data-live-stream-poll-modal>
+                <div class="w-full max-w-xl rounded-[1.75rem] border border-base-300 bg-base-100 p-6 shadow-2xl sm:p-8">
+                    <div class="space-y-2">
+                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/45">{{ __('Sondaggio live') }}</p>
+                        <h2 class="text-2xl font-semibold text-base-content" data-live-stream-poll-question></h2>
+                        <p class="text-sm text-base-content/60">
+                            {{ __('Seleziona una risposta e inviala per chiudere il sondaggio.') }}
+                        </p>
+                    </div>
+
+                    <form class="mt-6 space-y-4" data-live-stream-poll-form>
+                        <div class="space-y-3" data-live-stream-poll-options></div>
+                        <p class="hidden text-sm text-error" data-live-stream-poll-error></p>
+
+                        <div class="flex items-center justify-end gap-3">
+                            <button type="submit" class="btn btn-primary" data-live-stream-poll-submit>
+                                {{ __('Invia risposta') }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        @endif
     </section>
 </x-layouts.app>

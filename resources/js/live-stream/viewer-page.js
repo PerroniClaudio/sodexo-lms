@@ -13,6 +13,8 @@ import {
     getParticipantAudioStatusMarkup,
     getLiveStreamRoot,
     renderChatMessages,
+    renderDocuments,
+    shouldRetryLiveStreamConnectWithoutCamera,
 } from './shared';
 import { LIVE_STREAM_CAMERA_TRACK_NAME } from './track-names.mjs';
 
@@ -38,6 +40,8 @@ export function initViewerPage() {
         audioNodes: new Map(),
         pollingHandle: null,
         presenceHandle: null,
+        activePollId: null,
+        activePollSelection: null,
     };
 
     const previewController = createPreviewController(root);
@@ -46,6 +50,13 @@ export function initViewerPage() {
     const chatForm = root.querySelector('[data-live-stream-chat-form]');
     const chatInput = root.querySelector('[data-live-stream-chat-input]');
     const chatSubmitButton = root.querySelector('[data-live-stream-chat-submit]');
+        const pollModal = root.querySelector('[data-live-stream-poll-modal]');
+        const pollForm = root.querySelector('[data-live-stream-poll-form]');
+        const pollQuestion = root.querySelector('[data-live-stream-poll-question]');
+        const pollOptions = root.querySelector('[data-live-stream-poll-options]');
+        const pollSubmitButton = root.querySelector('[data-live-stream-poll-submit]');
+        const pollError = root.querySelector('[data-live-stream-poll-error]');
+    const deviceStatus = root.querySelector('[data-live-stream-device-status]');
 
     renderChatMessages(root, []);
 
@@ -65,6 +76,13 @@ export function initViewerPage() {
         chatForm.addEventListener('submit', async (event) => {
             event.preventDefault();
             await sendChatMessage();
+        });
+    }
+
+    if (pollForm instanceof HTMLFormElement) {
+        pollForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            await submitPollResponse();
         });
     }
 
@@ -92,7 +110,12 @@ export function initViewerPage() {
             syncViewerAudioGrant();
             renderViewerStage();
             renderParticipantList();
-            renderChatMessages(root, response.data.messages ?? []);
+            renderChatMessages(root, response.data.messages ?? [], {
+                canModerateMessages: canModerateMessages(),
+                onDeleteMessage: deleteChatMessage,
+            });
+            renderDocuments(root, response.data.documents ?? []);
+                renderActivePoll(response.data.active_poll ?? null);
 
             if (response.data.status !== 'live' && state.room) {
                 teardownRoom();
@@ -116,6 +139,7 @@ export function initViewerPage() {
 
         updateHandRaiseState();
         updateChatComposerState();
+            renderActivePoll(payload.active_poll ?? null);
     }
 
     function updateChatComposerState() {
@@ -149,16 +173,33 @@ export function initViewerPage() {
             const joinResponse = await window.axios.post(config.routes.join);
             const joinPayload = joinResponse.data;
 
-            state.room = await TwilioVideo.connect(joinPayload.twilio_token, {
-                name: joinPayload.twilio_room_name,
-                audio: config.role === 'tutor' ? false : true,
-                video: config.role === 'tutor'
-                    ? false
-                    : {
-                        name: LIVE_STREAM_CAMERA_TRACK_NAME,
-                    },
-                dominantSpeaker: true,
-            });
+            try {
+                state.room = await TwilioVideo.connect(joinPayload.twilio_token, {
+                    name: joinPayload.twilio_room_name,
+                    audio: config.role === 'tutor' ? false : true,
+                    video: config.role === 'tutor'
+                        ? false
+                        : {
+                            name: LIVE_STREAM_CAMERA_TRACK_NAME,
+                        },
+                    dominantSpeaker: true,
+                });
+            } catch (error) {
+                if (config.role === 'tutor' || !shouldRetryLiveStreamConnectWithoutCamera(error)) {
+                    throw error;
+                }
+
+                state.room = await TwilioVideo.connect(joinPayload.twilio_token, {
+                    name: joinPayload.twilio_room_name,
+                    audio: true,
+                    video: false,
+                    dominantSpeaker: true,
+                });
+
+                if (deviceStatus instanceof HTMLElement) {
+                    deviceStatus.textContent = 'Videocamera non disponibile. Sei entrato nella diretta con il solo microfono.';
+                }
+            }
 
             if (config.role === 'user') {
                 state.room.localParticipant.audioTracks.forEach((publication) => {
@@ -209,6 +250,143 @@ export function initViewerPage() {
             updateChatComposerState();
         }
     }
+
+    async function deleteChatMessage(message) {
+        if (!message?.id || !config.routes.deleteMessageTemplate || !canModerateMessages()) {
+            return;
+        }
+
+        try {
+            await window.axios.delete(
+                config.routes.deleteMessageTemplate.replace('__MESSAGE__', String(message.id)),
+            );
+            await fetchState();
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    function canModerateMessages() {
+        return Boolean(config.capabilities?.canModerateChat) && Boolean(config.routes.deleteMessageTemplate) && state.joined && state.latestState?.status === 'live';
+    }
+
+        function renderActivePoll(poll) {
+            if (
+                !(pollModal instanceof HTMLElement) ||
+                !(pollQuestion instanceof HTMLElement) ||
+                !(pollOptions instanceof HTMLElement) ||
+                !(pollSubmitButton instanceof HTMLButtonElement)
+            ) {
+                return;
+            }
+
+            const shouldShow = Boolean(
+                config.role === 'user'
+                && state.joined
+                && state.latestState?.status === 'live'
+                && poll,
+            );
+
+            if (!shouldShow) {
+                state.activePollId = null;
+                state.activePollSelection = null;
+                pollModal.classList.add('hidden');
+                pollModal.classList.remove('flex');
+                pollQuestion.textContent = '';
+                pollOptions.replaceChildren();
+                setPollError('');
+                pollSubmitButton.disabled = false;
+
+                return;
+            }
+
+            if (state.activePollId !== poll.id) {
+                state.activePollId = poll.id;
+                state.activePollSelection = null;
+                setPollError('');
+            }
+
+            pollModal.classList.remove('hidden');
+            pollModal.classList.add('flex');
+            pollQuestion.textContent = poll.question;
+            pollOptions.replaceChildren();
+
+            (poll.options ?? []).forEach((option) => {
+                const label = document.createElement('label');
+                label.className = 'flex cursor-pointer items-start gap-3 rounded-box border border-base-300 bg-base-100 px-4 py-3 transition hover:border-primary/40 hover:bg-primary/5';
+
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.name = 'answer_index';
+                radio.value = String(option.index);
+                radio.className = 'radio radio-primary mt-0.5';
+                radio.checked = state.activePollSelection === option.index;
+                radio.addEventListener('change', () => {
+                    state.activePollSelection = option.index;
+                    setPollError('');
+                    updatePollSubmitState();
+                });
+
+                const text = document.createElement('span');
+                text.className = 'text-sm font-medium text-base-content';
+                text.textContent = option.label;
+
+                label.append(radio, text);
+                pollOptions.appendChild(label);
+            });
+
+            updatePollSubmitState();
+        }
+
+        function updatePollSubmitState() {
+            if (!(pollSubmitButton instanceof HTMLButtonElement)) {
+                return;
+            }
+
+            pollSubmitButton.disabled = state.activePollSelection === null;
+        }
+
+        function setPollError(message) {
+            if (!(pollError instanceof HTMLElement)) {
+                return;
+            }
+
+            pollError.textContent = message;
+            pollError.classList.toggle('hidden', !message);
+        }
+
+        async function submitPollResponse() {
+            if (
+                !(pollSubmitButton instanceof HTMLButtonElement) ||
+                state.activePollId === null ||
+                state.activePollSelection === null ||
+                !config.routes.pollResponseTemplate
+            ) {
+                return;
+            }
+
+            pollSubmitButton.disabled = true;
+            setPollError('');
+
+            try {
+                await window.axios.post(
+                    config.routes.pollResponseTemplate.replace('__POLL__', String(state.activePollId)),
+                    { answer_index: state.activePollSelection },
+                );
+
+                state.activePollId = null;
+                state.activePollSelection = null;
+                renderActivePoll(null);
+                await fetchState();
+            } catch (error) {
+                const message = error?.response?.data?.errors?.answer_index?.[0]
+                    ?? error?.response?.data?.message
+                    ?? 'Impossibile inviare la risposta.';
+                setPollError(message);
+                pollSubmitButton.disabled = false;
+                console.error(error);
+            }
+        }
 
     function subscribeToRoom() {
         if (!state.room) {
@@ -371,7 +549,7 @@ export function initViewerPage() {
         }
         wrapper.insertAdjacentHTML(
             'beforeend',
-            `<div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-4 py-3 text-sm font-semibold text-white">${teacher.name}</div>`,
+            `<div class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/70 to-transparent px-4 py-3 text-sm font-semibold text-white">${teacher.name}</div>`,
         );
 
         mainStage.appendChild(wrapper);

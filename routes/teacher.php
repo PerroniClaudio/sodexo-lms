@@ -12,6 +12,11 @@ Route::middleware(['auth', 'role:docente|superadmin'])->group(function () {
         Route::get('/live-stream/{module}/state', [LiveStreamController::class, 'teacherState'])->name('live-stream.state');
         Route::post('/live-stream/{module}/presence', [LiveStreamController::class, 'teacherPresence'])->name('live-stream.presence');
         Route::post('/live-stream/{module}/messages', [LiveStreamController::class, 'storeTeacherMessage'])->name('live-stream.messages.store');
+        Route::post('/live-stream/{module}/polls', [LiveStreamController::class, 'storeTeacherPoll'])->name('live-stream.polls.store');
+        Route::patch('/live-stream/{module}/polls/{poll}/close', [LiveStreamController::class, 'closeTeacherPoll'])->name('live-stream.polls.close');
+        Route::post('/live-stream/{module}/documents', [LiveStreamController::class, 'storeTeacherDocument'])->name('live-stream.documents.store');
+        Route::get('/live-stream/{module}/documents/{document}', [LiveStreamController::class, 'downloadTeacherDocument'])->name('live-stream.documents.download');
+        Route::delete('/live-stream/{module}/documents/{document}', [LiveStreamController::class, 'destroyTeacherDocument'])->name('live-stream.documents.destroy');
         Route::patch('/live-stream/{module}/participants/{participant}/speaker', [LiveStreamController::class, 'updateSpeaker'])->name('live-stream.participants.speaker');
     });
 });

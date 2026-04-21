@@ -121,6 +121,30 @@ class Course extends Model
     }
 
     /**
+     * Get the teacher enrollments for the course.
+     */
+    public function teacherEnrollments(): HasMany
+    {
+        return $this->hasMany(CourseTeacherEnrollment::class);
+    }
+
+    /**
+     * Get the tutor enrollments for the course.
+     */
+    public function tutorEnrollments(): HasMany
+    {
+        return $this->hasMany(CourseTutorEnrollment::class);
+    }
+
+    /**
+     * Get the SCORM packages for the course.
+     */
+    public function scormPackages(): HasMany
+    {
+        return $this->hasMany(ScormPackage::class);
+    }
+
+    /**
      * Get the users enrolled in the course.
      */
     public function users(): BelongsToMany
@@ -136,6 +160,34 @@ class Course extends Model
                 'expires_at',
                 'last_accessed_at',
                 'completion_percentage',
+                'deleted_at',
+            ])
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the teachers assigned to the course.
+     */
+    public function teachers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'course_teacher_enrollments')
+            ->withPivot([
+                'id',
+                'assigned_at',
+                'deleted_at',
+            ])
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the tutors assigned to the course.
+     */
+    public function tutors(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'course_tutor_enrollments')
+            ->withPivot([
+                'id',
+                'assigned_at',
                 'deleted_at',
             ])
             ->withTimestamps();

@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\JobRoleController;
 use App\Http\Controllers\Admin\JobSectorController;
 use App\Http\Controllers\Admin\JobTitleController;
 use App\Http\Controllers\Admin\JobUnitController;
+use App\Http\Controllers\Admin\ScormPackageController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\LiveStreamController;
 use Illuminate\Support\Facades\Route;
@@ -23,8 +24,16 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::post('/courses/{course}/modules', [CourseModuleController::class, 'store'])->name('courses.modules.store');
         Route::patch('/courses/{course}/modules/reorder', [CourseModuleController::class, 'reorder'])->name('courses.modules.reorder');
         Route::get('/courses/{course}/modules/{module}/edit', [CourseModuleController::class, 'edit'])->name('courses.modules.edit');
+        Route::post('/courses/{course}/modules/{module}/teachers', [CourseModuleController::class, 'assignTeachers'])->name('courses.modules.teachers.assign');
+        Route::post('/courses/{course}/modules/{module}/tutors', [CourseModuleController::class, 'assignTutors'])->name('courses.modules.tutors.assign');
+        Route::post('/courses/{course}/modules/{module}/attendance/confirm', [CourseModuleController::class, 'confirmAttendance'])->name('courses.modules.attendance.confirm');
         Route::put('/courses/{course}/modules/{module}', [CourseModuleController::class, 'update'])->name('courses.modules.update');
         Route::delete('/courses/{course}/modules/{module}', [CourseModuleController::class, 'destroy'])->name('courses.modules.destroy');
+        Route::scopeBindings()->group(function () {
+            Route::get('/courses/{course}/modules/{module}/scorm', [ScormPackageController::class, 'index'])->name('courses.modules.scorm.index');
+            Route::post('/courses/{course}/modules/{module}/scorm', [ScormPackageController::class, 'store'])->name('courses.modules.scorm.store');
+            Route::delete('/courses/{course}/modules/{module}/scorm/{scormPackage}', [ScormPackageController::class, 'destroy'])->name('courses.modules.scorm.destroy');
+        });
         Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
         Route::resource('users', UserController::class)->except(['show']);
         Route::post('users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');

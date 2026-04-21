@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\LiveStreamController;
+use App\Http\Controllers\ScormPlayerController;
+use App\Http\Controllers\ScormRuntimeController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
@@ -10,7 +12,26 @@ Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
         Route::get('/live-stream/{module}/state', [LiveStreamController::class, 'userState'])->name('live-stream.state');
         Route::post('/live-stream/{module}/presence', [LiveStreamController::class, 'userPresence'])->name('live-stream.presence');
         Route::post('/live-stream/{module}/messages', [LiveStreamController::class, 'storeUserMessage'])->name('live-stream.messages.store');
+        Route::post('/live-stream/{module}/polls/{poll}/responses', [LiveStreamController::class, 'storeUserPollResponse'])->name('live-stream.polls.responses.store');
+        Route::get('/live-stream/{module}/documents/{document}', [LiveStreamController::class, 'downloadUserDocument'])->name('live-stream.documents.download');
         Route::post('/live-stream/{module}/hand-raises', [LiveStreamController::class, 'storeHandRaise'])->name('live-stream.hand-raises.store');
         Route::delete('/live-stream/{module}/hand-raises/current', [LiveStreamController::class, 'destroyHandRaise'])->name('live-stream.hand-raises.destroy');
+
+        Route::scopeBindings()->group(function () {
+            Route::post('/courses/{course}/modules/{module}/scorm/{scormPackage}/launch', [ScormPlayerController::class, 'launch'])->name('courses.modules.scorm.launch');
+            Route::get('/courses/{course}/modules/{module}/scorm/{scormPackage}/player', [ScormPlayerController::class, 'player'])->name('courses.modules.scorm.player');
+            Route::get('/courses/{course}/modules/{module}/scorm/{scormPackage}/asset/{path}', [ScormPlayerController::class, 'asset'])
+                ->where('path', '.*')
+                ->name('courses.modules.scorm.asset');
+
+            Route::post('/courses/{course}/modules/{module}/scorm/{scormPackage}/runtime/initialize', [ScormRuntimeController::class, 'initialize'])->name('courses.modules.scorm.runtime.initialize');
+            Route::post('/courses/{course}/modules/{module}/scorm/{scormPackage}/runtime/get-value', [ScormRuntimeController::class, 'getValue'])->name('courses.modules.scorm.runtime.get-value');
+            Route::post('/courses/{course}/modules/{module}/scorm/{scormPackage}/runtime/set-value', [ScormRuntimeController::class, 'setValue'])->name('courses.modules.scorm.runtime.set-value');
+            Route::post('/courses/{course}/modules/{module}/scorm/{scormPackage}/runtime/commit', [ScormRuntimeController::class, 'commit'])->name('courses.modules.scorm.runtime.commit');
+            Route::post('/courses/{course}/modules/{module}/scorm/{scormPackage}/runtime/terminate', [ScormRuntimeController::class, 'terminate'])->name('courses.modules.scorm.runtime.terminate');
+            Route::post('/courses/{course}/modules/{module}/scorm/{scormPackage}/runtime/get-last-error', [ScormRuntimeController::class, 'getLastError'])->name('courses.modules.scorm.runtime.get-last-error');
+            Route::post('/courses/{course}/modules/{module}/scorm/{scormPackage}/runtime/get-error-string', [ScormRuntimeController::class, 'getErrorString'])->name('courses.modules.scorm.runtime.get-error-string');
+            Route::post('/courses/{course}/modules/{module}/scorm/{scormPackage}/runtime/get-diagnostic', [ScormRuntimeController::class, 'getDiagnostic'])->name('courses.modules.scorm.runtime.get-diagnostic');
+        });
     });
 });

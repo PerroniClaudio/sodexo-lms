@@ -52,6 +52,11 @@ class LiveStreamSession extends Model
         return $this->hasMany(LiveStreamParticipant::class);
     }
 
+    public function attendanceMinutes(): HasMany
+    {
+        return $this->hasMany(LiveStreamAttendanceMinute::class);
+    }
+
     public function handRaises(): HasMany
     {
         return $this->hasMany(LiveStreamHandRaise::class);
@@ -60,6 +65,11 @@ class LiveStreamSession extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(LiveStreamMessage::class);
+    }
+
+    public function polls(): HasMany
+    {
+        return $this->hasMany(LiveStreamPoll::class);
     }
 
     public function isLive(): bool
