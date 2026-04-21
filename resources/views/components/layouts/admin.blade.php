@@ -47,7 +47,7 @@
 
                     @role('superadmin')
                         <li>
-                            <details @class(['open' => request()->routeIs('admin.job-*')])>
+                            <details @if(request()->routeIs('admin.job-*')) open @endif>
                                 <summary @class(['menu-active' => request()->routeIs('admin.job-*')])>
                                     {{ __('Configurazione Lavori') }}
                                 </summary>
