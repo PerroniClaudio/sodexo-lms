@@ -107,6 +107,11 @@ class Module extends Model
         return $this->hasMany(LiveStreamDocument::class);
     }
 
+    public function liveStreamAttendanceMinutes(): HasMany
+    {
+        return $this->hasMany(LiveStreamAttendanceMinute::class);
+    }
+
     /**
      * Get the active live stream session for the module.
      */

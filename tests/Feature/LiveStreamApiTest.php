@@ -4,6 +4,7 @@ use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\CourseTeacherEnrollment;
 use App\Models\CourseTutorEnrollment;
+use App\Models\LiveStreamAttendanceMinute;
 use App\Models\LiveStreamDocument;
 use App\Models\LiveStreamHandRaise;
 use App\Models\LiveStreamMessage;
@@ -365,6 +366,119 @@ test('user presence does not override teacher audio moderation', function () {
     expect($participant->audio_enabled)->toBeTrue();
     expect($participant->video_enabled)->toBeTrue();
     expect($participant->twilio_participant_sid)->toBe('PA1234567890abcdef1234567890abcd');
+});
+
+test('presence heartbeats in the same minute update a single attendance audit row', function () {
+    $module = createLiveModuleWithCourse();
+    $session = LiveStreamSession::factory()->create([
+        'module_id' => $module->getKey(),
+        'status' => LiveStreamSession::STATUS_LIVE,
+    ]);
+
+    $this->seed(RoleAndPermissionSeeder::class);
+
+    $student = User::factory()->create();
+    $student->assignRole('user');
+    enrollUserForModule($student, $module);
+
+    $participant = LiveStreamParticipant::factory()->create([
+        'live_stream_session_id' => $session->getKey(),
+        'user_id' => $student->getKey(),
+        'app_role' => LiveStreamParticipant::ROLE_USER,
+    ]);
+
+    $this->travelTo(now()->startOfMinute()->addSeconds(5));
+
+    $this->actingAs($student)
+        ->postJson(route('user.live-stream.presence', $module), [
+            'twilio_participant_sid' => 'PA1234567890abcdef1234567890abcd',
+            'audio_enabled' => false,
+            'video_enabled' => true,
+        ])
+        ->assertSuccessful();
+
+    $this->travel(20)->seconds();
+
+    $this->actingAs($student)
+        ->postJson(route('user.live-stream.presence', $module), [
+            'twilio_participant_sid' => 'PA1234567890abcdef1234567890abcd',
+            'audio_enabled' => false,
+            'video_enabled' => true,
+        ])
+        ->assertSuccessful();
+
+    $participant->refresh();
+
+    $attendanceMinute = LiveStreamAttendanceMinute::query()->sole();
+
+    expect($participant->last_seen_at)->not->toBeNull();
+    expect($attendanceMinute->live_stream_session_id)->toBe($session->getKey());
+    expect($attendanceMinute->module_id)->toBe($module->getKey());
+    expect($attendanceMinute->user_id)->toBe($student->getKey());
+    expect($attendanceMinute->minute_at?->format('Y-m-d H:i:s'))->toBe(now()->startOfMinute()->format('Y-m-d H:i:s'));
+    expect($attendanceMinute->heartbeat_count)->toBe(2);
+    expect($attendanceMinute->first_seen_at?->format('Y-m-d H:i:s'))->toBe(now()->subSeconds(20)->format('Y-m-d H:i:s'));
+    expect($attendanceMinute->last_seen_at?->format('Y-m-d H:i:s'))->toBe(now()->format('Y-m-d H:i:s'));
+
+    $this->travelBack();
+});
+
+test('presence heartbeats in a new minute create a new attendance audit row', function () {
+    $module = createLiveModuleWithCourse();
+    $session = LiveStreamSession::factory()->create([
+        'module_id' => $module->getKey(),
+        'status' => LiveStreamSession::STATUS_LIVE,
+    ]);
+
+    $this->seed(RoleAndPermissionSeeder::class);
+
+    $student = User::factory()->create();
+    $student->assignRole('user');
+    enrollUserForModule($student, $module);
+
+    LiveStreamParticipant::factory()->create([
+        'live_stream_session_id' => $session->getKey(),
+        'user_id' => $student->getKey(),
+        'app_role' => LiveStreamParticipant::ROLE_USER,
+    ]);
+
+    $this->travelTo(now()->startOfMinute()->addSeconds(50));
+
+    $this->actingAs($student)
+        ->postJson(route('user.live-stream.presence', $module), [
+            'twilio_participant_sid' => 'PA1234567890abcdef1234567890abcd',
+            'audio_enabled' => false,
+            'video_enabled' => true,
+        ])
+        ->assertSuccessful();
+
+    $this->travel(15)->seconds();
+
+    $this->actingAs($student)
+        ->postJson(route('user.live-stream.presence', $module), [
+            'twilio_participant_sid' => 'PA1234567890abcdef1234567890abcd',
+            'audio_enabled' => false,
+            'video_enabled' => true,
+        ])
+        ->assertSuccessful();
+
+    expect(
+        LiveStreamAttendanceMinute::query()
+            ->where('live_stream_session_id', $session->getKey())
+            ->where('user_id', $student->getKey())
+            ->count()
+    )->toBe(2);
+
+    expect(
+        LiveStreamAttendanceMinute::query()
+            ->where('live_stream_session_id', $session->getKey())
+            ->where('user_id', $student->getKey())
+            ->orderBy('minute_at')
+            ->pluck('heartbeat_count')
+            ->all()
+    )->toBe([1, 1]);
+
+    $this->travelBack();
 });
 
 test('joined user can send a live stream chat message', function () {

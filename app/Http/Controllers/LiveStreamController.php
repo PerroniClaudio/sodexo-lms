@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CourseEnrollment;
 use App\Models\CourseTeacherEnrollment;
 use App\Models\CourseTutorEnrollment;
+use App\Models\LiveStreamAttendanceMinute;
 use App\Models\LiveStreamDocument;
 use App\Models\LiveStreamHandRaise;
 use App\Models\LiveStreamMessage;
@@ -17,6 +18,7 @@ use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -686,10 +688,12 @@ class LiveStreamController extends Controller
             abort(Response::HTTP_NOT_FOUND, __('Partecipante non trovato.'));
         }
 
+        $serverTimestamp = now();
+
         $updates = [
             'twilio_participant_sid' => $validated['twilio_participant_sid'],
             'video_enabled' => (bool) $validated['video_enabled'],
-            'last_seen_at' => now(),
+            'last_seen_at' => $serverTimestamp,
             'left_at' => null,
         ];
 
@@ -698,10 +702,41 @@ class LiveStreamController extends Controller
         }
 
         $participant->update($updates);
+        $this->recordAttendanceMinute($session, $module, $request->user()->getKey(), $serverTimestamp);
 
         return response()->json([
             'message' => __('Presenza aggiornata.'),
         ]);
+    }
+
+    private function recordAttendanceMinute(
+        LiveStreamSession $session,
+        Module $module,
+        int $userId,
+        Carbon $serverTimestamp,
+    ): void {
+        $minuteTimestamp = $serverTimestamp->copy()->startOfMinute();
+
+        $attendanceMinute = LiveStreamAttendanceMinute::query()->firstOrNew([
+            'live_stream_session_id' => $session->getKey(),
+            'user_id' => $userId,
+            'minute_at' => $minuteTimestamp,
+        ]);
+
+        if (! $attendanceMinute->exists) {
+            $attendanceMinute->module_id = $module->getKey();
+            $attendanceMinute->first_seen_at = $serverTimestamp;
+            $attendanceMinute->last_seen_at = $serverTimestamp;
+            $attendanceMinute->heartbeat_count = 1;
+            $attendanceMinute->save();
+
+            return;
+        }
+
+        $attendanceMinute->module_id = $module->getKey();
+        $attendanceMinute->last_seen_at = $serverTimestamp;
+        $attendanceMinute->heartbeat_count++;
+        $attendanceMinute->save();
     }
 
     private function storeMessage(Request $request, Module $module, string $role): JsonResponse
@@ -905,7 +940,7 @@ class LiveStreamController extends Controller
             'moduleId' => $module->getKey(),
             'pollIntervals' => [
                 'state' => 5000,
-                'presence' => 10000,
+                'presence' => 30000,
             ],
             'routes' => [
                 'join' => route($routePrefix.'.live-stream.join', $module),
