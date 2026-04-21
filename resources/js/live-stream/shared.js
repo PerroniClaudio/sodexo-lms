@@ -1,26 +1,5 @@
 import { Hand, Mic, MicOff, Pin, ScreenShare } from 'lucide';
 
-const fakeMessages = [
-    {
-        author: 'Tutor Aula',
-        role: 'tutor',
-        time: '09:58',
-        body: 'Benvenuti, la live iniziera tra pochi minuti.',
-    },
-    {
-        author: 'Giulia Rossi',
-        role: 'student',
-        time: '10:00',
-        body: 'Buongiorno, si sente correttamente.',
-    },
-    {
-        author: 'Docente',
-        role: 'teacher',
-        time: '10:01',
-        body: 'Perfetto, iniziamo con una panoramica introduttiva del modulo.',
-    },
-];
-
 const LIVE_STREAM_ICON_NODES = {
     hand: Hand,
     mic: Mic,
@@ -49,7 +28,7 @@ export function getLiveStreamConfig(root) {
     }
 }
 
-export function renderStaticChat(root) {
+export function renderChatMessages(root, messages = []) {
     const messagesContainer = root.querySelector('[data-live-stream-chat-messages]');
     const messageTemplate = root.querySelector('[data-live-stream-chat-template]');
 
@@ -57,9 +36,13 @@ export function renderStaticChat(root) {
         return;
     }
 
+    const shouldStickToBottom = Math.abs(
+        messagesContainer.scrollHeight - messagesContainer.clientHeight - messagesContainer.scrollTop,
+    ) < 24;
+
     messagesContainer.replaceChildren();
 
-    fakeMessages.forEach((message) => {
+    messages.forEach((message) => {
         const fragment = messageTemplate.content.cloneNode(true);
 
         if (!(fragment instanceof DocumentFragment)) {
@@ -82,18 +65,22 @@ export function renderStaticChat(root) {
             return;
         }
 
-        authorElement.textContent = message.author;
-        timeElement.textContent = message.time;
+        authorElement.textContent = message.name;
+        timeElement.textContent = formatChatMessageTime(message.sent_at);
         bodyElement.textContent = message.body;
-        initialsElement.textContent = getInitials(message.author);
+        initialsElement.textContent = message.initials || getInitials(message.name);
 
-        if (message.role === 'teacher' || message.role === 'tutor') {
+        if (message.app_role === 'teacher' || message.app_role === 'tutor') {
             bubbleElement.classList.add('bg-primary', 'text-primary-content');
-            bubbleElement.classList.remove('bg-base-200');
+            bubbleElement.classList.remove('bg-base-200', 'bg-base-100', 'text-base-content');
         }
 
         messagesContainer.appendChild(fragment);
     });
+
+    if (shouldStickToBottom) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
 }
 
 export function getLiveStreamIconSvg(iconName, classNames = 'h-4 w-4') {
@@ -141,6 +128,23 @@ export function getInitials(name) {
         .slice(0, 2)
         .map((part) => part.charAt(0).toUpperCase())
         .join('');
+}
+
+function formatChatMessageTime(value) {
+    if (!value) {
+        return '';
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+
+    return new Intl.DateTimeFormat('it-IT', {
+        hour: '2-digit',
+        minute: '2-digit',
+    }).format(date);
 }
 
 export function createPreviewController(root, options = {}) {

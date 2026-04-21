@@ -83,6 +83,22 @@
                                     class="flex-1 space-y-3 overflow-y-auto px-4 py-4"
                                     data-live-stream-chat-messages
                                 ></div>
+
+                                <form class="border-t border-base-300 px-4 py-3" data-live-stream-chat-form>
+                                    <div class="flex items-center gap-3">
+                                        <input
+                                            type="text"
+                                            name="body"
+                                            class="input input-bordered w-full"
+                                            placeholder="{{ __('Scrivi un messaggio...') }}"
+                                            maxlength="1000"
+                                            data-live-stream-chat-input
+                                        >
+                                        <button type="submit" class="btn btn-primary" data-live-stream-chat-submit>
+                                            {{ __('Invia') }}
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
 

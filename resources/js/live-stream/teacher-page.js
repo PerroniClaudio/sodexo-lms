@@ -13,7 +13,7 @@ import {
     getParticipantInitialsBadgeClassNames,
     getParticipantAudioStatusMarkup,
     getLiveStreamRoot,
-    renderStaticChat,
+    renderChatMessages,
     setBadgeState,
     setMessage,
 } from './shared';
@@ -61,11 +61,14 @@ export function initTeacherPage() {
     const screenShareCard = root.querySelector('[data-live-stream-screen-share-card]');
     const screenShareButton = root.querySelector('[data-live-stream-screen-share-toggle]');
     const screenShareStatus = root.querySelector('[data-live-stream-screen-share-status]');
+    const chatForm = root.querySelector('[data-live-stream-chat-form]');
+    const chatInput = root.querySelector('[data-live-stream-chat-input]');
+    const chatSubmitButton = root.querySelector('[data-live-stream-chat-submit]');
     const previewController = createPreviewController(root, {
         onAudioStateChange: syncMicToggleButton,
     });
 
-    renderStaticChat(root);
+    renderChatMessages(root, []);
 
     if (startButton instanceof HTMLButtonElement) {
         startButton.addEventListener('click', async () => {
@@ -91,6 +94,13 @@ export function initTeacherPage() {
         });
     }
 
+    if (chatForm instanceof HTMLFormElement) {
+        chatForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            await sendChatMessage();
+        });
+    }
+
     syncMicToggleButton();
     syncScreenShareButton();
 
@@ -113,6 +123,7 @@ export function initTeacherPage() {
             updateTopBar();
             renderTeacherGrid();
             renderParticipantList();
+            renderChatMessages(root, response.data.messages ?? []);
 
             if (response.data.status !== 'live' && state.room) {
                 teardownRoom();
@@ -154,6 +165,22 @@ export function initTeacherPage() {
 
         syncMicToggleButton();
         syncScreenShareButton();
+        updateChatComposerState();
+    }
+
+    function updateChatComposerState() {
+        if (!(chatInput instanceof HTMLInputElement) || !(chatSubmitButton instanceof HTMLButtonElement)) {
+            return;
+        }
+
+        const chatAvailable = Boolean(config.routes.chat) && state.latestState?.status === 'live' && state.joined;
+
+        chatInput.disabled = !chatAvailable;
+        chatSubmitButton.disabled = !chatAvailable;
+
+        if (!chatAvailable) {
+            chatInput.value = '';
+        }
     }
 
     async function startOrJoin() {
@@ -228,6 +255,34 @@ export function initTeacherPage() {
             console.error(error);
         } finally {
             endButton.disabled = false;
+        }
+    }
+
+    async function sendChatMessage() {
+        if (!(chatInput instanceof HTMLInputElement) || !config.routes.chat) {
+            return;
+        }
+
+        const body = chatInput.value.trim();
+
+        if (!body) {
+            return;
+        }
+
+        chatInput.disabled = true;
+
+        if (chatSubmitButton instanceof HTMLButtonElement) {
+            chatSubmitButton.disabled = true;
+        }
+
+        try {
+            await window.axios.post(config.routes.chat, { body });
+            chatInput.value = '';
+            await fetchState();
+        } catch (error) {
+            console.error(error);
+        } finally {
+            updateChatComposerState();
         }
     }
 

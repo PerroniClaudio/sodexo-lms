@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CourseEnrollment;
 use App\Models\LiveStreamHandRaise;
+use App\Models\LiveStreamMessage;
 use App\Models\LiveStreamParticipant;
 use App\Models\LiveStreamSession;
 use App\Models\Module;
@@ -29,7 +30,17 @@ class LiveStreamController extends Controller
             return $this->renderWaitingView($module);
         }
 
+        if ($this->moduleHasEnded($module)) {
+            return $this->renderWaitingView($module, __('La diretta è terminata.'), 'ended');
+        }
+
         if ($module->activeLiveStreamSession === null) {
+            $latestSession = $module->liveStreamSessions()->latest('started_at')->first();
+
+            if ($latestSession?->status === LiveStreamSession::STATUS_ENDED) {
+                return $this->renderWaitingView($module, __('La diretta è terminata.'), 'ended');
+            }
+
             return $this->renderWaitingView($module, __('Il docente non ha ancora avviato la diretta.'));
         }
 
@@ -52,11 +63,21 @@ class LiveStreamController extends Controller
             return $this->renderWaitingView($module);
         }
 
+        if ($this->moduleHasEnded($module)) {
+            return $this->renderWaitingView($module, __('La diretta è terminata.'), 'ended');
+        }
+
         if ($module->activeLiveStreamSession === null) {
+            $latestSession = $module->liveStreamSessions()->latest('started_at')->first();
+
+            if ($latestSession?->status === LiveStreamSession::STATUS_ENDED) {
+                return $this->renderWaitingView($module, __('La diretta è terminata.'), 'ended');
+            }
+
             return $this->renderWaitingView($module, __('Il docente non ha ancora avviato la diretta.'));
         }
 
-        return $this->renderPlayerView('tutor.live-stream.player', $module, LiveStreamParticipant::ROLE_TUTOR);
+        return $this->renderPlayerView('user.live-stream.player', $module, LiveStreamParticipant::ROLE_TUTOR);
     }
 
     public function adminPlayer(Module $module): View
@@ -188,6 +209,23 @@ class LiveStreamController extends Controller
     public function tutorPresence(Request $request, Module $module): JsonResponse
     {
         return $this->updatePresence($request, $module, LiveStreamParticipant::ROLE_TUTOR);
+    }
+
+    public function storeTeacherMessage(Request $request, Module $module): JsonResponse
+    {
+        return $this->storeMessage($request, $module, LiveStreamParticipant::ROLE_TEACHER);
+    }
+
+    public function storeUserMessage(Request $request, Module $module): JsonResponse
+    {
+        $this->ensureUserEnrollment($request, $module);
+
+        return $this->storeMessage($request, $module, LiveStreamParticipant::ROLE_USER);
+    }
+
+    public function storeTutorMessage(Request $request, Module $module): JsonResponse
+    {
+        return $this->storeMessage($request, $module, LiveStreamParticipant::ROLE_TUTOR);
     }
 
     public function storeHandRaise(Request $request, Module $module): JsonResponse
@@ -416,6 +454,48 @@ class LiveStreamController extends Controller
         ]);
     }
 
+    private function storeMessage(Request $request, Module $module, string $role): JsonResponse
+    {
+        $this->abortUnlessLiveModule($module);
+
+        $validated = $request->validate([
+            'body' => ['required', 'filled', 'string', 'max:1000'],
+        ]);
+
+        $session = $module->activeLiveStreamSession()->first();
+
+        if ($session === null) {
+            return response()->json([
+                'message' => __('La diretta non è attiva.'),
+            ], Response::HTTP_CONFLICT);
+        }
+
+        $participant = $session->participants()
+            ->where('user_id', $request->user()->getKey())
+            ->where('app_role', $role)
+            ->first();
+
+        if ($participant === null) {
+            return response()->json([
+                'message' => __('Collegati alla diretta prima di usare la chat.'),
+            ], Response::HTTP_CONFLICT);
+        }
+
+        $message = $session->messages()->create([
+            'user_id' => $request->user()->getKey(),
+            'app_role' => $role,
+            'body' => trim((string) $validated['body']),
+            'sent_at' => now(),
+        ]);
+
+        $message->load('user');
+
+        return response()->json([
+            'message' => __('Messaggio inviato.'),
+            'chat_message' => $this->serializeMessage($message),
+        ], Response::HTTP_CREATED);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -424,16 +504,12 @@ class LiveStreamController extends Controller
         $this->abortUnlessLiveModule($module);
         $module->loadMissing('course');
 
-        if ($role !== LiveStreamParticipant::ROLE_TEACHER && $this->moduleStartsInFuture($module)) {
-            return [
-                'status' => 'waiting',
-                'message' => __('La diretta comincia all\'orario stabilito.'),
-                'session' => null,
-                'participants' => [],
-                'teacher' => null,
-                'pending_hand_raises' => [],
-                'current_hand_raise' => null,
-            ];
+        if ($role !== LiveStreamParticipant::ROLE_TEACHER) {
+            $availability = $this->buildAudienceAvailabilityPayload($module);
+
+            if ($availability !== null) {
+                return $availability;
+            }
         }
 
         $session = $module->activeLiveStreamSession()->first();
@@ -449,6 +525,7 @@ class LiveStreamController extends Controller
                 'session' => $latestSession ? $this->serializeSession($latestSession) : null,
                 'participants' => [],
                 'teacher' => null,
+                'messages' => [],
                 'pending_hand_raises' => [],
                 'current_hand_raise' => null,
             ];
@@ -474,12 +551,21 @@ class LiveStreamController extends Controller
             ->sortByDesc('requested_at')
             ->first();
 
+        $messages = $session->messages()
+            ->with('user')
+            ->latest('id')
+            ->limit(50)
+            ->get()
+            ->sortBy('id')
+            ->values();
+
         return [
             'status' => 'live',
             'message' => null,
             'session' => $this->serializeSession($session),
             'participants' => $visibleStudents->map(fn (LiveStreamParticipant $participant): array => $this->serializeParticipant($participant))->values()->all(),
             'teacher' => $teacher ? $this->serializeParticipant($teacher) : null,
+            'messages' => $messages->map(fn (LiveStreamMessage $message): array => $this->serializeMessage($message))->all(),
             'pending_hand_raises' => $role === LiveStreamParticipant::ROLE_TEACHER
                 ? $session->handRaises
                     ->where('status', LiveStreamHandRaise::STATUS_PENDING)
@@ -525,6 +611,9 @@ class LiveStreamController extends Controller
                 'join' => route($routePrefix.'.live-stream.join', $module),
                 'state' => route($routePrefix.'.live-stream.state', $module),
                 'presence' => route($routePrefix.'.live-stream.presence', $module),
+                'chat' => in_array($role, [LiveStreamParticipant::ROLE_TEACHER, LiveStreamParticipant::ROLE_TUTOR, LiveStreamParticipant::ROLE_USER], true)
+                    ? route($routePrefix.'.live-stream.messages.store', $module)
+                    : null,
                 'startSession' => $role === LiveStreamParticipant::ROLE_TEACHER
                     ? route('teacher.live-stream.session.start', $module)
                     : null,
@@ -550,13 +639,14 @@ class LiveStreamController extends Controller
         ];
     }
 
-    private function renderWaitingView(Module $module, ?string $message = null): View
+    private function renderWaitingView(Module $module, ?string $message = null, string $state = 'waiting'): View
     {
         $module->loadMissing('course');
 
         return view('user.live-stream.waiting', [
             'module' => $module,
             'course' => $module->course,
+            'waitingState' => $state,
             'waitingMessage' => $message,
         ]);
     }
@@ -582,6 +672,46 @@ class LiveStreamController extends Controller
     private function moduleStartsInFuture(Module $module): bool
     {
         return $module->appointment_start_time !== null && now()->lt($module->appointment_start_time);
+    }
+
+    private function moduleHasEnded(Module $module): bool
+    {
+        return $module->appointment_end_time !== null && now()->gte($module->appointment_end_time);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function buildAudienceAvailabilityPayload(Module $module): ?array
+    {
+        if ($this->moduleStartsInFuture($module)) {
+            return $this->emptyStatePayload('waiting', __('La diretta comincia all\'orario stabilito.'));
+        }
+
+        $latestSession = $module->liveStreamSessions()->latest('started_at')->first();
+
+        if ($this->moduleHasEnded($module) || $latestSession?->status === LiveStreamSession::STATUS_ENDED) {
+            return $this->emptyStatePayload('ended', __('La diretta è terminata.'));
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function emptyStatePayload(string $status, string $message): array
+    {
+        return [
+            'status' => $status,
+            'message' => $message,
+            'session' => null,
+            'participants' => [],
+            'teacher' => null,
+            'messages' => [],
+            'pending_hand_raises' => [],
+            'current_hand_raise' => null,
+        ];
     }
 
     private function participantIsStale(LiveStreamParticipant $participant): bool
@@ -630,6 +760,24 @@ class LiveStreamController extends Controller
             'name' => $handRaise->user?->full_name ?? __('Utente sconosciuto'),
             'requested_at' => $handRaise->requested_at?->toIso8601String(),
             'status' => $handRaise->status,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serializeMessage(LiveStreamMessage $message): array
+    {
+        $fullName = $message->user?->full_name ?? __('Utente sconosciuto');
+
+        return [
+            'id' => $message->getKey(),
+            'user_id' => $message->user_id,
+            'name' => $fullName,
+            'initials' => $this->initialsFor($fullName),
+            'app_role' => $message->app_role,
+            'body' => $message->body,
+            'sent_at' => $message->sent_at?->toIso8601String(),
         ];
     }
 

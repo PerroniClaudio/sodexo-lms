@@ -12,7 +12,7 @@ import {
     getLiveStreamIconButtonContent,
     getParticipantAudioStatusMarkup,
     getLiveStreamRoot,
-    renderStaticChat,
+    renderChatMessages,
 } from './shared';
 import { LIVE_STREAM_CAMERA_TRACK_NAME } from './track-names.mjs';
 
@@ -43,8 +43,11 @@ export function initViewerPage() {
     const previewController = createPreviewController(root);
     const joinButton = root.querySelector('[data-live-stream-join-button]');
     const handRaiseButton = root.querySelector('[data-live-stream-hand-raise-button]');
+    const chatForm = root.querySelector('[data-live-stream-chat-form]');
+    const chatInput = root.querySelector('[data-live-stream-chat-input]');
+    const chatSubmitButton = root.querySelector('[data-live-stream-chat-submit]');
 
-    renderStaticChat(root);
+    renderChatMessages(root, []);
 
     if (joinButton instanceof HTMLButtonElement) {
         joinButton.addEventListener('click', async () => {
@@ -55,6 +58,13 @@ export function initViewerPage() {
     if (handRaiseButton instanceof HTMLButtonElement) {
         handRaiseButton.addEventListener('click', async () => {
             await toggleHandRaise();
+        });
+    }
+
+    if (chatForm instanceof HTMLFormElement) {
+        chatForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            await sendChatMessage();
         });
     }
 
@@ -82,6 +92,7 @@ export function initViewerPage() {
             syncViewerAudioGrant();
             renderViewerStage();
             renderParticipantList();
+            renderChatMessages(root, response.data.messages ?? []);
 
             if (response.data.status !== 'live' && state.room) {
                 teardownRoom();
@@ -104,6 +115,22 @@ export function initViewerPage() {
         }
 
         updateHandRaiseState();
+        updateChatComposerState();
+    }
+
+    function updateChatComposerState() {
+        if (!(chatInput instanceof HTMLInputElement) || !(chatSubmitButton instanceof HTMLButtonElement)) {
+            return;
+        }
+
+        const chatAvailable = Boolean(config.routes.chat) && state.latestState?.status === 'live' && state.joined;
+
+        chatInput.disabled = !chatAvailable;
+        chatSubmitButton.disabled = !chatAvailable;
+
+        if (!chatAvailable) {
+            chatInput.value = '';
+        }
     }
 
     async function joinRoom() {
@@ -152,6 +179,34 @@ export function initViewerPage() {
             joinButton.disabled = false;
             joinButton.textContent = 'Entra nella diretta';
             console.error(error);
+        }
+    }
+
+    async function sendChatMessage() {
+        if (!(chatInput instanceof HTMLInputElement) || !config.routes.chat) {
+            return;
+        }
+
+        const body = chatInput.value.trim();
+
+        if (!body) {
+            return;
+        }
+
+        chatInput.disabled = true;
+
+        if (chatSubmitButton instanceof HTMLButtonElement) {
+            chatSubmitButton.disabled = true;
+        }
+
+        try {
+            await window.axios.post(config.routes.chat, { body });
+            chatInput.value = '';
+            await fetchState();
+        } catch (error) {
+            console.error(error);
+        } finally {
+            updateChatComposerState();
         }
     }
 

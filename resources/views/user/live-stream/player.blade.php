@@ -1,6 +1,8 @@
 <x-layouts.app>
     @vite('resources/js/livestream-user.js')
 
+    @php($canRaiseHand = (bool) data_get($liveStreamConfig, 'capabilities.canRaiseHand', false))
+
     <section class="min-h-screen w-full bg-base-100" data-live-stream-root>
         <script type="application/json" data-live-stream-config>@json($liveStreamConfig)</script>
 
@@ -70,10 +72,12 @@
                                                 @endif
                                             </p>
                                         </div>
-                                        <div>
-                                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">{{ __('Stato richiesta') }}</p>
-                                            <p class="mt-2 text-sm font-medium" data-live-stream-hand-raise-status>{{ __('Nessuna richiesta attiva') }}</p>
-                                        </div>
+                                        @if ($canRaiseHand)
+                                            <div>
+                                                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">{{ __('Stato richiesta') }}</p>
+                                                <p class="mt-2 text-sm font-medium" data-live-stream-hand-raise-status>{{ __('Nessuna richiesta attiva') }}</p>
+                                            </div>
+                                        @endif
                                     </div>
 
                                     <p class="mt-6 text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">
@@ -105,6 +109,22 @@
                                     class="flex-1 space-y-3 overflow-y-auto px-4 py-4"
                                     data-live-stream-chat-messages
                                 ></div>
+
+                                <form class="border-t border-base-300 px-4 py-3" data-live-stream-chat-form>
+                                    <div class="flex items-center gap-3">
+                                        <input
+                                            type="text"
+                                            name="body"
+                                            class="input input-bordered w-full"
+                                            placeholder="{{ __('Scrivi un messaggio...') }}"
+                                            maxlength="1000"
+                                            data-live-stream-chat-input
+                                        >
+                                        <button type="submit" class="btn btn-primary" data-live-stream-chat-submit>
+                                            {{ __('Invia') }}
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
 
@@ -167,16 +187,18 @@
                                             <button type="button" class="btn btn-primary" data-live-stream-join-button>
                                                 {{ __('Entra nella diretta') }}
                                             </button>
-                                            <button
-                                                type="button"
-                                                class="btn btn-square btn-outline hidden"
-                                                aria-label="{{ __('Alza la mano') }}"
-                                                title="{{ __('Alza la mano') }}"
-                                                data-live-stream-hand-raise-button
-                                            >
-                                                <x-lucide-hand class="h-4 w-4" />
-                                                <span class="sr-only">{{ __('Alza la mano') }}</span>
-                                            </button>
+                                            @if ($canRaiseHand)
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-square btn-outline hidden"
+                                                    aria-label="{{ __('Alza la mano') }}"
+                                                    title="{{ __('Alza la mano') }}"
+                                                    data-live-stream-hand-raise-button
+                                                >
+                                                    <x-lucide-hand class="h-4 w-4" />
+                                                    <span class="sr-only">{{ __('Alza la mano') }}</span>
+                                                </button>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>

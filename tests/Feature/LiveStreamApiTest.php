@@ -3,6 +3,7 @@
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\LiveStreamHandRaise;
+use App\Models\LiveStreamMessage;
 use App\Models\LiveStreamParticipant;
 use App\Models\LiveStreamSession;
 use App\Models\Module;
@@ -256,4 +257,106 @@ test('user presence does not override teacher audio moderation', function () {
     expect($participant->audio_enabled)->toBeTrue();
     expect($participant->video_enabled)->toBeTrue();
     expect($participant->twilio_participant_sid)->toBe('PA1234567890abcdef1234567890abcd');
+});
+
+test('joined user can send a live stream chat message', function () {
+    $module = createLiveModuleWithCourse();
+    $session = LiveStreamSession::factory()->create([
+        'module_id' => $module->getKey(),
+        'status' => LiveStreamSession::STATUS_LIVE,
+    ]);
+
+    $this->seed(RoleAndPermissionSeeder::class);
+
+    $student = User::factory()->create();
+    $student->assignRole('user');
+    enrollUserForModule($student, $module);
+
+    LiveStreamParticipant::factory()->create([
+        'live_stream_session_id' => $session->getKey(),
+        'user_id' => $student->getKey(),
+        'app_role' => LiveStreamParticipant::ROLE_USER,
+    ]);
+
+    $this->actingAs($student)
+        ->postJson(route('user.live-stream.messages.store', $module), [
+            'body' => 'Buongiorno docente',
+        ])
+        ->assertCreated()
+        ->assertJsonPath('chat_message.app_role', LiveStreamParticipant::ROLE_USER)
+        ->assertJsonPath('chat_message.body', 'Buongiorno docente');
+
+    expect(LiveStreamMessage::query()->count())->toBe(1);
+    expect(LiveStreamMessage::query()->first()?->live_stream_session_id)->toBe($session->getKey());
+});
+
+test('joined tutor can send a live stream chat message with tutor role', function () {
+    $module = createLiveModuleWithCourse();
+    $session = LiveStreamSession::factory()->create([
+        'module_id' => $module->getKey(),
+        'status' => LiveStreamSession::STATUS_LIVE,
+    ]);
+
+    $this->seed(RoleAndPermissionSeeder::class);
+
+    $tutor = User::factory()->create();
+    $tutor->assignRole('tutor');
+
+    LiveStreamParticipant::factory()->create([
+        'live_stream_session_id' => $session->getKey(),
+        'user_id' => $tutor->getKey(),
+        'app_role' => LiveStreamParticipant::ROLE_TUTOR,
+        'is_hidden' => true,
+        'audio_enabled' => false,
+        'video_enabled' => false,
+    ]);
+
+    $this->actingAs($tutor)
+        ->postJson(route('tutor.live-stream.messages.store', $module), [
+            'body' => 'Messaggio tutor in chat',
+        ])
+        ->assertCreated()
+        ->assertJsonPath('chat_message.app_role', LiveStreamParticipant::ROLE_TUTOR)
+        ->assertJsonPath('chat_message.body', 'Messaggio tutor in chat');
+
+    expect(LiveStreamMessage::query()->count())->toBe(1);
+    expect(LiveStreamMessage::query()->first()?->live_stream_session_id)->toBe($session->getKey());
+    expect(LiveStreamMessage::query()->first()?->app_role)->toBe(LiveStreamParticipant::ROLE_TUTOR);
+});
+
+test('teacher state returns recent live stream chat messages in chronological order', function () {
+    $teacher = actingAsRole('docente');
+    $module = createLiveModuleWithCourse();
+    $session = LiveStreamSession::factory()->create([
+        'module_id' => $module->getKey(),
+        'teacher_user_id' => $teacher->getKey(),
+        'status' => LiveStreamSession::STATUS_LIVE,
+    ]);
+
+    $student = User::factory()->create();
+
+    LiveStreamMessage::factory()->create([
+        'live_stream_session_id' => $session->getKey(),
+        'user_id' => $teacher->getKey(),
+        'app_role' => LiveStreamParticipant::ROLE_TEACHER,
+        'body' => 'Benvenuti a tutti',
+        'sent_at' => now()->subMinute(),
+    ]);
+
+    LiveStreamMessage::factory()->create([
+        'live_stream_session_id' => $session->getKey(),
+        'user_id' => $student->getKey(),
+        'app_role' => LiveStreamParticipant::ROLE_USER,
+        'body' => 'Buongiorno',
+        'sent_at' => now(),
+    ]);
+
+    $response = $this->actingAs($teacher)
+        ->getJson(route('teacher.live-stream.state', $module))
+        ->assertSuccessful()
+        ->json();
+
+    expect($response['messages'])->toHaveCount(2);
+    expect($response['messages'][0]['body'])->toBe('Benvenuti a tutti');
+    expect($response['messages'][1]['body'])->toBe('Buongiorno');
 });

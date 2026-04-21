@@ -2,7 +2,9 @@
     <section class="flex min-h-screen items-center justify-center bg-base-200 px-4 py-10">
         <div class="card w-full max-w-2xl rounded-box border border-base-300 bg-base-100 shadow-sm">
             <div class="card-body gap-4 p-8">
-                <span class="badge badge-primary badge-outline w-fit">{{ __('Diretta non ancora disponibile') }}</span>
+                <span class="badge badge-primary badge-outline w-fit">
+                    {{ ($waitingState ?? 'waiting') === 'ended' ? __('Diretta terminata') : __('Diretta non ancora disponibile') }}
+                </span>
 
                 <div>
                     <h1 class="text-3xl font-semibold text-base-content">

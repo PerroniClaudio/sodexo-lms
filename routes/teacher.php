@@ -11,6 +11,7 @@ Route::middleware(['auth', 'role:docente|superadmin'])->group(function () {
         Route::post('/live-stream/{module}/join', [LiveStreamController::class, 'teacherJoin'])->name('live-stream.join');
         Route::get('/live-stream/{module}/state', [LiveStreamController::class, 'teacherState'])->name('live-stream.state');
         Route::post('/live-stream/{module}/presence', [LiveStreamController::class, 'teacherPresence'])->name('live-stream.presence');
+        Route::post('/live-stream/{module}/messages', [LiveStreamController::class, 'storeTeacherMessage'])->name('live-stream.messages.store');
         Route::patch('/live-stream/{module}/participants/{participant}/speaker', [LiveStreamController::class, 'updateSpeaker'])->name('live-stream.participants.speaker');
     });
 });

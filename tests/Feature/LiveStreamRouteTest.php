@@ -20,6 +20,8 @@ test('live stream player route renders module data for the requested live module
         'description' => 'Sessione live con dati reali del modulo.',
         'type' => 'live',
         'status' => 'published',
+        'appointment_start_time' => now()->subHour(),
+        'appointment_end_time' => now()->addHour(),
         'belongsTo' => (string) $course->getKey(),
     ]);
 
@@ -87,7 +89,42 @@ test('user live stream route renders waiting view before the scheduled start tim
     $response->assertSuccessful();
     $response->assertViewIs('user.live-stream.waiting');
     $response->assertSeeText('Live futura');
+    $response->assertSeeText('Diretta non ancora disponibile');
     $response->assertSeeText('La diretta comincia all\'orario stabilito.');
+    $response->assertSeeText('Corso sicurezza');
+});
+
+test('user live stream route renders ended view after the scheduled end time', function () {
+    $user = actingAsRole('user');
+
+    $course = Course::factory()->create([
+        'title' => 'Corso sicurezza',
+    ]);
+
+    $module = Module::factory()->create([
+        'title' => 'Live conclusa',
+        'description' => 'Sessione live terminata.',
+        'type' => 'live',
+        'status' => 'published',
+        'appointment_start_time' => now()->subHours(2),
+        'appointment_end_time' => now()->subHour(),
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    CourseEnrollment::factory()->create([
+        'user_id' => $user->getKey(),
+        'course_id' => $course->getKey(),
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('user.live-stream.player', $module));
+
+    $response->assertSuccessful();
+    $response->assertViewIs('user.live-stream.waiting');
+    $response->assertSeeText('Live conclusa');
+    $response->assertSeeText('Diretta terminata');
+    $response->assertSeeText('La diretta è terminata.');
     $response->assertSeeText('Corso sicurezza');
 });
 
@@ -158,4 +195,43 @@ test('teacher live stream route renders the updated preview controls', function 
     $response->assertSeeText('Condividi schermo');
     $response->assertSee('data-live-stream-screen-share-toggle', false);
     $response->assertSee('data-live-stream-screen-share-status', false);
+});
+
+test('tutor live stream route renders the updated user player layout without hand raise controls', function () {
+    $tutor = actingAsRole('tutor');
+
+    $course = Course::factory()->create([
+        'title' => 'Corso sicurezza',
+    ]);
+
+    $module = Module::factory()->create([
+        'title' => 'Live onboarding tutor',
+        'description' => 'Sessione live tutor.',
+        'type' => 'live',
+        'status' => 'published',
+        'appointment_start_time' => now()->subHour(),
+        'appointment_end_time' => now()->addHour(),
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    LiveStreamSession::factory()->create([
+        'module_id' => $module->getKey(),
+        'status' => LiveStreamSession::STATUS_LIVE,
+    ]);
+
+    $response = $this
+        ->actingAs($tutor)
+        ->get(route('tutor.live-stream.player', $module));
+
+    $response->assertSuccessful();
+    $response->assertSeeText('Corso sicurezza');
+    $response->assertSeeText('Sessione live tutor.');
+    $response->assertSeeText('Dispositivi');
+    $response->assertSeeText('Entra nella diretta');
+    $response->assertSee('data-live-stream-chat-form', false);
+    $response->assertSee('data-live-stream-chat-input', false);
+    $response->assertSee('data-live-stream-chat-submit', false);
+    $response->assertDontSee('data-live-stream-hand-raise-button', false);
+    $response->assertDontSee('data-live-stream-hand-raise-status', false);
+    $response->assertSee('data-live-stream-main-stage', false);
 });
