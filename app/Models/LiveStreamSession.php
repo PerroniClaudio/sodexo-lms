@@ -62,6 +62,11 @@ class LiveStreamSession extends Model
         return $this->hasMany(LiveStreamMessage::class);
     }
 
+    public function polls(): HasMany
+    {
+        return $this->hasMany(LiveStreamPoll::class);
+    }
+
     public function isLive(): bool
     {
         return $this->status === self::STATUS_LIVE;

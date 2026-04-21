@@ -14,8 +14,10 @@ import {
     getParticipantAudioStatusMarkup,
     getLiveStreamRoot,
     renderChatMessages,
+    renderDocuments,
     setBadgeState,
     setMessage,
+    shouldRetryLiveStreamConnectWithoutCamera,
 } from './shared';
 import {
     LIVE_STREAM_CAMERA_TRACK_NAME,
@@ -64,6 +66,17 @@ export function initTeacherPage() {
     const chatForm = root.querySelector('[data-live-stream-chat-form]');
     const chatInput = root.querySelector('[data-live-stream-chat-input]');
     const chatSubmitButton = root.querySelector('[data-live-stream-chat-submit]');
+    const documentForm = root.querySelector('[data-live-stream-document-form]');
+    const documentInput = root.querySelector('[data-live-stream-document-input]');
+    const documentSubmitButton = root.querySelector('[data-live-stream-document-submit]');
+    const documentFeedback = root.querySelector('[data-live-stream-document-feedback]');
+    const pollToggleButton = root.querySelector('[data-live-stream-poll-toggle]');
+    const pollForm = root.querySelector('[data-live-stream-poll-form]');
+    const pollQuestionInput = root.querySelector('[data-live-stream-poll-question-input]');
+    const pollOptionInputs = [...root.querySelectorAll('[data-live-stream-poll-option-input]')];
+    const pollSubmitButton = root.querySelector('[data-live-stream-poll-submit]');
+    const pollFeedback = root.querySelector('[data-live-stream-poll-feedback]');
+    const deviceStatus = root.querySelector('[data-live-stream-device-status]');
     const previewController = createPreviewController(root, {
         onAudioStateChange: syncMicToggleButton,
     });
@@ -101,8 +114,29 @@ export function initTeacherPage() {
         });
     }
 
+    if (documentForm instanceof HTMLFormElement) {
+        documentForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            await uploadDocument();
+        });
+    }
+
+    if (pollForm instanceof HTMLFormElement) {
+        pollForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            await publishPoll();
+        });
+    }
+
+    if (pollToggleButton instanceof HTMLButtonElement) {
+        pollToggleButton.addEventListener('click', () => {
+            setPollComposerExpanded(pollForm instanceof HTMLFormElement ? pollForm.classList.contains('hidden') : false);
+        });
+    }
+
     syncMicToggleButton();
     syncScreenShareButton();
+    setPollComposerExpanded(false);
 
     window.addEventListener('beforeunload', () => {
         previewController.destroy();
@@ -124,6 +158,11 @@ export function initTeacherPage() {
             renderTeacherGrid();
             renderParticipantList();
             renderChatMessages(root, response.data.messages ?? []);
+            renderDocuments(root, response.data.documents ?? [], {
+                canDeleteDocuments: Boolean(config.capabilities?.canManageDocuments),
+                onDeleteDocument: deleteDocument,
+            });
+            renderPolls(response.data.polls ?? []);
 
             if (response.data.status !== 'live' && state.room) {
                 teardownRoom();
@@ -152,7 +191,7 @@ export function initTeacherPage() {
             const shouldShowStartButton = payload.status !== 'live' || !state.joined;
 
             startButton.disabled = state.joined;
-            startButton.textContent = payload.status === 'live' ? 'Rientra nella diretta' : 'Avvia diretta';
+            startButton.textContent = payload.status === 'live' ? 'Connettiti alla diretta' : 'Avvia diretta';
             startButton.classList.toggle('hidden', !shouldShowStartButton);
         }
 
@@ -166,6 +205,7 @@ export function initTeacherPage() {
         syncMicToggleButton();
         syncScreenShareButton();
         updateChatComposerState();
+        updatePollComposerState();
     }
 
     function updateChatComposerState() {
@@ -180,6 +220,46 @@ export function initTeacherPage() {
 
         if (!chatAvailable) {
             chatInput.value = '';
+        }
+    }
+
+    function updatePollComposerState() {
+        if (
+            !(pollQuestionInput instanceof HTMLTextAreaElement) ||
+            !(pollSubmitButton instanceof HTMLButtonElement) ||
+            !(pollToggleButton instanceof HTMLButtonElement)
+        ) {
+            return;
+        }
+
+        const pollAvailable = Boolean(config.routes.pollsStore) && state.latestState?.status === 'live' && state.joined;
+
+        pollToggleButton.disabled = !pollAvailable;
+        pollQuestionInput.disabled = !pollAvailable;
+        pollOptionInputs.forEach((input) => {
+            if (input instanceof HTMLInputElement) {
+                input.disabled = !pollAvailable;
+            }
+        });
+        pollSubmitButton.disabled = !pollAvailable;
+
+        if (!pollAvailable) {
+            setPollFeedback('', false);
+            setPollComposerExpanded(false);
+        }
+    }
+
+    function setPollComposerExpanded(expanded) {
+        if (!(pollForm instanceof HTMLFormElement) || !(pollToggleButton instanceof HTMLButtonElement)) {
+            return;
+        }
+
+        pollForm.classList.toggle('hidden', !expanded);
+        pollToggleButton.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        pollToggleButton.textContent = expanded ? 'Chiudi' : 'Crea sondaggio';
+
+        if (!expanded) {
+            setPollFeedback('', false);
         }
     }
 
@@ -207,14 +287,31 @@ export function initTeacherPage() {
 
             ensureRemoteAudioContext();
 
-            state.room = await TwilioVideo.connect(joinPayload.twilio_token, {
-                name: joinPayload.twilio_room_name,
-                audio: true,
-                video: {
-                    name: LIVE_STREAM_CAMERA_TRACK_NAME,
-                },
-                dominantSpeaker: true,
-            });
+            try {
+                state.room = await TwilioVideo.connect(joinPayload.twilio_token, {
+                    name: joinPayload.twilio_room_name,
+                    audio: true,
+                    video: {
+                        name: LIVE_STREAM_CAMERA_TRACK_NAME,
+                    },
+                    dominantSpeaker: true,
+                });
+            } catch (error) {
+                if (!shouldRetryLiveStreamConnectWithoutCamera(error)) {
+                    throw error;
+                }
+
+                state.room = await TwilioVideo.connect(joinPayload.twilio_token, {
+                    name: joinPayload.twilio_room_name,
+                    audio: true,
+                    video: false,
+                    dominantSpeaker: true,
+                });
+
+                if (deviceStatus instanceof HTMLElement) {
+                    deviceStatus.textContent = 'Videocamera non disponibile. La diretta partirà con il solo microfono.';
+                }
+            }
 
             if (shouldStartMuted) {
                 state.room.localParticipant.audioTracks.forEach((publication) => {
@@ -284,6 +381,261 @@ export function initTeacherPage() {
         } finally {
             updateChatComposerState();
         }
+    }
+
+    async function publishPoll() {
+        if (
+            !(pollForm instanceof HTMLFormElement) ||
+            !(pollQuestionInput instanceof HTMLTextAreaElement) ||
+            !(pollSubmitButton instanceof HTMLButtonElement) ||
+            !config.routes.pollsStore
+        ) {
+            return;
+        }
+
+        const question = pollQuestionInput.value.trim();
+        const options = pollOptionInputs
+            .filter((input) => input instanceof HTMLInputElement)
+            .map((input) => input.value.trim())
+            .filter(Boolean);
+
+        if (!question) {
+            setPollFeedback('Inserisci la domanda del sondaggio.', true);
+            return;
+        }
+
+        if (options.length < 2) {
+            setPollFeedback('Inserisci almeno due risposte.', true);
+            return;
+        }
+
+        pollQuestionInput.disabled = true;
+        pollOptionInputs.forEach((input) => {
+            if (input instanceof HTMLInputElement) {
+                input.disabled = true;
+            }
+        });
+        pollSubmitButton.disabled = true;
+        setPollFeedback('Pubblicazione in corso...', false);
+
+        try {
+            await window.axios.post(config.routes.pollsStore, {
+                question,
+                options,
+            });
+
+            pollForm.reset();
+            setPollComposerExpanded(false);
+            await fetchState();
+        } catch (error) {
+            setPollComposerExpanded(true);
+            const message = error?.response?.data?.errors?.question?.[0]
+                ?? error?.response?.data?.errors?.options?.[0]
+                ?? error?.response?.data?.message
+                ?? 'Impossibile pubblicare il sondaggio.';
+            setPollFeedback(message, true);
+            console.error(error);
+        } finally {
+            updatePollComposerState();
+        }
+    }
+
+    async function uploadDocument() {
+        if (
+            !(documentForm instanceof HTMLFormElement) ||
+            !(documentInput instanceof HTMLInputElement) ||
+            !config.routes.uploadDocument
+        ) {
+            return;
+        }
+
+        const file = documentInput.files?.[0] ?? null;
+
+        if (!file) {
+            setDocumentFeedback('Seleziona un PDF da caricare.', true);
+            return;
+        }
+
+        const payload = new FormData();
+        payload.append('document', file);
+
+        if (documentSubmitButton instanceof HTMLButtonElement) {
+            documentSubmitButton.disabled = true;
+        }
+
+        setDocumentFeedback('Caricamento in corso...', false);
+
+        try {
+            await window.axios.post(config.routes.uploadDocument, payload, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            documentForm.reset();
+            setDocumentFeedback('PDF caricato con successo.', false);
+            await fetchState();
+        } catch (error) {
+            const message = error?.response?.data?.errors?.document?.[0]
+                ?? error?.response?.data?.message
+                ?? 'Impossibile caricare il PDF.';
+            setDocumentFeedback(message, true);
+            console.error(error);
+        } finally {
+            if (documentSubmitButton instanceof HTMLButtonElement) {
+                documentSubmitButton.disabled = false;
+            }
+        }
+    }
+
+    async function deleteDocument(documentItem) {
+        if (!documentItem?.id || !config.routes.deleteDocumentTemplate) {
+            return;
+        }
+
+        try {
+            await window.axios.delete(
+                config.routes.deleteDocumentTemplate.replace('__DOCUMENT__', String(documentItem.id)),
+            );
+            setDocumentFeedback('PDF rimosso con successo.', false);
+            await fetchState();
+        } catch (error) {
+            setDocumentFeedback('Impossibile rimuovere il PDF.', true);
+            console.error(error);
+        }
+    }
+
+    function setDocumentFeedback(message, isError) {
+        if (!(documentFeedback instanceof HTMLElement)) {
+            return;
+        }
+
+        documentFeedback.textContent = message ?? '';
+        documentFeedback.classList.toggle('text-error', isError);
+        documentFeedback.classList.toggle('text-success', !isError && Boolean(message));
+    }
+
+    function setPollFeedback(message, isError) {
+        if (!(pollFeedback instanceof HTMLElement)) {
+            return;
+        }
+
+        pollFeedback.textContent = message ?? '';
+        pollFeedback.classList.toggle('text-error', isError);
+        pollFeedback.classList.toggle('text-success', !isError && Boolean(message));
+    }
+
+    function renderPolls(polls) {
+        const pollsContainer = root.querySelector('[data-live-stream-polls-list]');
+        const emptyStateElement = root.querySelector('[data-live-stream-polls-empty]');
+
+        if (!(pollsContainer instanceof HTMLElement)) {
+            return;
+        }
+
+        pollsContainer.replaceChildren();
+
+        if (emptyStateElement instanceof HTMLElement) {
+            emptyStateElement.classList.toggle('hidden', polls.length > 0);
+        }
+
+        polls.forEach((poll) => {
+            const card = document.createElement('article');
+            card.className = 'rounded-box border border-base-300 bg-base-100 p-4 shadow-sm';
+
+            const header = document.createElement('div');
+            header.className = 'flex flex-wrap items-start justify-between gap-3';
+
+            const titleWrapper = document.createElement('div');
+            titleWrapper.className = 'space-y-1';
+
+            const badge = document.createElement('span');
+            badge.className = `badge ${poll.is_open ? 'badge-success' : 'badge-outline'}`;
+            badge.textContent = poll.is_open ? 'Aperto' : 'Chiuso';
+
+            const question = document.createElement('h4');
+            question.className = 'text-sm font-semibold text-base-content';
+            question.textContent = poll.question;
+
+            const meta = document.createElement('p');
+            meta.className = 'text-xs text-base-content/60';
+            meta.textContent = `${poll.total_responses} ${poll.total_responses === 1 ? 'risposta' : 'risposte'}${poll.published_at ? ` • ${formatPollTimestamp(poll.published_at)}` : ''}`;
+
+            titleWrapper.append(badge, question, meta);
+            header.appendChild(titleWrapper);
+
+            if (poll.is_open && config.routes.closePollTemplate) {
+                const closeButton = document.createElement('button');
+                closeButton.type = 'button';
+                closeButton.className = 'btn btn-outline btn-sm';
+                closeButton.textContent = 'Termina invio';
+                closeButton.addEventListener('click', async () => {
+                    closeButton.disabled = true;
+
+                    try {
+                        await window.axios.patch(config.routes.closePollTemplate.replace('__POLL__', String(poll.id)));
+                        await fetchState();
+                    } catch (error) {
+                        closeButton.disabled = false;
+                        console.error(error);
+                    }
+                });
+                header.appendChild(closeButton);
+            }
+
+            const optionsList = document.createElement('div');
+            optionsList.className = 'mt-4 space-y-3';
+
+            (poll.options ?? []).forEach((option) => {
+                const optionCard = document.createElement('div');
+                optionCard.className = 'relative overflow-hidden rounded-box border border-base-300 bg-base-200';
+
+                const fill = document.createElement('div');
+                fill.className = 'pointer-events-none absolute inset-y-0 left-0 bg-success/20';
+                fill.style.width = `${Number(option.percentage) || 0}%`;
+
+                const content = document.createElement('div');
+                content.className = 'relative flex items-center justify-between gap-3 px-4 py-3';
+
+                const label = document.createElement('p');
+                label.className = 'text-sm font-medium text-base-content';
+                label.textContent = option.label;
+
+                const stats = document.createElement('p');
+                stats.className = 'shrink-0 text-xs font-semibold text-base-content/70';
+                stats.textContent = `${formatPercentage(option.percentage)} • ${option.responses_count}`;
+
+                content.append(label, stats);
+                optionCard.append(fill, content);
+                optionsList.appendChild(optionCard);
+            });
+
+            card.append(header, optionsList);
+            pollsContainer.appendChild(card);
+        });
+    }
+
+    function formatPollTimestamp(value) {
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return 'Pubblicato ora';
+        }
+
+        return new Intl.DateTimeFormat('it-IT', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+        }).format(date);
+    }
+
+    function formatPercentage(value) {
+        const numericValue = Number(value) || 0;
+
+        return Number.isInteger(numericValue)
+            ? `${numericValue}%`
+            : `${numericValue.toFixed(1).replace('.', ',')}%`;
     }
 
     function subscribeToRoom() {

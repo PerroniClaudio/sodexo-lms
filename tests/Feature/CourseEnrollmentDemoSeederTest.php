@@ -2,6 +2,7 @@
 
 use App\Models\Course;
 use App\Models\CourseEnrollment;
+use App\Models\CourseTeacherEnrollment;
 use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\User;
@@ -11,7 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-test('it seeds a demo course with three modules and two enrolled users with expected roles', function () {
+test('it seeds a demo course with a teacher assignment and a learner enrollment with expected roles', function () {
     $this->seed([
         RoleAndPermissionSeeder::class,
         CourseEnrollmentDemoSeeder::class,
@@ -44,16 +45,26 @@ test('it seeds a demo course with three modules and two enrolled users with expe
     expect($utente)->not->toBeNull();
     expect($docente->hasRole('docente'))->toBeTrue();
     expect($utente->hasRole('user'))->toBeTrue();
+    expect($docente->getAttributes())->not->toHaveKey('account_type');
+    expect($utente->getAttributes())->not->toHaveKey('account_type');
     expect($docente->hasPermissionTo('manage attendance'))->toBeTrue();
     expect($utente->hasPermissionTo('view courses'))->toBeTrue();
     expect($utente->hasPermissionTo('manage attendance'))->toBeFalse();
+
+    $teacherEnrollment = CourseTeacherEnrollment::query()
+        ->where('user_id', $docente->getKey())
+        ->where('course_id', $course->getKey())
+        ->first();
+
+    expect($teacherEnrollment)->not->toBeNull();
+    expect($teacherEnrollment?->assigned_at)->not->toBeNull();
 
     $enrollments = CourseEnrollment::query()
         ->where('course_id', $course->getKey())
         ->orderBy('id')
         ->get();
 
-    expect($enrollments)->toHaveCount(2);
+    expect($enrollments)->toHaveCount(1);
 
     foreach ($enrollments as $enrollment) {
         expect($enrollment->status)->toBe(CourseEnrollment::STATUS_ASSIGNED);

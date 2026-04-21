@@ -22,6 +22,8 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::post('/courses/{course}/modules', [CourseModuleController::class, 'store'])->name('courses.modules.store');
         Route::patch('/courses/{course}/modules/reorder', [CourseModuleController::class, 'reorder'])->name('courses.modules.reorder');
         Route::get('/courses/{course}/modules/{module}/edit', [CourseModuleController::class, 'edit'])->name('courses.modules.edit');
+        Route::post('/courses/{course}/modules/{module}/teachers', [CourseModuleController::class, 'assignTeachers'])->name('courses.modules.teachers.assign');
+        Route::post('/courses/{course}/modules/{module}/tutors', [CourseModuleController::class, 'assignTutors'])->name('courses.modules.tutors.assign');
         Route::put('/courses/{course}/modules/{module}', [CourseModuleController::class, 'update'])->name('courses.modules.update');
         Route::delete('/courses/{course}/modules/{module}', [CourseModuleController::class, 'destroy'])->name('courses.modules.destroy');
         Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');

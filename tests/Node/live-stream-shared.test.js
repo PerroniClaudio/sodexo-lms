@@ -6,6 +6,7 @@ import {
     getLiveStreamIconSvg,
     getParticipantAudioStatusMarkup,
     getParticipantInitialsBadgeClassNames,
+    shouldRetryLiveStreamConnectWithoutCamera,
 } from '../../resources/js/live-stream/shared.js';
 
 test('participant initials badge uses a green border when highlighted', () => {
@@ -46,4 +47,32 @@ test('participant audio status markup exposes the microphone state through an ic
     assert.match(mutedStatus, /title="Audio moderato"/);
     assert.match(activeStatus, /aria-label="Audio attivo"/);
     assert.match(activeStatus, /title="Audio attivo"/);
+});
+
+test('live stream connect retries without camera when the video device is missing', () => {
+    assert.equal(
+        shouldRetryLiveStreamConnectWithoutCamera({
+            name: 'NotFoundError',
+            message: 'Requested device not found',
+        }),
+        true,
+    );
+
+    assert.equal(
+        shouldRetryLiveStreamConnectWithoutCamera({
+            name: 'TwilioError',
+            message: 'Could not start video source',
+        }),
+        true,
+    );
+});
+
+test('live stream connect does not retry without camera for unrelated errors', () => {
+    assert.equal(
+        shouldRetryLiveStreamConnectWithoutCamera({
+            name: 'NotAllowedError',
+            message: 'Permission denied',
+        }),
+        false,
+    );
 });

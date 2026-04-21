@@ -2,15 +2,21 @@
 
 use App\Models\Course;
 use App\Models\CourseEnrollment;
+use App\Models\CourseTeacherEnrollment;
+use App\Models\CourseTutorEnrollment;
+use App\Models\LiveStreamDocument;
 use App\Models\LiveStreamHandRaise;
 use App\Models\LiveStreamMessage;
 use App\Models\LiveStreamParticipant;
+use App\Models\LiveStreamPoll;
 use App\Models\LiveStreamSession;
 use App\Models\Module;
 use App\Models\User;
 use App\Services\TwilioVideoService;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
@@ -35,9 +41,27 @@ function enrollUserForModule($user, Module $module): void
     ]);
 }
 
+function assignTeacherToModule($user, Module $module): void
+{
+    CourseTeacherEnrollment::factory()->create([
+        'user_id' => $user->getKey(),
+        'course_id' => (int) $module->belongsTo,
+    ]);
+}
+
+function assignTutorToModule($user, Module $module): void
+{
+    CourseTutorEnrollment::factory()->create([
+        'user_id' => $user->getKey(),
+        'course_id' => (int) $module->belongsTo,
+    ]);
+}
+
 test('teacher can start a live session only once for the same module', function () {
     $teacher = actingAsRole('docente');
     $module = createLiveModuleWithCourse();
+
+    assignTeacherToModule($teacher, $module);
 
     $service = Mockery::mock(TwilioVideoService::class);
     $service->shouldReceive('createRoom')
@@ -60,6 +84,18 @@ test('teacher can start a live session only once for the same module', function 
         ->assertJsonPath('session.twilio_room_name', 'teacher-room');
 
     expect(LiveStreamSession::query()->count())->toBe(1);
+});
+
+test('teacher start session requires an enrollment in the course', function () {
+    $teacher = actingAsRole('docente');
+    $module = createLiveModuleWithCourse();
+
+    $service = Mockery::mock(TwilioVideoService::class);
+    $this->app->instance(TwilioVideoService::class, $service);
+
+    $this->actingAs($teacher)
+        ->postJson(route('teacher.live-stream.session.start', $module))
+        ->assertForbidden();
 });
 
 test('user join requires an enrollment in the live course', function () {
@@ -111,6 +147,7 @@ test('enrolled user can join while tutor joins as hidden observer', function () 
 
     $tutor = User::factory()->create();
     $tutor->assignRole('tutor');
+    assignTutorToModule($tutor, $module);
 
     $service = Mockery::mock(TwilioVideoService::class);
     $service->shouldReceive('createAccessToken')->once()->andReturn('tutor-token');
@@ -128,9 +165,27 @@ test('enrolled user can join while tutor joins as hidden observer', function () 
     expect($tutorParticipant->video_enabled)->toBeFalse();
 });
 
+test('tutor join requires an enrollment in the course', function () {
+    $tutor = actingAsRole('tutor');
+    $module = createLiveModuleWithCourse();
+
+    LiveStreamSession::factory()->create([
+        'module_id' => $module->getKey(),
+        'status' => LiveStreamSession::STATUS_LIVE,
+    ]);
+
+    $service = Mockery::mock(TwilioVideoService::class);
+    $this->app->instance(TwilioVideoService::class, $service);
+
+    $this->actingAs($tutor)
+        ->postJson(route('tutor.live-stream.join', $module))
+        ->assertForbidden();
+});
+
 test('teacher state excludes hidden and stale participants', function () {
     $teacher = actingAsRole('docente');
     $module = createLiveModuleWithCourse();
+    assignTeacherToModule($teacher, $module);
     $session = LiveStreamSession::factory()->create([
         'module_id' => $module->getKey(),
         'teacher_user_id' => $teacher->getKey(),
@@ -176,6 +231,58 @@ test('teacher state excludes hidden and stale participants', function () {
     expect($response['teacher']['user_id'])->toBe($teacher->getKey());
 });
 
+test('teacher can upload a pdf and state returns the shared live materials', function () {
+    Storage::fake('local');
+
+    $teacher = actingAsRole('docente');
+    $module = createLiveModuleWithCourse();
+    assignTeacherToModule($teacher, $module);
+
+    $file = UploadedFile::fake()->create('slide-live.pdf', 128, 'application/pdf');
+
+    $this->actingAs($teacher)
+        ->post(route('teacher.live-stream.documents.store', $module), [
+            'document' => $file,
+        ])
+        ->assertCreated()
+        ->assertJsonPath('document.name', 'slide-live.pdf');
+
+    $document = LiveStreamDocument::query()->sole();
+
+    Storage::disk('local')->assertExists($document->path);
+
+    $response = $this->actingAs($teacher)
+        ->getJson(route('teacher.live-stream.state', $module))
+        ->assertSuccessful()
+        ->json();
+
+    expect($response['documents'])->toHaveCount(1);
+    expect($response['documents'][0]['name'])->toBe('slide-live.pdf');
+    expect($response['documents'][0]['uploaded_by'])->toBe($teacher->full_name);
+});
+
+test('enrolled user can download a shared live pdf', function () {
+    Storage::fake('local');
+
+    $user = actingAsRole('user');
+    $module = createLiveModuleWithCourse();
+    enrollUserForModule($user, $module);
+
+    $document = LiveStreamDocument::factory()->create([
+        'module_id' => $module->getKey(),
+        'user_id' => $user->getKey(),
+        'path' => 'live-stream-documents/'.$module->getKey().'/programma-live.pdf',
+        'original_name' => 'programma-live.pdf',
+    ]);
+
+    Storage::disk('local')->put($document->path, 'fake pdf content');
+
+    $this->actingAs($user)
+        ->get(route('user.live-stream.documents.download', [$module, $document]))
+        ->assertOk()
+        ->assertDownload('programma-live.pdf');
+});
+
 test('hand raise is resolved when teacher grants microphone access', function () {
     $module = createLiveModuleWithCourse();
     $session = LiveStreamSession::factory()->create([
@@ -187,6 +294,7 @@ test('hand raise is resolved when teacher grants microphone access', function ()
 
     $teacher = User::factory()->create();
     $teacher->assignRole('docente');
+    assignTeacherToModule($teacher, $module);
 
     $student = User::factory()->create();
     $student->assignRole('user');
@@ -301,6 +409,7 @@ test('joined tutor can send a live stream chat message with tutor role', functio
 
     $tutor = User::factory()->create();
     $tutor->assignRole('tutor');
+    assignTutorToModule($tutor, $module);
 
     LiveStreamParticipant::factory()->create([
         'live_stream_session_id' => $session->getKey(),
@@ -335,6 +444,7 @@ test('joined tutor can remove a live stream chat message for moderation', functi
 
     $tutor = User::factory()->create();
     $tutor->assignRole('tutor');
+    assignTutorToModule($tutor, $module);
 
     LiveStreamParticipant::factory()->create([
         'live_stream_session_id' => $session->getKey(),
@@ -365,6 +475,7 @@ test('joined tutor can remove a live stream chat message for moderation', functi
 test('teacher state returns recent live stream chat messages in chronological order', function () {
     $teacher = actingAsRole('docente');
     $module = createLiveModuleWithCourse();
+    assignTeacherToModule($teacher, $module);
     $session = LiveStreamSession::factory()->create([
         'module_id' => $module->getKey(),
         'teacher_user_id' => $teacher->getKey(),
@@ -397,4 +508,141 @@ test('teacher state returns recent live stream chat messages in chronological or
     expect($response['messages'])->toHaveCount(2);
     expect($response['messages'][0]['body'])->toBe('Benvenuti a tutti');
     expect($response['messages'][1]['body'])->toBe('Buongiorno');
+});
+
+test('teacher can publish a poll and teacher state shows aggregated response percentages', function () {
+    $module = createLiveModuleWithCourse();
+    $session = LiveStreamSession::factory()->create([
+        'module_id' => $module->getKey(),
+        'status' => LiveStreamSession::STATUS_LIVE,
+    ]);
+
+    $this->seed(RoleAndPermissionSeeder::class);
+
+    $teacher = User::factory()->create();
+    $teacher->assignRole('docente');
+    assignTeacherToModule($teacher, $module);
+
+    $firstStudent = User::factory()->create();
+    $firstStudent->assignRole('user');
+    enrollUserForModule($firstStudent, $module);
+
+    $secondStudent = User::factory()->create();
+    $secondStudent->assignRole('user');
+    enrollUserForModule($secondStudent, $module);
+
+    LiveStreamParticipant::factory()->create([
+        'live_stream_session_id' => $session->getKey(),
+        'user_id' => $firstStudent->getKey(),
+        'app_role' => LiveStreamParticipant::ROLE_USER,
+        'last_seen_at' => now(),
+    ]);
+
+    LiveStreamParticipant::factory()->create([
+        'live_stream_session_id' => $session->getKey(),
+        'user_id' => $secondStudent->getKey(),
+        'app_role' => LiveStreamParticipant::ROLE_USER,
+        'last_seen_at' => now(),
+    ]);
+
+    $this->actingAs($teacher)
+        ->postJson(route('teacher.live-stream.polls.store', $module), [
+            'question' => 'Quale risposta preferisci?',
+            'options' => ['Risposta A', 'Risposta B', '', ''],
+        ])
+        ->assertCreated()
+        ->assertJsonPath('poll.question', 'Quale risposta preferisci?')
+        ->assertJsonPath('poll.is_open', true)
+        ->assertJsonPath('poll.options.0.label', 'Risposta A')
+        ->assertJsonPath('poll.options.1.label', 'Risposta B');
+
+    $poll = LiveStreamPoll::query()->sole();
+
+    $this->actingAs($firstStudent)
+        ->postJson(route('user.live-stream.polls.responses.store', [$module, $poll]), [
+            'answer_index' => 0,
+        ])
+        ->assertCreated();
+
+    $this->actingAs($secondStudent)
+        ->postJson(route('user.live-stream.polls.responses.store', [$module, $poll]), [
+            'answer_index' => 1,
+        ])
+        ->assertCreated();
+
+    $teacherState = $this->actingAs($teacher)
+        ->getJson(route('teacher.live-stream.state', $module))
+        ->assertSuccessful()
+        ->json();
+
+    expect($teacherState['polls'])->toHaveCount(1);
+    expect($teacherState['polls'][0]['total_responses'])->toBe(2);
+    expect($teacherState['polls'][0]['options'][0]['responses_count'])->toBe(1);
+    expect($teacherState['polls'][0]['options'][0]['percentage'])->toBe(50);
+    expect($teacherState['polls'][0]['options'][1]['responses_count'])->toBe(1);
+    expect($teacherState['polls'][0]['options'][1]['percentage'])->toBe(50);
+
+    $firstStudentState = $this->actingAs($firstStudent)
+        ->getJson(route('user.live-stream.state', $module))
+        ->assertSuccessful()
+        ->json();
+
+    expect($firstStudentState['active_poll'])->toBeNull();
+});
+
+test('teacher can close an open poll and unanswered users no longer receive it', function () {
+    $module = createLiveModuleWithCourse();
+    $session = LiveStreamSession::factory()->create([
+        'module_id' => $module->getKey(),
+        'status' => LiveStreamSession::STATUS_LIVE,
+    ]);
+
+    $this->seed(RoleAndPermissionSeeder::class);
+
+    $teacher = User::factory()->create();
+    $teacher->assignRole('docente');
+    assignTeacherToModule($teacher, $module);
+
+    $student = User::factory()->create();
+    $student->assignRole('user');
+    enrollUserForModule($student, $module);
+
+    LiveStreamParticipant::factory()->create([
+        'live_stream_session_id' => $session->getKey(),
+        'user_id' => $student->getKey(),
+        'app_role' => LiveStreamParticipant::ROLE_USER,
+        'last_seen_at' => now(),
+    ]);
+
+    $this->actingAs($teacher)
+        ->postJson(route('teacher.live-stream.polls.store', $module), [
+            'question' => 'Il sondaggio è ancora aperto?',
+            'options' => ['Sì', 'No'],
+        ])
+        ->assertCreated();
+
+    $poll = LiveStreamPoll::query()->sole();
+
+    $this->actingAs($student)
+        ->getJson(route('user.live-stream.state', $module))
+        ->assertSuccessful()
+        ->assertJsonPath('active_poll.id', $poll->getKey());
+
+    $this->actingAs($teacher)
+        ->patchJson(route('teacher.live-stream.polls.close', [$module, $poll]))
+        ->assertSuccessful()
+        ->assertJsonPath('poll.is_open', false)
+        ->assertJsonPath('poll.status', LiveStreamPoll::STATUS_CLOSED);
+
+    $this->actingAs($student)
+        ->getJson(route('user.live-stream.state', $module))
+        ->assertSuccessful()
+        ->assertJsonPath('active_poll', null);
+
+    $this->actingAs($student)
+        ->postJson(route('user.live-stream.polls.responses.store', [$module, $poll]), [
+            'answer_index' => 0,
+        ])
+        ->assertConflict()
+        ->assertJsonPath('message', 'Il sondaggio è chiuso.');
 });

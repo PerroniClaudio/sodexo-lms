@@ -1,7 +1,10 @@
 <?php
 
 use App\Models\Course;
+use App\Models\CourseTeacherEnrollment;
+use App\Models\CourseTutorEnrollment;
 use App\Models\Module;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -15,6 +18,44 @@ it('shows the edit module page', function () {
     $course = Course::factory()->create([
         'title' => 'Corso sicurezza',
     ]);
+    $teacher = User::factory()->create([
+        'name' => 'Mario',
+        'surname' => 'Rossi',
+        'email' => 'mario.rossi@example.test',
+    ]);
+    $teacher->assignRole('docente');
+
+    $availableTeacher = User::factory()->create([
+        'name' => 'Giulia',
+        'surname' => 'Neri',
+        'email' => 'giulia.neri@example.test',
+    ]);
+    $availableTeacher->assignRole('docente');
+
+    $assignedTutor = User::factory()->create([
+        'name' => 'Paolo',
+        'surname' => 'Blu',
+        'email' => 'paolo.blu@example.test',
+    ]);
+    $assignedTutor->assignRole('tutor');
+
+    $availableTutor = User::factory()->create([
+        'name' => 'Sara',
+        'surname' => 'Gialli',
+        'email' => 'sara.gialli@example.test',
+    ]);
+    $availableTutor->assignRole('tutor');
+
+    CourseTeacherEnrollment::factory()->create([
+        'course_id' => $course->getKey(),
+        'user_id' => $teacher->getKey(),
+    ]);
+
+    CourseTutorEnrollment::factory()->create([
+        'course_id' => $course->getKey(),
+        'user_id' => $assignedTutor->getKey(),
+    ]);
+
     $module = Module::factory()->create([
         'title' => 'Modulo iniziale',
         'description' => 'Descrizione modulo',
@@ -47,7 +88,31 @@ it('shows the edit module page', function () {
     $response->assertSee('value="14:30"', escape: false);
     $response->assertSee('name="appointment_end_time"', escape: false);
     $response->assertSee('value="16:00"', escape: false);
+    $response->assertSeeText('Docenti assegnati alla live');
+    $response->assertSeeText('Mario Rossi');
+    $response->assertSeeText('mario.rossi@example.test');
+    $response->assertSee('data-open-teacher-assignment-modal', escape: false);
+    $response->assertSee('id="assign-teachers-modal"', escape: false);
+    $response->assertSeeText('Giulia Neri');
+    $response->assertSee('name="teacher_ids[]"', escape: false);
+    $response->assertSeeText('Tutor assegnati alla live');
+    $response->assertSeeText('Paolo Blu');
+    $response->assertSeeText('paolo.blu@example.test');
+    $response->assertSee('data-open-tutor-assignment-modal', escape: false);
+    $response->assertSee('id="assign-tutors-modal"', escape: false);
+    $response->assertSeeText('Sara Gialli');
+    $response->assertSee('name="tutor_ids[]"', escape: false);
     $response->assertSeeText('Salva modulo');
+
+    $availableTeachers = $response->viewData('availableTeachers');
+
+    expect($availableTeachers->pluck('id')->all())->toContain($availableTeacher->getKey());
+    expect($availableTeachers->pluck('id')->all())->not->toContain($teacher->getKey());
+
+    $availableTutors = $response->viewData('availableTutors');
+
+    expect($availableTutors->pluck('id')->all())->toContain($availableTutor->getKey());
+    expect($availableTutors->pluck('id')->all())->not->toContain($assignedTutor->getKey());
 });
 
 it('does not show the editable title field for quiz modules', function () {

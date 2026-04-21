@@ -134,6 +134,22 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Get the teacher course enrollments for the user.
+     */
+    public function courseTeacherEnrollments(): HasMany
+    {
+        return $this->hasMany(CourseTeacherEnrollment::class);
+    }
+
+    /**
+     * Get the tutor course enrollments for the user.
+     */
+    public function courseTutorEnrollments(): HasMany
+    {
+        return $this->hasMany(CourseTutorEnrollment::class);
+    }
+
+    /**
      * Get the courses assigned to the user.
      */
     public function courses(): BelongsToMany
@@ -149,6 +165,34 @@ class User extends Authenticatable implements MustVerifyEmail
                 'expires_at',
                 'last_accessed_at',
                 'completion_percentage',
+                'deleted_at',
+            ])
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the courses assigned to the teacher.
+     */
+    public function teachingCourses(): BelongsToMany
+    {
+        return $this->belongsToMany(Course::class, 'course_teacher_enrollments')
+            ->withPivot([
+                'id',
+                'assigned_at',
+                'deleted_at',
+            ])
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the courses assigned to the tutor.
+     */
+    public function tutoringCourses(): BelongsToMany
+    {
+        return $this->belongsToMany(Course::class, 'course_tutor_enrollments')
+            ->withPivot([
+                'id',
+                'assigned_at',
                 'deleted_at',
             ])
             ->withTimestamps();

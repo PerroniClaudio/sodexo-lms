@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\UserStatus;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
+use App\Models\CourseTeacherEnrollment;
 use App\Models\Module;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -48,7 +49,7 @@ class CourseEnrollmentDemoSeeder extends Seeder
             fiscalCode: 'UTEDEM80A01H501Y',
         );
 
-        $this->enrollUser($docente, $course);
+        $this->enrollTeacher($docente, $course);
         $this->enrollUser($user, $course);
     }
 
@@ -74,7 +75,7 @@ class CourseEnrollmentDemoSeeder extends Seeder
 
     private function createModules(Course $course): void
     {
-        $liveAppointment = Carbon::tomorrow()->setHour(9)->setMinute(0)->setSecond(0);
+        $liveAppointment = Carbon::today()->setHour(9)->setMinute(0)->setSecond(0);
         $quizAppointment = $liveAppointment->copy()->addDay()->setHour(14);
         $satisfactionAppointment = $quizAppointment->copy()->addHour();
 
@@ -153,7 +154,6 @@ class CourseEnrollmentDemoSeeder extends Seeder
             'email' => $email,
             'email_verified_at' => $verifiedAt,
             'password' => self::DEFAULT_PASSWORD,
-            'account_type' => $role,
             'account_state' => UserStatus::ACTIVE,
             'profile_completed_at' => $verifiedAt,
             'fiscal_code' => $fiscalCode,
@@ -178,5 +178,20 @@ class CourseEnrollmentDemoSeeder extends Seeder
         }
 
         CourseEnrollment::enroll($user, $course);
+    }
+
+    private function enrollTeacher(User $user, Course $course): void
+    {
+        $existingEnrollment = CourseTeacherEnrollment::query()
+            ->where('user_id', $user->getKey())
+            ->where('course_id', $course->getKey())
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if ($existingEnrollment) {
+            return;
+        }
+
+        CourseTeacherEnrollment::enroll($user, $course);
     }
 }

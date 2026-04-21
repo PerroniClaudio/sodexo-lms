@@ -62,51 +62,65 @@
                                     {{ $module->description ?: __('Nessuna descrizione disponibile per questo modulo live.') }}
                                 </p>
                             </div>
+
+                            <input
+                                type="radio"
+                                name="teacher-live-stream-tabs"
+                                class="tab"
+                                aria-label="{{ __('Materiale didattico') }}"
+                            />
+                            <div class="tab-content border-base-300 bg-base-100 p-6">
+                                <div class="space-y-6">
+                                    <div>
+                                        <h2 class="text-2xl font-semibold">{{ __('Materiale didattico') }}</h2>
+                                        <p class="mt-2 max-w-3xl text-sm text-base-content/70">
+                                            {{ __('Carica PDF da condividere con i partecipanti durante la diretta. I file saranno disponibili subito anche per il download.') }}
+                                        </p>
+                                    </div>
+
+                                    <form class="space-y-3" data-live-stream-document-form>
+                                        <label class="form-control w-full">
+                                            <span class="label-text text-sm font-medium">{{ __('Seleziona un PDF') }}</span>
+                                            <input
+                                                type="file"
+                                                name="document"
+                                                accept="application/pdf,.pdf"
+                                                class="file-input file-input-bordered w-full"
+                                                data-live-stream-document-input
+                                            >
+                                        </label>
+
+                                        <div class="flex flex-wrap items-center gap-3">
+                                            <button type="submit" class="btn btn-primary" data-live-stream-document-submit>
+                                                {{ __('Carica PDF') }}
+                                            </button>
+                                            <p class="text-sm text-base-content/60" data-live-stream-document-feedback></p>
+                                        </div>
+                                    </form>
+
+                                    <div class="space-y-3">
+                                        <h3 class="text-sm font-semibold uppercase tracking-[0.2em] text-base-content/50">{{ __('PDF condivisi') }}</h3>
+                                        <div class="space-y-3" data-live-stream-documents-list></div>
+                                        <p class="text-sm text-base-content/60" data-live-stream-documents-empty>
+                                            {{ __('Nessun materiale didattico condiviso') }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <aside class="min-h-0 lg:col-span-1">
-                <div class="h-full min-h-[32rem] bg-base-100 p-2">
+                <div class="h-full min-h-128 bg-base-100 p-2">
                     <div class="tabs tabs-lift h-full flex-wrap content-start">
                         <input
                             type="radio"
                             name="teacher-live-stream-sidebar-tabs"
                             class="tab"
-                            aria-label="{{ __('Chat') }}"
-                            checked="checked"
-                        />
-                        <div class="tab-content h-[calc(100%-4rem)] border-base-300 bg-base-100 p-4">
-                            <div class="flex h-full flex-col border border-base-300 bg-base-200">
-                                <div
-                                    class="flex-1 space-y-3 overflow-y-auto px-4 py-4"
-                                    data-live-stream-chat-messages
-                                ></div>
-
-                                <form class="border-t border-base-300 px-4 py-3" data-live-stream-chat-form>
-                                    <div class="flex items-center gap-3">
-                                        <input
-                                            type="text"
-                                            name="body"
-                                            class="input input-bordered w-full"
-                                            placeholder="{{ __('Scrivi un messaggio...') }}"
-                                            maxlength="1000"
-                                            data-live-stream-chat-input
-                                        >
-                                        <button type="submit" class="btn btn-primary" data-live-stream-chat-submit>
-                                            {{ __('Invia') }}
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-
-                        <input
-                            type="radio"
-                            name="teacher-live-stream-sidebar-tabs"
-                            class="tab"
                             aria-label="{{ __('Discenti') }}"
+                            checked="checked"
                         />
                         <div class="tab-content h-[calc(100%-4rem)] border-base-300 bg-base-100 p-4">
                             <div class="h-full overflow-y-auto space-y-4">
@@ -192,7 +206,7 @@
                                             </div>
 
                                             <p class="text-sm text-base-content/60" data-live-stream-device-status>
-                                                {{ __('Consenti l’accesso a videocamera e microfono per visualizzare l’anteprima.') }}
+                                                {{ __('Consenti l’accesso a videocamera e microfono per visualizzare l’anteprima. Puoi continuare anche senza videocamera.') }}
                                             </p>
                                         </div>
                                     </div>
@@ -204,6 +218,119 @@
                                         <span class="text-xs text-base-content/60" data-live-stream-participant-count>0</span>
                                     </div>
                                     <div class="space-y-3" data-live-stream-participant-list></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <input
+                            type="radio"
+                            name="teacher-live-stream-sidebar-tabs"
+                            class="tab"
+                            aria-label="{{ __('Chat') }}"
+                        />
+                        <div class="tab-content h-[calc(100%-4rem)] border-base-300 bg-base-100 p-4">
+                            <div class="flex h-full flex-col border border-base-300 bg-base-200">
+                                <div
+                                    class="flex-1 space-y-3 overflow-y-auto px-4 py-4"
+                                    data-live-stream-chat-messages
+                                ></div>
+
+                                <form class="border-t border-base-300 px-4 py-3" data-live-stream-chat-form>
+                                    <div class="flex items-center gap-3">
+                                        <input
+                                            type="text"
+                                            name="body"
+                                            class="input input-bordered w-full"
+                                            placeholder="{{ __('Scrivi un messaggio...') }}"
+                                            maxlength="1000"
+                                            data-live-stream-chat-input
+                                        >
+                                        <button type="submit" class="btn btn-primary" data-live-stream-chat-submit>
+                                            {{ __('Invia') }}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <input
+                            type="radio"
+                            name="teacher-live-stream-sidebar-tabs"
+                            class="tab"
+                            aria-label="{{ __('Sondaggi') }}"
+                        />
+                        <div class="tab-content h-[calc(100%-4rem)] border-base-300 bg-base-100 p-4">
+                            <div class="flex h-full flex-col gap-4 overflow-y-auto">
+                                <div class="rounded-box border border-base-300 bg-base-200 p-4">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="space-y-1">
+                                            <h3 class="text-sm font-semibold">{{ __('Nuovo sondaggio') }}</h3>
+                                            <p class="text-xs text-base-content/60">
+                                                {{ __('Pubblica una domanda a risposta multipla per i partecipanti connessi. Il nuovo sondaggio chiude automaticamente quello precedente.') }}
+                                            </p>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            class="btn btn-primary btn-sm shrink-0"
+                                            data-live-stream-poll-toggle
+                                            aria-expanded="false"
+                                            aria-controls="live-stream-poll-composer"
+                                        >
+                                            {{ __('Crea sondaggio') }}
+                                        </button>
+                                    </div>
+
+                                    <form
+                                        id="live-stream-poll-composer"
+                                        class="mt-4 hidden space-y-3"
+                                        data-live-stream-poll-form
+                                    >
+                                        <label class="form-control w-full">
+                                            <span class="label-text text-sm font-medium">{{ __('Domanda') }}</span>
+                                            <textarea
+                                                name="question"
+                                                rows="3"
+                                                class="textarea textarea-bordered w-full"
+                                                maxlength="1000"
+                                                placeholder="{{ __('Scrivi la domanda del sondaggio') }}"
+                                                data-live-stream-poll-question-input
+                                            ></textarea>
+                                        </label>
+
+                                        <div class="grid gap-3">
+                                            @foreach (['A', 'B', 'C', 'D'] as $optionLabel)
+                                                <label class="form-control w-full">
+                                                    <span class="label-text text-sm font-medium">{{ __('Risposta :label', ['label' => $optionLabel]) }}</span>
+                                                    <input
+                                                        type="text"
+                                                        name="options[]"
+                                                        class="input input-bordered w-full"
+                                                        maxlength="255"
+                                                        placeholder="{{ __('Inserisci la risposta :label', ['label' => $optionLabel]) }}"
+                                                        data-live-stream-poll-option-input
+                                                    >
+                                                </label>
+                                            @endforeach
+                                        </div>
+
+                                        <div class="flex flex-wrap items-center gap-3">
+                                            <button type="submit" class="btn btn-primary" data-live-stream-poll-submit>
+                                                {{ __('Pubblica sondaggio') }}
+                                            </button>
+                                            <p class="text-sm text-base-content/60" data-live-stream-poll-feedback></p>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <div class="flex min-h-0 flex-1 flex-col gap-3">
+                                    <div class="flex items-center justify-between gap-3 px-1">
+                                        <h3 class="text-sm font-semibold">{{ __('Sondaggi pubblicati') }}</h3>
+                                    </div>
+                                    <div class="space-y-3" data-live-stream-polls-list></div>
+                                    <p class="text-sm text-base-content/60" data-live-stream-polls-empty>
+                                        {{ __('Nessun sondaggio pubblicato') }}
+                                    </p>
                                 </div>
                             </div>
                         </div>

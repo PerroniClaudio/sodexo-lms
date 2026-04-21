@@ -100,6 +100,14 @@ class Module extends Model
     }
 
     /**
+     * Get the uploaded live stream documents for the module.
+     */
+    public function liveStreamDocuments(): HasMany
+    {
+        return $this->hasMany(LiveStreamDocument::class);
+    }
+
+    /**
      * Get the active live stream session for the module.
      */
     public function activeLiveStreamSession(): HasOne
