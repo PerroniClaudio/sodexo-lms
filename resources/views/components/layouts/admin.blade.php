@@ -17,6 +17,7 @@
         <div class="drawer-side">
             <label for="my-drawer-3" aria-label="close sidebar" class="drawer-overlay"></label>
             <div class="flex min-h-full w-80 flex-col bg-base-200 p-4">
+
                 <ul class="menu w-full gap-1">
                     <li class="w-full">
                         <a
@@ -29,6 +30,20 @@
                             {{ __('Corsi') }}
                         </a>
                     </li>
+
+                    @role(['admin', 'superadmin'])
+                        <li class="w-full">
+                            <a
+                                href="{{ route('admin.users.index') }}"
+                                @class([
+                                    'w-full',
+                                    'menu-active' => request()->routeIs('admin.users.*'),
+                                ])
+                            >
+                                {{ __('Utenti') }}
+                            </a>
+                        </li>
+                    @endrole
 
                     @role('superadmin')
                         <li>

@@ -14,11 +14,24 @@ class UserObserver
      */
     public function creating(User $user): void
     {
+        // Genera password randomica se non presente
+        if (empty($user->password)) {
+            $user->password = \Illuminate\Support\Facades\Hash::make(\Illuminate\Support\Str::random(12));
+        }
+
         // Valida campi job obbligatori per utenti normali (non admin/test)
         $this->validateJobFields($user);
-
-        // Sincronizza dati geografici
-        $this->syncJobGeographicData($user);
+    }
+    
+    /**
+     * Handle the User "created" event.
+     */
+    public function created(User $user): void
+    {
+        // Invia mail di verifica se non già verificato
+        if (!$user->hasVerifiedEmail()) {
+            $user->sendEmailVerificationNotification();
+        }
     }
 
     /**
@@ -29,11 +42,6 @@ class UserObserver
         // Valida campi job se modificati e utente è normale
         if ($user->isDirty(['job_unit_id', 'job_title_id', 'job_role_id', 'job_sector_id'])) {
             $this->validateJobFields($user);
-        }
-
-        // Sincronizza dati geografici se job_unit cambia
-        if ($user->isDirty('job_unit_id')) {
-            $this->syncJobGeographicData($user);
         }
     }
 
@@ -72,22 +80,6 @@ class UserObserver
 
             if (! empty($errors)) {
                 throw ValidationException::withMessages($errors);
-            }
-        }
-    }
-
-    /**
-     * Sincronizza i dati geografici job dall'unità lavorativa
-     */
-    protected function syncJobGeographicData(User $user): void
-    {
-        if ($user->job_unit_id) {
-            $jobUnit = JobUnit::find($user->job_unit_id);
-
-            if ($jobUnit) {
-                $user->job_country = $jobUnit->country;
-                $user->job_region = $jobUnit->region;
-                $user->job_province = $jobUnit->province;
             }
         }
     }

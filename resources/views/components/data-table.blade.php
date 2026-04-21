@@ -55,18 +55,15 @@
                                 $columnKey = $column['key'];
                                 $columnIsSortable = $column['sortable'] ?? false;
                                 $columnIsActive = $sort === $columnKey;
-                                
+
                                 // Ciclo di ordinamento a 3 stati: ASC → DESC → Nessun ordinamento
                                 if (!$columnIsActive) {
-                                    // Colonna non attiva → ASC
                                     $nextDirection = 'asc';
                                     $nextSort = $columnKey;
-                                } elseif ($columnIsActive && $currentDirection === 'asc') {
-                                    // ASC → DESC
+                                } elseif ($columnIsActive && $direction === 'asc') {
                                     $nextDirection = 'desc';
                                     $nextSort = $columnKey;
                                 } else {
-                                    // DESC → Rimuovi ordinamento (torna al default)
                                     $nextDirection = null;
                                     $nextSort = null;
                                 }

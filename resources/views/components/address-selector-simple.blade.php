@@ -16,7 +16,7 @@
     <!-- Paese -->
     <div class="form-control">
         <label class="label">
-            <span class="label-text">
+            <span class="label-text font-semibold">
                 {{ __('Paese') }}
                 @if($required)<span class="text-error">*</span>@endif
             </span>
@@ -34,7 +34,7 @@
     <!-- Regione -->
     <div class="form-control region-container hidden">
         <label class="label">
-            <span class="label-text">
+            <span class="label-text font-semibold">
                 {{ __('Regione') }}
                 @if($required)<span class="text-error">*</span>@endif
             </span>
@@ -52,7 +52,7 @@
     <!-- Provincia (solo per Italia) -->
     <div class="form-control province-container hidden">
         <label class="label">
-            <span class="label-text">{{ __('Provincia') }}</span>
+            <span class="label-text font-semibold">{{ __('Provincia') }}</span>
         </label>
         <select 
             name="province" 
@@ -66,7 +66,7 @@
     <!-- Città -->
     <div class="form-control city-container hidden">
         <label class="label">
-            <span class="label-text">
+            <span class="label-text font-semibold">
                 {{ __('Città') }}
                 @if($required)<span class="text-error">*</span>@endif
             </span>
@@ -84,7 +84,7 @@
     <!-- Indirizzo -->
     <div class="form-control">
         <label class="label">
-            <span class="label-text">{{ __('Indirizzo') }}</span>
+            <span class="label-text font-semibold">{{ __('Indirizzo') }}</span>
         </label>
         <input 
             type="text" 
@@ -98,7 +98,7 @@
     <!-- Codice Postale -->
     <div class="form-control">
         <label class="label">
-            <span class="label-text">{{ __('Codice Postale') }}</span>
+            <span class="label-text font-semibold">{{ __('Codice Postale') }}</span>
         </label>
         <div class="relative">
             <input 

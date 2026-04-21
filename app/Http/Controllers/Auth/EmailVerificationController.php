@@ -91,24 +91,16 @@ class EmailVerificationController extends Controller
     public function resend(Request $request): RedirectResponse
     {
         $request->validate([
-            'email' => ['required', 'email', 'exists:users,email'],
+            'email' => ['required', 'email'],
         ]);
 
         $user = User::where('email', $request->email)->first();
-
-        if (! $user) {
-            return back()->withErrors([
-                'email' => __('Nessun utente trovato con questa email.'),
-            ]);
+        if ($user && (!$user->hasVerifiedEmail() || !$user->password)) {
+            // Invia solo se necessario
+            $user->sendEmailVerificationNotification();
         }
 
-        if ($user->hasVerifiedEmail() && $user->password) {
-            return back()->with('status', __('Email già verificata. Puoi effettuare il login.'));
-        }
-
-        // Invia nuova email di verifica
-        $user->sendEmailVerificationNotification();
-
-        return back()->with('status', __('Email di verifica inviata! Controlla la tua casella di posta.'));
+        // Risposta sempre uguale, per privacy
+        return back()->with('status', __('resend_verification_email_success'));
     }
 }

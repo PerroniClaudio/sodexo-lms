@@ -8,6 +8,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -16,45 +17,43 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
-
-#[Fillable([
-    'email',
-    'password',
-    'account_state',
-    'profile_completed_at',
-    'last_data_update_request',
-    'onboarding_step',
-    'name',
-    'surname',
-    'fiscal_code',
-    'birth_date',
-    'birth_place',
-    'gender',
-    'phone_prefix',
-    'phone',
-    'nation',
-    'region',
-    'province',
-    'city',
-    'address',
-    'postal_code',
-    'job_unit_id',
-    'job_country',
-    'job_region',
-    'job_province',
-    'job_category_id',
-    'job_level_id',
-    'job_title_id',
-    'job_role_id',
-    'job_sector_id',
-    'is_foreigner_or_immigrant',
-    'notes',
-])]
-#[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasRoles, Notifiable, SoftDeletes;
+
+    protected $fillable = [
+        'email',
+        'password',
+        'account_state',
+        'profile_completed_at',
+        'last_data_update_request',
+        'onboarding_step',
+        'name',
+        'surname',
+        'fiscal_code',
+        'birth_date',
+        'birth_place',
+        'gender',
+        'phone_prefix',
+        'phone',
+        'home_country_id',
+        'home_region_id',
+        'home_province_id',
+        'home_city_id',
+        'address',
+        'postal_code',
+        'job_unit_id',
+        'job_category_id',
+        'job_level_id',
+        'job_title_id',
+        'job_role_id',
+        'job_sector_id',
+        'is_foreigner_or_immigrant',
+        'notes',
+    ];
+    
+    protected $hidden = ['password', 'remember_token'];
 
     /**
      * Get the attributes that should be cast.
@@ -161,11 +160,31 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return "{$this->name} {$this->surname}";
     }
+    
+    public function homeCountry(): BelongsTo
+    {
+        return $this->belongsTo(WorldCountry::class, 'home_country_id');
+    }
+
+    public function homeRegion(): BelongsTo
+    {
+        return $this->belongsTo(WorldDivision::class, 'home_region_id');
+    }
+
+    public function homeProvince(): BelongsTo
+    {
+        return $this->belongsTo(Province::class, 'home_province_id');
+    }
+
+    public function homeCity(): BelongsTo
+    {
+        return $this->belongsTo(WorldCity::class, 'home_city_id');
+    }
 
     /**
-     * Get full residential address attribute
+     * Get full home address attribute
      */
-    public function getFullResidentialAddressAttribute(): ?string
+    public function getFullHomeAddressAttribute(): ?string
     {
         if (! $this->address) {
             return null;
@@ -173,10 +192,10 @@ class User extends Authenticatable implements MustVerifyEmail
 
         return collect([
             $this->address,
-            $this->postal_code ? "{$this->postal_code} {$this->city}" : $this->city,
-            $this->province,
-            $this->region,
-            $this->nation,
+            $this->postal_code ? "{$this->postal_code} {$this->homeCity?->name}" : $this->homeCity?->name,
+            $this->homeProvince?->name,
+            $this->homeRegion?->name,
+            $this->homeCountry?->name,
         ])->filter()->implode(', ');
     }
 
@@ -331,4 +350,29 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->onboarding_step?->progressPercentage() ?? 0;
     }
+
+    /**
+     * Accessor per job_country (ISO2) dalla jobUnit
+     */
+    public function getJobCountryAttribute(): ?string
+    {
+        return $this->jobUnit?->country?->code ?? null;
+    }
+
+    /**
+     * Accessor per job_region (nome) dalla jobUnit
+     */
+    public function getJobRegionAttribute(): ?string
+    {
+        return $this->jobUnit?->region?->name ?? null;
+    }
+
+    /**
+     * Accessor per job_province (sigla) dalla jobUnit
+     */
+    public function getJobProvinceAttribute(): ?string
+    {
+        return $this->jobUnit?->province?->code ?? null;
+    }
+
 }

@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\JobUnitController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\LiveStreamController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\UserController;
 
 Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
     Route::group(['prefix' => 'admin', 'as' => 'admin.'], function () {
@@ -25,6 +26,8 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::put('/courses/{course}/modules/{module}', [CourseModuleController::class, 'update'])->name('courses.modules.update');
         Route::delete('/courses/{course}/modules/{module}', [CourseModuleController::class, 'destroy'])->name('courses.modules.destroy');
         Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
+        Route::resource('users', UserController::class)->except(['show']);
+        Route::post('users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
 
         // Job Management Routes (require 'manage job data' permission)
         Route::middleware('permission:manage job data')->group(function () {

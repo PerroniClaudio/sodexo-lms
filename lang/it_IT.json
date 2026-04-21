@@ -70,5 +70,6 @@
     "Nessun corso disponibile.": "Nessun corso disponibile.",
     "Visualizzazione di :from-:to su :total corsi": "Visualizzazione di :from-:to su :total corsi",
     "Precedente": "Precedente",
-    "Successiva": "Successiva"
+    "Successiva": "Successiva",
+    "resend_verification_email_success": "Se esiste un account con questa email, è stata inviata una nuova email di verifica."
 }
