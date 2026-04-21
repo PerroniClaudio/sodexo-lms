@@ -324,6 +324,44 @@ test('joined tutor can send a live stream chat message with tutor role', functio
     expect(LiveStreamMessage::query()->first()?->app_role)->toBe(LiveStreamParticipant::ROLE_TUTOR);
 });
 
+test('joined tutor can remove a live stream chat message for moderation', function () {
+    $module = createLiveModuleWithCourse();
+    $session = LiveStreamSession::factory()->create([
+        'module_id' => $module->getKey(),
+        'status' => LiveStreamSession::STATUS_LIVE,
+    ]);
+
+    $this->seed(RoleAndPermissionSeeder::class);
+
+    $tutor = User::factory()->create();
+    $tutor->assignRole('tutor');
+
+    LiveStreamParticipant::factory()->create([
+        'live_stream_session_id' => $session->getKey(),
+        'user_id' => $tutor->getKey(),
+        'app_role' => LiveStreamParticipant::ROLE_TUTOR,
+        'is_hidden' => true,
+        'audio_enabled' => false,
+        'video_enabled' => false,
+    ]);
+
+    $student = User::factory()->create();
+
+    $message = LiveStreamMessage::factory()->create([
+        'live_stream_session_id' => $session->getKey(),
+        'user_id' => $student->getKey(),
+        'app_role' => LiveStreamParticipant::ROLE_USER,
+        'body' => 'Messaggio da moderare',
+    ]);
+
+    $this->actingAs($tutor)
+        ->deleteJson(route('tutor.live-stream.messages.destroy', [$module, $message]))
+        ->assertSuccessful()
+        ->assertJsonPath('message', 'Messaggio rimosso.');
+
+    expect(LiveStreamMessage::query()->whereKey($message->getKey())->exists())->toBeFalse();
+});
+
 test('teacher state returns recent live stream chat messages in chronological order', function () {
     $teacher = actingAsRole('docente');
     $module = createLiveModuleWithCourse();

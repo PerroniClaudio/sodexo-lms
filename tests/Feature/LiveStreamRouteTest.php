@@ -52,6 +52,7 @@ test('live stream player route renders module data for the requested live module
     $response->assertDontSeeText('La diretta è attiva. Puoi entrare ora.');
     $response->assertSee('data-live-stream-hand-raise-button', false);
     $response->assertSee('class="btn btn-square btn-outline hidden"', false);
+    $response->assertDontSee('data-chat-delete', false);
     $response->assertDontSee('data-live-stream-status-badge', false);
     $response->assertDontSee('data-live-stream-message', false);
     $response->assertSee('data-live-stream-main-stage', false);
@@ -231,6 +232,7 @@ test('tutor live stream route renders the updated user player layout without han
     $response->assertSee('data-live-stream-chat-form', false);
     $response->assertSee('data-live-stream-chat-input', false);
     $response->assertSee('data-live-stream-chat-submit', false);
+    $response->assertSee('data-chat-delete', false);
     $response->assertDontSee('data-live-stream-hand-raise-button', false);
     $response->assertDontSee('data-live-stream-hand-raise-status', false);
     $response->assertSee('data-live-stream-main-stage', false);

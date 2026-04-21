@@ -92,7 +92,10 @@ export function initViewerPage() {
             syncViewerAudioGrant();
             renderViewerStage();
             renderParticipantList();
-            renderChatMessages(root, response.data.messages ?? []);
+            renderChatMessages(root, response.data.messages ?? [], {
+                canModerateMessages: canModerateMessages(),
+                onDeleteMessage: deleteChatMessage,
+            });
 
             if (response.data.status !== 'live' && state.room) {
                 teardownRoom();
@@ -208,6 +211,25 @@ export function initViewerPage() {
         } finally {
             updateChatComposerState();
         }
+    }
+
+    async function deleteChatMessage(message) {
+        if (!message?.id || !config.routes.deleteMessageTemplate || !canModerateMessages()) {
+            return;
+        }
+
+        try {
+            await window.axios.delete(
+                config.routes.deleteMessageTemplate.replace('__MESSAGE__', String(message.id)),
+            );
+            await fetchState();
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    function canModerateMessages() {
+        return Boolean(config.capabilities?.canModerateChat) && Boolean(config.routes.deleteMessageTemplate) && state.joined && state.latestState?.status === 'live';
     }
 
     function subscribeToRoom() {

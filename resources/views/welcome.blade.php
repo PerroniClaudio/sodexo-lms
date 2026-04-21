@@ -8,9 +8,15 @@
             </div>
 
             <div class="flex-none">
-                <a href="{{ route('login') }}" class="btn btn-primary">
-                    {{ __('Login') }}
-                </a>
+                @auth
+                    <a href="{{ route('reserved-area') }}" class="btn btn-primary">
+                        {{ __('Area riservata') }}
+                    </a>
+                @else
+                    <a href="{{ route('login') }}" class="btn btn-primary">
+                        {{ __('Login') }}
+                    </a>
+                @endauth
             </div>
         </div>
     </section>

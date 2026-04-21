@@ -228,6 +228,11 @@ class LiveStreamController extends Controller
         return $this->storeMessage($request, $module, LiveStreamParticipant::ROLE_TUTOR);
     }
 
+    public function destroyTutorMessage(Request $request, Module $module, LiveStreamMessage $message): JsonResponse
+    {
+        return $this->destroyMessage($request, $module, $message, LiveStreamParticipant::ROLE_TUTOR);
+    }
+
     public function storeHandRaise(Request $request, Module $module): JsonResponse
     {
         $this->abortUnlessLiveModule($module);
@@ -496,6 +501,41 @@ class LiveStreamController extends Controller
         ], Response::HTTP_CREATED);
     }
 
+    private function destroyMessage(Request $request, Module $module, LiveStreamMessage $message, string $role): JsonResponse
+    {
+        $this->abortUnlessLiveModule($module);
+
+        $session = $module->activeLiveStreamSession()->first();
+
+        if ($session === null) {
+            return response()->json([
+                'message' => __('La diretta non è attiva.'),
+            ], Response::HTTP_CONFLICT);
+        }
+
+        $participant = $session->participants()
+            ->where('user_id', $request->user()->getKey())
+            ->where('app_role', $role)
+            ->first();
+
+        if ($participant === null) {
+            return response()->json([
+                'message' => __('Collegati alla diretta prima di moderare la chat.'),
+            ], Response::HTTP_CONFLICT);
+        }
+
+        abort_unless(
+            $message->live_stream_session_id === $session->getKey(),
+            Response::HTTP_NOT_FOUND,
+        );
+
+        $message->delete();
+
+        return response()->json([
+            'message' => __('Messaggio rimosso.'),
+        ]);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -614,6 +654,9 @@ class LiveStreamController extends Controller
                 'chat' => in_array($role, [LiveStreamParticipant::ROLE_TEACHER, LiveStreamParticipant::ROLE_TUTOR, LiveStreamParticipant::ROLE_USER], true)
                     ? route($routePrefix.'.live-stream.messages.store', $module)
                     : null,
+                'deleteMessageTemplate' => $role === LiveStreamParticipant::ROLE_TUTOR
+                    ? route('tutor.live-stream.messages.destroy', [$module, '__MESSAGE__'])
+                    : null,
                 'startSession' => $role === LiveStreamParticipant::ROLE_TEACHER
                     ? route('teacher.live-stream.session.start', $module)
                     : null,
@@ -633,6 +676,7 @@ class LiveStreamController extends Controller
             'capabilities' => [
                 'canEndSession' => $role === LiveStreamParticipant::ROLE_TEACHER,
                 'canRaiseHand' => $role === LiveStreamParticipant::ROLE_USER,
+                'canModerateChat' => $role === LiveStreamParticipant::ROLE_TUTOR,
                 'canModerateSpeakers' => $role === LiveStreamParticipant::ROLE_TEACHER,
                 'hiddenParticipant' => $role === LiveStreamParticipant::ROLE_TUTOR,
             ],

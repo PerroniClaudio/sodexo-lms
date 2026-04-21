@@ -2,6 +2,7 @@
     @vite('resources/js/livestream-user.js')
 
     @php($canRaiseHand = (bool) data_get($liveStreamConfig, 'capabilities.canRaiseHand', false))
+    @php($canModerateChat = (bool) data_get($liveStreamConfig, 'capabilities.canModerateChat', false))
 
     <section class="min-h-screen w-full bg-base-100" data-live-stream-root>
         <script type="application/json" data-live-stream-config>@json($liveStreamConfig)</script>
@@ -229,6 +230,18 @@
                 <div class="chat-header mb-1 flex items-center gap-2 text-sm">
                     <span class="font-semibold" data-chat-author></span>
                     <time class="text-xs text-base-content/50" data-chat-time></time>
+                    @if ($canModerateChat)
+                        <button
+                            type="button"
+                            class="btn btn-ghost btn-xs ml-auto hidden"
+                            data-chat-delete
+                            aria-label="{{ __('Rimuovi messaggio') }}"
+                            title="{{ __('Rimuovi messaggio') }}"
+                        >
+                            <x-lucide-trash-2 class="h-3.5 w-3.5" />
+                            <span class="sr-only">{{ __('Rimuovi messaggio') }}</span>
+                        </button>
+                    @endif
                 </div>
                 <div class="chat-bubble rounded-none bg-base-100 text-base-content" data-chat-bubble>
                     <p data-chat-body></p>

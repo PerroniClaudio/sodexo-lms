@@ -1,4 +1,4 @@
-import { Hand, Mic, MicOff, Pin, ScreenShare } from 'lucide';
+import { Hand, Mic, MicOff, Pin, ScreenShare, Trash2 } from 'lucide';
 
 const LIVE_STREAM_ICON_NODES = {
     hand: Hand,
@@ -6,6 +6,7 @@ const LIVE_STREAM_ICON_NODES = {
     'mic-off': MicOff,
     pin: Pin,
     'screen-share': ScreenShare,
+    trash: Trash2,
 };
 
 export function getLiveStreamRoot() {
@@ -28,7 +29,7 @@ export function getLiveStreamConfig(root) {
     }
 }
 
-export function renderChatMessages(root, messages = []) {
+export function renderChatMessages(root, messages = [], options = {}) {
     const messagesContainer = root.querySelector('[data-live-stream-chat-messages]');
     const messageTemplate = root.querySelector('[data-live-stream-chat-template]');
 
@@ -54,6 +55,7 @@ export function renderChatMessages(root, messages = []) {
         const bodyElement = fragment.querySelector('[data-chat-body]');
         const initialsElement = fragment.querySelector('[data-chat-initials]');
         const bubbleElement = fragment.querySelector('[data-chat-bubble]');
+        const deleteButton = fragment.querySelector('[data-chat-delete]');
 
         if (
             !(authorElement instanceof HTMLElement) ||
@@ -73,6 +75,19 @@ export function renderChatMessages(root, messages = []) {
         if (message.app_role === 'teacher' || message.app_role === 'tutor') {
             bubbleElement.classList.add('bg-primary', 'text-primary-content');
             bubbleElement.classList.remove('bg-base-200', 'bg-base-100', 'text-base-content');
+        }
+
+        if (deleteButton instanceof HTMLButtonElement) {
+            const canModerateMessages = Boolean(options.canModerateMessages);
+
+            deleteButton.classList.toggle('hidden', !canModerateMessages);
+            deleteButton.disabled = !canModerateMessages;
+
+            if (canModerateMessages && typeof options.onDeleteMessage === 'function') {
+                deleteButton.addEventListener('click', async () => {
+                    await options.onDeleteMessage(message);
+                });
+            }
         }
 
         messagesContainer.appendChild(fragment);
