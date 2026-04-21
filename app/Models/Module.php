@@ -27,6 +27,7 @@ class Module extends Model
         'video',
         'res',
         'live',
+        'scorm',
         'learning_quiz',
         'satisfaction_quiz',
     ];
@@ -107,6 +108,11 @@ class Module extends Model
         return $this->hasMany(LiveStreamDocument::class);
     }
 
+    public function scormPackages(): HasMany
+    {
+        return $this->hasMany(ScormPackage::class);
+    }
+
     public function liveStreamAttendanceMinutes(): HasMany
     {
         return $this->hasMany(LiveStreamAttendanceMinute::class);
@@ -143,6 +149,7 @@ class Module extends Model
             'video' => __('Video'),
             'res' => __('Residential'),
             'live' => __('Live'),
+            'scorm' => __('SCORM'),
             'learning_quiz' => __('Learning quiz'),
             'satisfaction_quiz' => __('Satisfaction quiz'),
         ];
@@ -213,5 +220,10 @@ class Module extends Model
     public function isVideo(): bool
     {
         return $this->type === 'video';
+    }
+
+    public function isScorm(): bool
+    {
+        return $this->type === 'scorm';
     }
 }

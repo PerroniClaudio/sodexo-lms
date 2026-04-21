@@ -137,6 +137,14 @@ class Course extends Model
     }
 
     /**
+     * Get the SCORM packages for the course.
+     */
+    public function scormPackages(): HasMany
+    {
+        return $this->hasMany(ScormPackage::class);
+    }
+
+    /**
      * Get the users enrolled in the course.
      */
     public function users(): BelongsToMany

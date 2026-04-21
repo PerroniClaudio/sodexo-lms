@@ -4,6 +4,7 @@
             'video' => 'lucide-clapperboard',
             'res' => 'lucide-users',
             'live' => 'lucide-monitor-play',
+            'scorm' => 'lucide-package',
             'learning_quiz' => 'lucide-badge-help',
             'satisfaction_quiz' => 'lucide-message-square-heart',
         ];

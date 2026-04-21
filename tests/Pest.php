@@ -3,6 +3,7 @@
 use App\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 /*
@@ -61,4 +62,52 @@ function actingAsRole(string $role): User
     test()->actingAs($user);
 
     return $user;
+}
+
+function scormZipUpload(array $files): UploadedFile
+{
+    $temporaryFile = tempnam(sys_get_temp_dir(), 'scorm-test-');
+    $archive = new ZipArchive;
+    $archive->open($temporaryFile, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+
+    foreach ($files as $path => $contents) {
+        $archive->addFromString($path, $contents);
+    }
+
+    $archive->close();
+
+    return new UploadedFile($temporaryFile, 'package.zip', 'application/zip', null, true);
+}
+
+function validScormManifest(): string
+{
+    return <<<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="manifest-1" version="1.2"
+    xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
+    xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2">
+    <metadata>
+        <schema>ADL SCORM</schema>
+        <schemaversion>1.2</schemaversion>
+    </metadata>
+    <organizations default="ORG-DEFAULT">
+        <organization identifier="ORG-OTHER">
+            <title>Other</title>
+            <item identifier="ITEM-OTHER" identifierref="RES-OTHER">
+                <title>Other Item</title>
+            </item>
+        </organization>
+        <organization identifier="ORG-DEFAULT">
+            <title>Default Org</title>
+            <item identifier="ITEM-DEFAULT" identifierref="RES-DEFAULT">
+                <title>Launch Item</title>
+            </item>
+        </organization>
+    </organizations>
+    <resources>
+        <resource identifier="RES-OTHER" type="webcontent" adlcp:scormtype="sco" href="other/index.html" />
+        <resource identifier="RES-DEFAULT" type="webcontent" adlcp:scormtype="sco" href="lesson/index.html" />
+    </resources>
+</manifest>
+XML;
 }
