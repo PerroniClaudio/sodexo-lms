@@ -1,8 +1,11 @@
 <?php
 
 use App\Models\Course;
+use App\Models\CourseEnrollment;
 use App\Models\CourseTeacherEnrollment;
 use App\Models\CourseTutorEnrollment;
+use App\Models\LiveStreamAttendanceMinute;
+use App\Models\LiveStreamSession;
 use App\Models\Module;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,6 +15,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     actingAsRole('admin');
+    $this->withoutVite();
 });
 
 it('shows the edit module page', function () {
@@ -46,6 +50,12 @@ it('shows the edit module page', function () {
     ]);
     $availableTutor->assignRole('tutor');
 
+    $participant = User::factory()->create([
+        'name' => 'Luca',
+        'surname' => 'Verdi',
+        'email' => 'luca.verdi@example.test',
+    ]);
+
     CourseTeacherEnrollment::factory()->create([
         'course_id' => $course->getKey(),
         'user_id' => $teacher->getKey(),
@@ -66,6 +76,22 @@ it('shows the edit module page', function () {
         'appointment_start_time' => Carbon::parse('2026-05-20 14:30:00'),
         'appointment_end_time' => Carbon::parse('2026-05-20 16:00:00'),
         'belongsTo' => (string) $course->getKey(),
+    ]);
+    $session = LiveStreamSession::factory()->create([
+        'module_id' => $module->getKey(),
+        'status' => LiveStreamSession::STATUS_LIVE,
+    ]);
+
+    CourseEnrollment::enroll($participant, $course);
+
+    LiveStreamAttendanceMinute::query()->create([
+        'live_stream_session_id' => $session->getKey(),
+        'module_id' => $module->getKey(),
+        'user_id' => $participant->getKey(),
+        'minute_at' => Carbon::parse('2026-05-20 14:30:00'),
+        'first_seen_at' => Carbon::parse('2026-05-20 14:30:05'),
+        'last_seen_at' => Carbon::parse('2026-05-20 14:30:40'),
+        'heartbeat_count' => 2,
     ]);
 
     $response = $this->get(route('admin.courses.modules.edit', [$course, $module]));
@@ -102,6 +128,17 @@ it('shows the edit module page', function () {
     $response->assertSee('id="assign-tutors-modal"', escape: false);
     $response->assertSeeText('Sara Gialli');
     $response->assertSee('name="tutor_ids[]"', escape: false);
+    $response->assertSeeText('Partecipazione alla live');
+    $response->assertSeeText('Tempo registrato');
+    $response->assertSeeText('Luca Verdi');
+    $response->assertSeeText('00:01');
+    $response->assertSee('data-open-attendance-confirmation-modal', escape: false);
+    $response->assertSee('id="confirm-attendance-modal"', escape: false);
+    $response->assertSeeText('Conferma partecipanti');
+    $response->assertSee('name="effective_start_time"', escape: false);
+    $response->assertSee('name="effective_end_time"', escape: false);
+    $response->assertSee('name="minimum_attendance_percentage"', escape: false);
+    $response->assertSeeText('Conferma presenti');
     $response->assertSeeText('Salva modulo');
 
     $availableTeachers = $response->viewData('availableTeachers');
@@ -113,6 +150,11 @@ it('shows the edit module page', function () {
 
     expect($availableTutors->pluck('id')->all())->toContain($availableTutor->getKey());
     expect($availableTutors->pluck('id')->all())->not->toContain($assignedTutor->getKey());
+
+    $liveAttendanceRows = $response->viewData('liveAttendanceRows');
+
+    expect($liveAttendanceRows)->toHaveCount(1);
+    expect($liveAttendanceRows->first()['attendance_seconds'])->toBe(60);
 });
 
 it('does not show the editable title field for quiz modules', function () {

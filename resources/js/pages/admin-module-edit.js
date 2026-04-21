@@ -19,6 +19,13 @@ document.addEventListener('DOMContentLoaded', () => {
         '[data-close-tutor-assignment-modal]',
         'hasTutorAssignmentErrors',
     );
+    initializeAssignmentDialog(
+        moduleEditPage,
+        '#confirm-attendance-modal',
+        '[data-open-attendance-confirmation-modal]',
+        '[data-close-attendance-confirmation-modal]',
+        'hasAttendanceConfirmationErrors',
+    );
 });
 
 function initializeAssignmentDialog(moduleEditPage, modalSelector, openButtonSelector, closeButtonSelector, errorFlag) {

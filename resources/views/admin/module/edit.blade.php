@@ -2,6 +2,9 @@
     @php
         $hasTeacherAssignmentErrors = $errors->has('teacher_ids') || $errors->has('teacher_ids.*');
         $hasTutorAssignmentErrors = $errors->has('tutor_ids') || $errors->has('tutor_ids.*');
+        $hasAttendanceConfirmationErrors = $errors->has('effective_start_time')
+            || $errors->has('effective_end_time')
+            || $errors->has('minimum_attendance_percentage');
     @endphp
 
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
@@ -21,6 +24,7 @@
             data-module-edit-page
             data-has-teacher-assignment-errors="{{ $hasTeacherAssignmentErrors ? 'true' : 'false' }}"
             data-has-tutor-assignment-errors="{{ $hasTutorAssignmentErrors ? 'true' : 'false' }}"
+            data-has-attendance-confirmation-errors="{{ $hasAttendanceConfirmationErrors ? 'true' : 'false' }}"
         >
             <div class="card-body gap-6">
                 <form method="POST" action="{{ route('admin.courses.modules.update', [$course, $module]) }}" class="flex flex-col gap-6">
@@ -44,6 +48,7 @@
         @if ($module->type === 'live')
             @include('admin.module.partials.live-teachers-card')
             @include('admin.module.partials.live-tutors-card')
+            @include('admin.module.partials.live-attendance-card')
         @endif
     </div>
 

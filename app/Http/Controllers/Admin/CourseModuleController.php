@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AssignModuleTeachersRequest;
 use App\Http\Requests\AssignModuleTutorsRequest;
+use App\Http\Requests\ConfirmLiveAttendanceRequest;
 use App\Http\Requests\ReorderCourseModulesRequest;
 use App\Http\Requests\StoreModuleRequest;
 use App\Http\Requests\UpdateModuleRequest;
@@ -13,6 +14,7 @@ use App\Models\CourseTeacherEnrollment;
 use App\Models\CourseTutorEnrollment;
 use App\Models\Module;
 use App\Models\User;
+use App\Services\LiveModuleAttendanceService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -46,7 +48,7 @@ class CourseModuleController extends Controller
             ->with('status', __('Module created successfully.'));
     }
 
-    public function edit(Course $course, Module $module): View
+    public function edit(Course $course, Module $module, LiveModuleAttendanceService $liveModuleAttendanceService): View
     {
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
 
@@ -60,6 +62,10 @@ class CourseModuleController extends Controller
             'availableTeachers' => $this->availableTeachers($course),
             'assignedTutors' => $this->assignedTutors($course),
             'availableTutors' => $this->availableTutors($course),
+            'liveAttendanceRows' => $module->type === 'live'
+                ? $liveModuleAttendanceService->buildReport($module)
+                : collect(),
+            'moduleProgressStatusLabels' => $this->moduleProgressStatusLabels(),
         ]);
     }
 
@@ -198,6 +204,27 @@ class CourseModuleController extends Controller
             ->with('status', __('Module updated successfully.'));
     }
 
+    public function confirmAttendance(
+        ConfirmLiveAttendanceRequest $request,
+        Course $course,
+        Module $module,
+        LiveModuleAttendanceService $liveModuleAttendanceService,
+    ): RedirectResponse {
+        abort_unless($module->belongsTo === (string) $course->getKey(), 404);
+        abort_unless($module->type === 'live', 404);
+
+        $stats = $liveModuleAttendanceService->confirmAttendance(
+            $module,
+            $request->effectiveStartAt(),
+            $request->effectiveEndAt(),
+            $request->minimumAttendancePercentage(),
+        );
+
+        return redirect()
+            ->route('admin.courses.modules.edit', [$course, $module])
+            ->with('status', $this->attendanceConfirmationStatusMessage($stats));
+    }
+
     public function destroy(Course $course, Module $module): RedirectResponse
     {
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
@@ -277,5 +304,31 @@ class CourseModuleController extends Controller
             ->orderBy('surname')
             ->orderBy('name')
             ->get();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function moduleProgressStatusLabels(): array
+    {
+        return [
+            'locked' => __('Bloccato'),
+            'available' => __('Disponibile'),
+            'in_progress' => __('In corso'),
+            'completed' => __('Completato'),
+            'failed' => __('Non superato'),
+        ];
+    }
+
+    /**
+     * @param  array<string, int>  $stats
+     */
+    private function attendanceConfirmationStatusMessage(array $stats): string
+    {
+        return __('Presenze confermate. :confirmed utenti abilitati, :alreadyCompleted già completati, :notCurrent sopra soglia ma non ancora sul modulo corrente.', [
+            'confirmed' => $stats['confirmed'],
+            'alreadyCompleted' => $stats['already_completed'],
+            'notCurrent' => $stats['skipped_not_current'],
+        ]);
     }
 }
