@@ -13,6 +13,7 @@ import {
     getParticipantInitialsBadgeClassNames,
     getParticipantAudioStatusMarkup,
     getLiveStreamRoot,
+    renderMuxStage,
     renderChatMessages,
     renderDocuments,
     setBadgeState,
@@ -46,6 +47,7 @@ export function initTeacherPage() {
         config,
         room: null,
         joined: false,
+        regiaModalOpen: false,
         latestState: null,
         audioNodes: new Map(),
         remoteAudioAnalysers: new Map(),
@@ -77,6 +79,12 @@ export function initTeacherPage() {
     const pollSubmitButton = root.querySelector('[data-live-stream-poll-submit]');
     const pollFeedback = root.querySelector('[data-live-stream-poll-feedback]');
     const deviceStatus = root.querySelector('[data-live-stream-device-status]');
+    const muxStage = root.querySelector('[data-live-stream-mux-stage]');
+    const regiaModal = root.querySelector('[data-live-stream-regia-modal]');
+    const regiaModalCloseButton = root.querySelector('[data-live-stream-regia-modal-close]');
+    const regiaStreamKey = root.querySelector('[data-live-stream-regia-stream-key]');
+    const regiaIngestUrl = root.querySelector('[data-live-stream-regia-ingest-url]');
+    const regiaPlaybackId = root.querySelector('[data-live-stream-regia-playback-id]');
     const previewController = createPreviewController(root, {
         onAudioStateChange: syncMicToggleButton,
     });
@@ -134,6 +142,12 @@ export function initTeacherPage() {
         });
     }
 
+    if (regiaModal instanceof HTMLDialogElement && regiaModalCloseButton instanceof HTMLButtonElement) {
+        regiaModalCloseButton.addEventListener('click', () => {
+            closeRegiaModal();
+        });
+    }
+
     syncMicToggleButton();
     syncScreenShareButton();
     setPollComposerExpanded(false);
@@ -156,6 +170,7 @@ export function initTeacherPage() {
 
             updateTopBar();
             renderTeacherGrid();
+            renderMuxPlayer();
             renderParticipantList();
             renderChatMessages(root, response.data.messages ?? []);
             renderDocuments(root, response.data.documents ?? [], {
@@ -163,6 +178,7 @@ export function initTeacherPage() {
                 onDeleteDocument: deleteDocument,
             });
             renderPolls(response.data.polls ?? []);
+            syncRegiaModal();
 
             if (response.data.status !== 'live' && state.room) {
                 teardownRoom();
@@ -189,9 +205,12 @@ export function initTeacherPage() {
 
         if (startButton instanceof HTMLButtonElement) {
             const shouldShowStartButton = payload.status !== 'live' || !state.joined;
+            const startLabel = config.capabilities?.canManageBroadcast
+                ? (payload.status === 'live' ? 'Rientra in regia' : 'Avvia live')
+                : (payload.status === 'live' ? 'Entra nella diretta' : 'In attesa della regia');
 
-            startButton.disabled = state.joined;
-            startButton.textContent = payload.status === 'live' ? 'Connettiti alla diretta' : 'Avvia diretta';
+            startButton.disabled = state.joined || (!config.routes.startSession && payload.status !== 'live');
+            startButton.textContent = startLabel;
             startButton.classList.toggle('hidden', !shouldShowStartButton);
         }
 
@@ -206,6 +225,7 @@ export function initTeacherPage() {
         syncScreenShareButton();
         updateChatComposerState();
         updatePollComposerState();
+        renderMuxPlayer();
     }
 
     function updateChatComposerState() {
@@ -272,14 +292,26 @@ export function initTeacherPage() {
         startButton.textContent = 'Connessione...';
 
         try {
-            if (!previewController.hasAudioTrack()) {
+            if (config.capabilities?.requiresPreview && !previewController.hasAudioTrack()) {
                 await previewController.open();
             }
 
-            const shouldStartMuted = previewController.hasAudioTrack() && !previewController.isAudioEnabled();
+            const shouldStartMuted = Boolean(config.capabilities?.requiresPreview) && previewController.hasAudioTrack() && !previewController.isAudioEnabled();
 
-            if (state.latestState?.status !== 'live') {
-                await window.axios.post(config.routes.startSession);
+            if (state.latestState?.status !== 'live' && config.routes.startSession) {
+                const startResponse = await window.axios.post(config.routes.startSession);
+                state.latestState = {
+                    ...(state.latestState ?? {}),
+                    status: 'live',
+                    mux: startResponse.data?.mux ?? state.latestState?.mux ?? config.mux,
+                };
+                syncRegiaModal(startResponse.data?.mux ?? null, {
+                    playbackId: startResponse.data?.credentials?.playback_id,
+                    streamKey: startResponse.data?.credentials?.stream_key,
+                    ingestUrl: startResponse.data?.credentials?.ingest_url,
+                });
+            } else if (state.latestState?.status !== 'live' && !config.routes.startSession) {
+                throw new Error('Live stream is not active yet.');
             }
 
             const joinResponse = await window.axios.post(config.routes.join);
@@ -290,14 +322,16 @@ export function initTeacherPage() {
             try {
                 state.room = await TwilioVideo.connect(joinPayload.twilio_token, {
                     name: joinPayload.twilio_room_name,
-                    audio: true,
-                    video: {
-                        name: LIVE_STREAM_CAMERA_TRACK_NAME,
-                    },
+                    audio: config.capabilities?.hiddenParticipant ? false : true,
+                    video: config.capabilities?.hiddenParticipant
+                        ? false
+                        : {
+                            name: LIVE_STREAM_CAMERA_TRACK_NAME,
+                        },
                     dominantSpeaker: true,
                 });
             } catch (error) {
-                if (!shouldRetryLiveStreamConnectWithoutCamera(error)) {
+                if (config.capabilities?.hiddenParticipant || !shouldRetryLiveStreamConnectWithoutCamera(error)) {
                     throw error;
                 }
 
@@ -332,7 +366,7 @@ export function initTeacherPage() {
             await fetchState();
         } catch (error) {
             startButton.disabled = false;
-            startButton.textContent = 'Avvia diretta';
+            startButton.textContent = config.capabilities?.canManageBroadcast ? 'Avvia live' : 'Entra nella diretta';
             console.error(error);
         }
     }
@@ -908,7 +942,12 @@ export function initTeacherPage() {
 
     function renderTeacherGrid() {
         const grid = root.querySelector('[data-live-stream-teacher-grid]');
-        const participants = state.latestState?.participants ?? [];
+        const participants = config.streamMode === 'mux_regia'
+            ? [
+                ...(state.latestState?.teacher_participants ?? []),
+                ...(state.latestState?.participants ?? []),
+            ]
+            : (state.latestState?.participants ?? []);
 
         if (!(grid instanceof HTMLElement)) {
             return;
@@ -968,6 +1007,77 @@ export function initTeacherPage() {
 
             grid.appendChild(wrapper);
         });
+    }
+
+    function renderMuxPlayer() {
+        if (!(muxStage instanceof HTMLElement)) {
+            return;
+        }
+
+        renderMuxStage(muxStage, state.latestState?.mux ?? config.mux, {
+            title: 'Feed live non disponibile',
+            message: 'Il player MUX comparira qui quando la regia avvia la trasmissione.',
+            playerTitle: 'Player MUX',
+        });
+    }
+
+    function syncRegiaModal(nextMux = null, nextCredentials = null) {
+        if (!(regiaModal instanceof HTMLDialogElement)) {
+            return;
+        }
+
+        if (nextMux && typeof nextMux === 'object') {
+            config.mux = {
+                ...(config.mux ?? {}),
+                ...nextMux,
+            };
+        }
+
+        if (nextCredentials && typeof nextCredentials === 'object') {
+            config.mux = {
+                ...(config.mux ?? {}),
+                playbackId: nextCredentials.playbackId ?? config.mux?.playbackId,
+                streamKey: nextCredentials.streamKey ?? config.mux?.streamKey,
+                ingestUrl: nextCredentials.ingestUrl ?? config.mux?.ingestUrl,
+            };
+        }
+
+        const mux = state.latestState?.mux ?? config.mux;
+        const shouldShow = Boolean(config.capabilities?.canManageBroadcast && state.latestState?.status === 'live' && !mux?.isLive);
+
+        if (regiaStreamKey instanceof HTMLElement) {
+            regiaStreamKey.textContent = mux?.streamKey ?? 'n/d';
+        }
+
+        if (regiaIngestUrl instanceof HTMLElement) {
+            regiaIngestUrl.textContent = mux?.ingestUrl ?? 'n/d';
+        }
+
+        if (regiaPlaybackId instanceof HTMLElement) {
+            regiaPlaybackId.textContent = mux?.playbackId ?? 'n/d';
+        }
+
+        if (shouldShow || state.regiaModalOpen) {
+            openRegiaModal();
+        }
+    }
+
+    function openRegiaModal() {
+        if (!(regiaModal instanceof HTMLDialogElement) || regiaModal.open) {
+            return;
+        }
+
+        state.regiaModalOpen = true;
+        regiaModal.showModal();
+    }
+
+    function closeRegiaModal() {
+        if (!(regiaModal instanceof HTMLDialogElement) || !regiaModal.open) {
+            return;
+        }
+
+        state.regiaModalOpen = false;
+        regiaModal.close();
     }
 
     function renderParticipantList() {
@@ -1332,7 +1442,7 @@ export function initTeacherPage() {
 
         if (startButton instanceof HTMLButtonElement) {
             startButton.disabled = false;
-            startButton.textContent = 'Avvia diretta';
+            startButton.textContent = config.capabilities?.canManageBroadcast ? 'Avvia diretta' : 'Entra nella diretta';
             startButton.classList.remove('hidden');
         }
 

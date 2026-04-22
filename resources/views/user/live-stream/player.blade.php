@@ -10,7 +10,7 @@
         <div class="grid min-h-screen xl:grid-cols-[minmax(0,1fr)_24rem]">
             <div class="min-h-0">
                 <div
-                    class="h-full min-h-0 overflow-y-auto bg-base-100 xl:border-r xl:border-base-300"
+                    class="h-full min-h-0 overflow-y-auto bg-base-200 xl:border-r xl:border-base-300"
                     data-livestream-user-main-scroll
                 >
                     <div class="px-4 py-4 sm:px-6 sm:py-6 xl:px-8 xl:py-8">

@@ -7,14 +7,29 @@ use App\Http\Controllers\Admin\JobRoleController;
 use App\Http\Controllers\Admin\JobSectorController;
 use App\Http\Controllers\Admin\JobTitleController;
 use App\Http\Controllers\Admin\JobUnitController;
+use App\Http\Controllers\Admin\RegiaController;
 use App\Http\Controllers\Admin\ScormPackageController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\LiveStreamController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\UserController;
 
 Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
     Route::group(['prefix' => 'admin', 'as' => 'admin.'], function () {
+        Route::get('/regia', [RegiaController::class, 'index'])->name('regia.index');
+        Route::get('/regia/{module}', [RegiaController::class, 'show'])->name('regia.show');
+        Route::post('/regia/{module}/session/start', [LiveStreamController::class, 'adminStartSession'])->name('regia.session.start');
+        Route::post('/regia/{module}/session/end', [LiveStreamController::class, 'adminEndSession'])->name('regia.session.end');
+        Route::post('/regia/{module}/join', [LiveStreamController::class, 'adminJoin'])->name('regia.join');
+        Route::get('/regia/{module}/state', [LiveStreamController::class, 'adminState'])->name('regia.state');
+        Route::post('/regia/{module}/presence', [LiveStreamController::class, 'adminPresence'])->name('regia.presence');
+        Route::post('/regia/{module}/messages', [LiveStreamController::class, 'storeAdminMessage'])->name('regia.messages.store');
+        Route::post('/regia/{module}/polls', [LiveStreamController::class, 'storeAdminPoll'])->name('regia.polls.store');
+        Route::patch('/regia/{module}/polls/{poll}/close', [LiveStreamController::class, 'closeAdminPoll'])->name('regia.polls.close');
+        Route::post('/regia/{module}/documents', [LiveStreamController::class, 'storeAdminDocument'])->name('regia.documents.store');
+        Route::get('/regia/{module}/documents/{document}', [LiveStreamController::class, 'downloadAdminDocument'])->name('regia.documents.download');
+        Route::delete('/regia/{module}/documents/{document}', [LiveStreamController::class, 'destroyAdminDocument'])->name('regia.documents.destroy');
+        Route::patch('/regia/{module}/participants/{participant}/speaker', [LiveStreamController::class, 'updateAdminSpeaker'])->name('regia.participants.speaker');
         Route::get('/live-stream/{module}/player', [LiveStreamController::class, 'adminPlayer'])->name('live-stream.player');
         Route::get('/courses/create', [CourseController::class, 'create'])->name('courses.create');
         Route::post('/courses', [CourseController::class, 'store'])->name('courses.store');

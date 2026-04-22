@@ -39,3 +39,22 @@ test('viewer selection never exceeds five participants', function () {
 
     expect($selected)->toHaveCount(5);
 });
+
+test('mux viewer selection keeps teachers first and fills remaining slots with rotated students', function () {
+    $selector = new LiveStreamRosterSelector;
+
+    $teachers = [
+        ['id' => 101, 'user_id' => 101],
+        ['id' => 102, 'user_id' => 102],
+    ];
+
+    $students = collect(range(1, 10))
+        ->map(fn (int $userId): array => ['id' => $userId, 'user_id' => $userId])
+        ->all();
+
+    $selected = $selector->forMuxViewer($teachers, $students, 9876);
+
+    expect($selected)->toHaveCount(5);
+    expect($selected[0]['user_id'])->toBe(101);
+    expect($selected[1]['user_id'])->toBe(102);
+});

@@ -46,4 +46,17 @@ return [
         ],
     ],
 
+    'mux' => [
+        'token_id' => env('MUX_TOKEN_ID'),
+        'token_secret' => env('MUX_TOKEN_SECRET'),
+        'live' => [
+            'ingest_url' => env('MUX_LIVE_INGEST_URL', 'rtmps://global-live.mux.com:443/app'),
+            'reconnect_window' => (int) env('MUX_LIVE_RECONNECT_WINDOW', 60),
+        ],
+        'timeout' => [
+            'connect' => (int) env('MUX_CONNECT_TIMEOUT', 5),
+            'request' => (int) env('MUX_REQUEST_TIMEOUT', 10),
+        ],
+    ],
+
 ];

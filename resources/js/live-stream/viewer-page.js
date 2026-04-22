@@ -12,6 +12,7 @@ import {
     getLiveStreamIconButtonContent,
     getParticipantAudioStatusMarkup,
     getLiveStreamRoot,
+    renderMuxStage,
     renderChatMessages,
     renderDocuments,
     shouldRetryLiveStreamConnectWithoutCamera,
@@ -501,6 +502,16 @@ export function initViewerPage() {
             return;
         }
 
+        if (config.streamMode === 'mux_regia') {
+            renderMuxStage(mainStage, state.latestState?.mux ?? config.mux, {
+                title: 'Feed live non disponibile',
+                message: 'Il player MUX comparira qui quando la regia avvia la trasmissione.',
+                playerTitle: 'Diretta live',
+            });
+
+            return;
+        }
+
         mainStage.replaceChildren();
 
         if (!teacher) {
@@ -565,9 +576,12 @@ export function initViewerPage() {
 
         strip.replaceChildren();
 
-        const participants = (payload?.participants ?? []).filter((participant) => participant.user_id !== currentUserId());
-        const seed = Math.floor(Date.now() / 60000);
-        const selected = deterministicShuffle(participants, seed).slice(0, 5);
+        const selected = config.streamMode === 'mux_regia'
+            ? (payload?.viewer_roster ?? []).filter((participant) => participant.user_id !== currentUserId()).slice(0, 5)
+            : deterministicShuffle(
+                (payload?.participants ?? []).filter((participant) => participant.user_id !== currentUserId()),
+                Math.floor(Date.now() / 60000),
+            ).slice(0, 5);
 
         selected.forEach((participant) => {
             const highlighted = state.dominantSpeakerIdentity === participant.twilio_identity;
@@ -575,7 +589,7 @@ export function initViewerPage() {
 
             if (!track) {
                 strip.appendChild(
-                    createPlaceholderCard(participant.name, 'Discente', {
+                    createPlaceholderCard(participant.name, participant.app_role === 'teacher' ? 'Docente' : 'Discente', {
                         initials: participant.initials,
                         highlighted,
                         className: 'bg-base-100 text-base-content shadow-none',
