@@ -226,4 +226,12 @@ class Module extends Model
     {
         return $this->type === 'scorm';
     }
+
+    /**
+     * Domande quiz associate al modulo.
+     */
+    public function quizQuestions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\ModuleQuizQuestion::class);
+    }
 }

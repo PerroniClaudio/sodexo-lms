@@ -42,7 +42,7 @@
 
                         <div class="grid gap-6 md:grid-cols-2">
                             <div class="form-control flex flex-col gap-2 md:col-span-2">
-                                <label for="title" class="label p-0">
+                                <label for="title" class="label font-semibold p-0">
                                     <span class="label-text font-medium">{{ __('Titolo del corso') }}</span>
                                 </label>
                                 <input
@@ -59,7 +59,7 @@
                             </div>
 
                             <div class="form-control flex flex-col gap-2 md:col-span-2">
-                                <label for="description" class="label p-0">
+                                <label for="description" class="label font-semibold p-0">
                                     <span class="label-text font-medium">{{ __('Descrizione') }}</span>
                                 </label>
                                 <textarea
@@ -74,7 +74,7 @@
                             </div>
 
                             <div class="form-control flex flex-col gap-2">
-                                <label for="year" class="label p-0">
+                                <label for="year" class="label font-semibold p-0">
                                     <span class="label-text font-medium">{{ __('Anno del corso') }}</span>
                                 </label>
                                 <input
@@ -93,7 +93,7 @@
                             </div>
 
                             <div class="form-control flex flex-col gap-2">
-                                <label for="expiry_date" class="label p-0">
+                                <label for="expiry_date" class="label font-semibold p-0">
                                     <span class="label-text font-medium">{{ __('Data scadenza') }}</span>
                                 </label>
                                 <input
@@ -110,7 +110,7 @@
                             </div>
 
                             <div class="form-control flex flex-col gap-2 md:col-span-2">
-                                <label for="status" class="label p-0">
+                                <label for="status" class="label font-semibold p-0">
                                     <span class="label-text font-medium">{{ __('Stato') }}</span>
                                 </label>
                                 <select

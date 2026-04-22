@@ -50,6 +50,10 @@
             @include('admin.module.partials.live-tutors-card')
             @include('admin.module.partials.live-attendance-card')
         @endif
+
+        @if ($module->type === 'learning_quiz')
+            @include('admin.module.partials.quiz-questions', ['course' => $course, 'module' => $module])
+        @endif
     </div>
 
     @vite('resources/js/pages/admin-module-edit.js')

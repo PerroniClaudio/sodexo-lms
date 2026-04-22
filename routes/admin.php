@@ -55,5 +55,14 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::post('job-sectors/{id}/restore', [JobSectorController::class, 'restore'])->name('job-sectors.restore');
             Route::post('job-units/{id}/restore', [JobUnitController::class, 'restore'])->name('job-units.restore');
         });
+
+        // Quiz Domande e Risposte
+        Route::post('/courses/{course}/modules/{module}/quiz/questions', [\App\Http\Controllers\Admin\ModuleQuizController::class, 'storeQuestion'])->name('courses.modules.quiz.questions.store');
+        Route::put('/courses/{course}/modules/{module}/quiz/questions/{question}', [\App\Http\Controllers\Admin\ModuleQuizController::class, 'updateQuestion'])->name('courses.modules.quiz.questions.update');
+        Route::delete('/courses/{course}/modules/{module}/quiz/questions/{question}', [\App\Http\Controllers\Admin\ModuleQuizController::class, 'deleteQuestion'])->name('courses.modules.quiz.questions.delete');
+        Route::post('/courses/{course}/modules/{module}/quiz/questions/{question}/answers', [\App\Http\Controllers\Admin\ModuleQuizController::class, 'storeAnswer'])->name('courses.modules.quiz.answers.store');
+        Route::put('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}', [\App\Http\Controllers\Admin\ModuleQuizController::class, 'updateAnswer'])->name('courses.modules.quiz.answers.update');
+        Route::delete('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}', [\App\Http\Controllers\Admin\ModuleQuizController::class, 'deleteAnswer'])->name('courses.modules.quiz.answers.delete');
+        Route::post('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}/set-correct', [\App\Http\Controllers\Admin\ModuleQuizController::class, 'setCorrectAnswer'])->name('courses.modules.quiz.answers.set-correct');
     });
 });
