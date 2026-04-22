@@ -13,12 +13,14 @@ use App\Models\LiveStreamParticipant;
 use App\Models\LiveStreamPoll;
 use App\Models\LiveStreamSession;
 use App\Models\Module;
+use App\Services\MuxLiveService;
 use App\Services\TwilioVideoService;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -48,6 +50,21 @@ class LiveStreamController extends Controller
             return $this->renderWaitingView($module, __('La diretta è terminata.'), 'ended');
         }
 
+        if ($module->usesRegiaLive() && ! $this->moduleIsJoinable($module)) {
+            $latestSession = $module->liveStreamSessions()->latest('started_at')->first();
+
+            if ($latestSession?->status === LiveStreamSession::STATUS_ENDED) {
+                return $this->renderWaitingView($module, __('La diretta è terminata.'), 'ended');
+            }
+
+            return $this->renderWaitingView(
+                $module,
+                $this->moduleIsWithinScheduledWindow($module)
+                    ? __('La live non è ancora attiva. Aggiorna la pagina quando la regia avvia la trasmissione.')
+                    : __('La diretta comincia all\'orario stabilito.'),
+            );
+        }
+
         if ($module->activeLiveStreamSession === null) {
             $latestSession = $module->liveStreamSessions()->latest('started_at')->first();
 
@@ -66,6 +83,10 @@ class LiveStreamController extends Controller
         $this->abortUnlessLiveModule($module);
         $this->ensureTeacherEnrollment($request, $module);
 
+        if ($module->usesRegiaLive()) {
+            return $this->renderPlayerView('teacher.live-stream.mux-player', $module, LiveStreamParticipant::ROLE_TEACHER);
+        }
+
         return $this->renderPlayerView('teacher.live-stream.player', $module, LiveStreamParticipant::ROLE_TEACHER);
     }
 
@@ -81,6 +102,21 @@ class LiveStreamController extends Controller
 
         if ($this->moduleHasEnded($module)) {
             return $this->renderWaitingView($module, __('La diretta è terminata.'), 'ended');
+        }
+
+        if ($module->usesRegiaLive() && ! $this->moduleIsJoinable($module)) {
+            $latestSession = $module->liveStreamSessions()->latest('started_at')->first();
+
+            if ($latestSession?->status === LiveStreamSession::STATUS_ENDED) {
+                return $this->renderWaitingView($module, __('La diretta è terminata.'), 'ended');
+            }
+
+            return $this->renderWaitingView(
+                $module,
+                $this->moduleIsWithinScheduledWindow($module)
+                    ? __('La live non è ancora attiva. Aggiorna la pagina quando la regia avvia la trasmissione.')
+                    : __('La diretta comincia all\'orario stabilito.'),
+            );
         }
 
         if ($module->activeLiveStreamSession === null) {
@@ -100,9 +136,108 @@ class LiveStreamController extends Controller
     {
         $this->abortUnlessLiveModule($module);
 
+        if ($module->usesRegiaLive()) {
+            return view('admin.regia.player', [
+                'module' => $module->loadMissing('course'),
+                'course' => $module->course,
+                'liveStreamConfig' => $this->buildViewConfig($module, LiveStreamParticipant::ROLE_ADMIN),
+            ]);
+        }
+
         return view('admin.live-stream.player', [
             'module' => $module->loadMissing('course'),
             'course' => $module->course,
+        ]);
+    }
+
+    public function adminStartSession(
+        Request $request,
+        Module $module,
+        TwilioVideoService $twilioVideoService,
+        MuxLiveService $muxLiveService,
+    ): JsonResponse {
+        $this->abortUnlessLiveModule($module);
+        abort_unless($module->usesRegiaLive(), Response::HTTP_NOT_FOUND);
+        $this->ensureAdminRegiaAccess($request, $module);
+        $module->loadMissing('activeLiveStreamSession');
+
+        $module = $muxLiveService->ensurePersistentStreamForModule($module);
+
+        $session = DB::transaction(function () use ($request, $module, $twilioVideoService): LiveStreamSession {
+            if ($module->activeLiveStreamSession !== null) {
+                return $module->activeLiveStreamSession;
+            }
+
+            $room = $twilioVideoService->createRoom($module);
+
+            return $module->liveStreamSessions()->create([
+                'teacher_user_id' => $request->user()->getKey(),
+                'started_by_user_id' => $request->user()->getKey(),
+                'regia_user_id' => $request->user()->getKey(),
+                'twilio_room_sid' => $room['sid'],
+                'twilio_room_name' => $room['name'],
+                'mux_playback_id' => $module->mux_playback_id,
+                'mux_broadcast_status' => LiveStreamSession::BROADCAST_STATUS_IDLE,
+                'status' => LiveStreamSession::STATUS_LIVE,
+                'started_at' => now(),
+            ]);
+        });
+
+        $session = $muxLiveService->refreshBroadcastStatus($module, $session) ?? $session;
+
+        return response()->json([
+            'message' => __('Regia avviata.'),
+            'session' => $this->serializeSession($session),
+            'mux' => $this->serializeMux($module, $session),
+            'credentials' => [
+                'stream_key' => $module->mux_stream_key,
+                'ingest_url' => $module->mux_ingest_url,
+                'playback_id' => $module->mux_playback_id,
+            ],
+        ]);
+    }
+
+    public function adminEndSession(
+        Request $request,
+        Module $module,
+        TwilioVideoService $twilioVideoService,
+        MuxLiveService $muxLiveService,
+    ): JsonResponse {
+        $this->abortUnlessLiveModule($module);
+        abort_unless($module->usesRegiaLive(), Response::HTTP_NOT_FOUND);
+        $this->ensureAdminRegiaAccess($request, $module);
+
+        $session = $module->activeLiveStreamSession()->first();
+
+        if ($session === null) {
+            return response()->json([
+                'message' => __('Nessuna diretta attiva da terminare.'),
+            ]);
+        }
+
+        $twilioVideoService->completeRoom($session->twilio_room_sid ?? $session->twilio_room_name);
+        $muxLiveService->endBroadcast($session, $module);
+
+        $session->update([
+            'status' => LiveStreamSession::STATUS_ENDED,
+            'ended_at' => now(),
+        ]);
+
+        $session->polls()
+            ->where('status', LiveStreamPoll::STATUS_OPEN)
+            ->update([
+                'status' => LiveStreamPoll::STATUS_CLOSED,
+                'closed_at' => now(),
+            ]);
+
+        $session->participants()
+            ->whereNull('left_at')
+            ->update([
+                'left_at' => now(),
+            ]);
+
+        return response()->json([
+            'message' => __('Diretta terminata.'),
         ]);
     }
 
@@ -202,25 +337,45 @@ class LiveStreamController extends Controller
         return $this->join($request, $module, LiveStreamParticipant::ROLE_TUTOR, $twilioVideoService);
     }
 
-    public function teacherState(Request $request, Module $module): JsonResponse
+    public function adminJoin(Request $request, Module $module, TwilioVideoService $twilioVideoService): JsonResponse
+    {
+        return $this->join($request, $module, LiveStreamParticipant::ROLE_ADMIN, $twilioVideoService);
+    }
+
+    public function teacherState(Request $request, Module $module, MuxLiveService $muxLiveService): JsonResponse
     {
         $this->ensureTeacherEnrollment($request, $module);
+        $module->loadMissing('activeLiveStreamSession');
+        $muxLiveService->refreshBroadcastStatus($module, $module->activeLiveStreamSession);
 
-        return response()->json($this->buildStatePayload($request, $module, LiveStreamParticipant::ROLE_TEACHER));
+        return response()->json($this->buildStatePayload($request, $module->fresh(), LiveStreamParticipant::ROLE_TEACHER));
     }
 
-    public function userState(Request $request, Module $module): JsonResponse
+    public function userState(Request $request, Module $module, MuxLiveService $muxLiveService): JsonResponse
     {
         $this->ensureUserEnrollment($request, $module);
+        $module->loadMissing('activeLiveStreamSession');
+        $muxLiveService->refreshBroadcastStatus($module, $module->activeLiveStreamSession);
 
-        return response()->json($this->buildStatePayload($request, $module, LiveStreamParticipant::ROLE_USER));
+        return response()->json($this->buildStatePayload($request, $module->fresh(), LiveStreamParticipant::ROLE_USER));
     }
 
-    public function tutorState(Request $request, Module $module): JsonResponse
+    public function tutorState(Request $request, Module $module, MuxLiveService $muxLiveService): JsonResponse
     {
         $this->ensureTutorEnrollment($request, $module);
+        $module->loadMissing('activeLiveStreamSession');
+        $muxLiveService->refreshBroadcastStatus($module, $module->activeLiveStreamSession);
 
-        return response()->json($this->buildStatePayload($request, $module, LiveStreamParticipant::ROLE_TUTOR));
+        return response()->json($this->buildStatePayload($request, $module->fresh(), LiveStreamParticipant::ROLE_TUTOR));
+    }
+
+    public function adminState(Request $request, Module $module, MuxLiveService $muxLiveService): JsonResponse
+    {
+        $this->ensureAdminRegiaAccess($request, $module);
+        $module->loadMissing('activeLiveStreamSession');
+        $muxLiveService->refreshBroadcastStatus($module, $module->activeLiveStreamSession);
+
+        return response()->json($this->buildStatePayload($request, $module->fresh(), LiveStreamParticipant::ROLE_ADMIN));
     }
 
     public function teacherPresence(Request $request, Module $module): JsonResponse
@@ -244,6 +399,13 @@ class LiveStreamController extends Controller
         return $this->updatePresence($request, $module, LiveStreamParticipant::ROLE_TUTOR);
     }
 
+    public function adminPresence(Request $request, Module $module): JsonResponse
+    {
+        $this->ensureAdminRegiaAccess($request, $module);
+
+        return $this->updatePresence($request, $module, LiveStreamParticipant::ROLE_ADMIN);
+    }
+
     public function storeTeacherMessage(Request $request, Module $module): JsonResponse
     {
         $this->ensureTeacherEnrollment($request, $module);
@@ -263,6 +425,13 @@ class LiveStreamController extends Controller
         $this->ensureTutorEnrollment($request, $module);
 
         return $this->storeMessage($request, $module, LiveStreamParticipant::ROLE_TUTOR);
+    }
+
+    public function storeAdminMessage(Request $request, Module $module): JsonResponse
+    {
+        $this->ensureAdminRegiaAccess($request, $module);
+
+        return $this->storeMessage($request, $module, LiveStreamParticipant::ROLE_ADMIN);
     }
 
     public function storeTeacherPoll(Request $request, Module $module): JsonResponse
@@ -304,11 +473,74 @@ class LiveStreamController extends Controller
         ], Response::HTTP_CREATED);
     }
 
+    public function storeAdminPoll(Request $request, Module $module): JsonResponse
+    {
+        $this->abortUnlessLiveModule($module);
+        $this->ensureAdminRegiaAccess($request, $module);
+        $validated = $this->validatePollPayload($request);
+        $session = $module->activeLiveStreamSession()->first();
+
+        if ($session === null) {
+            return response()->json([
+                'message' => __('La diretta non è attiva.'),
+            ], Response::HTTP_CONFLICT);
+        }
+
+        $poll = DB::transaction(function () use ($request, $session, $validated): LiveStreamPoll {
+            $session->polls()
+                ->where('status', LiveStreamPoll::STATUS_OPEN)
+                ->update([
+                    'status' => LiveStreamPoll::STATUS_CLOSED,
+                    'closed_at' => now(),
+                ]);
+
+            return $session->polls()->create([
+                'user_id' => $request->user()->getKey(),
+                'question' => $validated['question'],
+                'options' => $validated['options'],
+                'status' => LiveStreamPoll::STATUS_OPEN,
+                'published_at' => now(),
+            ]);
+        });
+
+        return response()->json([
+            'message' => __('Sondaggio pubblicato.'),
+            'poll' => $this->serializePoll($poll->load('responses'), $request->user()->getKey()),
+        ], Response::HTTP_CREATED);
+    }
+
     public function closeTeacherPoll(Request $request, Module $module, LiveStreamPoll $poll): JsonResponse
     {
         $this->abortUnlessLiveModule($module);
         $this->ensureTeacherEnrollment($request, $module);
 
+        $session = $module->activeLiveStreamSession()->first();
+
+        abort_if($session === null, Response::HTTP_CONFLICT, __('La diretta non è attiva.'));
+        abort_unless($poll->live_stream_session_id === $session->getKey(), Response::HTTP_NOT_FOUND);
+
+        if (! $poll->isOpen()) {
+            return response()->json([
+                'message' => __('Il sondaggio è già chiuso.'),
+                'poll' => $this->serializePoll($poll->load('responses'), $request->user()->getKey()),
+            ]);
+        }
+
+        $poll->update([
+            'status' => LiveStreamPoll::STATUS_CLOSED,
+            'closed_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => __('Invio risposte terminato.'),
+            'poll' => $this->serializePoll($poll->fresh('responses'), $request->user()->getKey()),
+        ]);
+    }
+
+    public function closeAdminPoll(Request $request, Module $module, LiveStreamPoll $poll): JsonResponse
+    {
+        $this->abortUnlessLiveModule($module);
+        $this->ensureAdminRegiaAccess($request, $module);
         $session = $module->activeLiveStreamSession()->first();
 
         abort_if($session === null, Response::HTTP_CONFLICT, __('La diretta non è attiva.'));
@@ -436,6 +668,37 @@ class LiveStreamController extends Controller
         ], Response::HTTP_CREATED);
     }
 
+    public function storeAdminDocument(Request $request, Module $module): JsonResponse
+    {
+        $this->abortUnlessLiveModule($module);
+        $this->ensureAdminRegiaAccess($request, $module);
+        $validated = $request->validate([
+            'document' => ['required', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:20480'],
+        ]);
+
+        $file = $validated['document'];
+        $storedPath = $file->storeAs(
+            'live-stream-documents/'.$module->getKey(),
+            Str::uuid().'.pdf',
+            self::DOCUMENT_DISK,
+        );
+
+        $document = $module->liveStreamDocuments()->create([
+            'user_id' => $request->user()->getKey(),
+            'disk' => self::DOCUMENT_DISK,
+            'path' => $storedPath,
+            'original_name' => $file->getClientOriginalName(),
+            'mime_type' => $file->getClientMimeType() ?: 'application/pdf',
+            'size_bytes' => $file->getSize() ?: 0,
+            'uploaded_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => __('PDF caricato con successo.'),
+            'document' => $this->serializeDocument($document->load('user'), LiveStreamParticipant::ROLE_ADMIN),
+        ], Response::HTTP_CREATED);
+    }
+
     public function destroyTeacherDocument(Request $request, Module $module, LiveStreamDocument $document): JsonResponse
     {
         $this->abortUnlessLiveModule($module);
@@ -450,9 +713,30 @@ class LiveStreamController extends Controller
         ]);
     }
 
+    public function destroyAdminDocument(Request $request, Module $module, LiveStreamDocument $document): JsonResponse
+    {
+        $this->abortUnlessLiveModule($module);
+        $this->ensureAdminRegiaAccess($request, $module);
+        $this->abortUnlessDocumentBelongsToModule($module, $document);
+
+        Storage::disk($document->disk)->delete($document->path);
+        $document->delete();
+
+        return response()->json([
+            'message' => __('PDF rimosso con successo.'),
+        ]);
+    }
+
     public function downloadTeacherDocument(Request $request, Module $module, LiveStreamDocument $document): StreamedResponse
     {
         $this->ensureTeacherEnrollment($request, $module);
+
+        return $this->downloadDocument($module, $document);
+    }
+
+    public function downloadAdminDocument(Request $request, Module $module, LiveStreamDocument $document): StreamedResponse
+    {
+        $this->ensureAdminRegiaAccess($request, $module);
 
         return $this->downloadDocument($module, $document);
     }
@@ -576,12 +860,56 @@ class LiveStreamController extends Controller
         ]);
     }
 
+    public function updateAdminSpeaker(Request $request, Module $module, LiveStreamParticipant $participant): JsonResponse
+    {
+        $this->abortUnlessLiveModule($module);
+        $this->ensureAdminRegiaAccess($request, $module);
+        $validated = $request->validate([
+            'enabled' => ['required', 'boolean'],
+        ]);
+
+        $session = $module->activeLiveStreamSession()->first();
+
+        abort_if($session === null, Response::HTTP_CONFLICT, __('La diretta non è attiva.'));
+        abort_unless(
+            $participant->live_stream_session_id === $session->getKey() && $participant->app_role === LiveStreamParticipant::ROLE_USER,
+            Response::HTTP_NOT_FOUND,
+        );
+
+        $participant->update([
+            'audio_enabled' => (bool) $validated['enabled'],
+        ]);
+
+        if ((bool) $validated['enabled']) {
+            $session->handRaises()
+                ->where('user_id', $participant->user_id)
+                ->where('status', LiveStreamHandRaise::STATUS_PENDING)
+                ->update([
+                    'status' => LiveStreamHandRaise::STATUS_RESOLVED,
+                    'approved_at' => now(),
+                    'resolved_at' => now(),
+                    'approved_by' => $request->user()->getKey(),
+                ]);
+        }
+
+        return response()->json([
+            'message' => $validated['enabled']
+                ? __('Discente abilitato al microfono.')
+                : __('Microfono discente disattivato.'),
+            'participant' => $this->serializeParticipant($participant->fresh(['user'])),
+        ]);
+    }
+
     private function join(Request $request, Module $module, string $role, TwilioVideoService $twilioVideoService): JsonResponse
     {
         $this->abortUnlessLiveModule($module);
 
         if ($role === LiveStreamParticipant::ROLE_TEACHER) {
             $this->ensureTeacherEnrollment($request, $module);
+        }
+
+        if ($role === LiveStreamParticipant::ROLE_ADMIN) {
+            $this->ensureAdminRegiaAccess($request, $module);
         }
 
         if ($role === LiveStreamParticipant::ROLE_TUTOR) {
@@ -614,9 +942,9 @@ class LiveStreamController extends Controller
             [
                 'app_role' => $role,
                 'twilio_identity' => $identity,
-                'is_hidden' => $role === LiveStreamParticipant::ROLE_TUTOR,
+                'is_hidden' => in_array($role, [LiveStreamParticipant::ROLE_TUTOR, LiveStreamParticipant::ROLE_ADMIN], true),
                 'audio_enabled' => $role === LiveStreamParticipant::ROLE_TEACHER,
-                'video_enabled' => $role !== LiveStreamParticipant::ROLE_TUTOR,
+                'video_enabled' => $role === LiveStreamParticipant::ROLE_TEACHER || $role === LiveStreamParticipant::ROLE_USER,
                 'joined_at' => now(),
                 'last_seen_at' => now(),
                 'left_at' => null,
@@ -640,10 +968,11 @@ class LiveStreamController extends Controller
             'participant_identity' => $identity,
             'participant_id' => $participant->getKey(),
             'permissions' => [
-                'can_end_session' => $role === LiveStreamParticipant::ROLE_TEACHER,
+                'can_end_session' => in_array($role, [LiveStreamParticipant::ROLE_TEACHER, LiveStreamParticipant::ROLE_ADMIN], true),
                 'can_raise_hand' => $role === LiveStreamParticipant::ROLE_USER,
-                'can_moderate_speakers' => $role === LiveStreamParticipant::ROLE_TEACHER,
-                'is_hidden' => $role === LiveStreamParticipant::ROLE_TUTOR,
+                'can_moderate_speakers' => in_array($role, [LiveStreamParticipant::ROLE_TEACHER, LiveStreamParticipant::ROLE_ADMIN], true),
+                'is_hidden' => in_array($role, [LiveStreamParticipant::ROLE_TUTOR, LiveStreamParticipant::ROLE_ADMIN], true),
+                'can_manage_broadcast' => $role === LiveStreamParticipant::ROLE_ADMIN,
             ],
         ]);
     }
@@ -845,12 +1174,17 @@ class LiveStreamController extends Controller
                 'session' => $latestSession ? $this->serializeSession($latestSession) : null,
                 'participants' => [],
                 'teacher' => null,
+                'teacher_participants' => [],
+                'viewer_roster' => [],
                 'messages' => [],
                 'documents' => $this->serializeDocuments($module, $role),
                 'pending_hand_raises' => [],
                 'current_hand_raise' => null,
                 'polls' => [],
                 'active_poll' => null,
+                'scheduled_window_open' => $this->moduleIsWithinScheduledWindow($module),
+                'is_joinable' => $this->moduleIsJoinable($module),
+                'mux' => $this->serializeMux($module, $latestSession),
             ];
         }
 
@@ -864,7 +1198,10 @@ class LiveStreamController extends Controller
             ->filter(fn (LiveStreamParticipant $participant): bool => ! $this->participantIsStale($participant))
             ->values();
 
-        $teacher = $participants->firstWhere('app_role', LiveStreamParticipant::ROLE_TEACHER);
+        $teacherParticipants = $participants
+            ->where('app_role', LiveStreamParticipant::ROLE_TEACHER)
+            ->values();
+        $teacher = $teacherParticipants->first();
         $visibleStudents = $participants
             ->filter(fn (LiveStreamParticipant $participant): bool => $participant->isVisibleStudent())
             ->values();
@@ -889,9 +1226,11 @@ class LiveStreamController extends Controller
             'session' => $this->serializeSession($session),
             'participants' => $visibleStudents->map(fn (LiveStreamParticipant $participant): array => $this->serializeParticipant($participant))->values()->all(),
             'teacher' => $teacher ? $this->serializeParticipant($teacher) : null,
+            'teacher_participants' => $teacherParticipants->map(fn (LiveStreamParticipant $participant): array => $this->serializeParticipant($participant))->values()->all(),
+            'viewer_roster' => $this->serializeViewerRoster($teacherParticipants, $visibleStudents),
             'messages' => $messages->map(fn (LiveStreamMessage $message): array => $this->serializeMessage($message))->all(),
             'documents' => $this->serializeDocuments($module, $role),
-            'pending_hand_raises' => $role === LiveStreamParticipant::ROLE_TEACHER
+            'pending_hand_raises' => in_array($role, [LiveStreamParticipant::ROLE_TEACHER, LiveStreamParticipant::ROLE_ADMIN], true)
                 ? $session->handRaises
                     ->where('status', LiveStreamHandRaise::STATUS_PENDING)
                     ->sortBy('requested_at')
@@ -900,7 +1239,7 @@ class LiveStreamController extends Controller
                     ->all()
                 : [],
             'current_hand_raise' => $currentHandRaise ? $this->serializeHandRaise($currentHandRaise) : null,
-            'polls' => $role === LiveStreamParticipant::ROLE_TEACHER
+            'polls' => in_array($role, [LiveStreamParticipant::ROLE_TEACHER, LiveStreamParticipant::ROLE_ADMIN], true)
                 ? $session->polls
                     ->sortByDesc('id')
                     ->map(fn (LiveStreamPoll $poll): array => $this->serializePoll($poll, $request->user()->getKey()))
@@ -910,6 +1249,9 @@ class LiveStreamController extends Controller
             'active_poll' => $role === LiveStreamParticipant::ROLE_USER
                 ? $this->serializeActivePoll($session, $request->user()->getKey())
                 : null,
+            'scheduled_window_open' => $this->moduleIsWithinScheduledWindow($module),
+            'is_joinable' => $this->moduleIsJoinable($module, $session),
+            'mux' => $this->serializeMux($module, $session),
         ];
     }
 
@@ -929,7 +1271,14 @@ class LiveStreamController extends Controller
      */
     private function buildViewConfig(Module $module, string $role): array
     {
-        $routePrefix = match ($role) {
+        $module->loadMissing('activeLiveStreamSession');
+        $session = $module->activeLiveStreamSession;
+        $isRegiaMode = $module->usesRegiaLive();
+        $isAdminRole = $role === LiveStreamParticipant::ROLE_ADMIN;
+        $isTeacherRole = $role === LiveStreamParticipant::ROLE_TEACHER;
+        $isTutorRole = $role === LiveStreamParticipant::ROLE_TUTOR;
+        $isUserRole = $role === LiveStreamParticipant::ROLE_USER;
+        $standardPrefix = match ($role) {
             LiveStreamParticipant::ROLE_TEACHER => 'teacher',
             LiveStreamParticipant::ROLE_TUTOR => 'tutor',
             default => 'user',
@@ -938,58 +1287,71 @@ class LiveStreamController extends Controller
         return [
             'role' => $role,
             'moduleId' => $module->getKey(),
+            'streamMode' => $isRegiaMode ? 'mux_regia' : 'teacher',
             'pollIntervals' => [
                 'state' => 5000,
                 'presence' => 30000,
             ],
+            'mux' => $this->serializeMux($module, $session),
             'routes' => [
-                'join' => route($routePrefix.'.live-stream.join', $module),
-                'state' => route($routePrefix.'.live-stream.state', $module),
-                'presence' => route($routePrefix.'.live-stream.presence', $module),
-                'chat' => in_array($role, [LiveStreamParticipant::ROLE_TEACHER, LiveStreamParticipant::ROLE_TUTOR, LiveStreamParticipant::ROLE_USER], true)
-                    ? route($routePrefix.'.live-stream.messages.store', $module)
-                    : null,
-                'pollsStore' => $role === LiveStreamParticipant::ROLE_TEACHER
-                    ? route('teacher.live-stream.polls.store', $module)
-                    : null,
-                'closePollTemplate' => $role === LiveStreamParticipant::ROLE_TEACHER
-                    ? route('teacher.live-stream.polls.close', [$module, '__POLL__'])
-                    : null,
-                'pollResponseTemplate' => $role === LiveStreamParticipant::ROLE_USER
+                'join' => $isAdminRole
+                    ? route('admin.regia.join', $module)
+                    : route($standardPrefix.'.live-stream.join', $module),
+                'state' => $isAdminRole
+                    ? route('admin.regia.state', $module)
+                    : route($standardPrefix.'.live-stream.state', $module),
+                'presence' => $isAdminRole
+                    ? route('admin.regia.presence', $module)
+                    : route($standardPrefix.'.live-stream.presence', $module),
+                'chat' => $isAdminRole
+                    ? route('admin.regia.messages.store', $module)
+                    : route($standardPrefix.'.live-stream.messages.store', $module),
+                'pollsStore' => $isAdminRole
+                    ? route('admin.regia.polls.store', $module)
+                    : ($isTeacherRole && ! $isRegiaMode ? route('teacher.live-stream.polls.store', $module) : null),
+                'closePollTemplate' => $isAdminRole
+                    ? route('admin.regia.polls.close', [$module, '__POLL__'])
+                    : ($isTeacherRole && ! $isRegiaMode ? route('teacher.live-stream.polls.close', [$module, '__POLL__']) : null),
+                'pollResponseTemplate' => $isUserRole
                     ? route('user.live-stream.polls.responses.store', [$module, '__POLL__'])
                     : null,
-                'uploadDocument' => $role === LiveStreamParticipant::ROLE_TEACHER
-                    ? route('teacher.live-stream.documents.store', $module)
-                    : null,
-                'deleteDocumentTemplate' => $role === LiveStreamParticipant::ROLE_TEACHER
-                    ? route('teacher.live-stream.documents.destroy', [$module, '__DOCUMENT__'])
-                    : null,
-                'deleteMessageTemplate' => $role === LiveStreamParticipant::ROLE_TUTOR
+                'uploadDocument' => $isAdminRole
+                    ? route('admin.regia.documents.store', $module)
+                    : ($isTeacherRole && ! $isRegiaMode ? route('teacher.live-stream.documents.store', $module) : null),
+                'deleteDocumentTemplate' => $isAdminRole
+                    ? route('admin.regia.documents.destroy', [$module, '__DOCUMENT__'])
+                    : ($isTeacherRole && ! $isRegiaMode ? route('teacher.live-stream.documents.destroy', [$module, '__DOCUMENT__']) : null),
+                'deleteMessageTemplate' => $isTutorRole
                     ? route('tutor.live-stream.messages.destroy', [$module, '__MESSAGE__'])
                     : null,
-                'startSession' => $role === LiveStreamParticipant::ROLE_TEACHER
-                    ? route('teacher.live-stream.session.start', $module)
-                    : null,
-                'endSession' => $role === LiveStreamParticipant::ROLE_TEACHER
-                    ? route('teacher.live-stream.session.end', $module)
-                    : null,
-                'handRaise' => $role === LiveStreamParticipant::ROLE_USER
+                'startSession' => $isAdminRole
+                    ? route('admin.regia.session.start', $module)
+                    : ($isTeacherRole && ! $isRegiaMode ? route('teacher.live-stream.session.start', $module) : null),
+                'endSession' => $isAdminRole
+                    ? route('admin.regia.session.end', $module)
+                    : ($isTeacherRole && ! $isRegiaMode ? route('teacher.live-stream.session.end', $module) : null),
+                'handRaise' => $isUserRole
                     ? route('user.live-stream.hand-raises.store', $module)
                     : null,
-                'cancelHandRaise' => $role === LiveStreamParticipant::ROLE_USER
+                'cancelHandRaise' => $isUserRole
                     ? route('user.live-stream.hand-raises.destroy', $module)
                     : null,
-                'speakerTemplate' => $role === LiveStreamParticipant::ROLE_TEACHER
-                    ? route('teacher.live-stream.participants.speaker', [$module, '__PARTICIPANT__'])
-                    : null,
+                'speakerTemplate' => $isAdminRole
+                    ? route('admin.regia.participants.speaker', [$module, '__PARTICIPANT__'])
+                    : ($isTeacherRole ? route('teacher.live-stream.participants.speaker', [$module, '__PARTICIPANT__']) : null),
+                'regiaStart' => $isAdminRole ? route('admin.regia.session.start', $module) : null,
+                'regiaEnd' => $isAdminRole ? route('admin.regia.session.end', $module) : null,
+                'regiaState' => $isAdminRole ? route('admin.regia.state', $module) : null,
             ],
             'capabilities' => [
-                'canEndSession' => $role === LiveStreamParticipant::ROLE_TEACHER,
-                'canRaiseHand' => $role === LiveStreamParticipant::ROLE_USER,
-                'canModerateChat' => $role === LiveStreamParticipant::ROLE_TUTOR,
-                'canModerateSpeakers' => $role === LiveStreamParticipant::ROLE_TEACHER,
-                'canManageDocuments' => $role === LiveStreamParticipant::ROLE_TEACHER,
-                'hiddenParticipant' => $role === LiveStreamParticipant::ROLE_TUTOR,
+                'canEndSession' => $isTeacherRole || $isAdminRole,
+                'canRaiseHand' => $isUserRole,
+                'canModerateChat' => $isTutorRole,
+                'canModerateSpeakers' => $isTeacherRole || $isAdminRole,
+                'canManageDocuments' => $isAdminRole || ($isTeacherRole && ! $isRegiaMode),
+                'canManageBroadcast' => $isAdminRole,
+                'hiddenParticipant' => $isTutorRole || $isAdminRole,
+                'requiresPreview' => $isTeacherRole,
             ],
         ];
     }
@@ -1053,6 +1415,14 @@ class LiveStreamController extends Controller
         abort_unless($isAssigned, Response::HTTP_FORBIDDEN);
     }
 
+    private function ensureAdminRegiaAccess(Request $request, Module $module): void
+    {
+        abort_unless(
+            $request->user()?->hasAnyRole(['admin', 'superadmin']) && $module->usesRegiaLive(),
+            Response::HTTP_FORBIDDEN,
+        );
+    }
+
     private function abortUnlessLiveModule(Module $module): void
     {
         abort_unless($module->type === 'live', Response::HTTP_NOT_FOUND);
@@ -1063,9 +1433,33 @@ class LiveStreamController extends Controller
         return $module->appointment_start_time !== null && now()->lt($module->appointment_start_time);
     }
 
+    private function moduleIsWithinScheduledWindow(Module $module): bool
+    {
+        if ($this->moduleStartsInFuture($module) || $this->moduleHasEnded($module)) {
+            return false;
+        }
+
+        return true;
+    }
+
     private function moduleHasEnded(Module $module): bool
     {
         return $module->appointment_end_time !== null && now()->gte($module->appointment_end_time);
+    }
+
+    private function moduleIsJoinable(Module $module, ?LiveStreamSession $session = null): bool
+    {
+        if (! $this->moduleIsWithinScheduledWindow($module)) {
+            return false;
+        }
+
+        if (! $module->usesRegiaLive()) {
+            return $session?->isLive() ?? $module->activeLiveStreamSession()->exists();
+        }
+
+        $liveSession = $session ?? $module->activeLiveStreamSession()->first();
+
+        return $liveSession?->isBroadcastLive() ?? false;
     }
 
     /**
@@ -1085,26 +1479,46 @@ class LiveStreamController extends Controller
             return $this->emptyStatePayload('ended', __('La diretta è terminata.'), $documents);
         }
 
+        if ($module->usesRegiaLive() && ! $this->moduleIsJoinable($module, $latestSession)) {
+            return $this->emptyStatePayload(
+                'waiting',
+                __('La live non è ancora attiva. Aggiorna la pagina quando la regia avvia la trasmissione.'),
+                $documents,
+                $module,
+                $latestSession,
+            );
+        }
+
         return null;
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function emptyStatePayload(string $status, string $message, array $documents = []): array
-    {
+    private function emptyStatePayload(
+        string $status,
+        string $message,
+        array $documents = [],
+        ?Module $module = null,
+        ?LiveStreamSession $session = null,
+    ): array {
         return [
             'status' => $status,
             'message' => $message,
-            'session' => null,
+            'session' => $session ? $this->serializeSession($session) : null,
             'participants' => [],
             'teacher' => null,
+            'teacher_participants' => [],
+            'viewer_roster' => [],
             'messages' => [],
             'documents' => $documents,
             'pending_hand_raises' => [],
             'current_hand_raise' => null,
             'polls' => [],
             'active_poll' => null,
+            'scheduled_window_open' => $module ? $this->moduleIsWithinScheduledWindow($module) : false,
+            'is_joinable' => $module ? $this->moduleIsJoinable($module, $session) : false,
+            'mux' => $module ? $this->serializeMux($module, $session) : null,
         ];
     }
 
@@ -1368,6 +1782,7 @@ class LiveStreamController extends Controller
         return match ($role) {
             LiveStreamParticipant::ROLE_TEACHER => 'teacher',
             LiveStreamParticipant::ROLE_TUTOR => 'tutor',
+            LiveStreamParticipant::ROLE_ADMIN => 'admin.regia',
             default => 'user',
         };
     }
@@ -1400,7 +1815,62 @@ class LiveStreamController extends Controller
             'ended_at' => $session->ended_at?->toIso8601String(),
             'twilio_room_name' => $session->twilio_room_name,
             'twilio_room_sid' => $session->twilio_room_sid,
+            'broadcast_status' => $session->mux_broadcast_status,
+            'broadcast_started_at' => $session->mux_broadcast_started_at?->toIso8601String(),
+            'broadcast_ended_at' => $session->mux_broadcast_ended_at?->toIso8601String(),
+            'mux_playback_id' => $session->mux_playback_id,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function serializeMux(Module $module, ?LiveStreamSession $session): ?array
+    {
+        if ($module->mux_playback_id === null && $module->mux_live_stream_id === null) {
+            return null;
+        }
+
+        return [
+            'liveStreamId' => $module->mux_live_stream_id,
+            'playbackId' => $module->mux_playback_id,
+            'playbackUrl' => $module->mux_playback_id ? sprintf('https://player.mux.com/%s', $module->mux_playback_id) : null,
+            'streamKey' => $module->mux_stream_key,
+            'ingestUrl' => $module->mux_ingest_url,
+            'status' => $session?->mux_broadcast_status ?? LiveStreamSession::BROADCAST_STATUS_IDLE,
+            'isLive' => $session?->isBroadcastLive() ?? false,
+        ];
+    }
+
+    /**
+     * @param  Collection<int, LiveStreamParticipant>  $teacherParticipants
+     * @param  Collection<int, LiveStreamParticipant>  $visibleStudents
+     * @return array<int, array<string, mixed>>
+     */
+    private function serializeViewerRoster($teacherParticipants, $visibleStudents): array
+    {
+        $teacherEntries = $teacherParticipants
+            ->map(fn (LiveStreamParticipant $participant): array => $this->serializeParticipant($participant))
+            ->values();
+
+        $remainingSlots = max(0, 5 - $teacherEntries->count());
+
+        if ($remainingSlots === 0) {
+            return $teacherEntries->take(5)->all();
+        }
+
+        $seed = (int) now()->format('YmdHi');
+        $students = $visibleStudents
+            ->sortBy(fn (LiveStreamParticipant $participant): string => sha1(sprintf('%s:%s', $seed, $participant->user_id)))
+            ->take($remainingSlots)
+            ->map(fn (LiveStreamParticipant $participant): array => $this->serializeParticipant($participant))
+            ->values();
+
+        return $teacherEntries
+            ->concat($students)
+            ->take(5)
+            ->values()
+            ->all();
     }
 
     private function initialsFor(string $name): string

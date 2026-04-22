@@ -18,6 +18,8 @@ class LiveStreamParticipant extends Model
 
     public const ROLE_TUTOR = 'tutor';
 
+    public const ROLE_ADMIN = 'admin';
+
     protected $fillable = [
         'live_stream_session_id',
         'user_id',

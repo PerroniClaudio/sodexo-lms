@@ -24,6 +24,26 @@
                         {{ $course?->title ?? __('Corso non disponibile') }}
                     </p>
                 </div>
+
+                <div class="rounded-box border border-base-300 bg-base-200 p-4">
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">
+                        {{ __('Orario live') }}
+                    </p>
+                    <p class="mt-2 text-base font-medium text-base-content">
+                        {{ $module->appointment_start_time?->format('d/m/Y H:i') ?? __('Non programmata') }}
+                        @if ($module->appointment_end_time !== null)
+                            {{ __('-') }} {{ $module->appointment_end_time->format('H:i') }}
+                        @endif
+                    </p>
+                </div>
+
+                @if (($waitingState ?? 'waiting') !== 'ended')
+                    <div class="flex justify-end">
+                        <a href="{{ route('user.live-stream.player', $module) }}" class="btn btn-primary">
+                            {{ __('Aggiorna stato live') }}
+                        </a>
+                    </div>
+                @endif
             </div>
         </div>
     </section>

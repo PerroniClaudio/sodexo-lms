@@ -31,6 +31,18 @@
                         </a>
                     </li>
 
+                    <li class="w-full">
+                        <a
+                            href="{{ route('admin.regia.index') }}"
+                            @class([
+                                'w-full',
+                                'menu-active' => request()->routeIs('admin.regia.*'),
+                            ])
+                        >
+                            {{ __('Regia') }}
+                        </a>
+                    </li>
+
                     @role(['admin', 'superadmin'])
                         <li class="w-full">
                             <a

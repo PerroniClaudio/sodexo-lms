@@ -7,6 +7,7 @@ use App\Models\CourseTutorEnrollment;
 use App\Models\LiveStreamDocument;
 use App\Models\LiveStreamSession;
 use App\Models\Module;
+use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -113,6 +114,8 @@ test('user live stream route renders waiting view before the scheduled start tim
     $response->assertSeeText('Diretta non ancora disponibile');
     $response->assertSeeText('La diretta comincia all\'orario stabilito.');
     $response->assertSeeText('Corso sicurezza');
+    $response->assertSeeText('Orario live');
+    $response->assertSeeText('Aggiorna stato live');
 });
 
 test('user live stream route renders ended view after the scheduled end time', function () {
@@ -147,6 +150,144 @@ test('user live stream route renders ended view after the scheduled end time', f
     $response->assertSeeText('Diretta terminata');
     $response->assertSeeText('La diretta è terminata.');
     $response->assertSeeText('Corso sicurezza');
+    $response->assertSeeText('Orario live');
+    $response->assertDontSeeText('Aggiorna stato live');
+});
+
+test('user regia live route stays in waiting view until mux broadcast is active', function () {
+    $user = actingAsRole('user');
+    $course = Course::factory()->create([
+        'title' => 'Corso regia',
+    ]);
+
+    $module = Module::factory()->create([
+        'title' => 'Live MUX',
+        'type' => 'live',
+        'is_live_teacher' => false,
+        'status' => 'published',
+        'mux_live_stream_id' => 'live_123',
+        'mux_playback_id' => 'playback_123',
+        'mux_stream_key' => 'stream-key',
+        'mux_ingest_url' => 'rtmps://global-live.mux.com:443/app',
+        'appointment_start_time' => now()->subMinutes(5),
+        'appointment_end_time' => now()->addHour(),
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    CourseEnrollment::factory()->create([
+        'user_id' => $user->getKey(),
+        'course_id' => $course->getKey(),
+    ]);
+
+    LiveStreamSession::factory()->create([
+        'module_id' => $module->getKey(),
+        'status' => LiveStreamSession::STATUS_LIVE,
+        'mux_playback_id' => 'playback_123',
+        'mux_broadcast_status' => LiveStreamSession::BROADCAST_STATUS_IDLE,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('user.live-stream.player', $module));
+
+    $response->assertSuccessful();
+    $response->assertViewIs('user.live-stream.waiting');
+    $response->assertSeeText('Live MUX');
+    $response->assertSeeText('Aggiorna stato live');
+});
+
+test('admin regia index lists only today non teacher live modules', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+
+    $admin = actingAsRole('admin');
+    $course = Course::factory()->create();
+
+    Module::factory()->create([
+        'title' => 'Live regia oggi',
+        'type' => 'live',
+        'is_live_teacher' => false,
+        'appointment_start_time' => now()->setTime(10, 0),
+        'appointment_end_time' => now()->setTime(11, 0),
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    Module::factory()->create([
+        'title' => 'Live docente oggi',
+        'type' => 'live',
+        'is_live_teacher' => true,
+        'appointment_start_time' => now()->setTime(12, 0),
+        'appointment_end_time' => now()->setTime(13, 0),
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    Module::factory()->create([
+        'title' => 'Live regia domani',
+        'type' => 'live',
+        'is_live_teacher' => false,
+        'appointment_start_time' => now()->addDay()->setTime(10, 0),
+        'appointment_end_time' => now()->addDay()->setTime(11, 0),
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $response = $this
+        ->actingAs($admin)
+        ->get(route('admin.regia.index'));
+
+    $response->assertSuccessful();
+    $response->assertSeeText('Live regia oggi');
+    $response->assertDontSeeText('Live docente oggi');
+    $response->assertDontSeeText('Live regia domani');
+});
+
+test('admin regia index excludes live modules whose course was soft deleted', function () {
+    $admin = actingAsRole('admin');
+    $course = Course::factory()->create();
+
+    Module::factory()->create([
+        'title' => 'Live regia corso eliminato',
+        'type' => 'live',
+        'is_live_teacher' => false,
+        'appointment_start_time' => now()->setTime(10, 0),
+        'appointment_end_time' => now()->setTime(11, 0),
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $course->delete();
+
+    $response = $this
+        ->actingAs($admin)
+        ->get(route('admin.regia.index'));
+
+    $response->assertSuccessful();
+    $response->assertDontSeeText('Live regia corso eliminato');
+});
+
+test('admin regia player renders mux credentials daisyui modal', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+
+    $admin = actingAsRole('admin');
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'title' => 'Live regia modal',
+        'type' => 'live',
+        'is_live_teacher' => false,
+        'mux_live_stream_id' => 'live_123',
+        'mux_playback_id' => 'playback_123',
+        'mux_stream_key' => 'stream-key',
+        'mux_ingest_url' => 'rtmps://global-live.mux.com:443/app',
+        'appointment_start_time' => now()->subMinutes(5),
+        'appointment_end_time' => now()->addHour(),
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $response = $this
+        ->actingAs($admin)
+        ->get(route('admin.regia.show', $module));
+
+    $response->assertSuccessful();
+    $response->assertSee('id="regia-live-modal"', false);
+    $response->assertSee('class="modal"', false);
+    $response->assertSee('data-live-stream-regia-modal-close', false);
 });
 
 test('user live stream route requires an enrollment for the live course', function () {

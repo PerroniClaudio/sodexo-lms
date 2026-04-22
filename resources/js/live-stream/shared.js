@@ -167,6 +167,105 @@ export function renderDocuments(root, documents = [], options = {}) {
     });
 }
 
+export function renderMuxStage(stageElement, mux, options = {}) {
+    if (!(stageElement instanceof HTMLElement)) {
+        return;
+    }
+
+    const title = options.title ?? 'Feed live non disponibile';
+    const message = options.message ?? 'Il player MUX comparira qui quando la regia avvia la trasmissione.';
+    const playerTitle = options.playerTitle ?? 'Player MUX';
+    const accentColor = resolveMuxAccentColor(stageElement);
+
+    if (!mux?.playbackId) {
+        renderMuxPlaceholder(stageElement, 'empty', title, message);
+
+        return;
+    }
+
+    if (!mux.isLive && !options.showOfflinePlayer) {
+        renderMuxPlaceholder(stageElement, 'offline', title, message);
+
+        return;
+    }
+
+    const nextSignature = JSON.stringify({
+        kind: 'player',
+        playbackId: mux.playbackId,
+        isLive: Boolean(mux.isLive),
+        playerTitle,
+        accentColor,
+    });
+
+    if (stageElement.dataset.muxStageSignature === nextSignature) {
+        return;
+    }
+
+    stageElement.replaceChildren();
+    stageElement.dataset.muxStageSignature = nextSignature;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'relative h-full w-full overflow-hidden rounded-[1.75rem] bg-black';
+
+    const iframe = document.createElement('iframe');
+    iframe.className = 'h-full w-full border-0';
+    iframe.allow = 'accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;';
+    iframe.src = buildMuxPlayerUrl(mux.playbackId, accentColor);
+    iframe.title = playerTitle;
+
+    wrapper.appendChild(iframe);
+
+    if (!mux.isLive) {
+        wrapper.insertAdjacentHTML(
+            'beforeend',
+            '<div class="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">Offline</div>',
+        );
+    }
+
+    stageElement.appendChild(wrapper);
+}
+
+function buildMuxPlayerUrl(playbackId, accentColor) {
+    const params = new URLSearchParams({
+        autoplay: 'false',
+        muted: 'false',
+    });
+
+    if (accentColor) {
+        params.set('accent-color', accentColor);
+    }
+
+    return `https://player.mux.com/${playbackId}?${params.toString()}`;
+}
+
+function resolveMuxAccentColor(stageElement) {
+    const sourceElement = stageElement.closest('[data-theme]') ?? document.documentElement;
+    const color = getComputedStyle(sourceElement).getPropertyValue('--color-primary').trim();
+
+    return color || null;
+}
+
+function renderMuxPlaceholder(stageElement, kind, title, message) {
+    const nextSignature = JSON.stringify({
+        kind,
+        title,
+        message,
+    });
+
+    if (stageElement.dataset.muxStageSignature === nextSignature) {
+        return;
+    }
+
+    stageElement.replaceChildren();
+    stageElement.dataset.muxStageSignature = nextSignature;
+    stageElement.appendChild(createPlaceholderCard(title, '', {
+        centered: true,
+        hideInitials: true,
+        className: 'h-full w-full min-h-0 rounded-[1.75rem] border-0 bg-[#24285f] px-8 text-white shadow-none',
+        footer: message,
+    }));
+}
+
 export function getLiveStreamIconSvg(iconName, classNames = 'h-4 w-4') {
     const iconNode = LIVE_STREAM_ICON_NODES[iconName];
 

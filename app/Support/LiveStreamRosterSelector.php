@@ -36,6 +36,26 @@ class LiveStreamRosterSelector
     }
 
     /**
+     * @param  array<int, array{id:int,user_id:int}>  $teacherParticipants
+     * @param  array<int, array{id:int,user_id:int}>  $studentParticipants
+     * @return array<int, array{id:int,user_id:int}>
+     */
+    public function forMuxViewer(array $teacherParticipants, array $studentParticipants, int $seed): array
+    {
+        if (count($teacherParticipants) >= 5) {
+            return array_values(array_slice($teacherParticipants, 0, 5));
+        }
+
+        $remainingSlots = 5 - count($teacherParticipants);
+        $rotatedStudents = $this->shuffle($studentParticipants, $seed);
+
+        return array_values(array_merge(
+            $teacherParticipants,
+            array_slice($rotatedStudents, 0, $remainingSlots),
+        ));
+    }
+
+    /**
      * @param  array<int, array{id:int,user_id:int}>  $participants
      * @param  array<int, int>  $pinnedUserIds
      * @return array<int, array{id:int,user_id:int}>

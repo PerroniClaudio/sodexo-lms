@@ -49,6 +49,10 @@ class Module extends Model
         'type',
         'order',
         'is_live_teacher',
+        'mux_live_stream_id',
+        'mux_playback_id',
+        'mux_stream_key',
+        'mux_ingest_url',
         'appointment_date',
         'appointment_start_time',
         'appointment_end_time',
@@ -220,6 +224,11 @@ class Module extends Model
     public function isVideo(): bool
     {
         return $this->type === 'video';
+    }
+
+    public function usesRegiaLive(): bool
+    {
+        return $this->type === 'live' && ! $this->is_live_teacher;
     }
 
     public function isScorm(): bool

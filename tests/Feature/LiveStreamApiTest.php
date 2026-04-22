@@ -17,6 +17,7 @@ use App\Services\TwilioVideoService;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
@@ -97,6 +98,55 @@ test('teacher start session requires an enrollment in the course', function () {
     $this->actingAs($teacher)
         ->postJson(route('teacher.live-stream.session.start', $module))
         ->assertForbidden();
+});
+
+test('admin can start a regia live session and receives mux credentials', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+
+    $admin = actingAsRole('admin');
+    $module = createLiveModuleWithCourse()->forceFill([
+        'is_live_teacher' => false,
+    ]);
+    $module->save();
+
+    Http::fake([
+        'https://api.mux.com/video/v1/live-streams' => Http::response([
+            'data' => [
+                'id' => 'mux-live-123',
+                'stream_key' => 'stream-key-123',
+                'playback_ids' => [
+                    ['id' => 'playback-123'],
+                ],
+            ],
+        ], 201),
+        'https://api.mux.com/video/v1/live-streams/mux-live-123' => Http::response([
+            'data' => [
+                'id' => 'mux-live-123',
+                'status' => 'idle',
+            ],
+        ], 200),
+    ]);
+
+    config()->set('services.mux.token_id', 'token-id');
+    config()->set('services.mux.token_secret', 'token-secret');
+
+    $service = Mockery::mock(TwilioVideoService::class);
+    $service->shouldReceive('createRoom')
+        ->once()
+        ->andReturn([
+            'sid' => 'RMregiaroom',
+            'name' => 'regia-room',
+        ]);
+    $this->app->instance(TwilioVideoService::class, $service);
+
+    $this->actingAs($admin)
+        ->postJson(route('admin.regia.session.start', $module))
+        ->assertSuccessful()
+        ->assertJsonPath('credentials.stream_key', 'stream-key-123')
+        ->assertJsonPath('session.twilio_room_name', 'regia-room')
+        ->assertJsonPath('mux.playbackId', 'playback-123');
+
+    expect($module->fresh()->mux_live_stream_id)->toBe('mux-live-123');
 });
 
 test('user join requires an enrollment in the live course', function () {
