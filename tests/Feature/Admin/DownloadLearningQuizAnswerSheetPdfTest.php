@@ -116,16 +116,16 @@ it('renders one answer sheet for each enrolled user with twenty questions per sh
         expect($pdf->downloadName)->toBe('corso-res-con-quiz-quiz-di-apprendimento-answer-sheet.pdf');
         expect($pdf->viewData['userSheets'])->toHaveCount(2);
         expect($pdf->viewData['userSheets']->pluck('qrCodeContent')->all())->toBe([
-            base64_encode($course->getKey().'*'.$firstUser->getKey()),
-            base64_encode($course->getKey().'*'.$secondUser->getKey()),
+            base64_encode($course->getKey().'*'.$module->getKey().'*'.$firstUser->getKey()),
+            base64_encode($course->getKey().'*'.$module->getKey().'*'.$secondUser->getKey()),
         ]);
-        expect($pdf->viewData['userSheets'][0]['questionNumbers']->all())->toBe(range(1, 20));
-        expect($pdf->viewData['userSheets'][1]['questionNumbers']->all())->toBe(range(1, 20));
+        expect($pdf->viewData['userSheets'][0]['questionNumbers']->all())->toBe([1, 2]);
+        expect($pdf->viewData['userSheets'][1]['questionNumbers']->all())->toBe([1, 2]);
         expect(substr_count($html, 'data:image/svg+xml;base64,'))->toBe(2);
-        expect(substr_count($html, '<span class="answer-square"'))->toBe(160);
+        expect(substr_count($html, '<span class="answer-square"'))->toBe(16);
         expect(substr_count($html, '<div class="sheet">'))->toBe(2);
         expect($html)->toContain('Corso RES con quiz');
-        expect($html)->toContain('>20<');
+        expect($html)->toContain('>2<');
         expect($html)->not->toContain('Prima domanda reale');
         expect($html)->not->toContain('Seconda domanda reale');
 

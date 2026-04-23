@@ -66,6 +66,13 @@ class CourseModuleController extends Controller
                 ? $liveModuleAttendanceService->buildReport($module)
                 : collect(),
             'moduleProgressStatusLabels' => $this->moduleProgressStatusLabels(),
+            'recentQuizSubmissions' => $module->type === 'learning_quiz'
+                ? $module->quizSubmissions()
+                    ->with(['user', 'uploadedBy'])
+                    ->latest()
+                    ->limit(5)
+                    ->get()
+                : collect(),
         ]);
     }
 

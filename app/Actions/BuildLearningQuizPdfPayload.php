@@ -30,6 +30,14 @@ class BuildLearningQuizPdfPayload
      */
     public function __invoke(Course $course, Module $module): array
     {
+        $module->loadMissing([
+            'quizQuestions' => fn ($query) => $query->orderBy('id'),
+        ]);
+
+        $questionNumbers = $module->quizQuestions->isEmpty()
+            ? collect()
+            : collect(range(1, $module->quizQuestions->count()));
+
         return [
             'course' => $course,
             'module' => $module,
@@ -37,8 +45,12 @@ class BuildLearningQuizPdfPayload
             'userSheets' => $course->users
                 ->sortBy(fn (User $user): string => mb_strtolower(trim($user->surname.' '.$user->name)))
                 ->values()
-                ->map(function (User $user) use ($course): array {
-                    $qrCodeContent = base64_encode($course->getKey().'*'.$user->getAuthIdentifier());
+                ->map(function (User $user) use ($course, $module, $questionNumbers): array {
+                    $qrCodeContent = base64_encode(implode('*', [
+                        $course->getKey(),
+                        $module->getKey(),
+                        $user->getAuthIdentifier(),
+                    ]));
                     $qrCodeSvgMarkup = $this->qrCodeWriter()->writeString($qrCodeContent);
                     $qrCodeSvg = trim(substr($qrCodeSvgMarkup, strpos($qrCodeSvgMarkup, "\n") + 1));
 
@@ -46,7 +58,7 @@ class BuildLearningQuizPdfPayload
                         'user' => $user,
                         'qrCodeContent' => $qrCodeContent,
                         'qrCodeDataUri' => 'data:image/svg+xml;base64,'.base64_encode($qrCodeSvg),
-                        'questionNumbers' => collect(range(1, 20)),
+                        'questionNumbers' => $questionNumbers,
                     ];
                 }),
         ];

@@ -239,8 +239,18 @@ class Module extends Model
     /**
      * Domande quiz associate al modulo.
      */
-    public function quizQuestions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function quizQuestions(): HasMany
     {
-        return $this->hasMany(\App\Models\ModuleQuizQuestion::class);
+        return $this->hasMany(ModuleQuizQuestion::class);
+    }
+
+    public function quizSubmissions(): HasMany
+    {
+        return $this->hasMany(ModuleQuizSubmission::class);
+    }
+
+    public function submissions(): HasMany
+    {
+        return $this->quizSubmissions();
     }
 }

@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\JobSectorController;
 use App\Http\Controllers\Admin\JobTitleController;
 use App\Http\Controllers\Admin\JobUnitController;
 use App\Http\Controllers\Admin\ModuleQuizController;
+use App\Http\Controllers\Admin\ModuleQuizSubmissionController;
 use App\Http\Controllers\Admin\RegiaController;
 use App\Http\Controllers\Admin\ScormPackageController;
 use App\Http\Controllers\Admin\UserController;
@@ -84,13 +85,20 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::delete('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}', [ModuleQuizController::class, 'deleteAnswer'])->name('courses.modules.quiz.answers.delete');
         Route::post('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}/set-correct', [ModuleQuizController::class, 'setCorrectAnswer'])->name('courses.modules.quiz.answers.set-correct');
 
+        Route::scopeBindings()->group(function () {
+            Route::post('/courses/{course}/modules/{module}/quiz/submissions', [ModuleQuizSubmissionController::class, 'store'])->name('courses.modules.quiz.submissions.store');
+            Route::get('/courses/{course}/modules/{module}/quiz/submissions', [ModuleQuizSubmissionController::class, 'index'])->name('courses.modules.quiz.submissions.index');
+            Route::get('/courses/{course}/modules/{module}/quiz/submissions/{submission}', [ModuleQuizSubmissionController::class, 'show'])->name('courses.modules.quiz.submissions.show');
+            Route::get('/courses/{course}/modules/{module}/quiz/submissions/{submission}/review', [ModuleQuizSubmissionController::class, 'review'])->name('courses.modules.quiz.submissions.review');
+            Route::post('/courses/{course}/modules/{module}/quiz/submissions/{submission}/finalize', [ModuleQuizSubmissionController::class, 'finalize'])->name('courses.modules.quiz.submissions.finalize');
+        });
+
+
         // API (risposte json)
         Route::group(['prefix' => 'api', 'as' => 'api.'], function () {
             // Lista domande e risposte
             Route::get('/courses/{course}/modules/{module}/quiz/questions', [ModuleQuizController::class, 'questionsWithAnswersApi'])->name('courses.modules.quiz.questions.index');
             Route::post('/courses/{course}/modules/{module}/quiz/questions', [ModuleQuizController::class, 'storeQuestionApi'])->name('courses.modules.quiz.questions.store');
-
-        
             Route::put('/courses/{course}/modules/{module}/quiz/questions/{question}', [ModuleQuizController::class, 'updateQuestionApi'])->name('courses.modules.quiz.questions.update');
             Route::delete('/courses/{course}/modules/{module}/quiz/questions/{question}', [ModuleQuizController::class, 'deleteQuestionApi'])->name('courses.modules.quiz.questions.delete');
             Route::post('/courses/{course}/modules/{module}/quiz/questions/{question}/answers', [ModuleQuizController::class, 'storeAnswerApi'])->name('courses.modules.quiz.answers.store');
