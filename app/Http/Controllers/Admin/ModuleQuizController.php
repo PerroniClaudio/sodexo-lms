@@ -15,70 +15,16 @@ use Spatie\LaravelPdf\Facades\Pdf;
 
 class ModuleQuizController extends Controller
 {
-    public function storeQuestion(Request $request, Course $course, Module $module): RedirectResponse
+    /**
+     * API: restituisce tutte le domande e risposte del quiz di un modulo
+     */
+    public function questionsWithAnswersApi(Course $course, Module $module)
     {
-        $data = $request->validate([
-            'text' => 'required|string',
-            'points' => 'required|integer|min:1',
+        $questions = $module->quizQuestions()->with(['answers'])->orderBy('id')->get();
+        return response()->json([
+            'success' => true,
+            'questions' => $questions,
         ]);
-        $data['module_id'] = $module->id;
-        ModuleQuizQuestion::create($data);
-
-        return back()->with('status', __('Domanda aggiunta con successo.'));
-    }
-
-    public function updateQuestion(Request $request, Course $course, Module $module, ModuleQuizQuestion $question): RedirectResponse
-    {
-        $data = $request->validate([
-            'text' => 'required|string',
-            'points' => 'required|integer|min:1',
-        ]);
-        $question->update($data);
-
-        return back()->with('status', __('Domanda aggiornata.'));
-    }
-
-    public function deleteQuestion(Course $course, Module $module, ModuleQuizQuestion $question): RedirectResponse
-    {
-        $question->delete();
-
-        return back()->with('status', __('Domanda eliminata.'));
-    }
-
-    public function storeAnswer(Request $request, Course $course, Module $module, ModuleQuizQuestion $question): RedirectResponse
-    {
-        $data = $request->validate([
-            'text' => 'required|string',
-        ]);
-        $answer = $question->answers()->create($data);
-
-        return back()->with('status', __('Risposta aggiunta con successo.'));
-    }
-
-    public function updateAnswer(Request $request, Course $course, Module $module, ModuleQuizQuestion $question, ModuleQuizAnswer $answer): RedirectResponse
-    {
-        $data = $request->validate([
-            'text' => 'required|string',
-        ]);
-        $answer->update($data);
-
-        return back()->with('status', __('Risposta aggiornata.'));
-    }
-
-    public function setCorrectAnswer(Request $request, Course $course, Module $module, ModuleQuizQuestion $question, ModuleQuizAnswer $answer): RedirectResponse
-    {
-        // Imposta la risposta corretta per la domanda
-        $question->correct_answer_id = $question->correct_answer_id === $answer->id ? null : $answer->id;
-        $question->save();
-
-        return back()->with('status', __('Risposta corretta aggiornata.'));
-    }
-
-    public function deleteAnswer(Course $course, Module $module, ModuleQuizQuestion $question, ModuleQuizAnswer $answer): RedirectResponse
-    {
-        $answer->delete();
-
-        return back()->with('status', __('Risposta eliminata.'));
     }
 
     public function downloadPdf(
@@ -140,5 +86,112 @@ class ModuleQuizController extends Controller
         $moduleSlug = Str::slug($module->title) ?: 'learning-quiz';
 
         return "{$courseSlug}-{$moduleSlug}-answer-sheet.pdf";
+    }
+
+
+    /**
+     * API: aggiungi domanda quiz (risposta JSON)
+     */
+    public function storeQuestionApi(Request $request, Course $course, Module $module)
+    {
+        $data = $request->validate([
+            'text' => 'required|string',
+            'points' => 'required|integer|min:1',
+        ]);
+        $data['module_id'] = $module->id;
+        $question = ModuleQuizQuestion::create($data);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Domanda aggiunta con successo.'),
+            'question' => $question,
+        ]);
+    }
+
+    /**
+     * API: aggiorna domanda quiz (risposta JSON)
+     */
+    public function updateQuestionApi(Request $request, Course $course, Module $module, ModuleQuizQuestion $question)
+    {
+        $data = $request->validate([
+            'text' => 'required|string',
+            'points' => 'required|integer|min:1',
+        ]);
+        $question->update($data);
+        return response()->json([
+            'success' => true,
+            'message' => __('Domanda aggiornata.'),
+            'question' => $question,
+        ]);
+    }
+
+    /**
+     * API: elimina domanda quiz (risposta JSON)
+     */
+    public function deleteQuestionApi(Course $course, Module $module, ModuleQuizQuestion $question)
+    {
+        $question->delete();
+        return response()->json([
+            'success' => true,
+            'message' => __('Domanda eliminata.'),
+        ]);
+    }
+
+    /**
+     * API: aggiungi risposta (JSON)
+     */
+    public function storeAnswerApi(Request $request, Course $course, Module $module, ModuleQuizQuestion $question)
+    {
+        $data = $request->validate([
+            'text' => 'required|string',
+        ]);
+        $answer = $question->answers()->create($data);
+        return response()->json([
+            'success' => true,
+            'message' => __('Risposta aggiunta con successo.'),
+            'answer' => $answer,
+        ]);
+    }
+
+    /**
+     * API: aggiorna risposta (JSON)
+     */
+    public function updateAnswerApi(Request $request, Course $course, Module $module, ModuleQuizQuestion $question, ModuleQuizAnswer $answer)
+    {
+        $data = $request->validate([
+            'text' => 'required|string',
+        ]);
+        $answer->update($data);
+        return response()->json([
+            'success' => true,
+            'message' => __('Risposta aggiornata.'),
+            'answer' => $answer,
+        ]);
+    }
+
+    /**
+     * API: elimina risposta (JSON)
+     */
+    public function deleteAnswerApi(Course $course, Module $module, ModuleQuizQuestion $question, ModuleQuizAnswer $answer)
+    {
+        $answer->delete();
+        return response()->json([
+            'success' => true,
+            'message' => __('Risposta eliminata.'),
+        ]);
+    }
+
+    /**
+     * API: imposta risposta corretta (JSON)
+     */
+    public function setCorrectAnswerApi(Request $request, Course $course, Module $module, ModuleQuizQuestion $question, ModuleQuizAnswer $answer)
+    {
+        $question->correct_answer_id = $question->correct_answer_id === $answer->id ? null : $answer->id;
+        $question->save();
+        return response()->json([
+            'success' => true,
+            'message' => __('Risposta corretta aggiornata.'),
+            'question' => $question,
+        ]);
     }
 }
