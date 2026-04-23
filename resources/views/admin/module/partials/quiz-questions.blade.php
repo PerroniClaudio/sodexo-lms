@@ -30,26 +30,30 @@
         </dialog>
         @foreach ($module->quizQuestions as $question)
             <div class="border rounded p-4 bg-base-200">
-                <form method="POST" action="{{ route('admin.courses.modules.quiz.questions.update', [$course, $module, $question]) }}" class="flex flex-col gap-2 mb-6 md:flex-row md:items-end">
-                    @csrf
-                    @method('PUT')
-                    <div class="flex flex-col grow">
-                        <label class="label label-text mb-1">Testo domanda</label>
-                        <textarea name="text" class="textarea textarea-bordered w-full resize-y md:h-[50px] md:min-h-[50px]" required>{{ $question->text }}</textarea>
-                    </div>
-                    <div class="flex flex-col w-full min-w-[5rem] md:w-20 md:min-w-[5rem]">
-                        <label class="label label-text mb-1">Punti</label>
-                        <input type="number" name="points" value="{{ $question->points }}" class="input input-bordered w-full" min="1" required>
-                    </div>
+                <div class="mb-6 flex flex-col gap-2 md:flex-row md:items-end">
+                    <form method="POST" action="{{ route('admin.courses.modules.quiz.questions.update', [$course, $module, $question]) }}" class="flex flex-col gap-2 grow md:flex-row md:items-end">
+                        @csrf
+                        @method('PUT')
+                        <div class="flex flex-col grow">
+                            <label class="label label-text mb-1">Testo domanda</label>
+                            <textarea name="text" class="textarea textarea-bordered w-full resize-y md:h-[50px] md:min-h-[50px]" required>{{ $question->text }}</textarea>
+                        </div>
+                        <div class="flex flex-col w-full min-w-[5rem] md:w-20 md:min-w-[5rem]">
+                            <label class="label label-text mb-1">Punti</label>
+                            <input type="number" name="points" value="{{ $question->points }}" class="input input-bordered w-full" min="1" required>
+                        </div>
+                        <div class="flex gap-2 w-full md:w-auto">
+                            <button type="submit" class="btn btn-primary w-1/2 md:w-fit">Salva</button>
+                        </div>
+                    </form>
                     <div class="flex gap-2 w-full md:w-auto">
-                        <button type="submit" class="btn btn-primary w-1/2 md:w-fit">Salva</button>
-                        <form method="POST" action="{{ route('admin.courses.modules.quiz.questions.delete', [$course, $module, $question]) }}" class="js-delete-question-form" style="display:inline">
+                        <form method="POST" action="{{ route('admin.courses.modules.quiz.questions.delete', [$course, $module, $question]) }}" class="js-delete-question-form flex-1 md:flex-none" style="display:inline">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="btn btn-error w-1/2 md:w-fit">Elimina</button>
+                            <button type="submit" class="btn btn-error w-full md:w-fit">Elimina</button>
                         </form>
                     </div>
-                </form>
+                </div>
                 <div>
                     <div class="flex gap-4 justify-between items-center">
                         <button

@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\JobRoleController;
 use App\Http\Controllers\Admin\JobSectorController;
 use App\Http\Controllers\Admin\JobTitleController;
 use App\Http\Controllers\Admin\JobUnitController;
+use App\Http\Controllers\Admin\ModuleQuizController;
 use App\Http\Controllers\Admin\RegiaController;
 use App\Http\Controllers\Admin\ScormPackageController;
 use App\Http\Controllers\Admin\UserController;
@@ -72,12 +73,13 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         });
 
         // Quiz Domande e Risposte
-        Route::post('/courses/{course}/modules/{module}/quiz/questions', [\App\Http\Controllers\Admin\ModuleQuizController::class, 'storeQuestion'])->name('courses.modules.quiz.questions.store');
-        Route::put('/courses/{course}/modules/{module}/quiz/questions/{question}', [\App\Http\Controllers\Admin\ModuleQuizController::class, 'updateQuestion'])->name('courses.modules.quiz.questions.update');
-        Route::delete('/courses/{course}/modules/{module}/quiz/questions/{question}', [\App\Http\Controllers\Admin\ModuleQuizController::class, 'deleteQuestion'])->name('courses.modules.quiz.questions.delete');
-        Route::post('/courses/{course}/modules/{module}/quiz/questions/{question}/answers', [\App\Http\Controllers\Admin\ModuleQuizController::class, 'storeAnswer'])->name('courses.modules.quiz.answers.store');
-        Route::put('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}', [\App\Http\Controllers\Admin\ModuleQuizController::class, 'updateAnswer'])->name('courses.modules.quiz.answers.update');
-        Route::delete('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}', [\App\Http\Controllers\Admin\ModuleQuizController::class, 'deleteAnswer'])->name('courses.modules.quiz.answers.delete');
-        Route::post('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}/set-correct', [\App\Http\Controllers\Admin\ModuleQuizController::class, 'setCorrectAnswer'])->name('courses.modules.quiz.answers.set-correct');
+        Route::post('/courses/{course}/modules/{module}/quiz/questions', [ModuleQuizController::class, 'storeQuestion'])->name('courses.modules.quiz.questions.store');
+        Route::put('/courses/{course}/modules/{module}/quiz/questions/{question}', [ModuleQuizController::class, 'updateQuestion'])->name('courses.modules.quiz.questions.update');
+        Route::delete('/courses/{course}/modules/{module}/quiz/questions/{question}', [ModuleQuizController::class, 'deleteQuestion'])->name('courses.modules.quiz.questions.delete');
+        Route::get('/courses/{course}/modules/{module}/quiz/pdf', [ModuleQuizController::class, 'downloadPdf'])->name('courses.modules.quiz.pdf.download');
+        Route::post('/courses/{course}/modules/{module}/quiz/questions/{question}/answers', [ModuleQuizController::class, 'storeAnswer'])->name('courses.modules.quiz.answers.store');
+        Route::put('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}', [ModuleQuizController::class, 'updateAnswer'])->name('courses.modules.quiz.answers.update');
+        Route::delete('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}', [ModuleQuizController::class, 'deleteAnswer'])->name('courses.modules.quiz.answers.delete');
+        Route::post('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}/set-correct', [ModuleQuizController::class, 'setCorrectAnswer'])->name('courses.modules.quiz.answers.set-correct');
     });
 });

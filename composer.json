@@ -11,11 +11,13 @@
     "require": {
         "php": "^8.3",
         "blade-ui-kit/blade-icons": "^1.9",
+        "dompdf/dompdf": "^3.1",
         "khsing/world": "^0.9.0",
         "laravel/fortify": "^1.36",
         "laravel/framework": "^13.0",
         "laravel/tinker": "^3.0",
         "mallardduck/blade-lucide-icons": "^1.26",
+        "spatie/laravel-pdf": "^2.6",
         "spatie/laravel-permission": "^7.3",
         "twilio/sdk": "^8.11"
     },
