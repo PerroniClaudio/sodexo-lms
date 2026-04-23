@@ -1,31 +1,31 @@
 <div class="card border border-base-300 bg-base-100 shadow-sm">
     <div class="card-body gap-6">
         <div class="flex justify-between items-center">
-                <h2 class="text-lg font-semibold">Domande del Quiz</h2>
-                <button type="button" class="btn btn-primary" onclick="document.getElementById('add-question-modal').showModal()">Aggiungi domanda</button>
+                <h2 class="text-lg font-semibold">{{ __('Quiz questions') }}</h2>
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('add-question-modal').showModal()">{{ __('Add question') }}</button>
         </div>
 
         <dialog id="add-question-modal" class="modal">
             <div class="modal-box w-full max-w-xl">
-                <h3 class="font-bold text-lg mb-4">Nuova domanda</h3>
+                <h3 class="font-bold text-lg mb-4">{{ __('New question') }}</h3>
                 <form method="POST" action="{{ route('admin.courses.modules.quiz.questions.store', [$course, $module]) }}" class="flex flex-col gap-4 items-stretch">
                         @csrf
                         <div class="flex flex-col grow">
-                                <label for="question-text-modal" class="label label-text mb-1">Testo domanda</label>
-                                <textarea id="question-text-modal" name="text" class="textarea textarea-bordered w-full resize-y md:h-[50px] md:min-h-[50px]" placeholder="Testo domanda" required></textarea>
+                                <label for="question-text-modal" class="label label-text mb-1">{{ __('Question text') }}</label>
+                                <textarea id="question-text-modal" name="text" class="textarea textarea-bordered w-full resize-y md:h-[50px] md:min-h-[50px]" placeholder="{{ __('Question text') }}" required></textarea>
                         </div>
                         <div class="flex flex-col w-full">
-                                <label for="question-points-modal" class="label label-text mb-1">Punti</label>
-                                <input id="question-points-modal" type="number" name="points" class="input input-bordered w-full" placeholder="Punti" min="1" value="1" required>
+                                <label for="question-points-modal" class="label label-text mb-1">{{ __('Points') }}</label>
+                                <input id="question-points-modal" type="number" name="points" class="input input-bordered w-full" placeholder="{{ __('Points') }}" min="1" value="1" required>
                         </div>
                         <div class="flex gap-2 justify-end">
-                            <button type="button" class="btn btn-ghost" onclick="document.getElementById('add-question-modal').close()">Annulla</button>
-                            <button type="submit" class="btn btn-primary">Salva domanda</button>
+                            <button type="button" class="btn btn-ghost" onclick="document.getElementById('add-question-modal').close()">{{ __('Cancel') }}</button>
+                            <button type="submit" class="btn btn-primary">{{ __('Save question') }}</button>
                         </div>
                 </form>
             </div>
             <form method="dialog" class="modal-backdrop">
-                <button>Chiudi</button>
+                <button>{{ __('Close') }}</button>
             </form>
         </dialog>
         @foreach ($module->quizQuestions as $question)
@@ -35,22 +35,22 @@
                         @csrf
                         @method('PUT')
                         <div class="flex flex-col grow">
-                            <label class="label label-text mb-1">Testo domanda</label>
+                            <label class="label label-text mb-1">{{ __('Question text') }}</label>
                             <textarea name="text" class="textarea textarea-bordered w-full resize-y md:h-[50px] md:min-h-[50px]" required>{{ $question->text }}</textarea>
                         </div>
                         <div class="flex flex-col w-full min-w-[5rem] md:w-20 md:min-w-[5rem]">
-                            <label class="label label-text mb-1">Punti</label>
+                            <label class="label label-text mb-1">{{ __('Points') }}</label>
                             <input type="number" name="points" value="{{ $question->points }}" class="input input-bordered w-full" min="1" required>
                         </div>
                         <div class="flex gap-2 w-full md:w-auto">
-                            <button type="submit" class="btn btn-primary w-1/2 md:w-fit">Salva</button>
+                            <button type="submit" class="btn btn-primary w-1/2 md:w-fit">{{ __('Save') }}</button>
                         </div>
                     </form>
                     <div class="flex gap-2 w-full md:w-auto">
                         <form method="POST" action="{{ route('admin.courses.modules.quiz.questions.delete', [$course, $module, $question]) }}" class="js-delete-question-form flex-1 md:flex-none" style="display:inline">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="btn btn-error w-full md:w-fit">Elimina</button>
+                                <button type="submit" class="btn btn-error w-full md:w-fit">{{ __('Delete') }}</button>
                         </form>
                     </div>
                 </div>
@@ -62,28 +62,28 @@
                             data-target="answers-{{ $question->id }}"
                             aria-expanded="false"
                             aria-controls="answers-{{ $question->id }}">
-                            Mostra risposte
+                            {{ __('Show answers') }}
                         </button>
                     </div>
                     <div id="answers-{{ $question->id }}" class="flex flex-col gap-4 mt-2" style="display: none;">
                         <div class="flex gap-4 justify-between items-center">
-                            <h3 class="text-base font-semibold mb-2">Risposte</h3>
-                            <button type="button" class="btn btn-sm btn-primary" onclick="document.getElementById('add-answer-modal-{{ $question->id }}').showModal()">Aggiungi risposta</button>
+                            <h3 class="text-base font-semibold mb-2">{{ __('Answers') }}</h3>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="document.getElementById('add-answer-modal-{{ $question->id }}').showModal()">{{ __('Add answer') }}</button>
                         </div>
                         <dialog id="add-answer-modal-{{ $question->id }}" class="modal">
                             <div class="modal-box w-full max-w-lg">
-                                <h3 class="font-bold text-lg mb-4">Nuova risposta</h3>
+                                <h3 class="font-bold text-lg mb-4">{{ __('New answer') }}</h3>
                                 <form method="POST" action="{{ route('admin.courses.modules.quiz.answers.store', [$course, $module, $question]) }}" class="flex flex-col gap-2 mb-2">
                                     @csrf
-                                    <input type="text" name="text" class="input input-bordered w-full" placeholder="Testo risposta" required>
+                                    <input type="text" name="text" class="input input-bordered w-full" placeholder="{{ __('Answer text') }}" required>
                                     <div class="flex gap-2 justify-end mt-2">
-                                        <button type="button" class="btn btn-ghost" onclick="document.getElementById('add-answer-modal-{{ $question->id }}').close()">Annulla</button>
-                                        <button type="submit" class="btn btn-primary">Salva risposta</button>
+                                        <button type="button" class="btn btn-ghost" onclick="document.getElementById('add-answer-modal-{{ $question->id }}').close()">{{ __('Cancel') }}</button>
+                                        <button type="submit" class="btn btn-primary">{{ __('Save answer') }}</button>
                                     </div>
                                 </form>
                             </div>
                             <form method="dialog" class="modal-backdrop">
-                                <button>Chiudi</button>
+                                    <button>{{ __('Close') }}</button>
                             </form>
                         </dialog>
                         @if (!$question->answers->isEmpty())
@@ -94,13 +94,13 @@
                                         <div class="flex gap-6 justify-start">
                                           @if ($question->correct_answer_id === $answer->id)
                                               <div class="mb-2">
-                                                <span class="inline-block rounded px-2 py-1 w-18 text-xs font-semibold border border-success bg-success/10 text-success">Corretta</span>
-                                                <button type="submit" class="btn btn-primary btn-xs mr-2" title="Clicca per modificare">Modifica in sbagliata</button>
+                                                <span class="inline-block rounded px-2 py-1 w-18 text-xs font-semibold border border-success bg-success/10 text-success">{{ __('Correct') }}</span>
+                                                <button type="submit" class="btn btn-primary btn-xs mr-2" title="Clicca per modificare">{{ __('Change to wrong') }}</button>
                                               </div>
                                           @else
                                               <div class="mb-2">
-                                                <span class="inline-block rounded px-2 py-1 w-18 text-xs font-semibold border border-error bg-error/10 text-error">Sbagliata</span>
-                                                <button type="submit" class="btn btn-primary btn-xs mr-2" title="Clicca per modificare">Modifica in corretta</button>
+                                                <span class="inline-block rounded px-2 py-1 w-18 text-xs font-semibold border border-error bg-error/10 text-error">{{ __('Wrong') }}</span>
+                                                <button type="submit" class="btn btn-primary btn-xs mr-2" title="Clicca per modificare">{{ __('Change to correct') }}</button>
                                               </div>
                                           @endif
                                         </div>
@@ -111,12 +111,12 @@
                                             <form id="update-answer-{{ $answer->id }}" method="POST" action="{{ route('admin.courses.modules.quiz.answers.update', [$course, $module, $question, $answer]) }}" class="flex-1 w-1/2 md:w-fit">
                                                 @csrf
                                                 @method('PUT')
-                                                <button type="submit" class="btn btn-primary w-full md:w-fit text-nowrap">Modifica testo</button>
+                                                <button type="submit" class="btn btn-primary w-full md:w-fit text-nowrap">{{ __('Edit text') }}</button>
                                             </form>
                                             <form method="POST" action="{{ route('admin.courses.modules.quiz.answers.delete', [$course, $module, $question, $answer]) }}" class="js-delete-answer-form flex-1 w-1/2 md:w-fit" style="display:inline">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="btn btn-error w-full md:w-fit text-nowrap">Elimina</button>
+                                                <button type="submit" class="btn btn-error w-full md:w-fit text-nowrap">{{ __('Delete') }}</button>
                                             </form>
                                         </div>
                                     </div>
