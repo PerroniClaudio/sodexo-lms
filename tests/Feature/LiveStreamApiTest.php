@@ -17,6 +17,7 @@ use App\Services\TwilioVideoService;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
@@ -147,6 +148,92 @@ test('admin can start a regia live session and receives mux credentials', functi
         ->assertJsonPath('mux.playbackId', 'playback-123');
 
     expect($module->fresh()->mux_live_stream_id)->toBe('mux-live-123');
+});
+
+test('teacher end session overwrites module appointment end time', function () {
+    $teacher = actingAsRole('docente');
+    $module = createLiveModuleWithCourse()->forceFill([
+        'appointment_end_time' => now()->addHours(4),
+    ]);
+    $module->save();
+
+    assignTeacherToModule($teacher, $module);
+
+    $session = LiveStreamSession::factory()->create([
+        'module_id' => $module->getKey(),
+        'teacher_user_id' => $teacher->getKey(),
+        'status' => LiveStreamSession::STATUS_LIVE,
+        'twilio_room_sid' => 'RMteacherroom',
+        'twilio_room_name' => 'teacher-room',
+    ]);
+
+    $service = Mockery::mock(TwilioVideoService::class);
+    $service->shouldReceive('completeRoom')
+        ->once()
+        ->with('RMteacherroom');
+    $this->app->instance(TwilioVideoService::class, $service);
+
+    $endedAt = Carbon::parse('2026-04-22 15:00:00');
+    Carbon::setTestNow($endedAt);
+
+    $this->actingAs($teacher)
+        ->postJson(route('teacher.live-stream.session.end', $module))
+        ->assertSuccessful()
+        ->assertJsonPath('message', 'Diretta terminata.');
+
+    expect($session->fresh()->status)->toBe(LiveStreamSession::STATUS_ENDED);
+    expect($session->fresh()->ended_at?->equalTo($endedAt))->toBeTrue();
+    expect($module->fresh()->appointment_end_time?->equalTo($endedAt))->toBeTrue();
+
+    Carbon::setTestNow();
+});
+
+test('admin regia end session overwrites module appointment end time', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+
+    $admin = actingAsRole('admin');
+    $module = createLiveModuleWithCourse()->forceFill([
+        'is_live_teacher' => false,
+        'appointment_end_time' => now()->addHours(4),
+    ]);
+    $module->save();
+
+    $session = LiveStreamSession::factory()->create([
+        'module_id' => $module->getKey(),
+        'teacher_user_id' => $admin->getKey(),
+        'started_by_user_id' => $admin->getKey(),
+        'regia_user_id' => $admin->getKey(),
+        'status' => LiveStreamSession::STATUS_LIVE,
+        'twilio_room_sid' => 'RMregiaroom',
+        'twilio_room_name' => 'regia-room',
+    ]);
+
+    $service = Mockery::mock(TwilioVideoService::class);
+    $service->shouldReceive('completeRoom')
+        ->once()
+        ->with('RMregiaroom');
+    $this->app->instance(TwilioVideoService::class, $service);
+
+    Http::fake([
+        'https://api.mux.com/video/v1/live-streams/*/disable' => Http::response([], 200),
+    ]);
+
+    config()->set('services.mux.token_id', 'token-id');
+    config()->set('services.mux.token_secret', 'token-secret');
+
+    $endedAt = Carbon::parse('2026-04-22 16:00:00');
+    Carbon::setTestNow($endedAt);
+
+    $this->actingAs($admin)
+        ->postJson(route('admin.regia.session.end', $module))
+        ->assertSuccessful()
+        ->assertJsonPath('message', 'Diretta terminata.');
+
+    expect($session->fresh()->status)->toBe(LiveStreamSession::STATUS_ENDED);
+    expect($session->fresh()->ended_at?->equalTo($endedAt))->toBeTrue();
+    expect($module->fresh()->appointment_end_time?->equalTo($endedAt))->toBeTrue();
+
+    Carbon::setTestNow();
 });
 
 test('user join requires an enrollment in the live course', function () {

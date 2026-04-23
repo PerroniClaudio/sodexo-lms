@@ -172,8 +172,8 @@ export function renderMuxStage(stageElement, mux, options = {}) {
         return;
     }
 
-    const title = options.title ?? 'Feed live non disponibile';
-    const message = options.message ?? 'Il player MUX comparira qui quando la regia avvia la trasmissione.';
+    const title = options.title ?? 'Segnale video non disponibile';
+    const message = options.message ?? 'Il video comparira qui quando la regia avvia la trasmissione.';
     const playerTitle = options.playerTitle ?? 'Player MUX';
     const accentColor = resolveMuxAccentColor(stageElement);
 

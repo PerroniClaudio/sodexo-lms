@@ -1015,8 +1015,8 @@ export function initTeacherPage() {
         }
 
         renderMuxStage(muxStage, state.latestState?.mux ?? config.mux, {
-            title: 'Feed live non disponibile',
-            message: 'Il player MUX comparira qui quando la regia avvia la trasmissione.',
+            title: 'Segnale video non disponibile',
+            message: 'Il video comparira qui quando la regia avvia la trasmissione.',
             playerTitle: 'Player MUX',
         });
     }

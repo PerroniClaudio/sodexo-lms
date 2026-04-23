@@ -201,13 +201,14 @@ test('admin regia index lists only today non teacher live modules', function () 
 
     $admin = actingAsRole('admin');
     $course = Course::factory()->create();
+    $now = now();
 
     Module::factory()->create([
         'title' => 'Live regia oggi',
         'type' => 'live',
         'is_live_teacher' => false,
-        'appointment_start_time' => now()->setTime(10, 0),
-        'appointment_end_time' => now()->setTime(11, 0),
+        'appointment_start_time' => $now->copy()->addHour(),
+        'appointment_end_time' => $now->copy()->addHours(2),
         'belongsTo' => (string) $course->getKey(),
     ]);
 
@@ -215,8 +216,8 @@ test('admin regia index lists only today non teacher live modules', function () 
         'title' => 'Live docente oggi',
         'type' => 'live',
         'is_live_teacher' => true,
-        'appointment_start_time' => now()->setTime(12, 0),
-        'appointment_end_time' => now()->setTime(13, 0),
+        'appointment_start_time' => $now->copy()->addHours(3),
+        'appointment_end_time' => $now->copy()->addHours(4),
         'belongsTo' => (string) $course->getKey(),
     ]);
 
@@ -224,8 +225,17 @@ test('admin regia index lists only today non teacher live modules', function () 
         'title' => 'Live regia domani',
         'type' => 'live',
         'is_live_teacher' => false,
-        'appointment_start_time' => now()->addDay()->setTime(10, 0),
-        'appointment_end_time' => now()->addDay()->setTime(11, 0),
+        'appointment_start_time' => $now->copy()->addDay()->setTime(10, 0),
+        'appointment_end_time' => $now->copy()->addDay()->setTime(11, 0),
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    Module::factory()->create([
+        'title' => 'Live regia terminata',
+        'type' => 'live',
+        'is_live_teacher' => false,
+        'appointment_start_time' => $now->copy()->subHours(2),
+        'appointment_end_time' => $now->copy()->subHour(),
         'belongsTo' => (string) $course->getKey(),
     ]);
 
@@ -237,6 +247,7 @@ test('admin regia index lists only today non teacher live modules', function () 
     $response->assertSeeText('Live regia oggi');
     $response->assertDontSeeText('Live docente oggi');
     $response->assertDontSeeText('Live regia domani');
+    $response->assertDontSeeText('Live regia terminata');
 });
 
 test('admin regia index excludes live modules whose course was soft deleted', function () {

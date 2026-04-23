@@ -12,12 +12,18 @@ class RegiaController extends Controller
 {
     public function index(): View
     {
+        $now = now();
+
         $modules = Module::query()
             ->with('course')
             ->where('type', 'live')
             ->where('is_live_teacher', false)
             ->whereHas('course')
-            ->whereBetween('appointment_start_time', [now()->startOfDay(), now()->endOfDay()])
+            ->whereBetween('appointment_start_time', [$now->copy()->startOfDay(), $now->copy()->endOfDay()])
+            ->where(function ($query) use ($now) {
+                $query->whereNull('appointment_end_time')
+                    ->orWhere('appointment_end_time', '>=', $now);
+            })
             ->orderBy('appointment_start_time')
             ->get();
 

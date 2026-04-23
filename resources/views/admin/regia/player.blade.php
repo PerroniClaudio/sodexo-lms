@@ -6,22 +6,6 @@
 
         <div class="grid min-h-screen gap-4 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.12),_transparent_38%),linear-gradient(to_bottom,_hsl(var(--b1)),_hsl(var(--b2)))] p-4 xl:grid-cols-[minmax(0,1fr)_26rem]">
             <div class="min-h-0 space-y-4">
-                <div class="rounded-3xl border border-base-300 bg-base-100 p-6 shadow-sm">
-                    <div class="flex flex-wrap items-start justify-between gap-4">
-                        <div>
-                            <span class="badge badge-neutral badge-outline">{{ __('Regia') }}</span>
-                            <h1 class="mt-4 text-3xl font-semibold">{{ $module->title }}</h1>
-                            <p class="mt-2 text-sm text-base-content/70" data-live-stream-message>
-                                {{ __('Prepara la regia e avvia la live quando il feed MUX è pronto.') }}
-                            </p>
-                        </div>
-
-                        <div class="text-sm text-base-content/60">
-                            {{ $module->appointment_start_time?->format('d/m/Y H:i') }}
-                        </div>
-                    </div>
-                </div>
-
                 <div class="tabs tabs-lift">
                     <input type="radio" name="regia-main-tabs" class="tab" aria-label="{{ __('Player MUX') }}" checked="checked" />
                     <div class="tab-content border-base-300 bg-base-100 p-4">
@@ -31,6 +15,16 @@
                     <input type="radio" name="regia-main-tabs" class="tab" aria-label="{{ __('Videocamere') }}" />
                     <div class="tab-content border-base-300 bg-base-100 p-4">
                         <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-live-stream-teacher-grid></div>
+                    </div>
+                </div>
+
+                <div class="rounded-3xl border border-base-300 bg-base-100 p-6 shadow-sm">
+                    <div class="flex flex-wrap items-start justify-between gap-4">
+                        <h1 class="text-3xl font-semibold">{{ $module->title }}</h1>
+
+                        <div class="text-sm text-base-content/60">
+                            {{ $module->appointment_start_time?->format('d/m/Y H:i') }}
+                        </div>
                     </div>
                 </div>
             </div>

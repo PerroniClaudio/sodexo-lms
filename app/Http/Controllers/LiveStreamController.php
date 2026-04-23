@@ -217,24 +217,7 @@ class LiveStreamController extends Controller
 
         $twilioVideoService->completeRoom($session->twilio_room_sid ?? $session->twilio_room_name);
         $muxLiveService->endBroadcast($session, $module);
-
-        $session->update([
-            'status' => LiveStreamSession::STATUS_ENDED,
-            'ended_at' => now(),
-        ]);
-
-        $session->polls()
-            ->where('status', LiveStreamPoll::STATUS_OPEN)
-            ->update([
-                'status' => LiveStreamPoll::STATUS_CLOSED,
-                'closed_at' => now(),
-            ]);
-
-        $session->participants()
-            ->whereNull('left_at')
-            ->update([
-                'left_at' => now(),
-            ]);
+        $this->closeSession($module, $session);
 
         return response()->json([
             'message' => __('Diretta terminata.'),
@@ -298,24 +281,7 @@ class LiveStreamController extends Controller
         }
 
         $twilioVideoService->completeRoom($session->twilio_room_sid ?? $session->twilio_room_name);
-
-        $session->update([
-            'status' => LiveStreamSession::STATUS_ENDED,
-            'ended_at' => now(),
-        ]);
-
-        $session->polls()
-            ->where('status', LiveStreamPoll::STATUS_OPEN)
-            ->update([
-                'status' => LiveStreamPoll::STATUS_CLOSED,
-                'closed_at' => now(),
-            ]);
-
-        $session->participants()
-            ->whereNull('left_at')
-            ->update([
-                'left_at' => now(),
-            ]);
+        $this->closeSession($module, $session);
 
         return response()->json([
             'message' => __('Diretta terminata.'),
@@ -1820,6 +1786,33 @@ class LiveStreamController extends Controller
             'broadcast_ended_at' => $session->mux_broadcast_ended_at?->toIso8601String(),
             'mux_playback_id' => $session->mux_playback_id,
         ];
+    }
+
+    private function closeSession(Module $module, LiveStreamSession $session): void
+    {
+        $endedAt = now();
+
+        $session->update([
+            'status' => LiveStreamSession::STATUS_ENDED,
+            'ended_at' => $endedAt,
+        ]);
+
+        $module->update([
+            'appointment_end_time' => $endedAt,
+        ]);
+
+        $session->polls()
+            ->where('status', LiveStreamPoll::STATUS_OPEN)
+            ->update([
+                'status' => LiveStreamPoll::STATUS_CLOSED,
+                'closed_at' => $endedAt,
+            ]);
+
+        $session->participants()
+            ->whereNull('left_at')
+            ->update([
+                'left_at' => $endedAt,
+            ]);
     }
 
     /**
