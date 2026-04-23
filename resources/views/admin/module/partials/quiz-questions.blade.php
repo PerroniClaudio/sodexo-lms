@@ -55,7 +55,8 @@
                     </div>
                 </div>
                 <div>
-                    <div class="flex gap-4 justify-between items-center">
+                    {{-- Bottone per mostrare o nascondere le risposte. al momento non lo usiamo. --}}
+                    {{-- <div class="flex gap-4 justify-between items-center">
                         <button
                             type="button"
                             class="btn btn-sm btn-primary js-toggle-answers"
@@ -64,8 +65,9 @@
                             aria-controls="answers-{{ $question->id }}">
                             {{ __('Show answers') }}
                         </button>
-                    </div>
-                    <div id="answers-{{ $question->id }}" class="flex flex-col gap-4 mt-2" style="display: none;">
+                    </div> --}}
+                    {{-- <div id="answers-{{ $question->id }}" class="flex flex-col gap-4 mt-2" style="display: none;"> --}}
+                    <div id="answers-{{ $question->id }}" class="flex flex-col gap-4 mt-2">
                         <div class="flex gap-4 justify-between items-center">
                             <h3 class="text-base font-semibold mb-2">{{ __('Answers') }}</h3>
                             <button type="button" class="btn btn-sm btn-primary" onclick="document.getElementById('add-answer-modal-{{ $question->id }}').showModal()">{{ __('Add answer') }}</button>
