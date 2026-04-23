@@ -59,4 +59,16 @@ return [
         ],
     ],
 
+    'google_document_ai' => [
+        'project_id' => env('GOOGLE_DOCUMENT_AI_PROJECT_ID'),
+        'location' => env('GOOGLE_DOCUMENT_AI_LOCATION', 'eu'),
+        'processor_id' => env('GOOGLE_DOCUMENT_AI_PROCESSOR_ID'),
+        'credentials' => env('GOOGLE_DOCUMENT_AI_CREDENTIALS'),
+        'access_token' => env('GOOGLE_DOCUMENT_AI_ACCESS_TOKEN'),
+        'timeout' => [
+            'connect' => (int) env('GOOGLE_DOCUMENT_AI_CONNECT_TIMEOUT', 5),
+            'request' => (int) env('GOOGLE_DOCUMENT_AI_REQUEST_TIMEOUT', 30),
+        ],
+    ],
+
 ];
