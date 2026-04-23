@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\BuildLearningQuizPdfPayload;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Module;
@@ -80,8 +81,10 @@ class ModuleQuizController extends Controller
         return back()->with('status', __('Risposta eliminata.'));
     }
 
-    public function downloadPdf(Course $course, Module $module)
-    {
+    public function downloadPdf(
+        Course $course,
+        Module $module,
+    ) {
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
         abort_unless($course->type === 'res', 404);
         abort_unless($module->type === 'learning_quiz', 404);
@@ -102,11 +105,40 @@ class ModuleQuizController extends Controller
             ->download($this->downloadFileName($course, $module));
     }
 
+    public function downloadAnswerSheetPdf(
+        Course $course,
+        Module $module,
+        BuildLearningQuizPdfPayload $buildLearningQuizPdfPayload,
+    ) {
+        abort_unless($module->belongsTo === (string) $course->getKey(), 404);
+        abort_unless($course->type === 'res', 404);
+        abort_unless($module->type === 'learning_quiz', 404);
+
+        $course->load([
+            'users' => fn ($query) => $query->orderBy('surname')->orderBy('name')->orderBy('users.id'),
+        ]);
+
+        return Pdf::view(
+            'pdf.learning-quiz-answer-sheet',
+            $buildLearningQuizPdfPayload($course, $module)
+        )
+            ->driver('dompdf')
+            ->download($this->answerSheetDownloadFileName($course, $module));
+    }
+
     private function downloadFileName(Course $course, Module $module): string
     {
         $courseSlug = Str::slug($course->title) ?: 'course';
         $moduleSlug = Str::slug($module->title) ?: 'learning-quiz';
 
         return "{$courseSlug}-{$moduleSlug}-quiz.pdf";
+    }
+
+    private function answerSheetDownloadFileName(Course $course, Module $module): string
+    {
+        $courseSlug = Str::slug($course->title) ?: 'course';
+        $moduleSlug = Str::slug($module->title) ?: 'learning-quiz';
+
+        return "{$courseSlug}-{$moduleSlug}-answer-sheet.pdf";
     }
 }
