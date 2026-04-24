@@ -28,8 +28,13 @@ class ModuleQuizQuestion extends Model
         return $this->hasMany(ModuleQuizAnswer::class, 'question_id');
     }
 
-    public function correctAnswer()
+    public function correctAnswer(): BelongsTo
     {
         return $this->belongsTo(ModuleQuizAnswer::class, 'correct_answer_id');
+    }
+
+    public function isValid(): bool
+    {
+        return $this->answers()->count() === 4 && $this->correctAnswer()->exists();
     }
 }

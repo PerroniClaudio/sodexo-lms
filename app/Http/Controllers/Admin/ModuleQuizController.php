@@ -21,6 +21,11 @@ class ModuleQuizController extends Controller
     public function questionsWithAnswersApi(Course $course, Module $module)
     {
         $questions = $module->quizQuestions()->with(['answers'])->orderBy('id')->get();
+        // Aggiungi isValid a ciascuna domanda (senza controllo method_exists)
+        $questions = $questions->map(function ($q) {
+            $q->isValid = $q->isValid();
+            return $q;
+        });
         return response()->json([
             'success' => true,
             'questions' => $questions,
@@ -100,6 +105,7 @@ class ModuleQuizController extends Controller
         ]);
         $data['module_id'] = $module->id;
         $question = ModuleQuizQuestion::create($data);
+        $module->updateQuizMaxScore();
 
         return response()->json([
             'success' => true,
@@ -118,6 +124,7 @@ class ModuleQuizController extends Controller
             'points' => 'required|integer|min:1',
         ]);
         $question->update($data);
+        $module->updateQuizMaxScore();
         return response()->json([
             'success' => true,
             'message' => __('Domanda aggiornata.'),
@@ -131,6 +138,7 @@ class ModuleQuizController extends Controller
     public function deleteQuestionApi(Course $course, Module $module, ModuleQuizQuestion $question)
     {
         $question->delete();
+        $module->updateQuizMaxScore();
         return response()->json([
             'success' => true,
             'message' => __('Domanda eliminata.'),
@@ -146,6 +154,7 @@ class ModuleQuizController extends Controller
             'text' => 'required|string',
         ]);
         $answer = $question->answers()->create($data);
+        $module->updateQuizMaxScore();
         return response()->json([
             'success' => true,
             'message' => __('Risposta aggiunta con successo.'),
@@ -162,6 +171,7 @@ class ModuleQuizController extends Controller
             'text' => 'required|string',
         ]);
         $answer->update($data);
+        $module->updateQuizMaxScore();
         return response()->json([
             'success' => true,
             'message' => __('Risposta aggiornata.'),
@@ -175,6 +185,7 @@ class ModuleQuizController extends Controller
     public function deleteAnswerApi(Course $course, Module $module, ModuleQuizQuestion $question, ModuleQuizAnswer $answer)
     {
         $answer->delete();
+        $module->updateQuizMaxScore();
         return response()->json([
             'success' => true,
             'message' => __('Risposta eliminata.'),
@@ -188,6 +199,7 @@ class ModuleQuizController extends Controller
     {
         $question->correct_answer_id = $question->correct_answer_id === $answer->id ? null : $answer->id;
         $question->save();
+        $module->updateQuizMaxScore();
         return response()->json([
             'success' => true,
             'message' => __('Risposta corretta aggiornata.'),

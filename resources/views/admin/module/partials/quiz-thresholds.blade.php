@@ -18,7 +18,7 @@
 
     <div class="grid gap-2">
         <label for="max_score" class="label p-0">
-            <span class="label-text font-medium">{{ __('Maximum score') }}</span>
+            <span class="label-text font-medium">@if($module->isQuiz()){{ __('Maximum score (auto)') }}@else{{ __('Maximum score') }}@endif</span>
         </label>
         <input
             id="max_score"
@@ -27,6 +27,7 @@
             min="1"
             value="{{ old('max_score', $module->max_score) }}"
             class="input input-bordered w-full @error('max_score') input-error @enderror"
+            @if($module->isQuiz()) disabled @endif
         >
         @error('max_score')
             <p class="text-sm text-error">{{ $message }}</p>

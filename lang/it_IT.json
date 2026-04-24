@@ -94,5 +94,6 @@
     "Are you sure to delete question?": "Eliminare la domanda?",
     "Are you sure to delete answer?": "Eliminare la risposta?",
     "Passing score": "Punteggio superamento",
-    "Maximum score": "Punteggio massimo"
+    "Maximum score": "Punteggio massimo",
+    "Maximum score (auto)": "Punteggio massimo (calcolato automaticamente)"
 }

@@ -183,7 +183,7 @@ class CourseModuleController extends Controller
             'description' => $validated['description'] ?? '',
             'status' => $validated['status'],
             'passing_score' => $module->isQuiz() ? $validated['passing_score'] : null,
-            'max_score' => $module->isQuiz() ? $validated['max_score'] : null,
+            // 'max_score' => $module->isQuiz() ? $validated['max_score'] : null, --- IGNORE ---
         ];
 
         if (Module::requiresAppointmentDetails($module->type)) {

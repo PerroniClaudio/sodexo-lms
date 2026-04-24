@@ -66,13 +66,14 @@ class UpdateModuleRequest extends FormRequest
                 'integer',
                 'min:0',
             ],
-            'max_score' => [
-                Rule::requiredIf($requiresQuizScores),
-                'nullable',
-                'integer',
-                'gte:passing_score',
-                'min:1',
-            ],
+            // max_score viene gestito in automatico con la modifica delle domande, quindi non è richiesto in input e non può essere modificato manualmente
+            // 'max_score' => [
+            //     Rule::requiredIf($requiresQuizScores),
+            //     'nullable',
+            //     'integer',
+            //     'gte:passing_score',
+            //     'min:1',
+            // ],
         ];
     }
 

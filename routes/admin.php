@@ -105,6 +105,10 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::put('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}', [ModuleQuizController::class, 'updateAnswerApi'])->name('courses.modules.quiz.answers.update');
             Route::delete('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}', [ModuleQuizController::class, 'deleteAnswerApi'])->name('courses.modules.quiz.answers.delete');
             Route::post('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}/set-correct', [ModuleQuizController::class, 'setCorrectAnswerApi'])->name('courses.modules.quiz.answers.set-correct');
+            Route::get('/courses/{course}/modules/{module}/max-score', function(App\Models\Course $course, App\Models\Module $module) {
+                abort_unless($module->belongsTo === (string) $course->getKey(), 404);
+                return response()->json(['max_score' => $module->max_score]);
+            })->name('courses.modules.max_score');
         });
     });
 });

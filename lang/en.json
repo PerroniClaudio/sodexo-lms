@@ -20,6 +20,9 @@
     "Change to correct": "Change to correct",
     "Change to wrong": "Change to wrong",
     "Edit text": "Edit text",
+    "Valid": "Valid",
+    "Not valid": "Not valid",
+    "A quiz question must have 4 answers and one correct answer.": "A quiz question must have 4 answers and one correct answer.",
     "Are you sure to delete question?": "Are you sure to delete question?",
     "Are you sure to delete answer?": "Are you sure to delete answer?",
     "Close": "Close"

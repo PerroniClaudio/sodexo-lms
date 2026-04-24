@@ -244,6 +244,44 @@ class Module extends Model
         return $this->hasMany(ModuleQuizQuestion::class);
     }
 
+    /**
+     * Domande quiz valide associate al modulo.
+     */ 
+    public function getValidQuizQuestions()
+    {
+        return $this->quizQuestions()->get()->filter(fn($q) => $q->isValid());
+    }
+
+    /**
+     * Punteggio totale delle domande quiz valide associate al modulo.
+     */
+    public function getValidQuizQuestionsTotalPoints()
+    {
+        return $this->getValidQuizQuestions()->sum('points');
+    }
+
+    /**
+     * Determina se il quiz del modulo è valido: deve avere almeno una domanda valida, 
+     * il punteggio totale delle domande valide deve essere uguale al punteggio massimo del modulo 
+     * e il punteggio di superamento deve essere minore o uguale al punteggio massimo.
+     */
+    public function isValidQuiz():bool
+    {
+        return $this->isQuiz() 
+            && $this->getValidQuizQuestions()->count() > 0 
+            && $this->getValidQuizQuestionsTotalPoints() === $this->max_score 
+            && $this->passing_score <= $this->max_score;
+    }
+
+    /**
+     * Aggiorna il campo max_score del modulo sommando i punti delle domande quiz valide.
+     */
+    public function updateQuizMaxScore(): void
+    {
+        $this->max_score = $this->getValidQuizQuestions()->sum('points');
+        $this->save();
+    }
+
     public function quizSubmissions(): HasMany
     {
         return $this->hasMany(ModuleQuizSubmission::class);
