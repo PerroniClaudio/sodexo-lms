@@ -16,11 +16,11 @@ use Spatie\LaravelPdf\Facades\Pdf;
 class ModuleQuizController extends Controller
 {
     /**
-     * API: restituisce tutte le domande e risposte del quiz di un modulo
+     * API: restituisce tutte le domande e risposte del quiz di un modulo. solo admin e superadmin (risposta JSON)
      */
     public function questionsWithAnswersApi(Course $course, Module $module)
     {
-        $questions = $module->quizQuestions()->with(['answers'])->orderBy('id')->get();
+        $questions = $module->quizQuestions()->with(['answers'])->orderBy('id')->get()->makeVisible('correct_answer_id');
         // Aggiungi isValid a ciascuna domanda (senza controllo method_exists)
         $questions = $questions->map(function ($q) {
             $q->isValid = $q->isValid();
