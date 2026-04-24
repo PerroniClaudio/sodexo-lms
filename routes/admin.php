@@ -109,6 +109,14 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
                 abort_unless($module->belongsTo === (string) $course->getKey(), 404);
                 return response()->json(['max_score' => $module->max_score]);
             })->name('courses.modules.max_score');
+
+            // API per validità quiz modulo
+            Route::get('/courses/{course}/modules/{module}/quiz/validity', function(App\Models\Course $course, App\Models\Module $module) {
+                abort_unless($module->belongsTo === (string) $course->getKey(), 404);
+                return response()->json([
+                    'is_valid_quiz' => $module->isValidQuiz(),
+                ]);
+            })->name('courses.modules.quiz_validity');
         });
     });
 });

@@ -108,7 +108,7 @@
     <template id="quiz-answer-template">
         <div class="flex flex-col gap-2 md:flex-row md:items-end" data-id>
             <div class="flex-1 flex flex-col gap-2">
-                <div class="flex gap-2 justify-start">
+                <div class="flex gap-2 justify-start items-center">
                     <button type="button" class="btn btn-primary btn-xs w-32 mr-2 js-toggle-correct-btn" data-qid data-aid>
                         <span data-toggle-correct-label-correct hidden>{{ __('Change to wrong') }}</span>
                         <span data-toggle-correct-label-wrong hidden>{{ __('Change to correct') }}</span>

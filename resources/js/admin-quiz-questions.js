@@ -1,14 +1,36 @@
+// Aggiorna la visibilità dei badge validità quiz
+async function updateQuizValidityBadge() {
+    try {
+        const quizList = document.getElementById('quiz-questions-list');
+        if (!quizList) return;
+        const baseUrl = quizList.dataset.baseUrl;
+        const courseId = quizList.dataset.courseId;
+        const moduleId = quizList.dataset.moduleId;
+        const validityUrl = `${baseUrl}/${encodeURIComponent(courseId)}/modules/${encodeURIComponent(moduleId)}/quiz/validity`;
+        const res = await fetch(validityUrl);
+        const data = await res.json();
+        const badgeContainer = document.getElementById('quiz-validity-badge');
+        if (!badgeContainer) return;
+        const validBadge = badgeContainer.querySelector('[data-valid-badge]');
+        const invalidBadge = badgeContainer.querySelector('[data-invalid-badge]');
+        const invalidReason = badgeContainer.querySelector('[data-invalid-reason]');
+        if (data.is_valid_quiz) {
+            if (validBadge) validBadge.style.display = 'inline-flex';
+            if (invalidBadge) invalidBadge.style.display = 'none';
+            if (invalidReason) invalidReason.style.display = 'none';
+        } else {
+            if (validBadge) validBadge.style.display = 'none';
+            if (invalidBadge) invalidBadge.style.display = 'inline-flex';
+            if (invalidReason) invalidReason.style.display = 'inline';
+        }
+    } catch (e) {
+        // Silenzia errori
+    }
+}
 
 // Recupera il token CSRF dal meta tag
 const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-// Toast temporaneo
-function showToast(msg, type = 'success') {
-    let toast = document.createElement('div');
-    toast.textContent = msg;
-    toast.className = 'fixed z-50 bottom-6 right-6 px-4 py-2 rounded shadow-lg text-white ' + (type === 'success' ? 'bg-green-600' : 'bg-red-600');
-    document.body.appendChild(toast);
-    setTimeout(() => { toast.remove(); }, 3000);
-}
+
 
 // Aggiorna il campo max_score del form principale
 async function updateMaxScoreInput() {
@@ -110,10 +132,10 @@ async function loadQuestions() {
         if (data.success) {
             renderQuestions(data.questions);
         } else {
-            showToast('Errore nel caricamento domande', 'error');
+            window.showFlash('error', 'Errore nel caricamento domande');
         }
     } catch (e) {
-        showToast('Errore di rete', 'error');
+        window.showFlash('error', 'Errore di rete');
     }
 }
 
@@ -151,13 +173,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: formData
             }).then(res => res.json()).then(data => {
                 if (data.success) {
-                    showToast(data.message || 'Domanda aggiornata');
+                    window.showFlash('success', data.message || 'Domanda aggiornata');
                     loadQuestions();
                     updateMaxScoreInput();
+                        updateQuizValidityBadge();
                 } else {
-                    showToast(data.message || 'Errore', 'error');
+                    window.showFlash('error', data.message || 'Errore');
                 }
-            }).catch(() => showToast('Errore di rete', 'error'));
+            }).catch(() => window.showFlash('error', 'Errore di rete'));
         }
     });
 
@@ -186,13 +209,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: formData
             }).then(res => res.json()).then(data => {
                 if (data.success) {
-                    showToast(data.message || 'Risposta aggiornata');
+                    window.showFlash('success', data.message || 'Risposta aggiornata');
                     loadQuestions();
                     updateMaxScoreInput();
+                        updateQuizValidityBadge();
                 } else {
-                    showToast(data.message || 'Errore', 'error');
+                    window.showFlash('error', data.message || 'Errore');
                 }
-            }).catch(() => showToast('Errore di rete', 'error'));
+            }).catch(() => window.showFlash('error', 'Errore di rete'));
         }
     });
     document.getElementById('add-question-form').addEventListener('submit', async function(e) {
@@ -211,16 +235,17 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             const data = await res.json();
             if (data.success) {
-                showToast(data.message || 'Domanda aggiunta');
+                window.showFlash('success', data.message || 'Domanda aggiunta');
                 form.reset();
                 document.getElementById('add-question-modal').close();
                 await loadQuestions();
                 updateMaxScoreInput();
+                    updateQuizValidityBadge();
             } else {
-                showToast(data.message || 'Errore', 'error');
+                window.showFlash('error', data.message || 'Errore');
             }
         } catch (err) {
-            showToast('Errore di rete', 'error');
+            window.showFlash('error', 'Errore di rete');
         }
     });
     // Intercetta update domanda
@@ -246,14 +271,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 const data = await res.json();
                 if (data.success) {
-                    showToast(data.message || 'Domanda aggiornata');
+                    window.showFlash('success', data.message || 'Domanda aggiornata');
                     await loadQuestions();
                     updateMaxScoreInput();
+                        updateQuizValidityBadge();
                 } else {
-                    showToast(data.message || 'Errore', 'error');
+                    window.showFlash('error', data.message || 'Errore');
                 }
             } catch (err) {
-                showToast('Errore di rete', 'error');
+                window.showFlash('error', 'Errore di rete');
             }
         }
     });
@@ -276,13 +302,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }).then(res => res.json()).then(data => {
                 if (data.success) {
-                    showToast(data.message || 'Domanda eliminata');
+                    window.showFlash('success', data.message || 'Domanda eliminata');
                     loadQuestions();
                     updateMaxScoreInput();
+                        updateQuizValidityBadge();
                 } else {
-                    showToast(data.message || 'Errore', 'error');
+                    window.showFlash('error', data.message || 'Errore');
                 }
-            }).catch(() => showToast('Errore di rete', 'error'));
+            }).catch(() => window.showFlash('error', 'Errore di rete'));
         }
     });
 
@@ -322,14 +349,14 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             const data = await res.json();
             if (data.success) {
-                showToast(data.message || 'Risposta aggiunta');
+                window.showFlash('success', data.message || 'Risposta aggiunta');
                 document.getElementById('add-answer-modal').close();
                 await loadQuestions();
             } else {
-                showToast(data.message || 'Errore', 'error');
+                window.showFlash('error', data.message || 'Errore');
             }
         } catch (err) {
-            showToast('Errore di rete', 'error');
+            window.showFlash('error', 'Errore di rete');
         }
     });
 
@@ -357,13 +384,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 const data = await res.json();
                 if (data.success) {
-                    showToast(data.message || 'Risposta aggiornata');
+                    window.showFlash('success', data.message || 'Risposta aggiornata');
                     await loadQuestions();
                 } else {
-                    showToast(data.message || 'Errore', 'error');
+                    window.showFlash('error', data.message || 'Errore');
                 }
             } catch (err) {
-                showToast('Errore di rete', 'error');
+                window.showFlash('error', 'Errore di rete');
             }
         }
     });
@@ -387,13 +414,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }).then(res => res.json()).then(data => {
                 if (data.success) {
-                    showToast(data.message || 'Risposta eliminata');
+                    window.showFlash('success', data.message || 'Risposta eliminata');
                     loadQuestions();
                     updateMaxScoreInput();
+                        updateQuizValidityBadge();
                 } else {
-                    showToast(data.message || 'Errore', 'error');
+                    window.showFlash('error', data.message || 'Errore');
                 }
-            }).catch(() => showToast('Errore di rete', 'error'));
+            }).catch(() => window.showFlash('error', 'Errore di rete'));
         }
     });
 
@@ -420,13 +448,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }).then(res => res.json()).then(data => {
                 if (data.success) {
-                    showToast(data.message || 'Risposta corretta aggiornata');
+                    window.showFlash('success', data.message || 'Risposta corretta aggiornata');
                     loadQuestions();
                     updateMaxScoreInput();
+                        updateQuizValidityBadge();
                 } else {
-                    showToast(data.message || 'Errore', 'error');
+                    window.showFlash('error', data.message || 'Errore');
                 }
-            }).catch(() => showToast('Errore di rete', 'error'));
+            }).catch(() => window.showFlash('error', 'Errore di rete'));
         }
     });
 });

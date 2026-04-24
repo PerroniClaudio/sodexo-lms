@@ -73,6 +73,7 @@ class CourseModuleController extends Controller
                     ->limit(5)
                     ->get()
                 : collect(),
+            'isValidQuiz' => $module->type === 'learning_quiz' ? $module->isValidQuiz() : false,
         ]);
     }
 
