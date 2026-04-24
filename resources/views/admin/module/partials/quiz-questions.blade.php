@@ -1,7 +1,7 @@
 <div class="card border border-base-300 bg-base-100 shadow-sm">
     {{-- Inclusione JS standalone per gestione domande quiz --}}
     @vite('resources/js/admin-quiz-questions.js')
-    
+
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <div class="card-body gap-6">
         <div class="flex justify-between items-center">
@@ -75,8 +75,8 @@
     <template id="quiz-question-template">
         <div class="mb-6 p-4 border border-base-300 rounded-lg bg-base-200 flex flex-col gap-2" data-question-id>
             <div class="flex items-center gap-2">
-                <span class="inline-block rounded px-2 py-1 w-fit text-xs font-semibold border border-success bg-success/10 text-success whitespace-nowrap" data-valid-badge-valid hidden>{{ __('Valid') }}</span>
-                <span class="inline-block rounded px-2 py-1 w-fit text-xs font-semibold border border-error bg-error/10 text-error whitespace-nowrap" data-valid-badge-invalid hidden>{{ __('Not valid') }}</span>
+                <span class="badge badge-sm badge-success whitespace-nowrap" data-valid-badge-valid hidden>{{ __('Valid') }}</span>
+                <span class="badge badge-sm badge-error whitespace-nowrap" data-valid-badge-invalid hidden>{{ __('Not valid') }}</span>
                 <span class="text-xs text-error" data-invalid-reason-empty style="display:none"></span>
                 <span class="text-xs text-error" data-invalid-reason-answers style="display:none">{{ __('A quiz question must have 4 answers and one correct answer.') }}</span>
             </div>
@@ -94,7 +94,7 @@
                     <button type="button" class="btn btn-error flex-1 md:w-fit js-delete-question-btn" data-id>{{ __('Delete') }}</button>
                 </div>
             </div>
-            <div class="mt-2">
+            <div class=" border-t border-primary-600 pt-2">
                 <div class="flex gap-4 justify-between items-center">
                     <h3 class="text-base font-semibold mb-2">{{ __('Answers') }}</h3>
                     <button type="button" class="btn btn-sm btn-primary js-add-answer-btn" data-id>{{ __('New answer') }}</button>
@@ -109,12 +109,12 @@
         <div class="flex flex-col gap-2 md:flex-row md:items-end" data-id>
             <div class="flex-1 flex flex-col gap-2">
                 <div class="flex gap-2 justify-start">
-                    <span class="flex items-center rounded px-2 py-1 w-18 text-xs font-semibold border border-success bg-success/10 text-success whitespace-nowrap" data-correct-badge-correct hidden>{{ __('Correct') }}</span>
-                    <span class="flex items-center rounded px-2 py-1 w-18 text-xs font-semibold border border-error bg-error/10 text-error whitespace-nowrap" data-correct-badge-wrong hidden>{{ __('Wrong') }}</span>
                     <button type="button" class="btn btn-primary btn-xs w-32 mr-2 js-toggle-correct-btn" data-qid data-aid>
                         <span data-toggle-correct-label-correct hidden>{{ __('Change to wrong') }}</span>
                         <span data-toggle-correct-label-wrong hidden>{{ __('Change to correct') }}</span>
                     </button>
+                    <span class="badge badge-sm badge-success whitespace-nowrap" data-correct-badge-correct hidden>{{ __('Correct') }}</span>
+                    <span class="badge badge-sm badge-error whitespace-nowrap" data-correct-badge-wrong hidden>{{ __('Wrong') }}</span>
                 </div>
                 <input type="text" class="input input-sm text-sm input-bordered w-full md:mb-0" data-answer-text required>
             </div>

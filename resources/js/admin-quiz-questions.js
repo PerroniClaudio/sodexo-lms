@@ -69,10 +69,10 @@ function renderQuestions(questions) {
             const badgeWrong = aNode.querySelector('[data-correct-badge-wrong]');
             if (q.correct_answer_id === a.id) {
                 badgeCorrect.hidden = false;
-                badgeWrong.hidden = true;
+                // badgeWrong.hidden = true;
             } else {
                 badgeCorrect.hidden = true;
-                badgeWrong.hidden = false;
+                // badgeWrong.hidden = false;
             }
             // Bottone toggle correct
             const toggleBtn = aNode.querySelector('.js-toggle-correct-btn');
