@@ -1,0 +1,9 @@
+{  "name": "mux-docs",
+  "description": "Indexed official Mux documentation",
+  "sources": [
+    "https://www.mux.com/docs",
+    "https://www.mux.com/docs/video",
+    "https://www.mux.com/docs/frameworks/laravel"
+  ],
+  "refresh_interval": "30d"
+}
