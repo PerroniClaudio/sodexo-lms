@@ -1,0 +1,44 @@
+<x-layouts.app>
+    <div class="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+        <x-page-header :title="$course->title" />
+        <div class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-6">
+                <div class="mb-4">
+                    <h2 class="text-lg font-semibold mb-2">{{ __('Descrizione') }}</h2>
+                    <p class="text-base-content/80">{{ $course->description }}</p>
+                </div>
+                <div class="mb-4">
+                    <h2 class="text-lg font-semibold mb-2">{{ __('Avanzamento corso') }}</h2>
+                    <progress class="progress progress-primary w-full" value="{{ $enrollment->completion_percentage }}" max="100"></progress>
+                    <span class="text-xs">{{ $enrollment->completion_percentage }}%</span>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold mb-2">{{ __('Moduli') }}</h2>
+                    <ul class="timeline timeline-vertical">
+                        @foreach($modules as $module)
+                            <li>
+                                <div class="timeline-start">
+                                    <span class="font-semibold">{{ $module->title }}</span>
+                                </div>
+                                <div class="timeline-middle">
+                                    @if($module->pivot->status === 'completed')
+                                        <span class="badge badge-success">{{ __('Completato') }}</span>
+                                    @elseif($module->pivot->status === 'in_progress')
+                                        <span class="badge badge-primary">{{ __('In corso') }}</span>
+                                    @else
+                                        <span class="badge badge-ghost">{{ __(ucfirst($module->pivot->status)) }}</span>
+                                    @endif
+                                </div>
+                                <div class="timeline-end">
+                                    @if($enrollment->current_module_id === $module->id)
+                                        <span class="badge badge-info">{{ __('Modulo corrente') }}</span>
+                                    @endif
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</x-layouts.app>

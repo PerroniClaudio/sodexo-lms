@@ -26,6 +26,9 @@ class UserRequest extends FormRequest
             'job_role_id' => ['required_if:account_type,user', 'exists:job_roles,id'],
             'job_sector_id' => ['required_if:account_type,user', 'exists:job_sectors,id'],
             'job_unit_id' => ['required_if:account_type,user', 'exists:job_units,id'],
+            // Campi opzionali ma validi se presenti
+            'job_category_id' => ['nullable', 'exists:job_categories,id'],
+            'job_level_id' => ['nullable', 'exists:job_levels,id'],
             // Campi facoltativi
             'password' => ['nullable', 'string', 'min:8'],
             'birth_date' => ['nullable', 'date'],

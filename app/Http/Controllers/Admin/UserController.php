@@ -26,6 +26,42 @@ use Illuminate\View\View;
  */
 class UserController extends Controller
 {
+
+    /**
+     * Mostra la pagina di modifica del proprio profilo utente
+     */
+    public function editOwnProfile(): \Illuminate\View\View
+    {
+        $user = auth()->user();
+        return view('user.profile.edit', compact('user'));
+    }
+
+    /**
+     * Aggiorna i dati personali dell'utente autenticato (profilo proprio)
+     */
+    public function updateOwnProfile(\Illuminate\Http\Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $user = auth()->user();
+        $validated = $request->validate([
+            'phone_prefix' => ['nullable', 'string', 'max:8'],
+            'phone' => ['nullable', 'string', 'max:32'],
+            'birth_date' => ['nullable', 'date'],
+            'birth_place' => ['nullable', 'string', 'max:255'],
+            'gender' => ['nullable', 'string', 'max:1'],
+            'country' => ['nullable', 'string', 'max:100'],
+            'region' => ['nullable', 'string', 'max:100'],
+            'province' => ['nullable', 'string', 'max:100'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'postal_code' => ['nullable', 'string', 'max:16'],
+        ]);
+
+        // Conversione geografica come in update
+        $data = $this->convertGeographicNamesToHomeIds($validated);
+
+        $user->update($data);
+        return redirect()->route('user.profile.edit')->with('status', __('Profilo aggiornato con successo!'));
+    }
     public function index(Request $request): View
     {
         $query = User::query()->with('jobRole');
@@ -114,6 +150,13 @@ class UserController extends Controller
         $accountType = $data['account_type'] ?? 'user';
         unset($data['account_type']);
 
+        // Normalizza i campi opzionali a null se stringa vuota
+        foreach (["job_category_id", "job_level_id"] as $field) {
+            if (array_key_exists($field, $data) && ($data[$field] === '' || $data[$field] === null)) {
+                $data[$field] = null;
+            }
+        }
+
         // Controllo coerenza geografica
         $geoConsistent = $this->checkGeographicConsistency(
             $data['home_city_id'] ?? null,
@@ -150,6 +193,14 @@ class UserController extends Controller
     public function update(UserRequest $request, User $user): RedirectResponse
     {
         $data = $this->convertGeographicNamesToHomeIds($request->validated());
+
+        // Normalizza i campi opzionali a null se stringa vuota
+        foreach (["job_category_id", "job_level_id"] as $field) {
+            if (array_key_exists($field, $data) && ($data[$field] === '' || $data[$field] === null)) {
+                $data[$field] = null;
+            }
+        }
+
         // Controllo coerenza geografica
         $geoConsistent = $this->checkGeographicConsistency(
             $data['home_city_id'] ?? null,
@@ -162,7 +213,7 @@ class UserController extends Controller
                 ->withInput()
                 ->withErrors(['geography' => 'Attenzione: città, provincia, regione e nazione non sono coerenti tra loro.']);
         }
-        
+
         if (isset($data['password']) && $data['password']) {
             $data['password'] = Hash::make($data['password']);
         } else {
@@ -241,7 +292,6 @@ class UserController extends Controller
             return null;
         }
 
-        // Recupera i record se presenti
         $city = $cityId ? WorldCity::find($cityId) : null;
         $province = $provinceId ? Province::find($provinceId) : null;
         $region = $regionId ? WorldDivision::find($regionId) : null;
@@ -264,6 +314,7 @@ class UserController extends Controller
 
         // Verifica coerenza città-regione (se manca la provincia)
         if ($city && $region && $city->region_id && $city->region_id !== $region->id) {
+
             return false;
         }
 

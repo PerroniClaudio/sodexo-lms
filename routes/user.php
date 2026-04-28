@@ -33,5 +33,12 @@ Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
             Route::post('/courses/{course}/modules/{module}/scorm/{scormPackage}/runtime/get-error-string', [ScormRuntimeController::class, 'getErrorString'])->name('courses.modules.scorm.runtime.get-error-string');
             Route::post('/courses/{course}/modules/{module}/scorm/{scormPackage}/runtime/get-diagnostic', [ScormRuntimeController::class, 'getDiagnostic'])->name('courses.modules.scorm.runtime.get-diagnostic');
         });
+        // Profilo utente
+        Route::get('profile', [\App\Http\Controllers\Admin\UserController::class, 'editOwnProfile'])->name('profile.edit');
+        Route::put('profile', [\App\Http\Controllers\Admin\UserController::class, 'updateOwnProfile'])->name('profile.update');
+
+        // Corsi utente
+        Route::get('courses', [\App\Http\Controllers\User\CourseController::class, 'index'])->name('courses.index');
+        Route::get('courses/{course}', [\App\Http\Controllers\User\CourseController::class, 'show'])->name('courses.show');
     });
 });

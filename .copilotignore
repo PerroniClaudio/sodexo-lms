@@ -1,0 +1,29 @@
+# Dipendenze (Pesantissime, da ignorare assolutamente)
+/node_modules
+/vendor
+
+# Ambiente e Segreti (Privacy)
+.env
+.env.*
+*.pem
+*.key
+# Mantieni il file di esempio per riferimento
+!.env.example
+
+# Cache e Log di Laravel
+/storage/*.log
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/bootstrap/cache/*
+
+# Database
+database/database.sqlite
+/*.sqlite
+/*.sqlite-journal
+
+# Build assets e vari
+/public/build
+/public/storage
+.phpunit.result.cache
+.DS_Store
