@@ -63,7 +63,7 @@
                 <div class="alert alert-success pointer-events-auto flex w-full max-w-sm items-center gap-3 pr-3 shadow-lg">
                     <x-lucide-circle-check class="h-5 w-5 shrink-0" />
                     <span class="flex-1"></span>
-                    <button type="button" class="close-btn cursor-pointer transition-transform hover:scale-110" aria-label="Chiudi notifica">
+                    <button type="button" class="close-btn cursor-pointer transition-transform hover:scale-110" aria-label="{{ __('flash.close_notification') }}">
                         <x-lucide-x class="h-4 w-4" />
                     </button>
                 </div>
@@ -72,7 +72,7 @@
                 <div class="alert alert-error pointer-events-auto flex w-full max-w-sm items-center gap-3 pr-3 shadow-lg">
                     <x-lucide-circle-alert class="h-5 w-5 shrink-0" />
                     <span class="flex-1"></span>
-                    <button type="button" class="close-btn cursor-pointer transition-transform hover:scale-110" aria-label="Chiudi notifica">
+                    <button type="button" class="close-btn cursor-pointer transition-transform hover:scale-110" aria-label="{{ __('flash.close_notification') }}">
                         <x-lucide-x class="h-4 w-4" />
                     </button>
                 </div>

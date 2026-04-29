@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('live_stream_poll_responses', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('live_stream_poll_id')->constrained('live_stream_polls')->cascadeOnDelete();
+            $table->foreignId('live_stream_poll_id');
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->unsignedTinyInteger('answer_index');
             $table->timestamp('responded_at')->nullable();

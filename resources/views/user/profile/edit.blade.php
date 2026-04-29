@@ -33,7 +33,7 @@
 
                         <!-- SEZIONE UTENTE -->
                         <div class="mt-4 mb-2">
-                            <span class="font-bold text-primary text-lg">Utente</span>
+                            <span class="font-bold text-primary text-lg">{{ __('profile.sections.user') }}</span>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                             <div class="form-control flex flex-col w-full">
@@ -50,7 +50,7 @@
                             </div>
                             <div class="form-control flex flex-col w-full">
                                 <label class="label"><span class="label-text font-semibold">Straniero/Immigrato</span></label>
-                                <input type="text" class="input input-bordered w-full" value="{{ $user->is_foreigner_or_immigrant ? 'Sì' : 'No' }}" readonly>
+                                <input type="text" class="input input-bordered w-full" value="{{ $user->is_foreigner_or_immigrant ? __('profile.options.yes') : __('profile.options.no') }}" readonly>
                             </div>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
@@ -67,9 +67,9 @@
                             <div class="form-control flex flex-col w-full">
                                 <label class="label"><span class="label-text font-semibold">Genere</span></label>
                                 <select name="gender" class="select select-bordered w-full @error('gender') input-error @enderror">
-                                    <option value="">Non specificato</option>
-                                    <option value="M" @selected(old('gender', $user->gender ?? '') == 'M')>Maschio</option>
-                                    <option value="F" @selected(old('gender', $user->gender ?? '') == 'F')>Femmina</option>
+                                    <option value="">{{ __('profile.options.unspecified') }}</option>
+                                    <option value="M" @selected(old('gender', $user->gender ?? '') == 'M')>{{ __('Maschio') }}</option>
+                                    <option value="F" @selected(old('gender', $user->gender ?? '') == 'F')>{{ __('Femmina') }}</option>
                                 </select>
                                 @error('gender')<span class="text-error text-sm">{{ $message }}</span>@enderror
                             </div>
@@ -77,7 +77,7 @@
                                 <label class="label"><span class="label-text font-semibold">Telefono</span></label>
                                 <div class="flex gap-2">
                                     <input type="text" name="phone_prefix" class="input input-bordered w-24 @error('phone_prefix') input-error @enderror" placeholder="+39" value="{{ old('phone_prefix', $user->phone_prefix ?? '+39') }}">
-                                    <input type="text" name="phone" class="input input-bordered flex-1 @error('phone') input-error @enderror" placeholder="Numero di telefono" value="{{ old('phone', $user->phone) }}">
+                                    <input type="text" name="phone" class="input input-bordered flex-1 @error('phone') input-error @enderror" placeholder="{{ __('forms.phone_number_placeholder') }}" value="{{ old('phone', $user->phone) }}">
                                 </div>
                                 @error('phone_prefix')<span class="text-error text-sm">{{ $message }}</span>@enderror
                                 @error('phone')<span class="text-error text-sm">{{ $message }}</span>@enderror
@@ -86,7 +86,7 @@
 
                         <!-- SEZIONE RESIDENZA/DOMICILIO -->
                         <div class="mt-4 mb-2">
-                            <span class="font-bold text-primary text-lg">Residenza/Domicilio</span>
+                            <span class="font-bold text-primary text-lg">{{ __('profile.sections.residence') }}</span>
                         </div>
                         <x-address-selector-simple 
                             :countryValue="old('country', $user->homeCountry?->code ?? 'it')"
@@ -100,7 +100,7 @@
 
                         <!-- SEZIONE LAVORO (SOLO LETTURA) -->
                         <div class="mt-4 mb-2">
-                            <span class="font-bold text-primary text-lg">Dati lavorativi</span>
+                            <span class="font-bold text-primary text-lg">{{ __('profile.sections.work_data') }}</span>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                             <div class="form-control flex flex-col">
@@ -128,27 +128,27 @@
                                 <input type="text" class="input input-bordered w-full" value="{{ $user->jobUnit?->name }}" readonly>
                             </div>
                             <div class="form-control flex flex-col">
-                                <label class="label"><span class="label-text font-semibold">Paese Unità Produttiva</span></label>
+                                <label class="label"><span class="label-text font-semibold">{{ __('profile.fields.work_country') }}</span></label>
                                 <input type="text" class="input input-bordered w-full" value="{{ $user->jobUnit?->country?->name ?? '' }}" readonly>
                             </div>
                             <div class="form-control flex flex-col">
-                                <label class="label"><span class="label-text font-semibold">Regione Unità Produttiva</span></label>
+                                <label class="label"><span class="label-text font-semibold">{{ __('profile.fields.work_region') }}</span></label>
                                 <input type="text" class="input input-bordered w-full" value="{{ $user->jobUnit?->region?->name ?? '' }}" readonly>
                             </div>
                             <div class="form-control flex flex-col">
-                                <label class="label"><span class="label-text font-semibold">Provincia Unità Produttiva</span></label>
+                                <label class="label"><span class="label-text font-semibold">{{ __('profile.fields.work_province') }}</span></label>
                                 <input type="text" class="input input-bordered w-full" value="{{ $user->jobUnit?->province?->name ?? '' }}" readonly>
                             </div>
                             <div class="form-control flex flex-col">
-                                <label class="label"><span class="label-text font-semibold">Città Unità Produttiva</span></label>
+                                <label class="label"><span class="label-text font-semibold">{{ __('profile.fields.work_city') }}</span></label>
                                 <input type="text" class="input input-bordered w-full" value="{{ $user->jobUnit?->city?->name ?? '' }}" readonly>
                             </div>
                             <div class="form-control flex flex-col">
-                                <label class="label"><span class="label-text font-semibold">CAP Unità Produttiva</span></label>
+                                <label class="label"><span class="label-text font-semibold">{{ __('profile.fields.work_postal_code') }}</span></label>
                                 <input type="text" class="input input-bordered w-full" value="{{ $user->jobUnit?->postal_code ?? '' }}" readonly>
                             </div>
                             <div class="form-control flex flex-col">
-                                <label class="label"><span class="label-text font-semibold">Indirizzo Unità Produttiva</span></label>
+                                <label class="label"><span class="label-text font-semibold">{{ __('profile.fields.work_address') }}</span></label>
                                 <input type="text" class="input input-bordered w-full" value="{{ $user->jobUnit?->address }}" readonly>
                             </div>
                         </div>

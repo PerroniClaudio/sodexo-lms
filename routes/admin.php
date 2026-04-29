@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CourseModuleController;
+use App\Http\Controllers\Admin\HomepageCustomizationController;
 use App\Http\Controllers\Admin\JobCategoryController;
 use App\Http\Controllers\Admin\JobLevelController;
 use App\Http\Controllers\Admin\JobRoleController;
@@ -34,6 +35,12 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::get('videos/{video}/signed-playback', [VideoController::class, 'signedPlayback'])->name('videos.signed-playback');
         Route::get('videos/{video}/signed-thumbnail', [VideoController::class, 'signedThumbnail'])->name('videos.signed-thumbnail');
         Route::get('videos/{video}/signed-playback-url', [VideoController::class, 'signedPlaybackApi']);
+        Route::get('/homepage', [HomepageCustomizationController::class, 'index'])->name('homepage.index');
+        Route::post('/homepage/navigation', [HomepageCustomizationController::class, 'updateNavigation'])->name('homepage.navigation.update');
+        Route::post('/homepage/hero', [HomepageCustomizationController::class, 'updateHero'])->name('homepage.hero.update');
+        Route::post('/homepage/services', [HomepageCustomizationController::class, 'updateServices'])->name('homepage.services.update');
+        Route::post('/homepage/about', [HomepageCustomizationController::class, 'updateAbout'])->name('homepage.about.update');
+
         Route::get('/regia', [RegiaController::class, 'index'])->name('regia.index');
         Route::get('/regia/{module}', [RegiaController::class, 'show'])->name('regia.show');
         Route::post('/regia/{module}/session/start', [LiveStreamController::class, 'adminStartSession'])->name('regia.session.start');
@@ -107,7 +114,7 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::get('/courses/{course}/modules/{module}/quiz/submissions/{submission}', [ModuleQuizSubmissionController::class, 'show'])->name('courses.modules.quiz.submissions.show');
             Route::get('/courses/{course}/modules/{module}/quiz/submissions/{submission}/review', [ModuleQuizSubmissionController::class, 'review'])->name('courses.modules.quiz.submissions.review');
             Route::post('/courses/{course}/modules/{module}/quiz/submissions/{submission}/finalize', [ModuleQuizSubmissionController::class, 'finalize'])->name('courses.modules.quiz.submissions.finalize');
-        });    
+        });
 
         // API (risposte json)
         Route::group(['prefix' => 'api', 'as' => 'api.'], function () {

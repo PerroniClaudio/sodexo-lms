@@ -50,17 +50,17 @@ return new class extends Migration
             $table->string('postal_code', 10)->nullable();
 
             // Job Unit e dati geografici derivati (opzionali)
-            $table->foreignId('job_unit_id')->nullable()->constrained('job_units');
+            $table->foreignId('job_unit_id')->nullable();
             $table->string('job_country', 2)->nullable();
             $table->string('job_region')->nullable();
             $table->string('job_province', 2)->nullable();
 
             // Relazioni job (tutti opzionali)
-            $table->foreignId('job_category_id')->nullable()->constrained('job_categories');
-            $table->foreignId('job_level_id')->nullable()->constrained('job_levels');
-            $table->foreignId('job_title_id')->nullable()->constrained('job_titles');
-            $table->foreignId('job_role_id')->nullable()->constrained('job_roles');
-            $table->foreignId('job_sector_id')->nullable()->constrained('job_sectors');
+            $table->foreignId('job_category_id')->nullable();
+            $table->foreignId('job_level_id')->nullable();
+            $table->foreignId('job_title_id')->nullable();
+            $table->foreignId('job_role_id')->nullable();
+            $table->foreignId('job_sector_id')->nullable();
 
             // Flag straniero/immigrato
             $table->boolean('is_foreigner_or_immigrant')->default(false);

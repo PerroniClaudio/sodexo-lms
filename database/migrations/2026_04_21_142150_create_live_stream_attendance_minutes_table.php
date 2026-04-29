@@ -22,9 +22,9 @@ return new class extends Migration
             $table->unsignedInteger('heartbeat_count')->default(1);
             $table->timestamps();
 
-            $table->unique(['live_stream_session_id', 'user_id', 'minute_at']);
+            $table->unique(['live_stream_session_id', 'user_id', 'minute_at'], 'ls_attendance_session_user_minute_unq');
             $table->index(['module_id', 'user_id', 'minute_at']);
-            $table->index(['live_stream_session_id', 'minute_at']);
+            $table->index(['live_stream_session_id', 'minute_at'], 'ls_attendance_session_minute_idx');
         });
     }
 
