@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('live_stream_participants', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('live_stream_session_id')->constrained('live_stream_sessions')->cascadeOnDelete();
+            $table->foreignId('live_stream_session_id');
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->string('app_role');
             $table->string('twilio_identity');
