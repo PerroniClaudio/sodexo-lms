@@ -26,9 +26,9 @@ return new class extends Migration
             $table->timestamp('left_at')->nullable();
             $table->timestamps();
 
-            $table->unique(['live_stream_session_id', 'user_id']);
-            $table->unique(['live_stream_session_id', 'twilio_identity']);
-            $table->index(['live_stream_session_id', 'app_role', 'is_hidden']);
+            $table->unique(['live_stream_session_id', 'user_id'], 'ls_participants_session_user_unq');
+            $table->unique(['live_stream_session_id', 'twilio_identity'], 'ls_participants_session_twilio_unq');
+            $table->index(['live_stream_session_id', 'app_role', 'is_hidden'], 'ls_participants_session_role_hidden_idx');
         });
     }
 
