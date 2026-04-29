@@ -15,7 +15,7 @@
             </main>
         </div>
         <div class="drawer-side">
-            <label for="my-drawer-3" aria-label="close sidebar" class="drawer-overlay"></label>
+            <label for="my-drawer-3" aria-label="{{ __('layout.close_sidebar') }}" class="drawer-overlay"></label>
             <div class="flex min-h-full w-80 flex-col bg-base-200 p-4">
 
                 <ul class="menu w-full gap-1">
@@ -42,6 +42,20 @@
                             {{ __('Regia') }}
                         </a>
                     </li>
+
+                    @role(['admin', 'superadmin'])
+                        <li class="w-full">
+                            <a
+                                href="{{ route('admin.homepage.index') }}"
+                                @class([
+                                    'w-full',
+                                    'menu-active' => request()->routeIs('admin.homepage.*'),
+                                ])
+                            >
+                                {{ __('Home page') }}
+                            </a>
+                        </li>
+                    @endrole
 
                     @role(['admin', 'superadmin'])
                         <li class="w-full">

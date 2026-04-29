@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CourseModuleController;
+use App\Http\Controllers\Admin\HomepageCustomizationController;
 use App\Http\Controllers\Admin\JobCategoryController;
 use App\Http\Controllers\Admin\JobLevelController;
 use App\Http\Controllers\Admin\JobRoleController;
@@ -14,10 +15,18 @@ use App\Http\Controllers\Admin\ScormPackageController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\LiveStreamController;
+use App\Models\Course;
+use App\Models\Module;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
     Route::group(['prefix' => 'admin', 'as' => 'admin.'], function () {
+        Route::get('/homepage', [HomepageCustomizationController::class, 'index'])->name('homepage.index');
+        Route::post('/homepage/navigation', [HomepageCustomizationController::class, 'updateNavigation'])->name('homepage.navigation.update');
+        Route::post('/homepage/hero', [HomepageCustomizationController::class, 'updateHero'])->name('homepage.hero.update');
+        Route::post('/homepage/services', [HomepageCustomizationController::class, 'updateServices'])->name('homepage.services.update');
+        Route::post('/homepage/about', [HomepageCustomizationController::class, 'updateAbout'])->name('homepage.about.update');
+
         Route::get('/regia', [RegiaController::class, 'index'])->name('regia.index');
         Route::get('/regia/{module}', [RegiaController::class, 'show'])->name('regia.show');
         Route::post('/regia/{module}/session/start', [LiveStreamController::class, 'adminStartSession'])->name('regia.session.start');
@@ -75,7 +84,7 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
 
         // Quiz Domande e Risposte
         Route::post('/courses/{course}/modules/{module}/quiz/questions', [ModuleQuizController::class, 'storeQuestion'])->name('courses.modules.quiz.questions.store');
-        
+
         Route::put('/courses/{course}/modules/{module}/quiz/questions/{question}', [ModuleQuizController::class, 'updateQuestion'])->name('courses.modules.quiz.questions.update');
         Route::delete('/courses/{course}/modules/{module}/quiz/questions/{question}', [ModuleQuizController::class, 'deleteQuestion'])->name('courses.modules.quiz.questions.delete');
         Route::get('/courses/{course}/modules/{module}/quiz/pdf', [ModuleQuizController::class, 'downloadPdf'])->name('courses.modules.quiz.pdf.download');
@@ -93,7 +102,6 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::post('/courses/{course}/modules/{module}/quiz/submissions/{submission}/finalize', [ModuleQuizSubmissionController::class, 'finalize'])->name('courses.modules.quiz.submissions.finalize');
         });
 
-
         // API (risposte json)
         Route::group(['prefix' => 'api', 'as' => 'api.'], function () {
             // Lista domande e risposte
@@ -105,14 +113,16 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::put('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}', [ModuleQuizController::class, 'updateAnswerApi'])->name('courses.modules.quiz.answers.update');
             Route::delete('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}', [ModuleQuizController::class, 'deleteAnswerApi'])->name('courses.modules.quiz.answers.delete');
             Route::post('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}/set-correct', [ModuleQuizController::class, 'setCorrectAnswerApi'])->name('courses.modules.quiz.answers.set-correct');
-            Route::get('/courses/{course}/modules/{module}/max-score', function(App\Models\Course $course, App\Models\Module $module) {
+            Route::get('/courses/{course}/modules/{module}/max-score', function (Course $course, Module $module) {
                 abort_unless($module->belongsTo === (string) $course->getKey(), 404);
+
                 return response()->json(['max_score' => $module->max_score]);
             })->name('courses.modules.max_score');
 
             // API per validità quiz modulo
-            Route::get('/courses/{course}/modules/{module}/quiz/validity', function(App\Models\Course $course, App\Models\Module $module) {
+            Route::get('/courses/{course}/modules/{module}/quiz/validity', function (Course $course, Module $module) {
                 abort_unless($module->belongsTo === (string) $course->getKey(), 404);
+
                 return response()->json([
                     'is_valid_quiz' => $module->isValidQuiz(),
                 ]);

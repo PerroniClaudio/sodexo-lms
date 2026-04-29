@@ -154,7 +154,7 @@
     }
     
     function clearSelect(selectElement) {
-        selectElement.innerHTML = '<option value="">Seleziona...</option>';
+        selectElement.innerHTML = '<option value="">{{ __('forms.select_placeholder') }}</option>';
     }
     
     function populateSelect(selectElement, items, valueProp, labelProp, selectedValue = '', includeIdAttr = false) {

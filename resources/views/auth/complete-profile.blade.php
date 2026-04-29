@@ -70,9 +70,9 @@
                                                                     <span class="label-text font-semibold">{{ __('Genere') }}</span>
                                                                 </label>
                                                                 <select name="gender" id="gender" class="select select-bordered w-full">
-                                                                    <option value="">Non specificato</option>
-                                                                    <option value="M" @selected(old('gender', $user->gender ?? '') == 'M')>Maschio</option>
-                                                                    <option value="F" @selected(old('gender', $user->gender ?? '') == 'F')>Femmina</option>
+                                                                    <option value="">{{ __('profile.options.unspecified') }}</option>
+                                                                    <option value="M" @selected(old('gender', $user->gender ?? '') == 'M')>{{ __('Maschio') }}</option>
+                                                                    <option value="F" @selected(old('gender', $user->gender ?? '') == 'F')>{{ __('Femmina') }}</option>
                                                                 </select>
                                                                 @error('gender')<span class="text-error text-sm">{{ $message }}</span>@enderror
                                                             </div>
@@ -89,13 +89,13 @@
                                                                     <label for="phone" class="label">
                                                                         <span class="label-text font-semibold">{{ __('Telefono') }}</span>
                                                                     </label>
-                                                                    <input type="text" name="phone" id="phone" class="input input-bordered flex-1" placeholder="Numero di telefono" value="{{ old('phone', $user->phone ?? '') }}">
+                                                                    <input type="text" name="phone" id="phone" class="input input-bordered flex-1" placeholder="{{ __('forms.phone_number_placeholder') }}" value="{{ old('phone', $user->phone ?? '') }}">
                                                                     @error('phone')<span class="text-error text-sm">{{ $message }}</span>@enderror
                                                                 </div>
                                                             </div>
 
                                                             <div class="mt-4 mb-2">
-                                                                <span class="font-bold text-primary text-lg">Residenza/Domicilio</span>
+                                                                <span class="font-bold text-primary text-lg">{{ __('profile.sections.residence') }}</span>
                                                             </div>
                                                             <x-address-selector-simple 
                                                                 :countryValue="old('country', $user->homeCountry?->code ?? 'it')"

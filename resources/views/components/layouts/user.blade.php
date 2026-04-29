@@ -14,7 +14,7 @@
             </main>
         </div>
         <div class="drawer-side">
-            <label for="user-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+            <label for="user-drawer" aria-label="{{ __('layout.close_sidebar') }}" class="drawer-overlay"></label>
             <div class="flex min-h-full w-72 flex-col bg-base-200 p-4">
                 <ul class="menu w-full gap-1">
                     <li class="w-full">

@@ -6,20 +6,20 @@
 
         <!-- Titolo sezione utente -->
         <div class="mt-4 mb-2">
-            <span class="font-bold text-primary text-lg">Utente</span>
+            <span class="font-bold text-primary text-lg">{{ __('profile.sections.user') }}</span>
         </div>
     
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- Tipo account -->
             <div class="form-control">
                 <label for="account_type" class="label">
-                    <span class="label-text font-semibold">Tipo account <span class="text-error">*</span></span>
+                    <span class="label-text font-semibold">{{ __('profile.fields.account_type') }} <span class="text-error">*</span></span>
                 </label>
                 <select name="account_type" id="account_type" class="select select-bordered w-full" required>
-                    <option value="user" @selected(old('account_type', $user->account_type ?? '') == 'user')>User</option>
-                    <option value="admin" @selected(old('account_type', $user->account_type ?? '') == 'admin')>Admin</option>
-                    <option value="docente" @selected(old('account_type', $user->account_type ?? '') == 'docente')>Docente</option>
-                    <option value="tutor" @selected(old('account_type', $user->account_type ?? '') == 'tutor')>Tutor</option>
+                    <option value="user" @selected(old('account_type', $user->account_type ?? '') == 'user')>{{ __('profile.options.account.user') }}</option>
+                    <option value="admin" @selected(old('account_type', $user->account_type ?? '') == 'admin')>{{ __('profile.options.account.admin') }}</option>
+                    <option value="docente" @selected(old('account_type', $user->account_type ?? '') == 'docente')>{{ __('profile.options.account.docente') }}</option>
+                    <option value="tutor" @selected(old('account_type', $user->account_type ?? '') == 'tutor')>{{ __('profile.options.account.tutor') }}</option>
                 </select>
                 @error('account_type')<span class="text-error text-sm">{{ $message }}</span>@enderror
             </div>
@@ -67,7 +67,7 @@
                 </label>
                 <div class="flex gap-2">
                     <input type="text" name="phone_prefix" id="phone_prefix" class="input input-bordered w-fit flex-0" placeholder="+39" value="{{ old('phone_prefix', $user->phone_prefix ?? '+39') }}">
-                    <input type="text" name="phone" id="phone" class="input input-bordered flex-1" placeholder="Numero di telefono" value="{{ old('phone', $user->phone ?? '') }}">
+                    <input type="text" name="phone" id="phone" class="input input-bordered flex-1" placeholder="{{ __('forms.phone_number_placeholder') }}" value="{{ old('phone', $user->phone ?? '') }}">
                 </div>
                 @error('phone_prefix')<span class="text-error text-sm">{{ $message }}</span>@enderror
                 @error('phone')<span class="text-error text-sm">{{ $message }}</span>@enderror
@@ -101,9 +101,9 @@
                     <span class="label-text font-semibold">Genere</span>
                 </label>
                 <select name="gender" id="gender" class="select select-bordered w-full">
-                    <option value="">Non specificato</option>
-                    <option value="M" @selected(old('gender', $user->gender ?? '') == 'M')>Maschio</option>
-                    <option value="F" @selected(old('gender', $user->gender ?? '') == 'F')>Femmina</option>
+                    <option value="">{{ __('profile.options.unspecified') }}</option>
+                    <option value="M" @selected(old('gender', $user->gender ?? '') == 'M')>{{ __('Maschio') }}</option>
+                    <option value="F" @selected(old('gender', $user->gender ?? '') == 'F')>{{ __('Femmina') }}</option>
                 </select>
                 @error('gender')<span class="text-error text-sm">{{ $message }}</span>@enderror
             </div>
@@ -113,9 +113,9 @@
                     <span class="label-text font-semibold">Straniero/Immigrato <span class="text-error">*</span></span>
                 </label>
                 <select name="is_foreigner_or_immigrant" id="is_foreigner_or_immigrant" class="select select-bordered w-full" required>
-                    <option value="" disabled {{ !isset($user) && old('is_foreigner_or_immigrant', null) === null ? 'selected' : '' }} hidden>Seleziona...</option>
-                    <option value="0" @selected(isset($user) ? (string)($user->is_foreigner_or_immigrant) === '0' : old('is_foreigner_or_immigrant', null) === '0')>No</option>
-                    <option value="1" @selected(isset($user) ? (string)($user->is_foreigner_or_immigrant) === '1' : old('is_foreigner_or_immigrant', null) === '1')>Sì</option>
+                    <option value="" disabled {{ !isset($user) && old('is_foreigner_or_immigrant', null) === null ? 'selected' : '' }} hidden>{{ __('forms.select_placeholder') }}</option>
+                    <option value="0" @selected(isset($user) ? (string)($user->is_foreigner_or_immigrant) === '0' : old('is_foreigner_or_immigrant', null) === '0')>{{ __('profile.options.no') }}</option>
+                    <option value="1" @selected(isset($user) ? (string)($user->is_foreigner_or_immigrant) === '1' : old('is_foreigner_or_immigrant', null) === '1')>{{ __('profile.options.yes') }}</option>
                 </select>
                 @error('is_foreigner_or_immigrant')<span class="text-error text-sm">{{ $message }}</span>@enderror
             </div>
@@ -123,7 +123,7 @@
 
         <!-- Titolo sezione residenza/domicilio -->
         <div class="mt-4 mb-2">
-            <span class="font-bold text-primary text-lg">Residenza/Domicilio</span>
+            <span class="font-bold text-primary text-lg">{{ __('profile.sections.residence') }}</span>
         </div>
         <x-address-selector-simple 
             :countryValue="old('country', $user->homeCountry?->code ?? 'it')"
@@ -138,7 +138,7 @@
 
         <!-- Titolo sezione lavoro -->
         <div class="mt-4 mb-2">
-            <span class="font-bold text-primary text-lg">Lavoro</span>
+            <span class="font-bold text-primary text-lg">{{ __('profile.sections.work') }}</span>
         </div>
         <!-- Settore -->
         <div class="form-control" data-user-only>
@@ -146,7 +146,7 @@
                 <span class="label-text font-semibold">Settore <span class="text-error">*</span></span>
             </label>
             <select name="job_sector_id" id="job_sector_id" class="select select-bordered w-full" required>
-                <option value="">Seleziona</option>
+                <option value="">{{ __('Seleziona') }}</option>
                 @foreach($jobSectors as $sector)
                     <option value="{{ $sector->id }}" @selected(old('job_sector_id', $user->job_sector_id ?? '') == $sector->id)>{{ $sector->name }}</option>
                 @endforeach
@@ -160,7 +160,7 @@
                 <span class="label-text font-semibold">Categoria</span>
             </label>
             <select name="job_category_id" id="job_category_id" class="select select-bordered w-full">
-                <option value="">Seleziona</option>
+                <option value="">{{ __('Seleziona') }}</option>
                 @foreach($jobCategories as $category)
                     <option value="{{ $category->id }}" @selected(old('job_category_id', $user->job_category_id ?? '') == $category->id)>{{ $category->name }}</option>
                 @endforeach
@@ -174,7 +174,7 @@
                 <span class="label-text font-semibold">Livello di inquadramento</span>
             </label>
             <select name="job_level_id" id="job_level_id" class="select select-bordered w-full">
-                <option value="">Seleziona</option>
+                <option value="">{{ __('Seleziona') }}</option>
                 @foreach($jobLevels as $level)
                     <option value="{{ $level->id }}" @selected(old('job_level_id', $user->job_level_id ?? '') == $level->id)>{{ $level->name }}</option>
                 @endforeach
@@ -188,7 +188,7 @@
                 <span class="label-text font-semibold">Mansione <span class="text-error">*</span></span>
             </label>
             <select name="job_title_id" id="job_title_id" class="select select-bordered w-full" required>
-                <option value="">Seleziona</option>
+                <option value="">{{ __('Seleziona') }}</option>
                 @foreach($jobTitles as $title)
                     <option value="{{ $title->id }}" @selected(old('job_title_id', $user->job_title_id ?? '') == $title->id)>{{ $title->name }}</option>
                 @endforeach
@@ -202,7 +202,7 @@
                 <span class="label-text font-semibold">Ruolo <span class="text-error">*</span></span>
             </label>
             <select name="job_role_id" id="job_role_id" class="select select-bordered w-full" required>
-                <option value="">Seleziona</option>
+                <option value="">{{ __('Seleziona') }}</option>
                 @foreach($jobRoles as $role)
                     <option value="{{ $role->id }}" @selected(old('job_role_id', $user->job_role_id ?? '') == $role->id)>{{ $role->name }}</option>
                 @endforeach
@@ -216,7 +216,7 @@
                 <span class="label-text font-semibold">Unità Produttiva <span class="text-error">*</span></span>
             </label>
             <select name="job_unit_id" id="job_unit_id" class="select select-bordered w-full" required>
-                <option value="">Seleziona</option>
+                <option value="">{{ __('Seleziona') }}</option>
                 @foreach($jobUnits as $unit)
                     <option value="{{ $unit->id }}" @selected(old('job_unit_id', $user->job_unit_id ?? '') == $unit->id)>{{ $unit->name }}</option>
                 @endforeach

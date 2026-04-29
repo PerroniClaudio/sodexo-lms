@@ -1,9 +1,10 @@
 <?php
+
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return view('homepage.index');
 });
 
 Route::middleware(['auth', 'role:admin|superadmin'])->get('/dashboard', function () {
@@ -34,5 +35,6 @@ Route::get('/test-mailpit', function () {
     Mail::raw('Test invio mail tramite Mailpit', function ($message) {
         $message->to('test@example.com')->subject('Mailpit funziona!');
     });
+
     return 'Mail inviata (se Mailpit è attivo, la vedi su http://localhost:8025)';
 });

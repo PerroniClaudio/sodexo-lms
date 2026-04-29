@@ -1,29 +1,24 @@
 <?php
 
-use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-test('welcome page shows a navbar with login button to guests', function () {
+uses(RefreshDatabase::class);
+
+test('welcome page shows the public homepage to guests', function () {
     $response = $this->get('/');
 
     $response->assertSuccessful();
     $response->assertSeeText(config('app.name', 'Laravel'));
-    $response->assertSeeText('Login');
+    $response->assertSeeText('Accedi');
+    $response->assertSeeText('Lavoriamo per la');
+    $response->assertSeeText('SALUTE');
+    $response->assertSeeText('I nostri servizi');
+    $response->assertSeeText('Corsi FAD');
+    $response->assertSeeText('Corsi RES');
+    $response->assertSeeText('Corsi FSC');
+    $response->assertSeeText('Chi siamo');
+    $response->assertSeeText('Cookie');
+    $response->assertSeeText('Privacy policy');
     $response->assertDontSeeText('Area riservata');
     $response->assertSee('href="'.route('login').'"', false);
-});
-
-test('welcome page shows the reserved area button to authenticated users', function () {
-    $user = User::factory()->make([
-        'id' => 1,
-    ]);
-
-    $response = $this
-        ->actingAs($user)
-        ->get('/');
-
-    $response->assertSuccessful();
-    $response->assertSeeText(config('app.name', 'Laravel'));
-    $response->assertSeeText('Area riservata');
-    $response->assertDontSeeText('Login');
-    $response->assertSee('href="'.route('reserved-area').'"', false);
 });
