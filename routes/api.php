@@ -1,7 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\Mux\WebhookController;
 use App\Http\Controllers\Api\GeographicController;
-use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
 // Geographic API routes for hierarchical address selection (public access)
@@ -17,3 +17,6 @@ Route::prefix('geographic')->group(function () {
     Route::get('lookup/postal-code/{postalCode}', [GeographicController::class, 'lookupPostalCode']);
 });
 
+
+// Webhook Mux per aggiornamento stato video
+Route::post('mux/webhook', [WebhookController::class, 'handle']);

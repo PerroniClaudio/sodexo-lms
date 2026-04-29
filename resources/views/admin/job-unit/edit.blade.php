@@ -39,7 +39,7 @@
                     @method('PUT')
 
                     <div class="form-control flex flex-col gap-2">
-                        <label for="name" class="label font-semibold p-0">
+                        <label for="name" class="label p-0">
                             <span class="label-text font-medium">{{ __('Nome') }}</span>
                         </label>
                         <input
@@ -67,7 +67,7 @@
                     />
 
                     <div class="form-control flex flex-col gap-2">
-                        <label for="description" class="label font-semibold p-0">
+                        <label for="description" class="label p-0">
                             <span class="label-text font-medium">{{ __('Descrizione') }}</span>
                         </label>
                         <textarea

@@ -41,7 +41,9 @@
                             <x-lucide-save class="h-4 w-4" />
                         </button>
                     </div>
+
                 </form>
+                @stack('after-form')
             </div>
         </div>
 
@@ -57,6 +59,10 @@
 
         @if ($module->type === 'learning_quiz')
             @include('admin.module.partials.quiz-questions', ['course' => $course, 'module' => $module])
+        @endif
+
+        @if ($module->type === 'video')
+            @include('admin.module.partials.video-table', ['course' => $course, 'module' => $module])
         @endif
     </div>
 

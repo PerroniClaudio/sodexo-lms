@@ -9,7 +9,7 @@
 
                     <div class="grid gap-6 md:grid-cols-2">
                         <div class="form-control flex flex-col gap-2">
-                            <label for="title" class="label font-semibold p-0">
+                            <label for="title" class="label p-0">
                                 <span class="label-text font-medium">{{ __('Titolo del corso') }}</span>
                             </label>
                             <input
@@ -26,7 +26,7 @@
                         </div>
 
                         <div class="form-control flex flex-col gap-2">
-                            <label for="type" class="label font-semibold p-0">
+                            <label for="type" class="label p-0">
                                 <span class="label-text font-medium">{{ __('Tipologia') }}</span>
                             </label>
                             <select

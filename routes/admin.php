@@ -12,12 +12,28 @@ use App\Http\Controllers\Admin\ModuleQuizSubmissionController;
 use App\Http\Controllers\Admin\RegiaController;
 use App\Http\Controllers\Admin\ScormPackageController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\VideoController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\LiveStreamController;
+use App\Models\Course;
+use App\Models\Module;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
     Route::group(['prefix' => 'admin', 'as' => 'admin.'], function () {
+        // Libreria video Mux
+        Route::post('videos', [VideoController::class, 'store'])
+            ->middleware('uploadlimit')
+            ->name('videos.store');
+        Route::get('videos', [VideoController::class, 'index'])->name('videos.index');
+        Route::get('videos/create', [VideoController::class, 'create'])->name('videos.create');
+        Route::get('videos/{video}/edit', [VideoController::class, 'edit'])->name('videos.edit');
+        Route::put('videos/{video}', [VideoController::class, 'update'])->name('videos.update');
+        Route::delete('videos/{video}', [VideoController::class, 'destroy'])->name('videos.destroy');
+        Route::post('videos/{video}/restore', [VideoController::class, 'restore'])->name('videos.restore');
+        Route::get('videos/{video}/signed-playback', [VideoController::class, 'signedPlayback'])->name('videos.signed-playback');
+        Route::get('videos/{video}/signed-thumbnail', [VideoController::class, 'signedThumbnail'])->name('videos.signed-thumbnail');
+        Route::get('videos/{video}/signed-playback-url', [VideoController::class, 'signedPlaybackApi']);
         Route::get('/regia', [RegiaController::class, 'index'])->name('regia.index');
         Route::get('/regia/{module}', [RegiaController::class, 'show'])->name('regia.show');
         Route::post('/regia/{module}/session/start', [LiveStreamController::class, 'adminStartSession'])->name('regia.session.start');
@@ -75,7 +91,7 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
 
         // Quiz Domande e Risposte
         Route::post('/courses/{course}/modules/{module}/quiz/questions', [ModuleQuizController::class, 'storeQuestion'])->name('courses.modules.quiz.questions.store');
-        
+
         Route::put('/courses/{course}/modules/{module}/quiz/questions/{question}', [ModuleQuizController::class, 'updateQuestion'])->name('courses.modules.quiz.questions.update');
         Route::delete('/courses/{course}/modules/{module}/quiz/questions/{question}', [ModuleQuizController::class, 'deleteQuestion'])->name('courses.modules.quiz.questions.delete');
         Route::get('/courses/{course}/modules/{module}/quiz/pdf', [ModuleQuizController::class, 'downloadPdf'])->name('courses.modules.quiz.pdf.download');
@@ -91,8 +107,7 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::get('/courses/{course}/modules/{module}/quiz/submissions/{submission}', [ModuleQuizSubmissionController::class, 'show'])->name('courses.modules.quiz.submissions.show');
             Route::get('/courses/{course}/modules/{module}/quiz/submissions/{submission}/review', [ModuleQuizSubmissionController::class, 'review'])->name('courses.modules.quiz.submissions.review');
             Route::post('/courses/{course}/modules/{module}/quiz/submissions/{submission}/finalize', [ModuleQuizSubmissionController::class, 'finalize'])->name('courses.modules.quiz.submissions.finalize');
-        });
-
+        });    
 
         // API (risposte json)
         Route::group(['prefix' => 'api', 'as' => 'api.'], function () {
@@ -105,18 +120,28 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::put('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}', [ModuleQuizController::class, 'updateAnswerApi'])->name('courses.modules.quiz.answers.update');
             Route::delete('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}', [ModuleQuizController::class, 'deleteAnswerApi'])->name('courses.modules.quiz.answers.delete');
             Route::post('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}/set-correct', [ModuleQuizController::class, 'setCorrectAnswerApi'])->name('courses.modules.quiz.answers.set-correct');
-            Route::get('/courses/{course}/modules/{module}/max-score', function(App\Models\Course $course, App\Models\Module $module) {
+            Route::get('/courses/{course}/modules/{module}/max-score', function (Course $course, Module $module) {
                 abort_unless($module->belongsTo === (string) $course->getKey(), 404);
+
                 return response()->json(['max_score' => $module->max_score]);
             })->name('courses.modules.max_score');
 
             // API per validità quiz modulo
-            Route::get('/courses/{course}/modules/{module}/quiz/validity', function(App\Models\Course $course, App\Models\Module $module) {
+            Route::get('/courses/{course}/modules/{module}/quiz/validity', function (Course $course, Module $module) {
                 abort_unless($module->belongsTo === (string) $course->getKey(), 404);
+
                 return response()->json([
                     'is_valid_quiz' => $module->isValidQuiz(),
                 ]);
             })->name('courses.modules.quiz_validity');
+
+            // API video per selezione/assegnazione nei moduli (usata in video-table)
+            Route::get('videos', [\App\Http\Controllers\Admin\VideoController::class, 'indexApi'])->name('videos.index');
+            Route::get('videos/{video}', [\App\Http\Controllers\Admin\VideoController::class, 'getInfoApi'])->name('videos.info');
+            // Assegnazione video a modulo
+            Route::post('/modules/{module}/assign-video', [CourseModuleController::class, 'assignVideoToModule']);
+            Route::post('/modules/{module}/unassign-video', [CourseModuleController::class, 'unassignVideoFromModule']);
         });
     });
+
 });

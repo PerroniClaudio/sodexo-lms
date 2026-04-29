@@ -14,6 +14,7 @@ use App\Models\CourseTeacherEnrollment;
 use App\Models\CourseTutorEnrollment;
 use App\Models\Module;
 use App\Models\User;
+use App\Models\Video;
 use App\Services\LiveModuleAttendanceService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -23,6 +24,57 @@ use Illuminate\View\View;
 
 class CourseModuleController extends Controller
 {
+
+
+    /**
+     * API: Restituisce la lista video per la tabella video-table (paginata, ricerca, ordinamento)
+     */
+    public function getVideosApi(Request $request)
+    {
+        $query = Video::withCount('modules');
+
+        // Ricerca globale
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%$search%")
+                  ->orWhere('mux_video_status', 'like', "%$search%")
+                  ->orWhereHas('modules', function ($q2) use ($search) {
+                      $q2->where('title', 'like', "%$search%")
+                         ->orWhere('id', 'like', "%$search%")
+                         ->orWhere('status', 'like', "%$search%")
+                         ;
+                  });
+            });
+        }
+
+        // Ordinamento
+        $sortable = ['title', 'mux_video_status', 'modules_count', 'status'];
+        $sort = $request->input('sort', 'created_at');
+        $direction = $request->input('direction', 'desc');
+        if (!in_array($sort, $sortable)) {
+            $sort = 'created_at';
+        }
+        if (!in_array($direction, ['asc', 'desc'])) {
+            $direction = 'desc';
+        }
+        $query->orderBy($sort, $direction);
+
+        $videos = $query->paginate(10);
+
+        // Struttura compatibile con la tabella video-table
+        $videos->getCollection()->transform(function ($video) {
+            return [
+                'id' => $video->id,
+                'title' => $video->title,
+                'modules_count' => $video->modules_count,
+                'mux_video_status' => $video->mux_video_status,
+                'trashed_at' => $video->trashed_at,
+            ];
+        });
+
+        return response()->json($videos);
+    }
+    
     public function store(StoreModuleRequest $request, Course $course): RedirectResponse
     {
         $moduleType = $request->validated('type');
@@ -52,6 +104,8 @@ class CourseModuleController extends Controller
     {
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
 
+        $videos = Video::orderByDesc('created_at')->get();
+
         return view('admin.module.edit', [
             'course' => $course,
             'module' => $module,
@@ -74,6 +128,7 @@ class CourseModuleController extends Controller
                     ->get()
                 : collect(),
             'isValidQuiz' => $module->type === 'learning_quiz' ? $module->isValidQuiz() : false,
+            'videos' => $videos,
         ]);
     }
 
@@ -338,5 +393,29 @@ class CourseModuleController extends Controller
             'alreadyCompleted' => $stats['already_completed'],
             'notCurrent' => $stats['skipped_not_current'],
         ]);
+    }
+
+        /**
+     * Assegna un video al modulo (API)
+     */
+    public function assignVideoToModule(\Illuminate\Http\Request $request, Module $module): \Illuminate\Http\JsonResponse
+    {
+        $videoId = $request->input('video_id');
+        if (!$videoId || !\App\Models\Video::find($videoId)) {
+            return response()->json(['success' => false, 'message' => 'Video non valido'], 422);
+        }
+        $module->video_id = $videoId;
+        $module->save();
+        return response()->json(['success' => true, 'video_id' => $videoId]);
+    }
+
+    /**
+     * Rimuove l'assegnazione del video dal modulo (API)
+     */
+    public function unassignVideoFromModule(Module $module): \Illuminate\Http\JsonResponse
+    {        
+        $module->video_id = null;
+        $module->save();
+        return response()->json(['success' => true]);
     }
 }

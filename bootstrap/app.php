@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureUserOnboarded;
+use App\Http\Middleware\IncreaseVideoUploadLimitMiddleware;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -33,11 +34,12 @@ return Application::configure(basePath: dirname(__DIR__))
             return route('reserved-area');
         });
 
-        // Registra middleware alias di Spatie Permission
+        // Registra middleware alias di Spatie Permission e custom
         $middleware->alias([
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'uploadlimit' => IncreaseVideoUploadLimitMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -40,7 +40,7 @@
 
                     <div class="grid gap-6 md:grid-cols-2">
                         <div class="form-control flex flex-col gap-2">
-                            <label for="name" class="label font-semibold p-0">
+                            <label for="name" class="label p-0">
                                 <span class="label-text font-medium">{{ __('Nome') }}</span>
                             </label>
                             <input
@@ -57,7 +57,7 @@
                         </div>
 
                         <div class="form-control flex flex-col gap-2">
-                            <label for="code" class="label font-semibold p-0">
+                            <label for="code" class="label p-0">
                                 <span class="label-text font-medium">{{ __('Codice') }}</span>
                             </label>
                             <input
@@ -74,7 +74,7 @@
                     </div>
 
                     <div class="form-control flex flex-col gap-2">
-                        <label for="description" class="label font-semibold p-0">
+                        <label for="description" class="label p-0">
                             <span class="label-text font-medium">{{ __('Descrizione') }}</span>
                         </label>
                         <textarea

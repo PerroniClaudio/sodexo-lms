@@ -1,3 +1,4 @@
+
 <?php
 
 return [
@@ -13,6 +14,21 @@ return [
     | a conventional file to locate the various service credentials.
     |
     */
+
+    'mux' => [
+        'token_id' => env('MUX_TOKEN_ID'),
+        'token_secret' => env('MUX_TOKEN_SECRET'),
+        'signing_key_id' => env('MUX_SIGNING_KEY_ID'),
+        'signing_private_key' => env('MUX_SIGNING_PRIVATE_KEY'),
+        'live' => [
+            'ingest_url' => env('MUX_LIVE_INGEST_URL', 'rtmps://global-live.mux.com:443/app'),
+            'reconnect_window' => (int) env('MUX_LIVE_RECONNECT_WINDOW', 60),
+        ],
+        'timeout' => [
+            'connect' => (int) env('MUX_CONNECT_TIMEOUT', 5),
+            'request' => (int) env('MUX_REQUEST_TIMEOUT', 10),
+        ],
+    ],
 
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
@@ -46,18 +62,7 @@ return [
         ],
     ],
 
-    'mux' => [
-        'token_id' => env('MUX_TOKEN_ID'),
-        'token_secret' => env('MUX_TOKEN_SECRET'),
-        'live' => [
-            'ingest_url' => env('MUX_LIVE_INGEST_URL', 'rtmps://global-live.mux.com:443/app'),
-            'reconnect_window' => (int) env('MUX_LIVE_RECONNECT_WINDOW', 60),
-        ],
-        'timeout' => [
-            'connect' => (int) env('MUX_CONNECT_TIMEOUT', 5),
-            'request' => (int) env('MUX_REQUEST_TIMEOUT', 10),
-        ],
-    ],
+
 
     'google_document_ai' => [
         'project_id' => env('GOOGLE_DOCUMENT_AI_PROJECT_ID'),

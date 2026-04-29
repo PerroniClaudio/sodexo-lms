@@ -60,7 +60,16 @@ class Module extends Model
         'passing_score',
         'max_score',
         'belongsTo',
+        'video_id', // ID del video associato dalla libreria video Mux
     ];
+
+    /**
+     * Relazione con il video associato (libreria video Mux)
+     */
+    public function video()
+    {
+        return $this->belongsTo(Video::class);
+    }
 
     /**
      * Get the attributes that should be cast.
@@ -246,10 +255,10 @@ class Module extends Model
 
     /**
      * Domande quiz valide associate al modulo.
-     */ 
+     */
     public function getValidQuizQuestions()
     {
-        return $this->quizQuestions()->get()->filter(fn($q) => $q->isValid());
+        return $this->quizQuestions()->get()->filter(fn ($q) => $q->isValid());
     }
 
     /**
@@ -261,15 +270,15 @@ class Module extends Model
     }
 
     /**
-     * Determina se il quiz del modulo è valido: deve avere almeno una domanda valida, 
-     * il punteggio totale delle domande valide deve essere uguale al punteggio massimo del modulo 
+     * Determina se il quiz del modulo è valido: deve avere almeno una domanda valida,
+     * il punteggio totale delle domande valide deve essere uguale al punteggio massimo del modulo
      * e il punteggio di superamento deve essere minore o uguale al punteggio massimo.
      */
-    public function isValidQuiz():bool
+    public function isValidQuiz(): bool
     {
-        return $this->isQuiz() 
-            && $this->getValidQuizQuestions()->count() > 0 
-            && $this->getValidQuizQuestionsTotalPoints() === $this->max_score 
+        return $this->isQuiz()
+            && $this->getValidQuizQuestions()->count() > 0
+            && $this->getValidQuizQuestionsTotalPoints() === $this->max_score
             && $this->passing_score <= $this->max_score;
     }
 

@@ -25,6 +25,7 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 .github
+mux-signing-key.pem
 
 # Database locale per sviluppo
 /database/database.sqlite

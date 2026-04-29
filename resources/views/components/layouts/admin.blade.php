@@ -43,6 +43,7 @@
                         </a>
                     </li>
 
+
                     @role(['admin', 'superadmin'])
                         <li class="w-full">
                             <a
@@ -53,6 +54,17 @@
                                 ])
                             >
                                 {{ __('Utenti') }}
+                            </a>
+                        </li>
+                        <li class="w-full">
+                            <a
+                                href="{{ route('admin.videos.index') }}"
+                                @class([
+                                    'w-full',
+                                    'menu-active' => request()->routeIs('admin.videos.*'),
+                                ])
+                            >
+                                {{ __('Libreria Video') }}
                             </a>
                         </li>
                     @endrole
