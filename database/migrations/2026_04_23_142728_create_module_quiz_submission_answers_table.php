@@ -10,9 +10,7 @@ return new class extends Migration
     {
         Schema::create('module_quiz_submission_answers', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('module_quiz_submission_id')
-                ->constrained('module_quiz_submissions')
-                ->cascadeOnDelete();
+            $table->foreignId('module_quiz_submission_id');
             $table->foreignId('module_quiz_question_id')
                 ->constrained('module_quiz_questions')
                 ->cascadeOnDelete();
