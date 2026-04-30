@@ -5,7 +5,7 @@
     'overlayContentHtml' => null,
     'buttonEnabled' => true,
     'buttonColor' => 'primary',
-    'buttonText' => 'Esplora il nostro catalogo',
+    'buttonText' => 'Pulsante servizi',
     'buttonUrl' => '#catalogo',
 ])
 
@@ -13,7 +13,7 @@
     $resolvedLabel = filled($label) ? $label : 'Servizi';
     $resolvedLeftContentHtml = filled($leftContentHtml)
         ? $leftContentHtml
-        : '<h2>I nostri <strong>servizi</strong> comprendono</h2><ul><li>Corsi <strong>FAD</strong></li><li>Corsi <strong>RES</strong></li><li>Corsi <strong>FSC</strong></li></ul>';
+        : '<h2>Sezione <strong>servizi</strong> homepage</h2><ul><li>Contenuto <strong>generico uno</strong></li><li>Contenuto <strong>generico due</strong></li><li>Contenuto <strong>generico tre</strong></li></ul>';
     $buttonClasses = [
         'primary' => 'bg-primary text-primary-content hover:bg-primary/90',
         'secondary' => 'bg-secondary text-secondary-content hover:bg-secondary/90',

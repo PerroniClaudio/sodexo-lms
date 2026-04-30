@@ -257,11 +257,11 @@ it('renders homepage services fallback when no settings exist', function () {
     $this->get('/')
         ->assertOk()
         ->assertSee('Servizi')
-        ->assertSee('I nostri <strong>servizi</strong> comprendono', escape: false)
-        ->assertSee('Corsi <strong>FAD</strong>', escape: false)
-        ->assertSee('Corsi <strong>RES</strong>', escape: false)
-        ->assertSee('Corsi <strong>FSC</strong>', escape: false)
-        ->assertSee('Esplora il nostro catalogo')
+        ->assertSee('Sezione <strong>servizi</strong> homepage', escape: false)
+        ->assertSee('Contenuto <strong>generico uno</strong>', escape: false)
+        ->assertSee('Contenuto <strong>generico due</strong>', escape: false)
+        ->assertSee('Contenuto <strong>generico tre</strong>', escape: false)
+        ->assertSee('Pulsante servizi')
         ->assertSee('bg-secondary', escape: false);
 });
 
@@ -385,12 +385,13 @@ it('deletes the previous homepage about image when replacing it', function () {
 it('renders homepage about fallback when no settings exist', function () {
     $this->get('/')
         ->assertOk()
-        ->assertSee('Chi siamo')
+        ->assertSee('Sezione contenuti')
         ->assertSee(config('app.name', 'Laravel'))
-        ->assertSee('Corsi e', escape: false)
-        ->assertSee('Convegni', escape: false)
-        ->assertSee('Esplora il nostro catalogo')
+        ->assertSee('presenta', escape: false)
+        ->assertSee('testo', escape: false)
+        ->assertSee('generico', escape: false)
+        ->assertSee('Pulsante contenuti')
         ->assertSee('href="#servizi"', escape: false)
-    ->assertSee('aspect-video bg-secondary', escape: false)
+        ->assertSee('aspect-video bg-secondary', escape: false)
         ->assertSee('bg-primary', escape: false);
 });
