@@ -203,6 +203,7 @@ function formatDuration(seconds) {
     return `${min}m ${sec}s`;
 }
 
+
 function openModuleVideoUploadModal() {
     let modal = document.getElementById('module-video-upload-modal');
     if (!modal) {
@@ -217,6 +218,7 @@ function openModuleVideoUploadModal() {
     // Aggiorna la tabella video dopo upload completato
     const uploadForm = document.getElementById('video-upload-form');
     if (uploadForm) {
+        uploadForm.onsubmit = null; // azzera eventuali handler precedenti
         uploadForm.onsubmit = function(e) {
             e.preventDefault();
             const formData = new FormData(uploadForm);
@@ -237,6 +239,8 @@ function openModuleVideoUploadModal() {
         };
     }
 }
+// Espone la funzione per l'onclick nel markup
+window.openModuleVideoUploadModal = openModuleVideoUploadModal;
 
 function closeModuleVideoUploadModal() {
     const modal = document.getElementById('module-video-upload-modal');
@@ -244,6 +248,8 @@ function closeModuleVideoUploadModal() {
         modal.classList.add('hidden');
     }
 }
+// Espone la funzione per l'onclick nel markup
+window.closeModuleVideoUploadModal = closeModuleVideoUploadModal;
 
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('module-video-search').addEventListener('input', function(e) {
