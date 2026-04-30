@@ -367,8 +367,8 @@ function showModuleVideoModalWithMuxPlayer(playbackId, token) {
     playerContainer.innerHTML = '';
     const muxPlayer = document.createElement('mux-player');
     muxPlayer.setAttribute('stream-type', 'on-demand');
-    muxPlayer.setAttribute('playback-id', playbackId);
-    muxPlayer.setAttribute('token', token);
+    // Usa src con URL Mux firmato
+    muxPlayer.setAttribute('src', `https://stream.mux.com/${playbackId}.m3u8?token=${token}`);
     muxPlayer.setAttribute('metadata-video-title', 'Anteprima video');
     muxPlayer.setAttribute('primary-color', '#2563eb');
     muxPlayer.setAttribute('accent-color', '#2563eb');

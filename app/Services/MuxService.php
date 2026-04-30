@@ -26,19 +26,19 @@ class MuxService
         ]);
         $this->tokenId = config('services.mux.token_id');
         $this->tokenSecret = config('services.mux.token_secret');
-            $this->signingKeyId = config('services.mux.signing_key_id');
-            // Carica la chiave privata dal file mux-signing-key.pem nella root del progetto
-            $pemPath = base_path('mux-signing-key.pem');
-            if (file_exists($pemPath)) {
-                $key = file_get_contents($pemPath);
-            } else {
-                $key = config('services.mux.signing_private_key');
-            }
-            // Se la chiave è base64, decodificala
-            if ($key && strpos($key, '-----BEGIN') === false) {
-                $key = base64_decode($key);
-            }
-            $this->signingPrivateKey = $key;
+        $this->signingKeyId = config('services.mux.signing_key_id');
+        // Carica la chiave privata dal file mux-signing-key.pem nella root del progetto
+        $pemPath = base_path('mux-signing-key.pem');
+        if (file_exists($pemPath)) {
+            $key = file_get_contents($pemPath);
+        } else {
+            $key = config('services.mux.signing_private_key');
+        }
+        // Se la chiave è base64, decodificala
+        if ($key && strpos($key, '-----BEGIN') === false) {
+            $key = base64_decode($key);
+        }
+        $this->signingPrivateKey = $key;
     }
     /**
      * Genera un signed URL per la thumbnail Mux
