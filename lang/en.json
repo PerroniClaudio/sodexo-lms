@@ -248,7 +248,7 @@
     "Production Unit City": "Production Unit City",
     "Production Unit ZIP": "Production Unit ZIP",
     "Production Unit Address": "Production Unit Address",
-    "Save changes": "Save changes"
+    "Save changes": "Save changes",
     "Quiz questions": "Quiz questions",
     "Add question": "Add question",
     "New question": "New question",
@@ -298,5 +298,18 @@
     "profile.options.account.tutor": "Tutor",
     "profile.options.unspecified": "Not specified",
     "profile.options.no": "No",
-    "profile.options.yes": "Yes"
+    "profile.options.yes": "Yes",
+    "Info video selezionato": "Selected video info",
+    "Nessun video selezionato": "No video selected",
+    "Guarda anteprima": "Watch preview",
+    "Moduli che lo usano": "Modules using it",
+    "Libreria Video": "Video Library",
+    "Carica nuovo": "Upload new",
+    "Carica nuovo video": "Upload new video",
+    "Anteprima": "Preview",
+    "Azioni": "Actions",
+    "Assegna": "Assign",
+    "Rimuovi": "Remove",
+    "Eliminato": "Deleted",
+    "Durata": "Duration"
 }

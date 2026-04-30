@@ -12,6 +12,7 @@
     "Caricamento...": "Caricamento...",
     "Corsi": "Corsi",
     "ID": "ID",
+    "Titolo": "Titolo",
     "Titolo del corso": "Titolo del corso",
     "Tipologia": "Tipologia",
     "Seleziona una tipologia": "Seleziona una tipologia",
@@ -297,6 +298,19 @@
     "profile.options.account.tutor": "Tutor",
     "profile.options.unspecified": "Non specificato",
     "profile.options.no": "No",
-    "profile.options.yes": "Sì"
+    "profile.options.yes": "Sì",
+    "Info video selezionato": "Info video selezionato",
+    "Nessun video selezionato": "Nessun video selezionato",
+    "Guarda anteprima": "Guarda anteprima",
+    "Moduli che lo usano": "Moduli che lo usano",
+    "Libreria Video": "Libreria Video",
+    "Carica nuovo": "Carica nuovo",
+    "Carica nuovo video": "Carica nuovo video",
+    "Anteprima": "Anteprima",
+    "Azioni": "Azioni",
+    "Assegna": "Assegna",
+    "Rimuovi": "Rimuovi",
+    "Eliminato": "Eliminato",
+    "Durata": "Durata"
 }
 
