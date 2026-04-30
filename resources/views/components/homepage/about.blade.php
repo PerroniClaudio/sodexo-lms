@@ -3,14 +3,14 @@
     'visualImageUrl' => null,
     'buttonEnabled' => true,
     'buttonColor' => 'primary',
-    'buttonText' => 'Esplora il nostro catalogo',
+    'buttonText' => 'Pulsante contenuti',
     'buttonUrl' => '#servizi',
 ])
 
 @php
     $resolvedContentHtml = filled($contentHtml)
         ? $contentHtml
-        : '<p><strong>Chi siamo</strong></p><h2>' . e(config('app.name', 'Laravel')) . '<br>organizza <strong>Corsi e<br>Convegni</strong></h2><p>' . e(config('app.name', 'Laravel')) . ' è un partner qualificato nell\'organizzazione di corsi e convegni, nella formazione a distanza e nella consulenza in ambiti di specifico interesse per il settore sanitario.</p>';
+        : '<p><strong>Sezione contenuti</strong></p><h2>' . e(config('app.name', 'Laravel')) . '<br>presenta <strong>testo<br>generico</strong></h2><p>' . e(config('app.name', 'Laravel')) . ' mostra qui un contenuto descrittivo generico per homepage.</p>';
     $buttonClasses = [
         'primary' => 'bg-primary text-primary-content hover:bg-primary/90',
         'secondary' => 'bg-secondary text-secondary-content hover:bg-secondary/90',

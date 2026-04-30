@@ -19,7 +19,7 @@
                 :content-html="\App\Models\HomepageSetting::value('hero_content')"
                 :button-enabled="\App\Models\HomepageSetting::value('hero_button_enabled', '1') === '1'"
                 :button-color="\App\Models\HomepageSetting::value('hero_button_color', 'secondary')"
-                :button-text="\App\Models\HomepageSetting::value('hero_button_text', 'U20m - Under20Minutes')"
+                :button-text="\App\Models\HomepageSetting::value('hero_button_text', 'Pulsante hero')"
                 :button-url="\App\Models\HomepageSetting::value('hero_button_url', '#servizi')"
             />
 
@@ -31,7 +31,7 @@
                     :overlay-content-html="\App\Models\HomepageSetting::value('services_overlay_content_html')"
                     :button-enabled="\App\Models\HomepageSetting::value('services_button_enabled', '1') === '1'"
                     :button-color="\App\Models\HomepageSetting::value('services_button_color', 'primary')"
-                    :button-text="\App\Models\HomepageSetting::value('services_button_text', 'Esplora il nostro catalogo')"
+                    :button-text="\App\Models\HomepageSetting::value('services_button_text', 'Pulsante servizi')"
                     :button-url="\App\Models\HomepageSetting::value('services_button_url', '#catalogo')"
                 />
                 <x-homepage.about
@@ -39,7 +39,7 @@
                     :visual-image-url="$aboutVisualImageUrl"
                     :button-enabled="\App\Models\HomepageSetting::value('about_button_enabled', '1') === '1'"
                     :button-color="\App\Models\HomepageSetting::value('about_button_color', 'primary')"
-                    :button-text="\App\Models\HomepageSetting::value('about_button_text', 'Esplora il nostro catalogo')"
+                    :button-text="\App\Models\HomepageSetting::value('about_button_text', 'Pulsante contenuti')"
                     :button-url="\App\Models\HomepageSetting::value('about_button_url', '#servizi')"
                 />
             </div>

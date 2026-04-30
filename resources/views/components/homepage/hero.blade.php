@@ -3,12 +3,12 @@
     'contentHtml' => null,
     'buttonEnabled' => true,
     'buttonColor' => 'secondary',
-    'buttonText' => 'U20m - Under20Minutes',
+    'buttonText' => 'Pulsante hero',
     'buttonUrl' => '#servizi',
 ])
 
 @php
-    $contentHtml ??= '<h1>Lavoriamo per la<br><strong>SALUTE</strong></h1><p>Realizzando percorsi formativi<br>di Educazione Continua in Medicina</p>';
+    $contentHtml ??= '<h1>Hero<br><strong>pagina principale</strong></h1><p>Testo introduttivo generico<br>per sezione hero homepage</p>';
 
     $buttonClasses = [
         'primary' => 'bg-primary text-primary-content hover:bg-primary/90 focus:ring-primary-content',
