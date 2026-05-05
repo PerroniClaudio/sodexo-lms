@@ -122,6 +122,7 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::get('/courses/{course}/enrollments', [CourseEnrollmentController::class, 'indexApi'])->name('courses.enrollments.index');
             Route::get('/courses/{course}/enrollments/search-users', [CourseEnrollmentController::class, 'searchUsersApi'])->name('courses.enrollments.search-users');
             Route::post('/courses/{course}/enrollments', [CourseEnrollmentController::class, 'storeApi'])->name('courses.enrollments.store');
+            Route::post('/courses/{course}/enrollments/{enrollment}/restore', [CourseEnrollmentController::class, 'restoreApi'])->name('courses.enrollments.restore');
             Route::delete('/courses/{course}/enrollments/{enrollment}', [CourseEnrollmentController::class, 'destroyApi'])->name('courses.enrollments.destroy');
 
             // Lista domande e risposte

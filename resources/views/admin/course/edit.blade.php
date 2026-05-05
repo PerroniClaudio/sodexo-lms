@@ -511,6 +511,7 @@
                                 <div class="flex flex-col gap-2 xl:flex-row">
                                     {{-- <a class="btn btn-xs btn-primary xl:btn-sm" data-action="edit">{{ __('Modifica') }}</a> --}}
                                     <button type="button" class="btn btn-xs btn-error xl:btn-sm" data-action="delete">{{ __('Elimina') }}</button>
+                                    <button type="button" class="btn btn-xs btn-success xl:btn-sm" data-action="restore">{{ __('Ripristina') }}</button>
                                 </div>
                             </td>
                         </tr>

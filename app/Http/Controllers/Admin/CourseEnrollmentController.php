@@ -125,6 +125,8 @@ class CourseEnrollmentController extends Controller
                         'edit_url' => $user !== null ? route('admin.users.edit', $user) : null,
                         'delete_url' => route('admin.api.courses.enrollments.destroy', [$course, $enrollment]),
                         'can_delete' => ! $enrollment->trashed(),
+                        'restore_url' => route('admin.api.courses.enrollments.restore', [$course, $enrollment]),
+                        'can_restore' => $enrollment->trashed(),
                     ],
                 ];
             });
@@ -203,17 +205,26 @@ class CourseEnrollmentController extends Controller
 
         $user = User::query()->findOrFail($validated['user_id']);
 
-        $alreadyAssigned = CourseEnrollment::query()
+        $existingEnrollment = CourseEnrollment::withTrashed()
             ->whereBelongsTo($course, 'course')
             ->where('user_id', $user->getKey())
-            ->whereNull('deleted_at')
-            ->exists();
+            ->orderByDesc('id')
+            ->first();
 
-        if ($alreadyAssigned) {
+        if ($existingEnrollment !== null && ! $existingEnrollment->trashed()) {
             return response()->json([
                 'success' => false,
                 'message' => __('L\'utente è già iscritto a questo corso.'),
             ], 422);
+        }
+
+        if ($existingEnrollment !== null && $existingEnrollment->trashed()) {
+            return response()->json([
+                'success' => false,
+                'requires_restore' => true,
+                'message' => __('Esiste già un\'iscrizione eliminata per questo utente. Vuoi ripristinarla?'),
+                'restore_url' => route('admin.api.courses.enrollments.restore', [$course, $existingEnrollment->getKey()]),
+            ], 409);
         }
 
         CourseEnrollment::enroll($user, $course);
@@ -222,6 +233,44 @@ class CourseEnrollmentController extends Controller
             'success' => true,
             'message' => __('Iscrizione creata con successo.'),
         ], 201);
+    }
+
+    /**
+     * Ripristina una iscrizione soft deleted esistente.
+     */
+    public function restoreApi(Course $course, int $enrollment): JsonResponse
+    {
+        $existingEnrollment = CourseEnrollment::withTrashed()
+            ->whereBelongsTo($course, 'course')
+            ->whereKey($enrollment)
+            ->firstOrFail();
+
+        if (! $existingEnrollment->trashed()) {
+            return response()->json([
+                'success' => false,
+                'message' => __('L\'iscrizione è già attiva.'),
+            ], 422);
+        }
+
+        $anotherActiveEnrollmentExists = CourseEnrollment::query()
+            ->whereBelongsTo($course, 'course')
+            ->where('user_id', $existingEnrollment->user_id)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if ($anotherActiveEnrollmentExists) {
+            return response()->json([
+                'success' => false,
+                'message' => __('Esiste già un\'iscrizione attiva per questo utente nel corso.'),
+            ], 422);
+        }
+
+        $existingEnrollment->restore();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Iscrizione ripristinata con successo.'),
+        ]);
     }
 
     /**

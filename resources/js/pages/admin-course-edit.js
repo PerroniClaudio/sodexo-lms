@@ -234,6 +234,8 @@ function initializeEnrollmentsTable(courseEditPage) {
         direction: 'asc',
         loading: false,
         selectedUserForEnrollment: null,
+        confirmAction: 'create',
+        restoreUrl: null,
     };
 
     const updateSortIndicators = () => {
@@ -361,6 +363,7 @@ function initializeEnrollmentsTable(courseEditPage) {
             const statusBadge = fragment.querySelector('[data-cell="status"]');
             const editButton = fragment.querySelector('[data-action="edit"]');
             const deleteButton = fragment.querySelector('[data-action="delete"]');
+            const restoreButton = fragment.querySelector('[data-action="restore"]');
 
             fragment.querySelector('[data-cell="surname"]').textContent = row.user.surname || '-';
             fragment.querySelector('[data-cell="name"]').textContent = row.user.name || '-';
@@ -381,10 +384,15 @@ function initializeEnrollmentsTable(courseEditPage) {
                 }
             }
 
-            if (!row.actions.can_delete) {
-                deleteButton.disabled = true;
-                deleteButton.classList.add('btn-disabled');
-            } else {
+            if (deleteButton) {
+                deleteButton.classList.toggle('hidden', !row.actions.can_delete);
+            }
+
+            if (restoreButton) {
+                restoreButton.classList.toggle('hidden', !row.actions.can_restore);
+            }
+
+            if (deleteButton && row.actions.can_delete) {
                 deleteButton.addEventListener('click', async () => {
                     const shouldDelete = window.confirm('Sei sicuro di voler eliminare questa iscrizione?');
 
@@ -400,6 +408,29 @@ function initializeEnrollmentsTable(courseEditPage) {
                         await loadEnrollments();
                     } catch (error) {
                         window.alert('Errore durante l\'eliminazione dell\'iscrizione.');
+                    }
+                });
+            }
+
+            if (restoreButton && row.actions.can_restore) {
+                restoreButton.addEventListener('click', async () => {
+                    const shouldRestore = window.confirm('Vuoi ripristinare questa iscrizione?');
+
+                    if (!shouldRestore) {
+                        return;
+                    }
+
+                    try {
+                        await window.axios.post(
+                            row.actions.restore_url,
+                            {},
+                            { headers: { Accept: 'application/json' } },
+                        );
+
+                        await loadEnrollments();
+                    } catch (error) {
+                        const message = error.response?.data?.message || 'Errore durante il ripristino dell\'iscrizione.';
+                        window.alert(message);
                     }
                 });
             }
@@ -427,6 +458,8 @@ function initializeEnrollmentsTable(courseEditPage) {
 
             selectButton.addEventListener('click', () => {
                 state.selectedUserForEnrollment = user;
+                state.confirmAction = 'create';
+                state.restoreUrl = null;
                 confirmEnrollmentMessage.textContent = `Confermi l'iscrizione di ${user.surname || ''} ${user.name || ''} (ID ${user.id}) a questo corso?`.trim();
                 confirmEnrollmentModal.showModal();
             });
@@ -554,18 +587,42 @@ function initializeEnrollmentsTable(courseEditPage) {
         confirmEnrollmentSubmitButton.disabled = true;
 
         try {
-            await window.axios.post(
-                storeApiUrl,
-                { user_id: state.selectedUserForEnrollment.id },
-                { headers: { Accept: 'application/json' } },
-            );
+            if (state.confirmAction === 'restore') {
+                if (!state.restoreUrl) {
+                    confirmEnrollmentSubmitButton.disabled = false;
+
+                    return;
+                }
+
+                await window.axios.post(
+                    state.restoreUrl,
+                    {},
+                    { headers: { Accept: 'application/json' } },
+                );
+            } else {
+                await window.axios.post(
+                    storeApiUrl,
+                    { user_id: state.selectedUserForEnrollment.id },
+                    { headers: { Accept: 'application/json' } },
+                );
+            }
 
             confirmEnrollmentModal.close();
             createEnrollmentModal.close();
+            state.confirmAction = 'create';
+            state.restoreUrl = null;
             await loadEnrollments();
         } catch (error) {
-            const message = error.response?.data?.message || 'Errore durante la creazione dell\'iscrizione.';
-            window.alert(message);
+            const responseData = error.response?.data;
+
+            if (error.response?.status === 409 && responseData?.requires_restore && responseData?.restore_url) {
+                state.confirmAction = 'restore';
+                state.restoreUrl = responseData.restore_url;
+                confirmEnrollmentMessage.textContent = responseData.message || 'Esiste già una iscrizione eliminata. Vuoi ripristinarla?';
+            } else {
+                const message = responseData?.message || 'Errore durante la creazione dell\'iscrizione.';
+                window.alert(message);
+            }
         } finally {
             confirmEnrollmentSubmitButton.disabled = false;
         }
