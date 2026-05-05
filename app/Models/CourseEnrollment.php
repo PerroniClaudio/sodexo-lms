@@ -91,6 +91,19 @@ class CourseEnrollment extends Model
     public static function enroll(User $user, Course $course): self
     {
         return DB::transaction(function () use ($user, $course): self {
+            $existingEnrollment = static::withTrashed()
+                ->where('user_id', $user->getKey())
+                ->where('course_id', $course->getKey())
+                ->first();
+
+            if ($existingEnrollment !== null && ! $existingEnrollment->trashed()) {
+                throw new DomainException('The user already has an active enrollment for this course.');
+            }
+
+            if ($existingEnrollment !== null && $existingEnrollment->trashed()) {
+                throw new DomainException('A deleted enrollment already exists for this user and course. Restore it instead of creating a new one.');
+            }
+
             $course->loadMissing('modules');
 
             /** @var Collection<int, Module> $modules */
