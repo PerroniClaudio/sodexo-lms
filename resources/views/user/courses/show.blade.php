@@ -12,6 +12,13 @@
                     <progress class="progress progress-primary w-full" value="{{ $enrollment->completion_percentage }}" max="100"></progress>
                     <span class="text-xs">{{ $enrollment->completion_percentage }}%</span>
                 </div>
+                @if($enrollment->currentModule && $enrollment->status !== 'completed')
+                    <div class="flex justify-end">
+                        <a href="{{ route('user.courses.modules.player', [$course, $enrollment->currentModule]) }}" class="btn btn-primary">
+                            {{ __('Vai al modulo corrente') }}
+                        </a>
+                    </div>
+                @endif
                 <div>
                     <h2 class="text-lg font-semibold mb-2">{{ __('Moduli') }}</h2>
                     <ul class="timeline timeline-vertical">
