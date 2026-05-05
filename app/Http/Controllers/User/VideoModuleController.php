@@ -20,6 +20,7 @@ class VideoModuleController extends Controller
      */
     public function signedPlayback(Request $request, Course $course, Module $module, MuxService $muxService): JsonResponse
     {
+        abort_unless((string) $module->belongsTo === (string) $course->getKey(), 404);
         abort_unless($module->isVideo(), 404);
 
         $enrollment = $this->resolveEnrollment($course);
@@ -43,6 +44,7 @@ class VideoModuleController extends Controller
      */
     public function progress(Request $request, Course $course, Module $module): JsonResponse
     {
+        abort_unless((string) $module->belongsTo === (string) $course->getKey(), 404);
         abort_unless($module->isVideo(), 404);
 
         $validated = $request->validate([
@@ -70,6 +72,7 @@ class VideoModuleController extends Controller
      */
     public function complete(Request $request, Course $course, Module $module): JsonResponse
     {
+        abort_unless((string) $module->belongsTo === (string) $course->getKey(), 404);
         abort_unless($module->isVideo(), 404);
 
         $enrollment = $this->resolveEnrollment($course);

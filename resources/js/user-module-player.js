@@ -65,7 +65,6 @@ if (!root) {
                 playerWrapper.classList.remove('hidden');
 
                 let lastProgressSecond = data.video_current_second ?? 0;
-                let progressTimer = null;
 
                 muxPlayer.addEventListener('timeupdate', () => {
                     const current = Math.floor(muxPlayer.currentTime ?? 0);
@@ -76,7 +75,6 @@ if (!root) {
                 });
 
                 muxPlayer.addEventListener('ended', () => {
-                    clearInterval(progressTimer);
                     sendVideoComplete(completeUrl, csrfToken, completedMsg);
                 });
             })
@@ -223,11 +221,14 @@ if (!root) {
                     return;
                 }
 
+                const score = parseInt(data.score, 10);
+                const totalScore = parseInt(data.total_score, 10);
+                const scorePassing = parseInt(data.passing_score, 10);
                 const passed = data.passed;
                 const alertClass = passed ? 'alert-success' : 'alert-warning';
                 const message = passed
-                    ? `Hai superato il quiz! Punteggio: ${data.score}/${data.total_score}`
-                    : `Punteggio insufficiente: ${data.score}/${data.total_score}. Punteggio minimo richiesto: ${data.passing_score}.`;
+                    ? `Hai superato il quiz! Punteggio: ${score}/${totalScore}`
+                    : `Punteggio insufficiente: ${score}/${totalScore}. Punteggio minimo richiesto: ${scorePassing}.`;
 
                 quizResult.innerHTML = `
                     <div class="alert ${alertClass}">

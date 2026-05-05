@@ -19,6 +19,7 @@ class QuizModuleController extends Controller
      */
     public function show(Request $request, Course $course, Module $module): JsonResponse
     {
+        abort_unless((string) $module->belongsTo === (string) $course->getKey(), 404);
         abort_unless($module->isQuiz(), 404);
 
         $this->resolveEnrollment($course);
@@ -49,6 +50,7 @@ class QuizModuleController extends Controller
      */
     public function submit(Request $request, Course $course, Module $module): JsonResponse
     {
+        abort_unless((string) $module->belongsTo === (string) $course->getKey(), 404);
         abort_unless($module->isQuiz(), 404);
 
         $validated = $request->validate([

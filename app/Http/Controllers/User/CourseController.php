@@ -39,6 +39,9 @@ class CourseController extends Controller
     public function showModule(Course $course, Module $module): View
     {
         $user = Auth::user();
+
+        abort_unless((string) $module->belongsTo === (string) $course->getKey(), 404);
+
         $enrollment = $user->courseEnrollments()->where('course_id', $course->id)->firstOrFail();
 
         abort_if($enrollment->current_module_id !== $module->getKey(), 403);
