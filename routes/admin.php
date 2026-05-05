@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\CourseEnrollmentController;
 use App\Http\Controllers\Admin\CourseModuleController;
 use App\Http\Controllers\Admin\HomepageCustomizationController;
 use App\Http\Controllers\Admin\JobCategoryController;
@@ -118,6 +119,11 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
 
         // API (risposte json)
         Route::group(['prefix' => 'api', 'as' => 'api.'], function () {
+            Route::get('/courses/{course}/enrollments', [CourseEnrollmentController::class, 'indexApi'])->name('courses.enrollments.index');
+            Route::get('/courses/{course}/enrollments/search-users', [CourseEnrollmentController::class, 'searchUsersApi'])->name('courses.enrollments.search-users');
+            Route::post('/courses/{course}/enrollments', [CourseEnrollmentController::class, 'storeApi'])->name('courses.enrollments.store');
+            Route::delete('/courses/{course}/enrollments/{enrollment}', [CourseEnrollmentController::class, 'destroyApi'])->name('courses.enrollments.destroy');
+
             // Lista domande e risposte
             Route::get('/courses/{course}/modules/{module}/quiz/questions', [ModuleQuizController::class, 'questionsWithAnswersApi'])->name('courses.modules.quiz.questions.index');
             Route::post('/courses/{course}/modules/{module}/quiz/questions', [ModuleQuizController::class, 'storeQuestionApi'])->name('courses.modules.quiz.questions.store');
@@ -143,8 +149,8 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             })->name('courses.modules.quiz_validity');
 
             // API video per selezione/assegnazione nei moduli (usata in video-table)
-            Route::get('videos', [\App\Http\Controllers\Admin\VideoController::class, 'indexApi'])->name('videos.index');
-            Route::get('videos/{video}', [\App\Http\Controllers\Admin\VideoController::class, 'getInfoApi'])->name('videos.info');
+            Route::get('videos', [VideoController::class, 'indexApi'])->name('videos.index');
+            Route::get('videos/{video}', [VideoController::class, 'getInfoApi'])->name('videos.info');
             // Assegnazione video a modulo
             Route::post('/modules/{module}/assign-video', [CourseModuleController::class, 'assignVideoToModule']);
             Route::post('/modules/{module}/unassign-video', [CourseModuleController::class, 'unassignVideoFromModule']);
