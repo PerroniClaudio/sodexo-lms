@@ -223,6 +223,8 @@
     "Maximum score": "Punteggio massimo",
     "Maximum score (auto)": "Punteggio massimo (calcolato automaticamente)",
     "resend_verification_email_success": "Se esiste un account con questa email, è stata inviata una nuova email di verifica.",
+    "passwords.sent": "Inviata mail di recupero password.",
+    "passwords.reset": "Password reimpostata con successo.",
     "validation.required": "Il campo :attribute è obbligatorio.",
     "validation.email": "Il campo :attribute deve essere un indirizzo email valido.",
     "validation.max.string": "Il campo :attribute non può superare :max caratteri.",

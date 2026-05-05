@@ -20,7 +20,7 @@
                     @if (session('status'))
                         <div class="alert alert-success">
                             <x-lucide-circle-check class="h-5 w-5 shrink-0" />
-                            <span>{{ session('status') }}</span>
+                            <span>{{ __(session('status')) }}</span>
                         </div>
                     @endif
 

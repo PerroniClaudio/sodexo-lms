@@ -20,7 +20,7 @@
 
                     <div class="alert alert-success pointer-events-auto flex w-full max-w-sm items-center gap-3 pr-3 shadow-lg peer-checked:hidden">
                         <x-lucide-circle-check class="h-5 w-5 shrink-0" />
-                        <span class="flex-1">{{ $value }}</span>
+                        <span class="flex-1">{{ __($value) }}</span>
 
                         <label
                             for="flash-status-dismiss"
@@ -39,7 +39,7 @@
 
                     <div class="alert alert-error pointer-events-auto flex w-full max-w-sm items-center gap-3 pr-3 shadow-lg peer-checked:hidden">
                         <x-lucide-circle-alert class="h-5 w-5 shrink-0" />
-                        <span class="flex-1">{{ $value }}</span>
+                        <span class="flex-1">{{ __($value) }}</span>
 
                         <label
                             for="flash-error-dismiss"

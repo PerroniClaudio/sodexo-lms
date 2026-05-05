@@ -195,6 +195,8 @@
     "Maximum score": "Maximum score",
     "Maximum score (auto)": "Maximum score (auto)",
     "resend_verification_email_success": "If an account with this email exists, a new verification email has been sent.",
+    "passwords.sent": "Password reset email sent.",
+    "passwords.reset": "Password has been reset successfully.",
     "validation.required": "The :attribute field is required.",
     "validation.email": "The :attribute field must be a valid email address.",
     "validation.max.string": "The :attribute field may not be greater than :max characters.",
