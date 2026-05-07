@@ -15,16 +15,28 @@
                 >
                     <div class="px-4 py-4 sm:px-6 sm:py-6 xl:px-8 xl:py-8">
                         <div class="mx-auto flex w-full max-w-6xl flex-col gap-5">
-                            <div
-                                class="aspect-video w-full overflow-hidden rounded-[1.75rem]"
-                                data-live-stream-main-stage
-                            >
-                                <div class="flex h-full w-full items-center justify-center rounded-[1.75rem] bg-[#24285f] px-6 py-12 text-center text-white">
-                                    <div class="space-y-2">
-                                        <p class="text-sm font-semibold">{{ __('Docente non connesso') }}</p>
-                                        <p class="text-xs text-white/70">{{ __('Il feed apparirà qui appena il docente entra in diretta') }}</p>
+                            <div class="relative" data-live-stream-main-stage-shell>
+                                <div
+                                    class="aspect-video w-full overflow-hidden rounded-[1.75rem]"
+                                    data-live-stream-main-stage
+                                >
+                                    <div class="flex h-full w-full items-center justify-center rounded-[1.75rem] bg-[#24285f] px-6 py-12 text-center text-white">
+                                        <div class="space-y-2">
+                                            <p class="text-sm font-semibold">{{ __('Docente non connesso') }}</p>
+                                            <p class="text-xs text-white/70">{{ __('Il feed apparirà qui appena il docente entra in diretta') }}</p>
+                                        </div>
                                     </div>
                                 </div>
+
+                                <button
+                                    type="button"
+                                    class="btn btn-sm absolute right-4 top-4 z-10 hidden border-white/20 bg-black/55 text-white shadow-lg backdrop-blur hover:border-white/30 hover:bg-black/70"
+                                    data-live-stream-fullscreen-toggle
+                                    aria-label="{{ __('Apri feed docente a schermo intero') }}"
+                                    title="{{ __('Apri feed docente a schermo intero') }}"
+                                >
+                                    <span class="sr-only" data-live-stream-fullscreen-label>{{ __('Schermo intero') }}</span>
+                                </button>
                             </div>
 
                             <div class="space-y-3">

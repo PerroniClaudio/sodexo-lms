@@ -5,8 +5,11 @@ import {
     filterAudioOutputDevices,
     formatAudioOutputDeviceLabel,
     getLiveStreamIconButtonContent,
+    getLiveStreamFullscreenToggleLabel,
     getLiveStreamIconSvg,
     isBackgroundProcessorBenchmarkSlow,
+    isElementInFullscreen,
+    isFullscreenApiSupported,
     isAudioOutputSelectionSupported,
     isHardwareLikelySufficient,
     getParticipantAudioStatusMarkup,
@@ -42,6 +45,35 @@ test('live stream icon button content includes an accessible label', () => {
 
     assert.match(buttonContent, /<svg/);
     assert.match(buttonContent, /<span class="sr-only">Fissa<\/span>/);
+});
+
+test('fullscreen helpers detect browser support and active target', () => {
+    const fullscreenTarget = {
+        contains: (node) => node === 'nested-video',
+    };
+
+    assert.equal(
+        isFullscreenApiSupported({
+            exitFullscreen: async () => {},
+        }),
+        true,
+    );
+
+    assert.equal(
+        isElementInFullscreen(fullscreenTarget, {
+            fullscreenElement: 'nested-video',
+        }),
+        true,
+    );
+
+    assert.equal(getLiveStreamFullscreenToggleLabel(false), 'Schermo intero');
+    assert.equal(getLiveStreamFullscreenToggleLabel(true), 'Esci da schermo intero');
+});
+
+test('fullscreen helpers return false when API or target missing', () => {
+    assert.equal(isFullscreenApiSupported({}), false);
+    assert.equal(isElementInFullscreen(null, { fullscreenElement: {} }), false);
+    assert.equal(isElementInFullscreen({ contains: () => false }, { fullscreenElement: null }), false);
 });
 
 test('participant audio status markup exposes the microphone state through an icon label', () => {

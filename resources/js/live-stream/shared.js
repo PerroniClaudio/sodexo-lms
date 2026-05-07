@@ -1,5 +1,5 @@
 import * as TwilioVideo from 'twilio-video';
-import { Hand, Image as ImageIcon, Mic, MicOff, Pin, ScreenShare, Trash2 } from 'lucide';
+import { Expand, Hand, Image as ImageIcon, Mic, MicOff, Pin, ScreenShare, Shrink, Trash2 } from 'lucide';
 
 const LIVE_STREAM_VIDEO_CONSTRAINTS = Object.freeze({
     width: 640,
@@ -21,7 +21,9 @@ const LIVE_STREAM_ICON_NODES = {
     mic: Mic,
     'mic-off': MicOff,
     pin: Pin,
+    expand: Expand,
     'screen-share': ScreenShare,
+    shrink: Shrink,
     trash: Trash2,
 };
 
@@ -43,6 +45,23 @@ export function getLiveStreamConfig(root) {
 
         return null;
     }
+}
+
+export function isFullscreenApiSupported(documentObject = globalThis.document) {
+    return typeof documentObject?.exitFullscreen === 'function';
+}
+
+export function isElementInFullscreen(targetElement, documentObject = globalThis.document) {
+    if (!targetElement || !documentObject?.fullscreenElement) {
+        return false;
+    }
+
+    return documentObject.fullscreenElement === targetElement
+        || targetElement.contains(documentObject.fullscreenElement);
+}
+
+export function getLiveStreamFullscreenToggleLabel(isFullscreenActive) {
+    return isFullscreenActive ? 'Esci da schermo intero' : 'Schermo intero';
 }
 
 export function renderChatMessages(root, messages = [], options = {}) {

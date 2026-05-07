@@ -9,9 +9,12 @@ import {
     createPreviewController,
     deterministicShuffle,
     getLiveStreamConfig,
+    getLiveStreamFullscreenToggleLabel,
     getLiveStreamIconButtonContent,
     getParticipantAudioStatusMarkup,
     getLiveStreamRoot,
+    isElementInFullscreen,
+    isFullscreenApiSupported,
     renderMuxStage,
     renderChatMessages,
     renderDocuments,
@@ -51,6 +54,8 @@ export function initViewerPage() {
     const chatForm = root.querySelector('[data-live-stream-chat-form]');
     const chatInput = root.querySelector('[data-live-stream-chat-input]');
     const chatSubmitButton = root.querySelector('[data-live-stream-chat-submit]');
+    const fullscreenToggleButton = root.querySelector('[data-live-stream-fullscreen-toggle]');
+    const fullscreenToggleLabel = root.querySelector('[data-live-stream-fullscreen-label]');
         const pollModal = root.querySelector('[data-live-stream-poll-modal]');
         const pollForm = root.querySelector('[data-live-stream-poll-form]');
         const pollQuestion = root.querySelector('[data-live-stream-poll-question]');
@@ -80,12 +85,22 @@ export function initViewerPage() {
         });
     }
 
+    if (fullscreenToggleButton instanceof HTMLButtonElement) {
+        fullscreenToggleButton.addEventListener('click', async () => {
+            await toggleTeacherFullscreen();
+        });
+    }
+
     if (pollForm instanceof HTMLFormElement) {
         pollForm.addEventListener('submit', async (event) => {
             event.preventDefault();
             await submitPollResponse();
         });
     }
+
+    document.addEventListener('fullscreenchange', () => {
+        updateTeacherFullscreenButtonState();
+    });
 
     startPolling();
 
@@ -138,6 +153,7 @@ export function initViewerPage() {
             joinButton.textContent = state.joined ? 'Collegato' : 'Entra nella diretta';
         }
 
+        updateTeacherFullscreenButtonState();
         updateHandRaiseState();
         updateChatComposerState();
             renderActivePoll(payload.active_poll ?? null);
@@ -489,9 +505,73 @@ export function initViewerPage() {
         return getRemoteVideoTrackByIdentity(state.room, identity);
     }
 
+    function getMainStageFullscreenTarget() {
+        return root.querySelector('[data-live-stream-main-stage-shell]');
+    }
+
+    function hasTeacherFeedAvailable() {
+        if (config.streamMode === 'mux_regia') {
+            return Boolean((state.latestState?.mux ?? config.mux)?.playbackId);
+        }
+
+        return Boolean(state.latestState?.teacher);
+    }
+
+    function updateTeacherFullscreenButtonState() {
+        if (!(fullscreenToggleButton instanceof HTMLButtonElement) || !(fullscreenToggleLabel instanceof HTMLElement)) {
+            return;
+        }
+
+        const targetElement = getMainStageFullscreenTarget();
+        const isSupported = isFullscreenApiSupported(document);
+        const isAvailable = isSupported && targetElement instanceof HTMLElement && hasTeacherFeedAvailable();
+        const isFullscreenActive = targetElement instanceof HTMLElement && isElementInFullscreen(targetElement, document);
+        const label = getLiveStreamFullscreenToggleLabel(isFullscreenActive);
+        const iconName = isFullscreenActive ? 'shrink' : 'expand';
+
+        fullscreenToggleButton.classList.toggle('hidden', !isAvailable);
+        fullscreenToggleButton.disabled = !isAvailable;
+        fullscreenToggleButton.setAttribute('aria-label', label);
+        fullscreenToggleButton.setAttribute('title', label);
+        fullscreenToggleButton.innerHTML = getLiveStreamIconButtonContent(iconName, label);
+
+        if (fullscreenToggleLabel instanceof HTMLElement) {
+            fullscreenToggleLabel.textContent = label;
+        }
+    }
+
+    async function toggleTeacherFullscreen() {
+        const targetElement = getMainStageFullscreenTarget();
+
+        if (!(fullscreenToggleButton instanceof HTMLButtonElement) || !(targetElement instanceof HTMLElement)) {
+            return;
+        }
+
+        if (!isFullscreenApiSupported(document) || !hasTeacherFeedAvailable()) {
+            updateTeacherFullscreenButtonState();
+
+            return;
+        }
+
+        fullscreenToggleButton.disabled = true;
+
+        try {
+            if (isElementInFullscreen(targetElement, document)) {
+                await document.exitFullscreen();
+            } else {
+                await targetElement.requestFullscreen();
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            updateTeacherFullscreenButtonState();
+        }
+    }
+
     function renderViewerStage() {
         renderMainTeacherFeed();
         renderStudentStrip();
+        updateTeacherFullscreenButtonState();
     }
 
     function renderMainTeacherFeed() {

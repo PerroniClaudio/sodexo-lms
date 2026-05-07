@@ -70,6 +70,9 @@ test('live stream player route renders module data for the requested live module
     $response->assertSeeText('Sondaggio live');
     $response->assertSee('data-live-stream-poll-modal', false);
     $response->assertSee('data-live-stream-poll-form', false);
+    $response->assertSee('data-live-stream-main-stage-shell', false);
+    $response->assertSee('data-live-stream-fullscreen-toggle', false);
+    $response->assertSeeText('Schermo intero');
     $response->assertSeeInOrder([
         'name="live-stream-sidebar-tabs"',
         'aria-label="Discenti"',
