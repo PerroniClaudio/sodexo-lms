@@ -8,11 +8,14 @@ import {
     createPlaceholderCard,
     createPreviewController,
     deterministicShuffle,
+    filterAudioOutputDevices,
+    formatAudioOutputDeviceLabel,
     getLiveStreamConfig,
     getLiveStreamIconButtonContent,
     getParticipantInitialsBadgeClassNames,
     getParticipantAudioStatusMarkup,
     getLiveStreamRoot,
+    isAudioOutputSelectionSupported,
     renderMuxStage,
     renderChatMessages,
     renderDocuments,
@@ -57,6 +60,8 @@ export function initTeacherPage() {
         remoteAudioContext: null,
         presenceHandle: null,
         screenShareTrack: null,
+        selectedAudioOutputId: 'default',
+        audioOutputDevices: [],
     };
 
     const startButton = root.querySelector('[data-live-stream-start-button]');
@@ -68,6 +73,11 @@ export function initTeacherPage() {
     const chatForm = root.querySelector('[data-live-stream-chat-form]');
     const chatInput = root.querySelector('[data-live-stream-chat-input]');
     const chatSubmitButton = root.querySelector('[data-live-stream-chat-submit]');
+    const audioOutputButton = root.querySelector('[data-live-stream-audio-output-open]');
+    const audioOutputModal = root.querySelector('[data-live-stream-audio-output-modal]');
+    const audioOutputModalCloseButton = root.querySelector('[data-live-stream-audio-output-close]');
+    const audioOutputList = root.querySelector('[data-live-stream-audio-output-list]');
+    const audioOutputStatus = root.querySelector('[data-live-stream-audio-output-status]');
     const documentForm = root.querySelector('[data-live-stream-document-form]');
     const documentInput = root.querySelector('[data-live-stream-document-input]');
     const documentSubmitButton = root.querySelector('[data-live-stream-document-submit]');
@@ -87,6 +97,8 @@ export function initTeacherPage() {
     const regiaPlaybackId = root.querySelector('[data-live-stream-regia-playback-id]');
     const previewController = createPreviewController(root, {
         onAudioStateChange: syncMicToggleButton,
+        backgroundsRoute: config.routes.backgrounds,
+        videoTrackName: LIVE_STREAM_CAMERA_TRACK_NAME,
     });
 
     renderChatMessages(root, []);
@@ -142,6 +154,18 @@ export function initTeacherPage() {
         });
     }
 
+    if (audioOutputButton instanceof HTMLButtonElement) {
+        audioOutputButton.addEventListener('click', async () => {
+            await openAudioOutputModal();
+        });
+    }
+
+    if (audioOutputModal instanceof HTMLDialogElement && audioOutputModalCloseButton instanceof HTMLButtonElement) {
+        audioOutputModalCloseButton.addEventListener('click', () => {
+            closeAudioOutputModal();
+        });
+    }
+
     if (regiaModal instanceof HTMLDialogElement && regiaModalCloseButton instanceof HTMLButtonElement) {
         regiaModalCloseButton.addEventListener('click', () => {
             closeRegiaModal();
@@ -150,6 +174,7 @@ export function initTeacherPage() {
 
     syncMicToggleButton();
     syncScreenShareButton();
+    syncAudioOutputButton();
     setPollComposerExpanded(false);
 
     window.addEventListener('beforeunload', () => {
@@ -157,7 +182,14 @@ export function initTeacherPage() {
         teardownRoom();
     });
 
+    if (navigator.mediaDevices?.addEventListener) {
+        navigator.mediaDevices.addEventListener('devicechange', () => {
+            void refreshAudioOutputDevices();
+        });
+    }
+
     void fetchState();
+    void refreshAudioOutputDevices();
     window.setInterval(() => {
         void fetchState();
     }, config.pollIntervals.state);
@@ -316,22 +348,33 @@ export function initTeacherPage() {
 
             const joinResponse = await window.axios.post(config.routes.join);
             const joinPayload = joinResponse.data;
+            const localTracks = config.capabilities?.hiddenParticipant ? [] : previewController.getLocalTracks();
+            const connectOptions = {
+                name: joinPayload.twilio_room_name,
+                dominantSpeaker: true,
+            };
+
+            if (localTracks.length > 0) {
+                connectOptions.tracks = localTracks;
+            } else {
+                connectOptions.audio = config.capabilities?.hiddenParticipant ? false : true;
+                connectOptions.video = config.capabilities?.hiddenParticipant
+                    ? false
+                    : {
+                        name: LIVE_STREAM_CAMERA_TRACK_NAME,
+                    };
+            }
 
             ensureRemoteAudioContext();
 
             try {
-                state.room = await TwilioVideo.connect(joinPayload.twilio_token, {
-                    name: joinPayload.twilio_room_name,
-                    audio: config.capabilities?.hiddenParticipant ? false : true,
-                    video: config.capabilities?.hiddenParticipant
-                        ? false
-                        : {
-                            name: LIVE_STREAM_CAMERA_TRACK_NAME,
-                        },
-                    dominantSpeaker: true,
-                });
+                state.room = await TwilioVideo.connect(joinPayload.twilio_token, connectOptions);
             } catch (error) {
-                if (config.capabilities?.hiddenParticipant || !shouldRetryLiveStreamConnectWithoutCamera(error)) {
+                if (
+                    config.capabilities?.hiddenParticipant
+                    || localTracks.length > 0
+                    || !shouldRetryLiveStreamConnectWithoutCamera(error)
+                ) {
                     throw error;
                 }
 
@@ -1019,6 +1062,10 @@ export function initTeacherPage() {
             message: 'Il video comparira qui quando la regia avvia la trasmissione.',
             playerTitle: 'Player MUX',
         });
+
+        void applyAudioOutputDevice(state.selectedAudioOutputId, {
+            silent: true,
+        });
     }
 
     function syncRegiaModal(nextMux = null, nextCredentials = null) {
@@ -1078,6 +1125,168 @@ export function initTeacherPage() {
 
         state.regiaModalOpen = false;
         regiaModal.close();
+    }
+
+    function syncAudioOutputButton() {
+        if (!(audioOutputButton instanceof HTMLButtonElement)) {
+            return;
+        }
+
+        audioOutputButton.disabled = !isAudioOutputSelectionSupported(window);
+        audioOutputButton.classList.toggle('tooltip', !audioOutputButton.disabled);
+        audioOutputButton.setAttribute(
+            'title',
+            audioOutputButton.disabled ? 'Selezione output audio non supportata da questo browser.' : 'Scegli uscita audio',
+        );
+    }
+
+    function setAudioOutputStatus(message = '', tone = 'neutral') {
+        if (!(audioOutputStatus instanceof HTMLElement)) {
+            return;
+        }
+
+        audioOutputStatus.textContent = message;
+        audioOutputStatus.className = `text-sm ${tone === 'error' ? 'text-error' : 'text-base-content/60'}`;
+        audioOutputStatus.classList.toggle('hidden', message === '');
+    }
+
+    function closeAudioOutputModal() {
+        if (!(audioOutputModal instanceof HTMLDialogElement) || !audioOutputModal.open) {
+            return;
+        }
+
+        audioOutputModal.close();
+    }
+
+    async function openAudioOutputModal() {
+        if (!(audioOutputModal instanceof HTMLDialogElement)) {
+            return;
+        }
+
+        if (!isAudioOutputSelectionSupported(window)) {
+            setAudioOutputStatus('Browser non supporta cambio uscita audio.', 'error');
+            audioOutputModal.showModal();
+            return;
+        }
+
+        await refreshAudioOutputDevices();
+
+        if (!audioOutputModal.open) {
+            audioOutputModal.showModal();
+        }
+    }
+
+    async function refreshAudioOutputDevices() {
+        if (!isAudioOutputSelectionSupported(window)) {
+            state.audioOutputDevices = [];
+            renderAudioOutputDevices();
+
+            return;
+        }
+
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            state.audioOutputDevices = filterAudioOutputDevices(devices);
+            renderAudioOutputDevices();
+        } catch (error) {
+            console.error(error);
+            state.audioOutputDevices = [];
+            renderAudioOutputDevices();
+            setAudioOutputStatus('Impossibile leggere dispositivi di output audio.', 'error');
+        }
+    }
+
+    function renderAudioOutputDevices() {
+        if (!(audioOutputList instanceof HTMLElement)) {
+            return;
+        }
+
+        audioOutputList.replaceChildren();
+
+        if (!isAudioOutputSelectionSupported(window)) {
+            setAudioOutputStatus('Browser non supporta selezione uscita audio.', 'error');
+
+            return;
+        }
+
+        if (state.audioOutputDevices.length === 0) {
+            setAudioOutputStatus('Nessun output audio disponibile o autorizzato.');
+
+            return;
+        }
+
+        setAudioOutputStatus('');
+
+        state.audioOutputDevices.forEach((device, index) => {
+            const button = document.createElement('button');
+            const isSelected = device.deviceId === state.selectedAudioOutputId
+                || (state.selectedAudioOutputId === 'default' && index === 0 && device.deviceId === 'default');
+
+            button.type = 'button';
+            button.className = `btn justify-between ${isSelected ? 'btn-primary' : 'btn-outline'}`;
+            button.innerHTML = `
+                <span class="truncate">${formatAudioOutputDeviceLabel(device, index)}</span>
+                <span class="text-xs uppercase">${isSelected ? 'Attivo' : 'Seleziona'}</span>
+            `;
+            button.addEventListener('click', async () => {
+                await applyAudioOutputDevice(device.deviceId);
+            });
+
+            audioOutputList.appendChild(button);
+        });
+    }
+
+    function getAudioOutputTargets() {
+        const targets = [];
+        const muxPlayer = root.querySelector('[data-live-stream-mux-player]');
+
+        root.querySelectorAll('[data-live-stream-audio-stage] audio').forEach((element) => {
+            targets.push(element);
+        });
+
+        if (muxPlayer instanceof HTMLElement) {
+            targets.push(muxPlayer);
+
+            const shadowMediaElement = muxPlayer.shadowRoot?.querySelector('video, audio');
+
+            if (shadowMediaElement instanceof HTMLMediaElement) {
+                targets.push(shadowMediaElement);
+            }
+        }
+
+        return [...new Set(targets)].filter((element) => typeof element.setSinkId === 'function');
+    }
+
+    async function applyAudioOutputDevice(deviceId, options = {}) {
+        if (!isAudioOutputSelectionSupported(window)) {
+            return;
+        }
+
+        const targets = getAudioOutputTargets();
+
+        if (targets.length === 0) {
+            if (!options.silent) {
+                setAudioOutputStatus('Apri player live o attendi audio remoto per applicare uscita scelta.', 'error');
+            }
+
+            return;
+        }
+
+        try {
+            await Promise.all(targets.map((element) => element.setSinkId(deviceId)));
+            state.selectedAudioOutputId = deviceId;
+            renderAudioOutputDevices();
+
+            if (!options.silent) {
+                closeAudioOutputModal();
+            }
+        } catch (error) {
+            console.error(error);
+
+            if (!options.silent) {
+                setAudioOutputStatus('Cambio uscita audio fallito. Verifica permessi browser.', 'error');
+            }
+        }
     }
 
     function renderParticipantList() {

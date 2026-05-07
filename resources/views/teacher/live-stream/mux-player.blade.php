@@ -1,5 +1,8 @@
 <x-layouts.app>
     @vite('resources/js/livestream-teacher.js')
+    @push('scripts')
+        <script type="module" src="https://unpkg.com/@mux/mux-player@latest/dist/mux-player.js"></script>
+    @endpush
 
     <section class="min-h-screen w-full bg-base-100" data-live-stream-root>
         <script type="application/json" data-live-stream-config>@json($liveStreamConfig)</script>
@@ -7,10 +10,20 @@
         <div class="grid min-h-screen gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
             <div class="min-h-0 space-y-4">
                 <div class="rounded-3xl border border-base-300 bg-base-100 p-6 shadow-sm">
-                    <h1 class="text-3xl font-semibold">{{ $module->title }}</h1>
-                    <p class="mt-2 text-sm text-base-content/70" data-live-stream-message>
-                        {{ __('Entra nella diretta per vedere il feed MUX e i partecipanti collegati.') }}
-                    </p>
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                            <h1 class="text-3xl font-semibold">{{ $module->title }}</h1>
+                            <p class="mt-2 text-sm text-base-content/70" data-live-stream-message>
+                                {{ __('Entra nella diretta per vedere il feed MUX e i partecipanti collegati.') }}
+                            </p>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <button type="button" class="btn btn-outline gap-2" data-live-stream-audio-output-open>
+                                <span>{{ __('Output audio') }}</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="tabs tabs-lift">
@@ -64,6 +77,32 @@
         </div>
 
         <div class="hidden" data-live-stream-audio-stage></div>
+
+        <dialog class="modal" data-live-stream-audio-output-modal>
+            <div class="modal-box">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-semibold">{{ __('Seleziona output audio') }}</h3>
+                        <p class="mt-2 text-sm text-base-content/60">
+                            {{ __('Scegli dispositivo su cui riprodurre audio live del player docente.') }}
+                        </p>
+                    </div>
+
+                    <button type="button" class="btn btn-ghost btn-sm btn-square" data-live-stream-audio-output-close aria-label="{{ __('Chiudi') }}">
+                        <x-lucide-x class="h-4 w-4" />
+                    </button>
+                </div>
+
+                <p class="mt-4 hidden text-sm text-base-content/60" data-live-stream-audio-output-status></p>
+                <div class="mt-6 grid gap-3" data-live-stream-audio-output-list></div>
+            </div>
+
+            <form method="dialog" class="modal-backdrop">
+                <button type="submit" aria-label="{{ __('Chiudi') }}">
+                    <span class="sr-only">{{ __('Chiudi') }}</span>
+                </button>
+            </form>
+        </dialog>
 
         <template data-live-stream-chat-template>
             <article class="chat chat-start">

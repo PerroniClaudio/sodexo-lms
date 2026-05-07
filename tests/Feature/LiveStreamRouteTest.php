@@ -358,20 +358,19 @@ test('teacher live stream route renders the updated preview controls', function 
 
     $response->assertSuccessful();
     $response->assertSeeText('Live onboarding docente');
-    $response->assertSeeText('Anteprima docente');
     $response->assertSeeText('Materiale didattico');
     $response->assertSeeText('Carica PDF');
     $response->assertSeeText('Attiva videocamera e microfono');
     $response->assertSeeText('Puoi continuare anche senza videocamera.');
     $response->assertSee('aria-label="Disattiva microfono"', false);
-    $response->assertSee('class="btn btn-ghost btn-square btn-sm"', false);
+    $response->assertSee('data-live-stream-background-button-label', false);
     $response->assertDontSeeText('In attesa');
     $response->assertDontSeeText('Microfono attivo');
     $response->assertDontSeeText('Microfono in ascolto');
     $response->assertDontSeeText('Preflight');
     $response->assertDontSee('data-live-stream-status-badge', false);
-    $response->assertSee('data-live-stream-preview-toggle', false);
     $response->assertSee('data-live-stream-preview-content', false);
+    $response->assertSee('data-live-stream-teacher-local-mic-toggle', false);
     $response->assertSeeInOrder([
         'name="teacher-live-stream-sidebar-tabs"',
         'aria-label="Discenti"',

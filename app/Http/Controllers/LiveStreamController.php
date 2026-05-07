@@ -22,6 +22,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -35,6 +36,10 @@ class LiveStreamController extends Controller
     private const DOCUMENT_DISK = 'local';
 
     private const PARTICIPANT_STALE_SECONDS = 25;
+
+    private const LIVE_STREAM_BACKGROUND_DIRECTORY = 'images/live-stream-backgrounds';
+
+    private const LIVE_STREAM_BACKGROUND_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'svg'];
 
     public function userPlayer(Request $request, Module $module): View
     {
@@ -315,6 +320,17 @@ class LiveStreamController extends Controller
         $muxLiveService->refreshBroadcastStatus($module, $module->activeLiveStreamSession);
 
         return response()->json($this->buildStatePayload($request, $module->fresh(), LiveStreamParticipant::ROLE_TEACHER));
+    }
+
+    public function teacherBackgrounds(Request $request, Module $module): JsonResponse
+    {
+        $this->abortUnlessLiveModule($module);
+        $this->ensureTeacherEnrollment($request, $module);
+
+        return response()->json([
+            'data' => $this->serializeLiveStreamBackgroundOptions(),
+            'directory' => self::LIVE_STREAM_BACKGROUND_DIRECTORY,
+        ]);
     }
 
     public function userState(Request $request, Module $module, MuxLiveService $muxLiveService): JsonResponse
@@ -1266,6 +1282,9 @@ class LiveStreamController extends Controller
                 'state' => $isAdminRole
                     ? route('admin.regia.state', $module)
                     : route($standardPrefix.'.live-stream.state', $module),
+                'backgrounds' => $isTeacherRole && ! $isRegiaMode
+                    ? route('teacher.live-stream.backgrounds', $module)
+                    : null,
                 'presence' => $isAdminRole
                     ? route('admin.regia.presence', $module)
                     : route($standardPrefix.'.live-stream.presence', $module),
@@ -1873,5 +1892,35 @@ class LiveStreamController extends Controller
             ->take(2)
             ->map(fn (string $part): string => mb_strtoupper(mb_substr($part, 0, 1)))
             ->implode('');
+    }
+
+    /**
+     * @return array<int, array{id:string,label:string,url:string}>
+     */
+    private function serializeLiveStreamBackgroundOptions(): array
+    {
+        $directoryPath = public_path(self::LIVE_STREAM_BACKGROUND_DIRECTORY);
+
+        File::ensureDirectoryExists($directoryPath);
+
+        return collect(File::files($directoryPath))
+            ->filter(function (\SplFileInfo $file): bool {
+                return in_array(strtolower($file->getExtension()), self::LIVE_STREAM_BACKGROUND_EXTENSIONS, true);
+            })
+            ->sortBy(fn (\SplFileInfo $file): string => Str::lower($file->getFilename()))
+            ->values()
+            ->map(function (\SplFileInfo $file): array {
+                $filename = $file->getFilename();
+
+                return [
+                    'id' => md5($filename),
+                    'label' => Str::of(pathinfo($filename, PATHINFO_FILENAME))
+                        ->replace(['-', '_'], ' ')
+                        ->title()
+                        ->value(),
+                    'url' => asset(self::LIVE_STREAM_BACKGROUND_DIRECTORY.'/'.$filename),
+                ];
+            })
+            ->all();
     }
 }

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Virtual background placeholder</title>
+  <desc id="desc">Abstract placeholder landscape for Twilio virtual background preview.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f766e"/>
+      <stop offset="52%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="ground" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#14532d"/>
+      <stop offset="50%" stop-color="#166534"/>
+      <stop offset="100%" stop-color="#365314"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <circle cx="1230" cy="170" r="88" fill="#fef08a" fill-opacity="0.92"/>
+  <path d="M0 620C160 560 280 520 430 548C560 573 668 655 805 654C945 652 1024 562 1178 545C1336 527 1448 582 1600 650V900H0Z" fill="#0f766e" fill-opacity="0.8"/>
+  <path d="M0 680C207 606 360 596 522 654C665 705 777 763 940 748C1087 734 1190 652 1346 645C1448 640 1536 667 1600 700V900H0Z" fill="url(#ground)"/>
+  <path d="M312 438L522 182L744 438Z" fill="#f8fafc" fill-opacity="0.78"/>
+  <path d="M501 438L714 224L904 438Z" fill="#e2e8f0" fill-opacity="0.74"/>
+  <path d="M832 454L1058 216L1292 454Z" fill="#cbd5e1" fill-opacity="0.66"/>
+  <path d="M214 900V726C214 665 263 616 324 616H452C513 616 562 665 562 726V900Z" fill="#ffffff" fill-opacity="0.12"/>
+  <rect x="272" y="666" width="84" height="84" rx="16" fill="#f8fafc" fill-opacity="0.22"/>
+  <rect x="382" y="666" width="122" height="24" rx="12" fill="#f8fafc" fill-opacity="0.28"/>
+  <rect x="382" y="706" width="90" height="18" rx="9" fill="#f8fafc" fill-opacity="0.22"/>
+</svg>

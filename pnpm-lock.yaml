@@ -23,6 +23,9 @@ importers:
       '@tiptap/starter-kit':
         specifier: ^3.22.5
         version: 3.22.5
+      '@twilio/video-processors':
+        specifier: ^3.2.0
+        version: 3.2.0
       lucide:
         specifier: ^1.8.0
         version: 1.8.0
@@ -401,6 +404,10 @@ packages:
   '@tiptap/starter-kit@3.22.5':
     resolution: {integrity: sha512-LZ/LYbwH6rnDi5DnRyagkuNsYAVyhM+yJvvz+ZuYA0JkPiTXJV86J5PWSKew8M0gVfMHcNVtKjfQCvViFCeIgw==}
 
+  '@twilio/video-processors@3.2.0':
+    resolution: {integrity: sha512-R0klQMTydaYAMmeZHTTVR/c9S6H0V7i88ne7v8fE0wCkzuVfZLHzDObHOuQuWdUClL6ycGHyU+X7l0chM0wbjw==}
+    engines: {node: '>=18'}
+
   '@tybys/wasm-util@0.10.1':
     resolution: {integrity: sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg==}
 
@@ -452,6 +459,9 @@ packages:
   combined-stream@1.0.8:
     resolution: {integrity: sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==}
     engines: {node: '>= 0.8'}
+
+  comlink@4.4.2:
+    resolution: {integrity: sha512-OxGdvBmJuNKSCMO4NTl1L47VRp6xn2wG4F/2hYzB6tiCb709otOxtEYCSvK80PtjODfXXZu8ds+Nw5kVCjqd2g==}
 
   concurrently@9.2.1:
     resolution: {integrity: sha512-fsfrO0MxV64Znoy8/l1vVIjjHa29SZyyqPgQBwhiDcaW8wJc2W3XWVOGx4M3oJBnv/zdUZIIp1gDeS98GzP8Ng==}
@@ -1242,6 +1252,10 @@ snapshots:
       '@tiptap/extensions': 3.22.5(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))(@tiptap/pm@3.22.5)
       '@tiptap/pm': 3.22.5
 
+  '@twilio/video-processors@3.2.0':
+    dependencies:
+      comlink: 4.4.2
+
   '@tybys/wasm-util@0.10.1':
     dependencies:
       tslib: 2.8.1
@@ -1304,6 +1318,8 @@ snapshots:
   combined-stream@1.0.8:
     dependencies:
       delayed-stream: 1.0.0
+
+  comlink@4.4.2: {}
 
   concurrently@9.2.1:
     dependencies:

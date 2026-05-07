@@ -1,7 +1,23 @@
-import { Hand, Mic, MicOff, Pin, ScreenShare, Trash2 } from 'lucide';
+import * as TwilioVideo from 'twilio-video';
+import { Hand, Image as ImageIcon, Mic, MicOff, Pin, ScreenShare, Trash2 } from 'lucide';
+
+const LIVE_STREAM_VIDEO_CONSTRAINTS = Object.freeze({
+    width: 640,
+    height: 480,
+    frameRate: 24,
+});
+
+const LIVE_STREAM_VIDEO_PROCESSOR_ADD_OPTIONS = Object.freeze({
+    inputFrameBufferType: 'videoframe',
+    outputFrameBufferContextType: 'bitmaprenderer',
+});
+
+const LIVE_STREAM_VIDEO_PROCESSOR_ASSETS_PATH = '/twilio-video-processors-assets/';
+let videoProcessorsModulePromise = null;
 
 const LIVE_STREAM_ICON_NODES = {
     hand: Hand,
+    image: ImageIcon,
     mic: Mic,
     'mic-off': MicOff,
     pin: Pin,
@@ -207,13 +223,18 @@ export function renderMuxStage(stageElement, mux, options = {}) {
     const wrapper = document.createElement('div');
     wrapper.className = 'relative h-full w-full overflow-hidden rounded-[1.75rem] bg-black';
 
-    const iframe = document.createElement('iframe');
-    iframe.className = 'h-full w-full border-0';
-    iframe.allow = 'accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;';
-    iframe.src = buildMuxPlayerUrl(mux.playbackId, accentColor);
-    iframe.title = playerTitle;
+    const muxPlayer = document.createElement('mux-player');
+    muxPlayer.className = 'h-full w-full';
+    muxPlayer.dataset.liveStreamMuxPlayer = 'true';
+    muxPlayer.setAttribute('playback-id', mux.playbackId);
+    muxPlayer.setAttribute('stream-type', mux.isLive ? 'live' : 'on-demand');
+    muxPlayer.setAttribute('metadata-video-title', playerTitle);
+    muxPlayer.setAttribute('accent-color', accentColor || '#2563eb');
+    muxPlayer.setAttribute('primary-color', accentColor || '#2563eb');
+    muxPlayer.setAttribute('muted', 'false');
+    muxPlayer.setAttribute('autoplay', 'false');
 
-    wrapper.appendChild(iframe);
+    wrapper.appendChild(muxPlayer);
 
     if (!mux.isLive) {
         wrapper.insertAdjacentHTML(
@@ -223,19 +244,6 @@ export function renderMuxStage(stageElement, mux, options = {}) {
     }
 
     stageElement.appendChild(wrapper);
-}
-
-function buildMuxPlayerUrl(playbackId, accentColor) {
-    const params = new URLSearchParams({
-        autoplay: 'false',
-        muted: 'false',
-    });
-
-    if (accentColor) {
-        params.set('accent-color', accentColor);
-    }
-
-    return `https://player.mux.com/${playbackId}?${params.toString()}`;
 }
 
 function resolveMuxAccentColor(stageElement) {
@@ -292,6 +300,31 @@ export function getLiveStreamIconSvg(iconName, classNames = 'h-4 w-4') {
 
 export function getLiveStreamIconButtonContent(iconName, label, classNames = 'h-4 w-4') {
     return `${getLiveStreamIconSvg(iconName, classNames)}<span class="sr-only">${label}</span>`;
+}
+
+export function isAudioOutputSelectionSupported(browser = globalThis) {
+    const mediaDevices = browser?.navigator?.mediaDevices;
+    const mediaElementPrototype = browser?.HTMLMediaElement?.prototype;
+
+    return Boolean(mediaDevices?.enumerateDevices && typeof mediaElementPrototype?.setSinkId === 'function');
+}
+
+export function filterAudioOutputDevices(devices = []) {
+    return devices.filter((device) => device?.kind === 'audiooutput');
+}
+
+export function formatAudioOutputDeviceLabel(device, index = 0) {
+    const label = device?.label?.trim();
+
+    if (label) {
+        return label;
+    }
+
+    if (device?.deviceId === 'default') {
+        return 'Predefinito di sistema';
+    }
+
+    return `Uscita audio ${index + 1}`;
 }
 
 export function getParticipantAudioStatusMarkup(audioEnabled, classNames = 'h-4 w-4') {
@@ -362,8 +395,47 @@ function formatFileSize(value) {
     }).format(size >= 1_000_000 ? size / 1_000_000 : size / 1_000).concat(size >= 1_000_000 ? ' MB' : ' KB');
 }
 
+export function isHardwareLikelySufficient(hardware = globalThis.navigator) {
+    const ram = hardware?.deviceMemory;
+    const cores = hardware?.hardwareConcurrency;
+    const minimumRam = 8;
+    const minimumCores = 4;
+
+    if (ram !== undefined && ram < minimumRam) {
+        return false;
+    }
+
+    if (cores !== undefined && cores < minimumCores) {
+        return false;
+    }
+
+    return true;
+}
+
+export function isBackgroundProcessorBenchmarkSlow(frameIntervals, options = {}) {
+    if (!Array.isArray(frameIntervals) || frameIntervals.length === 0) {
+        return false;
+    }
+
+    const warmupFrames = options.warmupFrames ?? 2;
+    const stableIntervals = frameIntervals.slice(Math.min(warmupFrames, frameIntervals.length));
+
+    if (stableIntervals.length === 0) {
+        return false;
+    }
+
+    const averageThreshold = options.averageThreshold ?? 115;
+    const slowFrameThreshold = options.slowFrameThreshold ?? 150;
+    const maxSlowFrames = options.maxSlowFrames ?? Math.ceil(stableIntervals.length / 2);
+    const maxFrameThreshold = options.maxFrameThreshold ?? 250;
+    const averageFrameInterval = stableIntervals.reduce((sum, value) => sum + value, 0) / stableIntervals.length;
+    const slowFrames = stableIntervals.filter((value) => value >= slowFrameThreshold).length;
+    const slowestFrame = Math.max(...stableIntervals);
+
+    return averageFrameInterval >= averageThreshold || slowFrames >= maxSlowFrames || slowestFrame >= maxFrameThreshold;
+}
+
 export function createPreviewController(root, options = {}) {
-    const openButton = root.querySelector('[data-live-stream-preview-toggle]');
     const requestButton = root.querySelector('[data-live-stream-preview-request]');
     const panelElement = root.querySelector('[data-live-stream-preview-panel]');
     const previewContentElement = root.querySelector('[data-live-stream-preview-content]');
@@ -372,22 +444,51 @@ export function createPreviewController(root, options = {}) {
     const micLabelElement = root.querySelector('[data-live-stream-mic-label]');
     const statusElement = root.querySelector('[data-live-stream-device-status]');
     const emptyStateElement = root.querySelector('[data-live-stream-preview-empty]');
+    const backgroundButton = root.querySelector('[data-live-stream-background-button]');
+    const backgroundButtonLabel = root.querySelector('[data-live-stream-background-button-label]');
+    const backgroundModal = root.querySelector('[data-live-stream-background-modal]');
+    const backgroundWarningElement = root.querySelector('[data-live-stream-background-warning]');
+    const backgroundOptionButtons = [...root.querySelectorAll('[data-live-stream-background-option]')];
+    const backgroundImageOptionsContainer = root.querySelector('[data-live-stream-background-image-options]');
+    const backgroundImageOptionsEmpty = root.querySelector('[data-live-stream-background-image-options-empty]');
+    const backgroundUploadInput = root.querySelector('[data-live-stream-background-upload-input]');
 
     let mediaStream = null;
     let audioContext = null;
     let analyserNode = null;
     let animationFrameId = null;
     let microphoneSource = null;
+    let localAudioTrack = null;
+    let localVideoTrack = null;
+    let activeBackgroundProcessor = null;
+    let currentBackgroundMode = 'none';
+    let currentBackgroundImageId = null;
+    let applyBackgroundPromise = null;
+    let backgroundFeatureDisabled = !isHardwareLikelySufficient();
+    let backgroundBrowserSupported = null;
+    const processorCache = new Map();
+    const backgroundImageCache = new Map();
+    let backgroundOptions = [];
+    let backgroundOptionsPromise = null;
+    let temporaryBackgroundOption = null;
+
+    async function loadVideoProcessorsModule() {
+        if (!videoProcessorsModulePromise) {
+            videoProcessorsModulePromise = import('@twilio/video-processors');
+        }
+
+        return videoProcessorsModulePromise;
+    }
 
     function hasVideoTrack() {
-        return (mediaStream?.getVideoTracks().length ?? 0) > 0;
+        return localVideoTrack !== null;
     }
 
     function notifyAudioStateChange() {
         if (typeof options.onAudioStateChange === 'function') {
             options.onAudioStateChange({
-                hasAudioTrack: mediaStream?.getAudioTracks().length > 0,
-                audioEnabled: mediaStream?.getAudioTracks()[0]?.enabled ?? false,
+                hasAudioTrack: localAudioTrack !== null,
+                audioEnabled: localAudioTrack?.isEnabled ?? false,
             });
         }
     }
@@ -406,6 +507,227 @@ export function createPreviewController(root, options = {}) {
         }
 
         previewContentElement.classList.toggle('hidden', mediaStream === null);
+    }
+
+    function setBackgroundWarning(message = '') {
+        if (!(backgroundWarningElement instanceof HTMLElement)) {
+            return;
+        }
+
+        backgroundWarningElement.textContent = message;
+        backgroundWarningElement.classList.toggle('hidden', message === '');
+    }
+
+    function setStatusMessage(message = '') {
+        if (!(statusElement instanceof HTMLElement)) {
+            return;
+        }
+
+        statusElement.textContent = message;
+        statusElement.classList.toggle('hidden', message === '');
+    }
+
+    function updateBackgroundButtonVisibility() {
+        if (!(backgroundButton instanceof HTMLButtonElement)) {
+            return;
+        }
+
+        const canShowBackgroundButton = !backgroundFeatureDisabled && hasVideoTrack();
+
+        backgroundButton.classList.toggle('hidden', !canShowBackgroundButton);
+        backgroundButton.disabled = !canShowBackgroundButton || applyBackgroundPromise !== null;
+    }
+
+    async function ensureBackgroundProcessorsSupported() {
+        if (backgroundFeatureDisabled) {
+            return false;
+        }
+
+        if (backgroundBrowserSupported !== null) {
+            return backgroundBrowserSupported;
+        }
+
+        try {
+            const videoProcessorsModule = await loadVideoProcessorsModule();
+
+            backgroundBrowserSupported = Boolean(videoProcessorsModule.isSupported);
+        } catch (error) {
+            console.error(error);
+            backgroundBrowserSupported = false;
+        }
+
+        if (!backgroundBrowserSupported) {
+            backgroundFeatureDisabled = true;
+            updateBackgroundButtonVisibility();
+        }
+
+        return backgroundBrowserSupported;
+    }
+
+    function updateBackgroundButtonLabel() {
+        if (!(backgroundButtonLabel instanceof HTMLElement)) {
+            return;
+        }
+
+        backgroundButtonLabel.textContent = 'Sfondo';
+    }
+
+    function updateBackgroundOptionButtons() {
+        backgroundOptionButtons.forEach((button) => {
+            if (!(button instanceof HTMLButtonElement)) {
+                return;
+            }
+
+            const buttonMode = button.dataset.liveStreamBackgroundOption ?? null;
+            const buttonBackgroundId = button.dataset.liveStreamBackgroundId ?? null;
+            const isSelected = buttonMode === currentBackgroundMode
+                && (buttonMode !== 'image' || buttonBackgroundId === currentBackgroundImageId);
+
+            button.classList.toggle('btn-primary', isSelected);
+            button.classList.toggle('btn-outline', !isSelected);
+            button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+        });
+    }
+
+    function renderBackgroundImageOptions() {
+        if (!(backgroundImageOptionsContainer instanceof HTMLElement)) {
+            return;
+        }
+
+        for (let index = backgroundOptionButtons.length - 1; index >= 0; index -= 1) {
+            if (backgroundOptionButtons[index]?.dataset.liveStreamBackgroundOption === 'image') {
+                backgroundOptionButtons.splice(index, 1);
+            }
+        }
+
+        backgroundImageOptionsContainer.replaceChildren();
+
+        if (backgroundImageOptionsEmpty instanceof HTMLElement) {
+            backgroundImageOptionsEmpty.classList.toggle('hidden', backgroundOptions.length > 0);
+        }
+
+        backgroundOptions.forEach((option) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'btn btn-outline h-auto min-h-0 overflow-hidden p-0';
+            button.dataset.liveStreamBackgroundOption = 'image';
+            button.dataset.liveStreamBackgroundId = option.id;
+            button.setAttribute('aria-pressed', 'false');
+
+            const image = document.createElement('img');
+            image.src = option.url;
+            image.alt = option.label;
+            image.className = 'aspect-video w-full object-cover';
+            button.append(image);
+            button.addEventListener('click', async () => {
+                await applyBackgroundMode('image', option.id);
+            });
+
+            backgroundImageOptionsContainer.appendChild(button);
+            backgroundOptionButtons.push(button);
+        });
+
+        updateBackgroundOptionButtons();
+    }
+
+    function revokeTemporaryBackgroundOption() {
+        if (!temporaryBackgroundOption?.url?.startsWith('blob:')) {
+            temporaryBackgroundOption = null;
+            return;
+        }
+
+        backgroundImageCache.delete(temporaryBackgroundOption.url);
+        URL.revokeObjectURL(temporaryBackgroundOption.url);
+        temporaryBackgroundOption = null;
+    }
+
+    function upsertTemporaryBackgroundOption(file) {
+        revokeTemporaryBackgroundOption();
+
+        const objectUrl = URL.createObjectURL(file);
+
+        temporaryBackgroundOption = {
+            id: `temporary:${Date.now()}`,
+            label: file.name || 'Immagine temporanea',
+            url: objectUrl,
+            temporary: true,
+        };
+
+        backgroundOptions = [
+            temporaryBackgroundOption,
+            ...backgroundOptions.filter((option) => !option.temporary),
+        ];
+        renderBackgroundImageOptions();
+
+        return temporaryBackgroundOption;
+    }
+
+    function closeBackgroundModal() {
+        if (!(backgroundModal instanceof HTMLDialogElement) || !backgroundModal.open) {
+            return;
+        }
+
+        backgroundModal.close();
+    }
+
+    function showPreviewEmptyState() {
+        if (videoElement instanceof HTMLVideoElement) {
+            videoElement.srcObject = null;
+            videoElement.classList.add('hidden');
+        }
+
+        if (emptyStateElement instanceof HTMLElement) {
+            emptyStateElement.classList.remove('hidden');
+            emptyStateElement.classList.add('flex');
+        }
+    }
+
+    async function attachPreviewVideoTrack() {
+        if (!(videoElement instanceof HTMLVideoElement) || !localVideoTrack) {
+            showPreviewEmptyState();
+            return;
+        }
+
+        localVideoTrack.attach(videoElement);
+        videoElement.classList.remove('hidden');
+
+        if (emptyStateElement instanceof HTMLElement) {
+            emptyStateElement.classList.add('hidden');
+            emptyStateElement.classList.remove('flex');
+        }
+
+        try {
+            await videoElement.play();
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    function destroyLocalTracks() {
+        if (activeBackgroundProcessor && localVideoTrack) {
+            try {
+                localVideoTrack.removeProcessor(activeBackgroundProcessor);
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        activeBackgroundProcessor = null;
+        currentBackgroundMode = 'none';
+        currentBackgroundImageId = null;
+        revokeTemporaryBackgroundOption();
+        backgroundOptions = backgroundOptions.filter((option) => !option.temporary);
+
+        if (localAudioTrack) {
+            localAudioTrack.stop();
+            localAudioTrack = null;
+        }
+
+        if (localVideoTrack) {
+            localVideoTrack.detach(videoElement instanceof HTMLVideoElement ? videoElement : undefined);
+            localVideoTrack.stop();
+            localVideoTrack = null;
+        }
     }
 
     function cleanupMeter() {
@@ -432,9 +754,16 @@ export function createPreviewController(root, options = {}) {
 
     function resetPreview() {
         cleanupMeter();
+        closeBackgroundModal();
+        setBackgroundWarning('');
+        destroyLocalTracks();
 
         if (mediaStream) {
-            mediaStream.getTracks().forEach((track) => track.stop());
+            mediaStream.getTracks().forEach((track) => {
+                if (track.readyState !== 'ended') {
+                    track.stop();
+                }
+            });
             mediaStream = null;
         }
 
@@ -463,6 +792,9 @@ export function createPreviewController(root, options = {}) {
         notifyAudioStateChange();
         updateRequestButton();
         updatePreviewContentVisibility();
+        updateBackgroundButtonVisibility();
+        updateBackgroundButtonLabel();
+        updateBackgroundOptionButtons();
     }
 
     function startMicrophoneMeter(stream) {
@@ -505,12 +837,270 @@ export function createPreviewController(root, options = {}) {
         updateMeter();
     }
 
+    function getLocalTracks() {
+        return [localAudioTrack, localVideoTrack].filter(Boolean);
+    }
+
+    function createLocalTracks(stream) {
+        const audioMediaTrack = stream.getAudioTracks()[0] ?? null;
+        const videoMediaTrack = stream.getVideoTracks()[0] ?? null;
+
+        localAudioTrack = audioMediaTrack ? new TwilioVideo.LocalAudioTrack(audioMediaTrack) : null;
+        localVideoTrack = videoMediaTrack
+            ? new TwilioVideo.LocalVideoTrack(videoMediaTrack, {
+                name: options.videoTrackName,
+            })
+            : null;
+    }
+
+    async function ensureBackgroundImageLoaded(option) {
+        if (!option?.url) {
+            throw new Error('Background image option is missing a URL.');
+        }
+
+        if (backgroundImageCache.has(option.url)) {
+            return backgroundImageCache.get(option.url);
+        }
+
+        const backgroundImagePromise = new Promise((resolve, reject) => {
+            const image = new window.Image();
+            image.decoding = 'async';
+            image.onload = () => {
+                resolve(image);
+            };
+            image.onerror = () => {
+                backgroundImageCache.delete(option.url);
+                reject(new Error(`Background image failed to load: ${option.url}`));
+            };
+            image.src = option.url;
+        });
+
+        backgroundImageCache.set(option.url, backgroundImagePromise);
+
+        return backgroundImagePromise;
+    }
+
+    async function ensureBackgroundOptionsLoaded() {
+        if (!options.backgroundsRoute) {
+            backgroundOptions = [];
+            renderBackgroundImageOptions();
+
+            return backgroundOptions;
+        }
+
+        if (!backgroundOptionsPromise) {
+            backgroundOptionsPromise = window.axios.get(options.backgroundsRoute)
+                .then((response) => {
+                    backgroundOptions = Array.isArray(response.data?.data) ? response.data.data : [];
+                    renderBackgroundImageOptions();
+
+                    return backgroundOptions;
+                })
+                .catch((error) => {
+                    backgroundOptionsPromise = null;
+                    throw error;
+                });
+        }
+
+        return backgroundOptionsPromise;
+    }
+
+    async function getCachedBackgroundProcessor(mode, backgroundOption = null) {
+        const videoProcessorsModule = await loadVideoProcessorsModule();
+        const processorKey = mode === 'blur' ? 'blur' : 'image';
+        let cachedProcessor = processorCache.get(processorKey);
+
+        if (!cachedProcessor) {
+            cachedProcessor = {
+                processor: null,
+                loadPromise: null,
+            };
+
+            processorCache.set(processorKey, cachedProcessor);
+        }
+
+        if (!cachedProcessor.processor) {
+            if (processorKey === 'blur') {
+                cachedProcessor.processor = new videoProcessorsModule.GaussianBlurBackgroundProcessor({
+                    assetsPath: LIVE_STREAM_VIDEO_PROCESSOR_ASSETS_PATH,
+                    blurFilterRadius: 15,
+                });
+            } else {
+                const backgroundImage = await ensureBackgroundImageLoaded(backgroundOption);
+
+                cachedProcessor.processor = new videoProcessorsModule.VirtualBackgroundProcessor({
+                    assetsPath: LIVE_STREAM_VIDEO_PROCESSOR_ASSETS_PATH,
+                    backgroundImage,
+                });
+            }
+        }
+
+        if (!cachedProcessor.loadPromise) {
+            cachedProcessor.loadPromise = cachedProcessor.processor.loadModel().catch((error) => {
+                processorCache.delete(processorKey);
+                throw error;
+            });
+        }
+
+        await cachedProcessor.loadPromise;
+
+        if (processorKey === 'image' && backgroundOption) {
+            cachedProcessor.processor.backgroundImage = await ensureBackgroundImageLoaded(backgroundOption);
+        }
+
+        return cachedProcessor.processor;
+    }
+
+    async function benchmarkBackgroundProcessor() {
+        if (!(videoElement instanceof HTMLVideoElement) || typeof videoElement.requestVideoFrameCallback !== 'function') {
+            return true;
+        }
+
+        const frameIntervals = [];
+
+        return new Promise((resolve) => {
+            let previousTimestamp = null;
+            let settled = false;
+            const timeoutId = window.setTimeout(() => {
+                if (!settled) {
+                    settled = true;
+                    resolve(false);
+                }
+            }, 4000);
+
+            const finish = (result) => {
+                if (settled) {
+                    return;
+                }
+
+                settled = true;
+                window.clearTimeout(timeoutId);
+                resolve(result);
+            };
+
+            const sampleFrame = (_, metadata) => {
+                const timestamp = metadata.expectedDisplayTime ?? performance.now();
+
+                if (previousTimestamp !== null) {
+                    frameIntervals.push(timestamp - previousTimestamp);
+                }
+
+                previousTimestamp = timestamp;
+
+                if (frameIntervals.length >= 12) {
+                    finish(!isBackgroundProcessorBenchmarkSlow(frameIntervals));
+                    return;
+                }
+
+                videoElement.requestVideoFrameCallback(sampleFrame);
+            };
+
+            videoElement.requestVideoFrameCallback(sampleFrame);
+        });
+    }
+
+    async function removeActiveBackgroundProcessor() {
+        if (!activeBackgroundProcessor || !localVideoTrack) {
+            activeBackgroundProcessor = null;
+            return;
+        }
+
+        localVideoTrack.removeProcessor(activeBackgroundProcessor);
+        activeBackgroundProcessor = null;
+    }
+
+    async function applyBackgroundMode(mode, backgroundId = null) {
+        if (applyBackgroundPromise || !localVideoTrack) {
+            closeBackgroundModal();
+            return;
+        }
+
+        applyBackgroundPromise = (async () => {
+            try {
+                if (mode !== 'none' && !await ensureBackgroundProcessorsSupported()) {
+                    setBackgroundWarning('Sfondo virtuale non supportato da browser o dispositivo corrente.');
+                    closeBackgroundModal();
+                    return;
+                }
+
+                setBackgroundWarning('');
+                await removeActiveBackgroundProcessor();
+                currentBackgroundMode = 'none';
+                currentBackgroundImageId = null;
+                updateBackgroundButtonLabel();
+                updateBackgroundOptionButtons();
+
+                if (mode === 'none') {
+                    closeBackgroundModal();
+                    await attachPreviewVideoTrack();
+                    return;
+                }
+
+                let backgroundOption = null;
+
+                if (mode === 'image') {
+                    await ensureBackgroundOptionsLoaded();
+                    backgroundOption = backgroundOptions.find((option) => option.id === backgroundId) ?? null;
+
+                    if (!backgroundOption) {
+                        throw new Error('Selected background image is not available.');
+                    }
+                }
+
+                const processor = await getCachedBackgroundProcessor(mode, backgroundOption);
+                localVideoTrack.addProcessor(processor, LIVE_STREAM_VIDEO_PROCESSOR_ADD_OPTIONS);
+                activeBackgroundProcessor = processor;
+                currentBackgroundMode = mode;
+                currentBackgroundImageId = backgroundOption?.id ?? null;
+                updateBackgroundButtonLabel();
+                updateBackgroundOptionButtons();
+                closeBackgroundModal();
+                await attachPreviewVideoTrack();
+
+                const benchmarkPassed = await benchmarkBackgroundProcessor();
+
+                if (!benchmarkPassed) {
+                    backgroundFeatureDisabled = true;
+                    await removeActiveBackgroundProcessor();
+                    currentBackgroundMode = 'none';
+                    currentBackgroundImageId = null;
+                    updateBackgroundButtonLabel();
+                    updateBackgroundOptionButtons();
+                    updateBackgroundButtonVisibility();
+                    setBackgroundWarning('Sfondo virtuale disattivato: dispositivo troppo lento per elaborare video in modo stabile.');
+                    await attachPreviewVideoTrack();
+                }
+            } catch (error) {
+                console.error(error);
+                currentBackgroundMode = 'none';
+                currentBackgroundImageId = null;
+                updateBackgroundButtonLabel();
+                updateBackgroundOptionButtons();
+                setBackgroundWarning('Impossibile applicare sfondo virtuale. Riprova tra poco.');
+                await removeActiveBackgroundProcessor();
+                await attachPreviewVideoTrack();
+            } finally {
+                applyBackgroundPromise = null;
+                updateBackgroundButtonVisibility();
+            }
+        })();
+
+        await applyBackgroundPromise;
+    }
+
     async function openPreview() {
         if (!(videoElement instanceof HTMLVideoElement)) {
             return;
         }
 
-        resetPreview();
+        if (mediaStream) {
+            await attachPreviewVideoTrack();
+            notifyAudioStateChange();
+            updateBackgroundButtonVisibility();
+            updateBackgroundButtonLabel();
+            updateBackgroundOptionButtons();
+            return;
+        }
 
         try {
             if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
@@ -518,75 +1108,57 @@ export function createPreviewController(root, options = {}) {
             }
 
             try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    audio: true,
+                    video: LIVE_STREAM_VIDEO_CONSTRAINTS,
+                });
             } catch (error) {
-                if (!(error instanceof DOMException) || error.name !== 'NotFoundError') {
+                if (!(error instanceof DOMException) || !['NotFoundError', 'OverconstrainedError'].includes(error.name)) {
                     throw error;
                 }
 
                 mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
             }
 
-            const hasVideoTrack = mediaStream.getVideoTracks().length > 0;
+            createLocalTracks(mediaStream);
+            const videoAvailable = hasVideoTrack();
 
-            if (hasVideoTrack) {
-                videoElement.srcObject = mediaStream;
-                videoElement.classList.remove('hidden');
-
-                if (emptyStateElement instanceof HTMLElement) {
-                    emptyStateElement.classList.add('hidden');
-                    emptyStateElement.classList.remove('flex');
-                }
-
-                await videoElement.play();
+            if (videoAvailable) {
+                await attachPreviewVideoTrack();
             } else {
-                videoElement.srcObject = null;
-                videoElement.classList.add('hidden');
-
-                if (emptyStateElement instanceof HTMLElement) {
-                    emptyStateElement.classList.remove('hidden');
-                    emptyStateElement.classList.add('flex');
-                }
+                showPreviewEmptyState();
             }
 
-            if (statusElement instanceof HTMLElement) {
-                statusElement.textContent = hasVideoTrack
-                    ? 'Anteprima attiva. Videocamera e microfono sono collegati.'
-                    : 'Microfono collegato. Nessuna videocamera disponibile: puoi comunque entrare nella diretta.';
-            }
+            setStatusMessage(
+                videoAvailable
+                    ? ''
+                    : 'Microfono collegato. Nessuna videocamera disponibile: puoi comunque entrare nella diretta.',
+            );
 
             startMicrophoneMeter(mediaStream);
             notifyAudioStateChange();
             updateRequestButton();
             updatePreviewContentVisibility();
-        } catch (error) {
-            if (statusElement instanceof HTMLElement) {
-                statusElement.textContent =
-                    error instanceof DOMException && error.name === 'NotFoundError'
-                        ? 'Nessuna videocamera o nessun microfono disponibile su questo dispositivo.'
-                        : 'Impossibile accedere a videocamera o microfono. Controlla i permessi del browser.';
+            updateBackgroundButtonVisibility();
+            updateBackgroundButtonLabel();
+            updateBackgroundOptionButtons();
+
+            if (videoAvailable) {
+                void ensureBackgroundProcessorsSupported();
             }
+        } catch (error) {
+            setStatusMessage(
+                error instanceof DOMException && error.name === 'NotFoundError'
+                    ? 'Nessuna videocamera o nessun microfono disponibile su questo dispositivo.'
+                    : 'Impossibile accedere a videocamera o microfono. Controlla i permessi del browser.',
+            );
 
             console.error(error);
             notifyAudioStateChange();
             updateRequestButton();
             updatePreviewContentVisibility();
+            updateBackgroundButtonVisibility();
         }
-    }
-
-    if (openButton instanceof HTMLButtonElement && panelElement instanceof HTMLElement) {
-        openButton.addEventListener('click', async () => {
-            const isOpen = !panelElement.classList.contains('hidden');
-
-            if (isOpen) {
-                panelElement.classList.add('hidden');
-                resetPreview();
-                return;
-            }
-
-            panelElement.classList.remove('hidden');
-            await openPreview();
-        });
     }
 
     if (options.autoOpen && panelElement instanceof HTMLElement) {
@@ -600,31 +1172,96 @@ export function createPreviewController(root, options = {}) {
         });
     }
 
+    if (backgroundButton instanceof HTMLButtonElement && backgroundModal instanceof HTMLDialogElement) {
+        backgroundButton.addEventListener('click', async () => {
+            if (backgroundButton.disabled) {
+                return;
+            }
+
+            try {
+                await ensureBackgroundOptionsLoaded();
+            } catch (error) {
+                console.error(error);
+                setBackgroundWarning('Impossibile leggere cartella sfondi. Controlla file disponibili e riprova.');
+            }
+
+            backgroundModal.showModal();
+        });
+    }
+
+    if (backgroundUploadInput instanceof HTMLInputElement) {
+        backgroundUploadInput.addEventListener('change', async (event) => {
+            const file = event.target.files?.[0] ?? null;
+
+            if (!file) {
+                return;
+            }
+
+            if (!file.type.startsWith('image/')) {
+                setBackgroundWarning('File non valido. Carica un\'immagine supportata.');
+                backgroundUploadInput.value = '';
+                return;
+            }
+
+            try {
+                const option = upsertTemporaryBackgroundOption(file);
+                setBackgroundWarning('');
+                backgroundUploadInput.value = '';
+                await applyBackgroundMode('image', option.id);
+            } catch (error) {
+                console.error(error);
+                setBackgroundWarning('Impossibile usare immagine caricata. Riprova con un file diverso.');
+                backgroundUploadInput.value = '';
+            }
+        });
+    }
+
+    backgroundOptionButtons.forEach((button) => {
+        if (!(button instanceof HTMLButtonElement)) {
+            return;
+        }
+
+        button.addEventListener('click', async () => {
+            const mode = button.dataset.liveStreamBackgroundOption ?? 'none';
+            const backgroundId = button.dataset.liveStreamBackgroundId ?? null;
+            await applyBackgroundMode(mode, backgroundId);
+        });
+    });
+
     updateRequestButton();
     updatePreviewContentVisibility();
+    updateBackgroundButtonVisibility();
+    updateBackgroundButtonLabel();
+    updateBackgroundOptionButtons();
 
     return {
         async open() {
             await openPreview();
         },
         hasAudioTrack() {
-            return mediaStream?.getAudioTracks().length > 0;
+            return localAudioTrack !== null;
         },
         hasVideoTrack,
         isAudioEnabled() {
-            return mediaStream?.getAudioTracks()[0]?.enabled ?? false;
+            return localAudioTrack?.isEnabled ?? false;
         },
         toggleAudio() {
-            const audioTrack = mediaStream?.getAudioTracks()[0] ?? null;
-
-            if (!audioTrack) {
+            if (!localAudioTrack) {
                 return false;
             }
 
-            audioTrack.enabled = !audioTrack.enabled;
+            if (localAudioTrack.isEnabled) {
+                localAudioTrack.disable();
+            } else {
+                localAudioTrack.enable();
+            }
+
             notifyAudioStateChange();
 
-            return audioTrack.enabled;
+            return localAudioTrack.isEnabled;
+        },
+        getLocalTracks() {
+            return getLocalTracks();
         },
         destroy() {
             resetPreview();
