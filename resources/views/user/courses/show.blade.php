@@ -36,9 +36,14 @@
                                         <span class="badge badge-ghost">{{ __(ucfirst($module->pivot->status)) }}</span>
                                     @endif
                                 </div>
-                                <div class="timeline-end">
+                                <div class="timeline-end flex gap-2 items-center">
                                     @if($enrollment->current_module_id === $module->id)
                                         <span class="badge badge-info">{{ __('Modulo corrente') }}</span>
+                                    @endif
+                                    @if(in_array($module->pivot->status, ['completed', 'available', 'in_progress']) || ($module->pivot->status === 'failed' && $module->type === 'learning_quiz' && $module->pivot->quiz_attempts < $module->max_attempts))
+                                        <a href="{{ route('user.courses.modules.player', [$course, $module]) }}" class="btn btn-sm btn-outline">
+                                            {{ __('Accedi') }}
+                                        </a>
                                     @endif
                                 </div>
                             </li>

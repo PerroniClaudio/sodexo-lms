@@ -47,9 +47,23 @@ Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
             // Modulo video: segna completato
             Route::post('/courses/{course}/modules/{module}/video/complete', [VideoModuleController::class, 'complete'])->name('courses.modules.video.complete');
 
-            // Modulo quiz: domande
+            // Modulo quiz: stato
+            Route::get('/courses/{course}/modules/{module}/quiz/status', [QuizModuleController::class, 'getStatus'])->name('courses.modules.quiz.status');
+            // Modulo quiz: inizia tentativo
+            Route::post('/courses/{course}/modules/{module}/quiz/start', [QuizModuleController::class, 'startAttempt'])->name('courses.modules.quiz.start');
+            // Modulo quiz: prossima domanda
+            Route::get('/courses/{course}/modules/{module}/quiz/next-question', [QuizModuleController::class, 'getNextQuestion'])->name('courses.modules.quiz.next-question');
+            // Modulo quiz: invia risposta
+            Route::post('/courses/{course}/modules/{module}/quiz/answer', [QuizModuleController::class, 'submitAnswer'])->name('courses.modules.quiz.answer');
+            // Modulo quiz: completa tentativo
+            Route::post('/courses/{course}/modules/{module}/quiz/complete', [QuizModuleController::class, 'completeAttempt'])->name('courses.modules.quiz.complete');
+            // Modulo quiz: abbandona tentativo
+            Route::post('/courses/{course}/modules/{module}/quiz/abandon', [QuizModuleController::class, 'abandonAttempt'])->name('courses.modules.quiz.abandon');
+
+            // DEPRECATED: Manteniamo per retrocompatibilità quiz gradimento (se non usa il nuovo flow)
+            // Modulo quiz: domande (legacy)
             Route::get('/courses/{course}/modules/{module}/quiz', [QuizModuleController::class, 'show'])->name('courses.modules.quiz.show');
-            // Modulo quiz: invio risposte
+            // Modulo quiz: invio risposte (legacy)
             Route::post('/courses/{course}/modules/{module}/quiz/submit', [QuizModuleController::class, 'submit'])->name('courses.modules.quiz.submit');
         });
 

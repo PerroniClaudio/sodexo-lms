@@ -10,6 +10,8 @@
         data-video-complete-url="{{ route('user.courses.modules.video.complete', [$course, $module]) }}"
         data-quiz-url="{{ route('user.courses.modules.quiz.show', [$course, $module]) }}"
         data-quiz-submit-url="{{ route('user.courses.modules.quiz.submit', [$course, $module]) }}"
+        data-next-module-url="{{ $nextModule ? route('user.courses.modules.player', [$course, $nextModule]) : '' }}"
+        data-next-module-title="{{ $nextModule->title ?? '' }}"
         data-csrf="{{ csrf_token() }}"
     >
         <x-page-header :title="$module->title">

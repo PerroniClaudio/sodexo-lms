@@ -318,5 +318,15 @@
     "available": "Available",
     "in_progress": "In progress",
     "completed": "Completed",
-    "failed": "Failed"
+    "failed": "Failed",
+    "Conferma risposta": "Confirm answer",
+    "Inizia il quiz": "Start quiz",
+    "Sei sicuro di voler iniziare il quiz?": "Are you sure you want to start the quiz?",
+    "Attenzione:": "Attention:",
+    "Una volta iniziato, non potrai ricaricare la pagina o navigare altrove senza perdere il tentativo.": "Once started, you cannot reload the page or navigate elsewhere without losing the attempt.",
+    "Annulla": "Cancel",
+    "Inizia": "Start",
+    "Tentativi massimi": "Maximum attempts",
+    "Numero massimo di tentativi permessi per questo quiz": "Maximum number of attempts allowed for this quiz",
+    "Available" : "Available"
 }

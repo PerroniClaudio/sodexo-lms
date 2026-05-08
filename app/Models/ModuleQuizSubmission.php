@@ -12,6 +12,7 @@ class ModuleQuizSubmission extends Model
 {
     use HasFactory;
 
+    // Stati per upload di quiz
     public const STATUS_UPLOADED = 'uploaded';
 
     public const STATUS_PROCESSING = 'processing';
@@ -22,9 +23,23 @@ class ModuleQuizSubmission extends Model
 
     public const STATUS_FAILED = 'failed';
 
+    // Stati per quiz online
+    public const STATUS_STARTED = 'started';
+
+    public const STATUS_IN_PROGRESS = 'in_progress';
+
+    public const STATUS_SUBMITTED = 'submitted';
+
+    // Source types
+    public const SOURCE_UPLOAD = 'upload';
+
+    public const SOURCE_ONLINE = 'online';
+
     protected $fillable = [
         'module_id',
+        'source_type',
         'user_id',
+        'course_enrollment_id',
         'uploaded_by',
         'finalized_by',
         'disk',
@@ -37,6 +52,8 @@ class ModuleQuizSubmission extends Model
         'error_message',
         'processed_at',
         'finalized_at',
+        'started_at',
+        'submitted_at',
     ];
 
     protected function casts(): array
@@ -45,6 +62,8 @@ class ModuleQuizSubmission extends Model
             'provider_payload' => 'array',
             'processed_at' => 'datetime',
             'finalized_at' => 'datetime',
+            'started_at' => 'datetime',
+            'submitted_at' => 'datetime',
             'score' => 'integer',
             'total_score' => 'integer',
         ];
@@ -58,6 +77,11 @@ class ModuleQuizSubmission extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function courseEnrollment(): BelongsTo
+    {
+        return $this->belongsTo(CourseEnrollment::class, 'course_enrollment_id');
     }
 
     public function uploadedBy(): BelongsTo
@@ -86,6 +110,19 @@ class ModuleQuizSubmission extends Model
             self::STATUS_NEEDS_REVIEW,
             self::STATUS_FINALIZED,
             self::STATUS_FAILED,
+            self::STATUS_STARTED,
+            self::STATUS_IN_PROGRESS,
+            self::STATUS_SUBMITTED,
         ]);
+    }
+
+    public function isOnline(): bool
+    {
+        return $this->source_type === self::SOURCE_ONLINE;
+    }
+
+    public function isUpload(): bool
+    {
+        return $this->source_type === self::SOURCE_UPLOAD;
     }
 }

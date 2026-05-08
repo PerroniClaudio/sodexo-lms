@@ -174,6 +174,19 @@ async function sendVideoComplete(moduleData, completedMsgEl) {
         
         if (data.success && completedMsgEl) {
             completedMsgEl.classList.remove('hidden');
+            
+            // Aggiungi bottone per modulo successivo se disponibile
+            if (moduleData.nextModuleUrl) {
+                const nextModuleBtn = document.createElement('div');
+                nextModuleBtn.className = 'mt-4 flex justify-end';
+                nextModuleBtn.innerHTML = `
+                    <a href="${moduleData.nextModuleUrl}" class="btn btn-primary">
+                        ${moduleData.nextModuleTitle || 'Modulo successivo'}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    </a>
+                `;
+                completedMsgEl.parentElement.appendChild(nextModuleBtn);
+            }
         }
     } catch (error) {
         console.error('[video] Errore completamento:', error);

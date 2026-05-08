@@ -115,6 +115,17 @@ class ModuleProgress extends Model
             throw new DomainException('Video progress can only be recorded for video modules.');
         }
 
+        // Se il video è già completato, aggiorna solo tracking senza modificare status
+        if ($this->status === self::STATUS_COMPLETED) {
+            $this->forceFill([
+                'last_accessed_at' => now(),
+                'time_spent_seconds' => max(0, $this->time_spent_seconds + $additionalTimeSpentSeconds),
+                'video_current_second' => max(0, $currentSecond),
+            ])->save();
+            return;
+        }
+
+        // Per video non completati, verifica che sia il modulo corrente
         $this->assertTrackableCurrentModule();
 
         if ($this->status === self::STATUS_AVAILABLE) {

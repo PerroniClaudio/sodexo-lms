@@ -30,6 +30,7 @@ class UpdateModuleRequest extends FormRequest
         $requiresAppointmentDetails = $module !== null
             && Module::requiresAppointmentDetails($module->type);
         $requiresQuizScores = $module?->isQuiz() ?? false;
+        $isLearningQuiz = $module?->type === 'learning_quiz';
 
         return [
             'title' => [
@@ -66,6 +67,12 @@ class UpdateModuleRequest extends FormRequest
                 'integer',
                 'min:0',
             ],
+            'max_attempts' => [
+                Rule::requiredIf($isLearningQuiz),
+                'nullable',
+                'integer',
+                'min:1',
+            ],
             // max_score viene gestito in automatico con la modifica delle domande, quindi non è richiesto in input e non può essere modificato manualmente
             // 'max_score' => [
             //     Rule::requiredIf($requiresQuizScores),
@@ -98,6 +105,7 @@ class UpdateModuleRequest extends FormRequest
             'appointment_start_time' => __('Start time'),
             'appointment_end_time' => __('End time'),
             'passing_score' => __('Passing score'),
+            'max_attempts' => __('Tentativi massimi'),
             'max_score' => __('Maximum score'),
         ];
     }

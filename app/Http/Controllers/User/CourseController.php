@@ -31,6 +31,7 @@ class CourseController extends Controller
             $progress = $module->progressRecords->first();
             $module->pivot = (object) [
                 'status' => $progress?->status ?? 'locked',
+                'quiz_attempts' => $progress?->quiz_attempts ?? 0,
             ];
         }
 
@@ -46,8 +47,6 @@ class CourseController extends Controller
         $enrollment = $user->courseEnrollments()->where('course_id', $course->id)->first();
         abort_unless($enrollment !== null, 403);
 
-        abort_if($enrollment->current_module_id !== $module->getKey(), 403);
-
         $module->loadMissing('video');
 
         $progress = $enrollment->moduleProgresses()
@@ -55,6 +54,15 @@ class CourseController extends Controller
             ->first();
         abort_unless($progress !== null, 404);
 
-        return view('user.courses.module', compact('course', 'module', 'enrollment', 'progress'));
+        // Permetti accesso solo a moduli in corso o completati (non locked)
+        abort_if($progress->status === 'locked', 403);
+
+        // Ottieni il modulo successivo
+        $nextModule = $course->modules()
+            ->where('order', '>', $module->order)
+            ->orderBy('order')
+            ->first();
+
+        return view('user.courses.module', compact('course', 'module', 'enrollment', 'progress', 'nextModule'));
     }
 }

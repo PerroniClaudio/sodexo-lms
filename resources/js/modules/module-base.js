@@ -37,6 +37,8 @@ export function getModuleData(root) {
         videoCompleteUrl: root.dataset.videoCompleteUrl,
         quizUrl: root.dataset.quizUrl,
         quizSubmitUrl: root.dataset.quizSubmitUrl,
+        nextModuleUrl: root.dataset.nextModuleUrl,
+        nextModuleTitle: root.dataset.nextModuleTitle,
     };
 }
 
