@@ -14,6 +14,7 @@ Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
         Route::get('/live-stream/{module}/player', [LiveStreamController::class, 'userPlayer'])->name('live-stream.player');
         Route::post('/live-stream/{module}/join', [LiveStreamController::class, 'userJoin'])->name('live-stream.join');
         Route::get('/live-stream/{module}/state', [LiveStreamController::class, 'userState'])->name('live-stream.state');
+        Route::get('/live-stream/{module}/backgrounds', [LiveStreamController::class, 'userBackgrounds'])->name('live-stream.backgrounds');
         Route::post('/live-stream/{module}/presence', [LiveStreamController::class, 'userPresence'])->name('live-stream.presence');
         Route::post('/live-stream/{module}/messages', [LiveStreamController::class, 'storeUserMessage'])->name('live-stream.messages.store');
         Route::post('/live-stream/{module}/polls/{poll}/responses', [LiveStreamController::class, 'storeUserPollResponse'])->name('live-stream.polls.responses.store');

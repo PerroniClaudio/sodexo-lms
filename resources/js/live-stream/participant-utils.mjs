@@ -118,3 +118,7 @@ export function isParticipantIdentityHighlighted(identity, speakingParticipantId
 
     return speakingParticipantIdentities.has(identity);
 }
+
+export function shouldShowLiveJoinPrompt(status, joined, alreadyShown) {
+    return status === 'live' && !joined && !alreadyShown;
+}

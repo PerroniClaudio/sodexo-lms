@@ -4,6 +4,7 @@ use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\CourseTeacherEnrollment;
 use App\Models\CourseTutorEnrollment;
+use App\Models\JobUnit;
 use App\Models\LiveStreamDocument;
 use App\Models\LiveStreamSession;
 use App\Models\Module;
@@ -13,6 +14,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 test('live stream player route renders module data for the requested live module', function () {
+    JobUnit::query()->create(['name' => 'Sede test']);
+
     $user = actingAsRole('user');
 
     $course = Course::factory()->create([
@@ -55,6 +58,10 @@ test('live stream player route renders module data for the requested live module
     $response->assertSeeText('Materiale didattico');
     $response->assertSeeText('Dispositivi');
     $response->assertSeeText('Entra nella diretta');
+    $response->assertSeeText('Configura i tuoi dispositivi');
+    $response->assertSeeText('Telecamera');
+    $response->assertSeeText('Dispositivo microfono');
+    $response->assertSeeText('Sfondo videocamera');
     $response->assertSee('aria-label="Alza la mano"', false);
     $response->assertDontSeeText('In attesa');
     $response->assertDontSeeText('Microfono attivo');
@@ -70,6 +77,10 @@ test('live stream player route renders module data for the requested live module
     $response->assertSeeText('Sondaggio live');
     $response->assertSee('data-live-stream-poll-modal', false);
     $response->assertSee('data-live-stream-poll-form', false);
+    $response->assertSee('data-live-stream-join-prompt-modal', false);
+    $response->assertSee('data-live-stream-camera-device-list', false);
+    $response->assertSee('data-live-stream-microphone-device-list', false);
+    $response->assertSee('data-live-stream-background-modal', false);
     $response->assertSee('data-live-stream-main-stage-shell', false);
     $response->assertSee('data-live-stream-fullscreen-toggle', false);
     $response->assertSeeText('Schermo intero');

@@ -4,6 +4,7 @@ import {
     getRemoteVideoTrackByIdentity,
     getRemoteVideoTrackSignature,
     isScreenSharePublication,
+    shouldShowLiveJoinPrompt,
 } from './participant-utils.mjs';
 import {
     createPlaceholderCard,
@@ -47,10 +48,18 @@ export function initViewerPage() {
         presenceHandle: null,
         activePollId: null,
         activePollSelection: null,
+        joinPromptShownForLive: false,
     };
 
-    const previewController = createPreviewController(root);
+    const previewController = createPreviewController(root, {
+        backgroundsRoute: config.routes.backgrounds,
+        videoTrackName: LIVE_STREAM_CAMERA_TRACK_NAME,
+    });
     const joinButton = root.querySelector('[data-live-stream-join-button]');
+    const joinPromptModal = root.querySelector('[data-live-stream-join-prompt-modal]');
+    const joinPromptButton = root.querySelector('[data-live-stream-join-prompt-button]');
+    const joinPromptDevicesButton = root.querySelector('[data-live-stream-join-prompt-devices]');
+    const joinPromptDevicesPanel = root.querySelector('[data-live-stream-join-prompt-devices-panel]');
     const handRaiseButton = root.querySelector('[data-live-stream-hand-raise-button]');
     const chatForm = root.querySelector('[data-live-stream-chat-form]');
     const chatInput = root.querySelector('[data-live-stream-chat-input]');
@@ -70,6 +79,31 @@ export function initViewerPage() {
     if (joinButton instanceof HTMLButtonElement) {
         joinButton.addEventListener('click', async () => {
             await joinRoom();
+        });
+    }
+
+    if (joinPromptButton instanceof HTMLButtonElement) {
+        joinPromptButton.addEventListener('click', async () => {
+            await joinRoom();
+        });
+    }
+
+    if (joinPromptDevicesButton instanceof HTMLButtonElement) {
+        joinPromptDevicesButton.addEventListener('click', async () => {
+            if (joinPromptDevicesPanel instanceof HTMLElement) {
+                const isExpanded = !joinPromptDevicesPanel.classList.contains('hidden');
+
+                joinPromptDevicesPanel.classList.toggle('hidden', isExpanded);
+                joinPromptDevicesButton.setAttribute('aria-expanded', isExpanded ? 'false' : 'true');
+            }
+
+            await previewController.open();
+        });
+    }
+
+    if (joinPromptModal instanceof HTMLDialogElement) {
+        joinPromptModal.addEventListener('cancel', (event) => {
+            event.preventDefault();
         });
     }
 
@@ -154,6 +188,20 @@ export function initViewerPage() {
             joinButton.textContent = state.joined ? 'Collegato' : 'Entra nella diretta';
         }
 
+        if (payload.status !== 'live') {
+            state.joinPromptShownForLive = false;
+            closeJoinPrompt();
+        }
+
+        if (state.joined) {
+            closeJoinPrompt();
+        }
+
+        if (shouldShowLiveJoinPrompt(payload.status, state.joined, state.joinPromptShownForLive)) {
+            state.joinPromptShownForLive = true;
+            openJoinPrompt();
+        }
+
         updateTeacherFullscreenButtonState();
         updateHandRaiseState();
         updateChatComposerState();
@@ -186,20 +234,33 @@ export function initViewerPage() {
 
         joinButton.disabled = true;
         joinButton.textContent = 'Connessione...';
+        setJoinPromptButtonLoading(true);
 
         try {
             const joinResponse = await window.axios.post(config.routes.join);
             const joinPayload = joinResponse.data;
+            const localTracks = previewController.getLocalTracks();
+
+            if (config.role === 'user') {
+                localTracks
+                    .filter((track) => track.kind === 'audio')
+                    .forEach((track) => {
+                        track.disable();
+                    });
+            }
 
             try {
                 state.room = await TwilioVideo.connect(joinPayload.twilio_token, {
                     name: joinPayload.twilio_room_name,
-                    audio: config.role === 'tutor' ? false : true,
-                    video: config.role === 'tutor'
+                    audio: localTracks.length > 0 ? false : config.role !== 'tutor',
+                    video: localTracks.length > 0
                         ? false
-                        : {
-                            name: LIVE_STREAM_CAMERA_TRACK_NAME,
-                        },
+                        : config.role !== 'tutor'
+                            ? {
+                                name: LIVE_STREAM_CAMERA_TRACK_NAME,
+                            }
+                            : false,
+                    tracks: localTracks,
                     dominantSpeaker: true,
                 });
             } catch (error) {
@@ -227,6 +288,7 @@ export function initViewerPage() {
 
             subscribeToRoom();
             state.joined = true;
+            closeJoinPrompt();
 
             state.presenceHandle = window.setInterval(() => {
                 void sendPresence();
@@ -237,8 +299,45 @@ export function initViewerPage() {
         } catch (error) {
             joinButton.disabled = false;
             joinButton.textContent = 'Entra nella diretta';
+            setJoinPromptButtonLoading(false);
             console.error(error);
         }
+    }
+
+    function openJoinPrompt() {
+        if (joinPromptModal instanceof HTMLDialogElement) {
+            if (!joinPromptModal.open) {
+                joinPromptModal.showModal();
+            }
+
+            return;
+        }
+
+        joinPromptModal?.classList.remove('hidden');
+    }
+
+    function closeJoinPrompt() {
+        if (joinPromptModal instanceof HTMLDialogElement) {
+            if (joinPromptModal.open) {
+                joinPromptModal.close();
+            }
+
+            setJoinPromptButtonLoading(false);
+
+            return;
+        }
+
+        joinPromptModal?.classList.add('hidden');
+        setJoinPromptButtonLoading(false);
+    }
+
+    function setJoinPromptButtonLoading(isLoading) {
+        if (!(joinPromptButton instanceof HTMLButtonElement)) {
+            return;
+        }
+
+        joinPromptButton.disabled = isLoading || state.joined;
+        joinPromptButton.textContent = isLoading ? 'Connessione...' : 'Entra nella diretta';
     }
 
     async function sendChatMessage() {

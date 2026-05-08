@@ -10,6 +10,7 @@ import {
     isScreenSharePublication,
     isParticipantIdentityHighlighted,
     resolveParticipantSpeakingState,
+    shouldShowLiveJoinPrompt,
 } from '../../resources/js/live-stream/participant-utils.mjs';
 
 test('finds a remote participant by identity when the room map is keyed by participant sid', () => {
@@ -184,4 +185,11 @@ test('speaking state releases after the hold window when audio drops below the r
         isSpeaking: false,
         lastHeardAt: 1_000,
     });
+});
+
+test('live join prompt only opens for an unjoined live session that has not been prompted yet', () => {
+    assert.equal(shouldShowLiveJoinPrompt('live', false, false), true);
+    assert.equal(shouldShowLiveJoinPrompt('live', true, false), false);
+    assert.equal(shouldShowLiveJoinPrompt('live', false, true), false);
+    assert.equal(shouldShowLiveJoinPrompt('scheduled', false, false), false);
 });

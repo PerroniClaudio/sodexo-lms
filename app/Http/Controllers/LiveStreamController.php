@@ -333,6 +333,17 @@ class LiveStreamController extends Controller
         ]);
     }
 
+    public function userBackgrounds(Request $request, Module $module): JsonResponse
+    {
+        $this->abortUnlessLiveModule($module);
+        $this->ensureUserEnrollment($request, $module);
+
+        return response()->json([
+            'data' => $this->serializeLiveStreamBackgroundOptions(),
+            'directory' => self::LIVE_STREAM_BACKGROUND_DIRECTORY,
+        ]);
+    }
+
     public function userState(Request $request, Module $module, MuxLiveService $muxLiveService): JsonResponse
     {
         $this->ensureUserEnrollment($request, $module);
@@ -1282,9 +1293,11 @@ class LiveStreamController extends Controller
                 'state' => $isAdminRole
                     ? route('admin.regia.state', $module)
                     : route($standardPrefix.'.live-stream.state', $module),
-                'backgrounds' => $isTeacherRole && ! $isRegiaMode
-                    ? route('teacher.live-stream.backgrounds', $module)
-                    : null,
+                'backgrounds' => match (true) {
+                    $isTeacherRole && ! $isRegiaMode => route('teacher.live-stream.backgrounds', $module),
+                    $isUserRole && ! $isRegiaMode => route('user.live-stream.backgrounds', $module),
+                    default => null,
+                },
                 'presence' => $isAdminRole
                     ? route('admin.regia.presence', $module)
                     : route($standardPrefix.'.live-stream.presence', $module),

@@ -4,6 +4,7 @@ use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\CourseTeacherEnrollment;
 use App\Models\CourseTutorEnrollment;
+use App\Models\JobUnit;
 use App\Models\LiveStreamAttendanceMinute;
 use App\Models\LiveStreamDocument;
 use App\Models\LiveStreamHandRaise;
@@ -301,6 +302,24 @@ test('enrolled user can join while tutor joins as hidden observer', function () 
     expect($tutorParticipant)->not->toBeNull();
     expect($tutorParticipant->is_hidden)->toBeTrue();
     expect($tutorParticipant->video_enabled)->toBeFalse();
+});
+
+test('enrolled user can read live stream background options', function () {
+    JobUnit::query()->create(['name' => 'Sede test']);
+
+    $user = actingAsRole('user');
+    $module = createLiveModuleWithCourse();
+
+    enrollUserForModule($user, $module);
+
+    $this
+        ->actingAs($user)
+        ->getJson(route('user.live-stream.backgrounds', $module))
+        ->assertSuccessful()
+        ->assertJsonStructure([
+            'data',
+            'directory',
+        ]);
 });
 
 test('tutor join requires an enrollment in the course', function () {

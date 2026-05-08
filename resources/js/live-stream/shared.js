@@ -472,6 +472,8 @@ export function createPreviewController(root, options = {}) {
     const backgroundImageOptionsContainer = root.querySelector('[data-live-stream-background-image-options]');
     const backgroundImageOptionsEmpty = root.querySelector('[data-live-stream-background-image-options-empty]');
     const backgroundUploadInput = root.querySelector('[data-live-stream-background-upload-input]');
+    const cameraDeviceList = root.querySelector('[data-live-stream-camera-device-list]');
+    const microphoneDeviceList = root.querySelector('[data-live-stream-microphone-device-list]');
 
     let mediaStream = null;
     let audioContext = null;
@@ -491,6 +493,10 @@ export function createPreviewController(root, options = {}) {
     let backgroundOptions = [];
     let backgroundOptionsPromise = null;
     let temporaryBackgroundOption = null;
+    let cameraDevices = [];
+    let microphoneDevices = [];
+    let selectedCameraDeviceId = 'default';
+    let selectedMicrophoneDeviceId = 'default';
 
     async function loadVideoProcessorsModule() {
         if (!videoProcessorsModulePromise) {
@@ -607,6 +613,120 @@ export function createPreviewController(root, options = {}) {
             button.classList.toggle('btn-outline', !isSelected);
             button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
         });
+    }
+
+    function formatMediaInputDeviceLabel(device, index, fallback) {
+        const label = device?.label?.trim();
+
+        if (label) {
+            return label;
+        }
+
+        return `${fallback} ${index + 1}`;
+    }
+
+    async function refreshInputDevices() {
+        if (!navigator.mediaDevices || typeof navigator.mediaDevices.enumerateDevices !== 'function') {
+            cameraDevices = [];
+            microphoneDevices = [];
+            renderInputDevices();
+            return;
+        }
+
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            cameraDevices = devices.filter((device) => device.kind === 'videoinput');
+            microphoneDevices = devices.filter((device) => device.kind === 'audioinput');
+
+            if (!cameraDevices.some((device) => device.deviceId === selectedCameraDeviceId)) {
+                selectedCameraDeviceId = cameraDevices[0]?.deviceId ?? 'default';
+            }
+
+            if (!microphoneDevices.some((device) => device.deviceId === selectedMicrophoneDeviceId)) {
+                selectedMicrophoneDeviceId = microphoneDevices[0]?.deviceId ?? 'default';
+            }
+
+            renderInputDevices();
+        } catch (error) {
+            cameraDevices = [];
+            microphoneDevices = [];
+            renderInputDevices();
+            console.error(error);
+        }
+    }
+
+    function renderInputDeviceButtons(container, devices, selectedDeviceId, fallbackLabel, onSelect) {
+        if (!(container instanceof HTMLElement)) {
+            return;
+        }
+
+        container.replaceChildren();
+
+        if (devices.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'text-sm text-base-content/60';
+            empty.textContent = `Nessun dispositivo ${fallbackLabel.toLowerCase()} disponibile.`;
+            container.appendChild(empty);
+            return;
+        }
+
+        devices.forEach((device, index) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = [
+                'btn btn-sm min-h-0 h-auto justify-start whitespace-normal py-2 text-left',
+                device.deviceId === selectedDeviceId ? 'btn-primary' : 'btn-outline',
+            ].join(' ');
+            button.textContent = formatMediaInputDeviceLabel(device, index, fallbackLabel);
+            button.addEventListener('click', async () => {
+                await onSelect(device.deviceId);
+            });
+
+            container.appendChild(button);
+        });
+    }
+
+    function renderInputDevices() {
+        renderInputDeviceButtons(
+            cameraDeviceList,
+            cameraDevices,
+            selectedCameraDeviceId,
+            'Telecamera',
+            selectCameraDevice,
+        );
+        renderInputDeviceButtons(
+            microphoneDeviceList,
+            microphoneDevices,
+            selectedMicrophoneDeviceId,
+            'Microfono',
+            selectMicrophoneDevice,
+        );
+    }
+
+    async function selectCameraDevice(deviceId) {
+        if (selectedCameraDeviceId === deviceId) {
+            return;
+        }
+
+        selectedCameraDeviceId = deviceId;
+        renderInputDevices();
+
+        if (mediaStream) {
+            await restartPreview();
+        }
+    }
+
+    async function selectMicrophoneDevice(deviceId) {
+        if (selectedMicrophoneDeviceId === deviceId) {
+            return;
+        }
+
+        selectedMicrophoneDeviceId = deviceId;
+        renderInputDevices();
+
+        if (mediaStream) {
+            await restartPreview();
+        }
     }
 
     function renderBackgroundImageOptions() {
@@ -817,6 +937,18 @@ export function createPreviewController(root, options = {}) {
         updateBackgroundOptionButtons();
     }
 
+    async function restartPreview() {
+        const backgroundMode = currentBackgroundMode;
+        const backgroundImageId = currentBackgroundImageId;
+
+        resetPreview();
+        await openPreview();
+
+        if (backgroundMode !== 'none') {
+            await applyBackgroundMode(backgroundMode, backgroundImageId);
+        }
+    }
+
     function startMicrophoneMeter(stream) {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 
@@ -859,6 +991,31 @@ export function createPreviewController(root, options = {}) {
 
     function getLocalTracks() {
         return [localAudioTrack, localVideoTrack].filter(Boolean);
+    }
+
+    function getSelectedDeviceConstraint(deviceId) {
+        if (!deviceId || deviceId === 'default') {
+            return true;
+        }
+
+        return {
+            deviceId: {
+                exact: deviceId,
+            },
+        };
+    }
+
+    function getVideoConstraints() {
+        const deviceConstraint = getSelectedDeviceConstraint(selectedCameraDeviceId);
+
+        if (deviceConstraint === true) {
+            return LIVE_STREAM_VIDEO_CONSTRAINTS;
+        }
+
+        return {
+            ...LIVE_STREAM_VIDEO_CONSTRAINTS,
+            ...deviceConstraint,
+        };
     }
 
     function createLocalTracks(stream) {
@@ -1129,15 +1286,18 @@ export function createPreviewController(root, options = {}) {
 
             try {
                 mediaStream = await navigator.mediaDevices.getUserMedia({
-                    audio: true,
-                    video: LIVE_STREAM_VIDEO_CONSTRAINTS,
+                    audio: getSelectedDeviceConstraint(selectedMicrophoneDeviceId),
+                    video: getVideoConstraints(),
                 });
             } catch (error) {
                 if (!(error instanceof DOMException) || !['NotFoundError', 'OverconstrainedError'].includes(error.name)) {
                     throw error;
                 }
 
-                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    audio: getSelectedDeviceConstraint(selectedMicrophoneDeviceId),
+                    video: false,
+                });
             }
 
             createLocalTracks(mediaStream);
@@ -1156,6 +1316,7 @@ export function createPreviewController(root, options = {}) {
             );
 
             startMicrophoneMeter(mediaStream);
+            await refreshInputDevices();
             notifyAudioStateChange();
             updateRequestButton();
             updatePreviewContentVisibility();
@@ -1178,6 +1339,7 @@ export function createPreviewController(root, options = {}) {
             updateRequestButton();
             updatePreviewContentVisibility();
             updateBackgroundButtonVisibility();
+            await refreshInputDevices();
         }
     }
 
@@ -1253,6 +1415,13 @@ export function createPreviewController(root, options = {}) {
     updateBackgroundButtonVisibility();
     updateBackgroundButtonLabel();
     updateBackgroundOptionButtons();
+    renderInputDevices();
+
+    if (navigator.mediaDevices?.addEventListener) {
+        navigator.mediaDevices.addEventListener('devicechange', () => {
+            void refreshInputDevices();
+        });
+    }
 
     return {
         async open() {

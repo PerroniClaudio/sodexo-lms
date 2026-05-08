@@ -148,24 +148,24 @@
                                                 type="button"
                                                 class="btn btn-ghost btn-sm btn-square"
                                                 aria-label="{{ __('Impostazioni') }}"
-                                                data-live-stream-preview-toggle
+                                                data-live-stream-sidebar-preview-toggle
                                             >
                                                 <x-lucide-settings class="h-4 w-4" />
                                             </button>
                                         </div>
 
-                                        <div class="hidden space-y-3" data-live-stream-preview-panel>
+                                        <div class="hidden space-y-3" data-live-stream-sidebar-preview-panel>
                                             <div class="overflow-hidden rounded-box border border-base-300 bg-neutral">
                                                 <video
                                                     class="aspect-video w-full bg-neutral object-cover"
                                                     autoplay
                                                     muted
                                                     playsinline
-                                                    data-live-stream-preview
+                                                    data-live-stream-sidebar-preview
                                                 ></video>
                                                 <div
                                                     class="hidden aspect-video w-full items-center justify-center bg-neutral px-6 text-center text-sm text-neutral-content/70"
-                                                    data-live-stream-preview-empty
+                                                    data-live-stream-sidebar-preview-empty
                                                 >
                                                     {{ __('Anteprima video non disponibile') }}
                                                 </div>
@@ -174,12 +174,12 @@
                                             <div class="rounded-box border border-base-300 bg-base-200 p-4">
                                                 <div class="flex items-center justify-between gap-3">
                                                     <p class="text-sm font-medium">{{ __('Microfono') }}</p>
-                                                    <span class="text-xs text-base-content/60" data-live-stream-mic-label></span>
+                                                    <span class="text-xs text-base-content/60" data-live-stream-sidebar-mic-label></span>
                                                 </div>
-                                                <progress class="progress progress-primary mt-3 w-full" value="0" max="100" data-live-stream-mic-meter></progress>
+                                                <progress class="progress progress-primary mt-3 w-full" value="0" max="100" data-live-stream-sidebar-mic-meter></progress>
                                             </div>
 
-                                            <p class="text-sm text-base-content/60" data-live-stream-device-status>
+                                            <p class="text-sm text-base-content/60" data-live-stream-sidebar-device-status>
                                                 {{ __('Consenti l\'accesso a videocamera e microfono per visualizzare l\'anteprima. Puoi continuare anche senza videocamera.') }}
                                             </p>
                                         </div>
@@ -250,6 +250,141 @@
         </div>
 
         <div class="hidden" data-live-stream-audio-stage></div>
+
+        <dialog class="modal" data-live-stream-join-prompt-modal>
+            <div class="modal-box w-11/12 max-w-4xl rounded-[1.75rem] border border-base-300 bg-base-100 p-6 shadow-2xl">
+                <div class="space-y-2">
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/45">{{ __('Live in corso') }}</p>
+                    <h2 class="text-2xl font-semibold text-base-content">{{ __('La diretta è iniziata') }}</h2>
+                    <p class="text-sm leading-6 text-base-content/70">
+                        {{ __('Entra nella diretta per seguire il docente e partecipare alla chat') }}
+                    </p>
+                </div>
+
+                <div class="modal-action mt-6">
+                    <button
+                        type="button"
+                        class="btn btn-outline"
+                        data-live-stream-join-prompt-devices
+                        aria-expanded="false"
+                    >
+                        {{ __('Configura i tuoi dispositivi') }}
+                    </button>
+                    <button type="button" class="btn btn-primary" data-live-stream-join-prompt-button>
+                        {{ __('Entra nella diretta') }}
+                    </button>
+                </div>
+
+                <div class="mt-6 hidden space-y-5 border-t border-base-300 pt-6" data-live-stream-join-prompt-devices-panel data-live-stream-preview-panel>
+                    <div class="hidden space-y-5" data-live-stream-preview-content>
+                        <div class="grid gap-5 lg:grid-cols-2">
+                            <div class="space-y-3">
+                                <div class="overflow-hidden rounded-box border border-base-300 bg-neutral">
+                                    <video
+                                        class="aspect-video w-full bg-neutral object-cover"
+                                        autoplay
+                                        muted
+                                        playsinline
+                                        data-live-stream-preview
+                                    ></video>
+                                    <div
+                                        class="hidden aspect-video w-full items-center justify-center bg-neutral px-6 text-center text-sm text-neutral-content/70"
+                                        data-live-stream-preview-empty
+                                    >
+                                        {{ __('Anteprima video non disponibile') }}
+                                    </div>
+                                </div>
+
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <p class="text-sm font-semibold">{{ __('Telecamera') }}</p>
+                                        <button
+                                            type="button"
+                                            class="btn btn-outline btn-sm hidden"
+                                            data-live-stream-background-button
+                                            aria-label="{{ __('Cambia sfondo') }}"
+                                            title="{{ __('Cambia sfondo') }}"
+                                        >
+                                            <x-lucide-image class="h-4 w-4" />
+                                            <span data-live-stream-background-button-label>{{ __('Sfondo') }}</span>
+                                        </button>
+                                    </div>
+                                    <div class="grid gap-2" data-live-stream-camera-device-list></div>
+                                </div>
+                            </div>
+
+                            <div class="space-y-3">
+                                <div class="rounded-box border border-base-300 bg-base-200 p-4">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <p class="text-sm font-semibold">{{ __('Microfono') }}</p>
+                                        <span class="text-xs text-base-content/60" data-live-stream-mic-label></span>
+                                    </div>
+                                    <progress class="progress progress-primary mt-3 w-full" value="0" max="100" data-live-stream-mic-meter></progress>
+                                </div>
+
+                                <div class="space-y-2">
+                                    <p class="text-sm font-semibold">{{ __('Dispositivo microfono') }}</p>
+                                    <div class="grid gap-2" data-live-stream-microphone-device-list></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning hidden text-sm" data-live-stream-background-warning></div>
+                    </div>
+
+                    <p class="text-sm text-base-content/60" data-live-stream-device-status>
+                        {{ __('Consenti l\'accesso a videocamera e microfono per visualizzare l\'anteprima. Puoi continuare anche senza videocamera.') }}
+                    </p>
+                </div>
+            </div>
+            <div class="modal-backdrop bg-black/55"></div>
+        </dialog>
+
+        <dialog class="modal" data-live-stream-background-modal>
+            <div class="modal-box w-11/12 max-w-5xl">
+                <h3 class="text-lg font-semibold">{{ __('Sfondo videocamera') }}</h3>
+                <p class="mt-2 text-sm text-base-content/60">
+                    {{ __('Scegli come mostrare il video locale prima di entrare nella diretta.') }}
+                </p>
+
+                <div class="mt-6 grid gap-3 md:grid-cols-2">
+                    <button type="button" class="btn btn-outline justify-start gap-3" data-live-stream-background-option="none">
+                        <span>{{ __('Nessuno sfondo') }}</span>
+                    </button>
+                    <button type="button" class="btn btn-outline justify-start gap-3" data-live-stream-background-option="blur">
+                        <span>{{ __('Sfocatura') }}</span>
+                    </button>
+                </div>
+
+                <div class="mt-6 space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <h4 class="text-sm font-semibold">{{ __('Immagini disponibili') }}</h4>
+                        <label class="btn btn-outline btn-sm">
+                            <input type="file" accept="image/*" class="hidden" data-live-stream-background-upload-input>
+                            <span>{{ __('Carica immagine temporanea') }}</span>
+                        </label>
+                    </div>
+                    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3" data-live-stream-background-image-options></div>
+                    <p class="text-sm text-base-content/60" data-live-stream-background-image-options-empty>
+                        {{ __('Nessuna immagine trovata nella cartella designata.') }}
+                    </p>
+                </div>
+
+                <div class="modal-action mt-6">
+                    <form method="dialog">
+                        <button type="submit" class="btn btn-primary">
+                            {{ __('Conferma') }}
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <form method="dialog" class="modal-backdrop">
+                <button type="submit" aria-label="{{ __('Chiudi') }}">
+                    <span class="sr-only">{{ __('Chiudi') }}</span>
+                </button>
+            </form>
+        </dialog>
 
         <template data-live-stream-chat-template>
             <article class="chat chat-start">
