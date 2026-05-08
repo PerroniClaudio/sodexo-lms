@@ -5,6 +5,7 @@ import {
     findRemoteParticipantByIdentity,
     getRemoteVideoTrackByIdentity,
     getRemoteVideoTrackPublicationByIdentity,
+    getRemoteVideoTrackSignature,
     getTeacherStageVideoPublication,
     isScreenSharePublication,
     isParticipantIdentityHighlighted,
@@ -108,6 +109,19 @@ test('teacher stage publication prefers screen share over camera when both are p
     assert.equal(getTeacherStageVideoPublication(room, 'sodexo:teacher:4'), screenPublication);
     assert.equal(isScreenSharePublication(screenPublication), true);
     assert.equal(isScreenSharePublication(cameraPublication), false);
+});
+
+test('remote video track signature remains stable for the same participant track', () => {
+    const publication = {
+        trackName: 'camera',
+        track: { sid: 'MT-camera', kind: 'video', name: 'camera' },
+    };
+
+    assert.equal(
+        getRemoteVideoTrackSignature('sodexo:teacher:4', publication),
+        'sodexo:teacher:4:MT-camera',
+    );
+    assert.equal(getRemoteVideoTrackSignature('sodexo:teacher:4', { track: null }), null);
 });
 
 test('prefers dominant speaker identity when deciding which participant to highlight', () => {

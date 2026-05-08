@@ -388,6 +388,7 @@ test('teacher live stream route renders the updated preview controls', function 
     $response->assertSee('data-live-stream-polls-list', false);
     $response->assertSeeText('Schermo');
     $response->assertSeeText('Condividi schermo');
+    $response->assertSee('data-live-stream-screen-share-card', false);
     $response->assertSee('data-live-stream-screen-share-toggle', false);
     $response->assertSee('data-live-stream-screen-share-status', false);
 });

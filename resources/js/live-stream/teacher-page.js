@@ -60,6 +60,7 @@ export function initTeacherPage() {
         remoteAudioContext: null,
         presenceHandle: null,
         screenShareTrack: null,
+        screenShareAudioTrack: null,
         selectedAudioOutputId: 'default',
         audioOutputDevices: [],
     };
@@ -1463,14 +1464,17 @@ export function initTeacherPage() {
 
         let displayTrack = null;
         let localScreenTrack = null;
+        let displayAudioTrack = null;
+        let localScreenAudioTrack = null;
 
         try {
             const displayStream = await navigator.mediaDevices.getDisplayMedia({
                 video: true,
-                audio: false,
+                audio: true,
             });
 
             displayTrack = displayStream.getVideoTracks()[0] ?? null;
+            displayAudioTrack = displayStream.getAudioTracks()[0] ?? null;
 
             if (!displayTrack) {
                 throw new Error('Screen share track not available');
@@ -1481,13 +1485,29 @@ export function initTeacherPage() {
             });
 
             displayTrack.addEventListener('ended', handleScreenShareEnded, { once: true });
+            displayAudioTrack?.addEventListener('ended', handleScreenShareEnded, { once: true });
+
+            if (displayAudioTrack) {
+                localScreenAudioTrack = new TwilioVideo.LocalAudioTrack(displayAudioTrack, {
+                    name: `${LIVE_STREAM_SCREEN_TRACK_NAME}-audio`,
+                });
+            }
 
             state.screenShareTrack = localScreenTrack;
             await state.room.localParticipant.publishTrack(localScreenTrack, {
                 priority: 'high',
             });
 
-            setScreenShareStatus('Schermo condiviso nella diretta.');
+            if (localScreenAudioTrack) {
+                state.screenShareAudioTrack = localScreenAudioTrack;
+                await state.room.localParticipant.publishTrack(localScreenAudioTrack);
+            }
+
+            setScreenShareStatus(
+                localScreenAudioTrack
+                    ? 'Schermo e audio condivisi nella diretta.'
+                    : 'Schermo condiviso. Audio non disponibile o non selezionato nel browser.',
+            );
             syncScreenShareButton();
             await sendPresence();
         } catch (error) {
@@ -1495,11 +1515,32 @@ export function initTeacherPage() {
                 displayTrack.removeEventListener('ended', handleScreenShareEnded);
             }
 
+            if (displayAudioTrack) {
+                displayAudioTrack.removeEventListener('ended', handleScreenShareEnded);
+            }
+
+            if (state.room && localScreenTrack) {
+                state.room.localParticipant.unpublishTrack(localScreenTrack);
+            }
+
+            if (state.room && localScreenAudioTrack) {
+                state.room.localParticipant.unpublishTrack(localScreenAudioTrack);
+            }
+
             if (localScreenTrack) {
                 localScreenTrack.stop();
             } else if (displayTrack) {
                 displayTrack.stop();
             }
+
+            if (localScreenAudioTrack) {
+                localScreenAudioTrack.stop();
+            } else if (displayAudioTrack) {
+                displayAudioTrack.stop();
+            }
+
+            state.screenShareTrack = null;
+            state.screenShareAudioTrack = null;
 
             if (error instanceof DOMException && error.name === 'NotAllowedError') {
                 setScreenShareStatus('Condivisione schermo annullata o non autorizzata.');
@@ -1520,8 +1561,9 @@ export function initTeacherPage() {
 
     function stopScreenShare(options = {}) {
         const screenShareTrack = state.screenShareTrack;
+        const screenShareAudioTrack = state.screenShareAudioTrack;
 
-        if (!screenShareTrack) {
+        if (!screenShareTrack && !screenShareAudioTrack) {
             if (options.endedByBrowser) {
                 setScreenShareStatus('La condivisione schermo è terminata.');
                 syncScreenShareButton();
@@ -1530,20 +1572,34 @@ export function initTeacherPage() {
             return;
         }
 
-        const mediaStreamTrack = screenShareTrack.mediaStreamTrack ?? null;
+        const mediaStreamTrack = screenShareTrack?.mediaStreamTrack ?? null;
+        const audioMediaStreamTrack = screenShareAudioTrack?.mediaStreamTrack ?? null;
 
         if (mediaStreamTrack) {
             mediaStreamTrack.removeEventListener('ended', handleScreenShareEnded);
         }
 
-        if (state.room) {
-            state.room.localParticipant.unpublishTrack(screenShareTrack);
+        if (audioMediaStreamTrack) {
+            audioMediaStreamTrack.removeEventListener('ended', handleScreenShareEnded);
         }
 
-        screenShareTrack.detach().forEach((element) => element.remove());
-        screenShareTrack.stop();
+        if (state.room) {
+            if (screenShareTrack) {
+                state.room.localParticipant.unpublishTrack(screenShareTrack);
+            }
+
+            if (screenShareAudioTrack) {
+                state.room.localParticipant.unpublishTrack(screenShareAudioTrack);
+            }
+        }
+
+        screenShareTrack?.detach().forEach((element) => element.remove());
+        screenShareTrack?.stop();
+        screenShareAudioTrack?.detach().forEach((element) => element.remove());
+        screenShareAudioTrack?.stop();
 
         state.screenShareTrack = null;
+        state.screenShareAudioTrack = null;
 
         setScreenShareStatus(
             options.endedByBrowser
@@ -1589,7 +1645,12 @@ export function initTeacherPage() {
         screenShareButton.disabled = !canShareScreen;
         screenShareButton.classList.toggle('btn-outline', !isSharingScreen);
         screenShareButton.classList.toggle('btn-warning', isSharingScreen);
-        screenShareButton.innerHTML = `${getLiveStreamIconButtonContent('screen-share', buttonLabel)}<span>${buttonLabel}</span>`;
+        screenShareButton.setAttribute('aria-label', buttonLabel);
+        screenShareButton.setAttribute('title', buttonLabel);
+        screenShareButton.innerHTML = getLiveStreamIconButtonContent(
+            isSharingScreen ? 'screen-share-off' : 'screen-share',
+            buttonLabel,
+        );
     }
 
     function setScreenShareStatus(message) {

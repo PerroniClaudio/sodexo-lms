@@ -57,6 +57,19 @@ export function getTrackPublicationName(publication) {
     return publication?.trackName ?? publication?.track?.name ?? null;
 }
 
+export function getRemoteVideoTrackSignature(identity, publication) {
+    const track = publication?.track ?? null;
+
+    if (!identity || !track) {
+        return null;
+    }
+
+    return [
+        identity,
+        track.sid ?? track.id ?? getTrackPublicationName(publication) ?? 'video',
+    ].join(':');
+}
+
 export function getRemoteVideoTrackPublicationByIdentity(room, identity, preferredTrackNames = []) {
     const participant = findRemoteParticipantByIdentity(room, identity);
 

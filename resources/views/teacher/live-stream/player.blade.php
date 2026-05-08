@@ -194,12 +194,15 @@
                                                             </button>
                                                             <button
                                                                 type="button"
-                                                                class="btn btn-outline btn-sm hidden w-full gap-2"
+                                                                class="btn btn-outline btn-sm hidden w-full"
+                                                                data-live-stream-screen-share-card
                                                                 data-live-stream-screen-share-toggle
+                                                                aria-label="{{ __('Condividi schermo') }}"
+                                                                title="{{ __('Condividi schermo') }}"
                                                                 disabled
                                                             >
                                                                 <x-lucide-monitor-up class="h-4 w-4" />
-                                                                <span>{{ __('Condividi schermo') }}</span>
+                                                                <span class="sr-only">{{ __('Condividi schermo') }}</span>
                                                             </button>
                                                         </div>
                                                         <p class="mt-3 hidden text-xs text-base-content/60" data-live-stream-screen-share-status></p>

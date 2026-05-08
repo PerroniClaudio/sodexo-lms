@@ -2,6 +2,7 @@ import * as TwilioVideo from 'twilio-video';
 import {
     getTeacherStageVideoPublication,
     getRemoteVideoTrackByIdentity,
+    getRemoteVideoTrackSignature,
     isScreenSharePublication,
 } from './participant-utils.mjs';
 import {
@@ -592,9 +593,9 @@ export function initViewerPage() {
             return;
         }
 
-        mainStage.replaceChildren();
-
         if (!teacher) {
+            mainStage.replaceChildren();
+            delete mainStage.dataset.liveStreamTrackSignature;
             mainStage.appendChild(
                 createPlaceholderCard('Docente non connesso', '', {
                     centered: true,
@@ -609,8 +610,11 @@ export function initViewerPage() {
         const publication = getTeacherStageVideoPublication(state.room, teacher.twilio_identity);
         const track = publication?.track ?? null;
         const isScreenShareActive = isScreenSharePublication(publication);
+        const trackSignature = getRemoteVideoTrackSignature(teacher.twilio_identity, publication);
 
         if (!track) {
+            mainStage.replaceChildren();
+            delete mainStage.dataset.liveStreamTrackSignature;
             mainStage.appendChild(
                 createPlaceholderCard(teacher.name, 'Docente', {
                     centered: true,
@@ -621,6 +625,13 @@ export function initViewerPage() {
             );
             return;
         }
+
+        if (mainStage.dataset.liveStreamTrackSignature === trackSignature) {
+            return;
+        }
+
+        mainStage.replaceChildren();
+        mainStage.dataset.liveStreamTrackSignature = trackSignature;
 
         const wrapper = document.createElement('div');
         wrapper.className = 'relative h-full w-full overflow-hidden rounded-[1.75rem] bg-black';

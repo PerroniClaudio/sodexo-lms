@@ -1,5 +1,5 @@
 import * as TwilioVideo from 'twilio-video';
-import { Expand, Hand, Image as ImageIcon, Mic, MicOff, Pin, ScreenShare, Shrink, Trash2 } from 'lucide';
+import { Expand, Hand, Image as ImageIcon, Mic, MicOff, Pin, ScreenShare, ScreenShareOff, Shrink, Trash2 } from 'lucide';
 
 const LIVE_STREAM_VIDEO_CONSTRAINTS = Object.freeze({
     width: 640,
@@ -23,6 +23,7 @@ const LIVE_STREAM_ICON_NODES = {
     pin: Pin,
     expand: Expand,
     'screen-share': ScreenShare,
+    'screen-share-off': ScreenShareOff,
     shrink: Shrink,
     trash: Trash2,
 };
