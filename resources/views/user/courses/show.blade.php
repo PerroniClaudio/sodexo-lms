@@ -1,4 +1,4 @@
-<x-layouts.app>
+<x-layouts.user>
     <div class="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
         <x-page-header :title="$course->title" />
         <div class="card border border-base-300 bg-base-100 shadow-sm">
@@ -48,4 +48,4 @@
             </div>
         </div>
     </div>
-</x-layouts.app>
+</x-layouts.user>

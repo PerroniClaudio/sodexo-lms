@@ -313,6 +313,11 @@
     "Assegna": "Assegna",
     "Rimuovi": "Rimuovi",
     "Eliminato": "Eliminato",
-    "Durata": "Durata"
+    "Durata": "Durata",
+    "locked": "Bloccato",
+    "available": "Disponibile",
+    "in_progress": "In corso",
+    "completed": "Completato",
+    "failed": "Fallito"
 }
 

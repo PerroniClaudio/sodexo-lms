@@ -23,92 +23,38 @@
         </x-page-header>
 
         <div id="module-player">
+            {{-- Carica il componente corretto in base al tipo di modulo --}}
+            @switch($module->type)
+                @case('video')
+                    @include('user.courses.modules.video')
+                    @break
 
-            {{-- Template: modulo video --}}
-            @if($module->type === 'video')
-                <script type="module" src="https://unpkg.com/@mux/mux-player@latest/dist/mux-player.js"></script>
-                <template id="tpl-video">
+                @case('learning_quiz')
+                    @include('user.courses.modules.learning-quiz')
+                    @break
+
+                @case('satisfaction_quiz')
+                    @include('user.courses.modules.satisfaction-quiz')
+                    @break
+
+                @case('live')
+                    @include('user.courses.modules.live')
+                    @break
+
+                @case('residential')
+                    @include('user.courses.modules.residential')
+                    @break
+
+                @default
                     <div class="card border border-base-300 bg-base-100 shadow-sm">
-                        <div class="card-body gap-4">
-                            <div id="video-loading" class="flex items-center justify-center py-12">
-                                <span class="loading loading-spinner loading-lg"></span>
-                            </div>
-                            <div id="video-player-wrapper" class="hidden">
-                                <div data-mux-player-container></div>
-                            </div>
-                            <div id="video-error" class="hidden text-error text-sm">
-                                {{ __('Impossibile caricare il video. Riprova più tardi.') }}
-                            </div>
-                            <div id="video-completed-msg" class="hidden">
-                                <div class="alert alert-success">
-                                    <x-lucide-check-circle class="h-5 w-5" />
-                                    <span>{{ __('Modulo completato!') }}</span>
-                                </div>
-                            </div>
+                        <div class="card-body">
+                            <p class="text-base-content/70">{{ __('Gestione :type da implementare', ['type' => $module->type]) }}</p>
                         </div>
                     </div>
-                </template>
-            @endif
-
-            {{-- Template: modulo quiz apprendimento --}}
-            @if($module->type === 'learning_quiz')
-                <template id="tpl-quiz">
-                    <div class="card border border-base-300 bg-base-100 shadow-sm">
-                        <div class="card-body gap-6">
-                            <div id="quiz-loading" class="flex items-center justify-center py-12">
-                                <span class="loading loading-spinner loading-lg"></span>
-                            </div>
-                            <div id="quiz-content" class="hidden">
-                                <form id="quiz-form" class="flex flex-col gap-6">
-                                    <div id="quiz-questions"></div>
-                                    <div class="flex justify-end">
-                                        <button type="submit" id="quiz-submit-btn" class="btn btn-primary">
-                                            {{ __('Invia risposte') }}
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                            <div id="quiz-result" class="hidden"></div>
-                        </div>
-                    </div>
-                </template>
-            @endif
-
-            {{-- Template: modulo quiz gradimento --}}
-            @if($module->type === 'satisfaction_quiz')
-                <template id="tpl-quiz">
-                    <div class="card border border-base-300 bg-base-100 shadow-sm">
-                        <div class="card-body gap-6">
-                            <div id="quiz-loading" class="flex items-center justify-center py-12">
-                                <span class="loading loading-spinner loading-lg"></span>
-                            </div>
-                            <div id="quiz-content" class="hidden">
-                                <form id="quiz-form" class="flex flex-col gap-6">
-                                    <div id="quiz-questions"></div>
-                                    <div class="flex justify-end">
-                                        <button type="submit" id="quiz-submit-btn" class="btn btn-primary">
-                                            {{ __('Invia risposte') }}
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                            <div id="quiz-result" class="hidden"></div>
-                        </div>
-                    </div>
-                </template>
-            @endif
-
-            {{-- Placeholder per tipi non ancora gestiti --}}
-            @if(!in_array($module->type, ['video', 'learning_quiz', 'satisfaction_quiz']))
-                <div class="card border border-base-300 bg-base-100 shadow-sm">
-                    <div class="card-body">
-                        <p class="text-base-content/70">{{ __('Gestione :type da implementare', ['type' => $module->type]) }}</p>
-                    </div>
-                </div>
-            @endif
-
+            @endswitch
         </div>
     </div>
 
-    @vite('resources/js/user-module-player.js')
+    {{-- Script di inizializzazione del modulo --}}
+    @vite('resources/js/modules/module-loader.js')
 </x-layouts.app>

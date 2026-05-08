@@ -313,5 +313,10 @@
     "Assegna": "Assign",
     "Rimuovi": "Remove",
     "Eliminato": "Deleted",
-    "Durata": "Duration"
+    "Durata": "Duration",
+    "locked": "Locked",
+    "available": "Available",
+    "in_progress": "In progress",
+    "completed": "Completed",
+    "failed": "Failed"
 }

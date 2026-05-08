@@ -24,6 +24,7 @@ class VideoModuleController extends Controller
         abort_unless($module->isVideo(), 404);
 
         $enrollment = $this->resolveEnrollment($course);
+        abort_unless($enrollment !== null, 403);
         $video = $module->video;
 
         abort_if($video === null || $video->mux_playback_id === null || $video->mux_video_status !== 'ready', 404);
@@ -31,6 +32,7 @@ class VideoModuleController extends Controller
         $token = $muxService->generateJwtToken($video->mux_playback_id, time() + 3600, 'v');
 
         $progress = $this->resolveProgress($enrollment, $module);
+        abort_unless($progress !== null, 404);
 
         return response()->json([
             'playback_id' => $video->mux_playback_id,
@@ -53,7 +55,9 @@ class VideoModuleController extends Controller
         ]);
 
         $enrollment = $this->resolveEnrollment($course);
+        abort_unless($enrollment !== null, 403);
         $progress = $this->resolveProgress($enrollment, $module);
+        abort_unless($progress !== null, 404);
 
         try {
             $progress->recordVideoProgress(
@@ -76,8 +80,10 @@ class VideoModuleController extends Controller
         abort_unless($module->isVideo(), 404);
 
         $enrollment = $this->resolveEnrollment($course);
+        abort_unless($enrollment !== null, 403);
         $progress = $this->resolveProgress($enrollment, $module);
-
+        abort_unless($progress !== null, 404);
+        
         try {
             $progress->markCompleted();
         } catch (DomainException $e) {
@@ -87,12 +93,12 @@ class VideoModuleController extends Controller
         return response()->json(['success' => true]);
     }
 
-    private function resolveEnrollment(Course $course): CourseEnrollment
+    private function resolveEnrollment(Course $course): ?CourseEnrollment
     {
         return CourseEnrollment::query()
             ->where('user_id', Auth::id())
             ->where('course_id', $course->getKey())
-            ->firstOrFail();
+            ->first();
     }
 
     private function resolveProgress(CourseEnrollment $enrollment, Module $module): ModuleProgress
@@ -100,6 +106,6 @@ class VideoModuleController extends Controller
         return ModuleProgress::query()
             ->where('course_user_id', $enrollment->getKey())
             ->where('module_id', $module->getKey())
-            ->firstOrFail();
+            ->first();
     }
 }

@@ -22,7 +22,8 @@ class QuizModuleController extends Controller
         abort_unless((string) $module->belongsTo === (string) $course->getKey(), 404);
         abort_unless($module->isQuiz(), 404);
 
-        $this->resolveEnrollment($course);
+        $enrollment = $this->resolveEnrollment($course);
+        abort_unless($enrollment !== null, 403);
 
         $questions = $module->quizQuestions()
             ->with('answers')
@@ -59,7 +60,9 @@ class QuizModuleController extends Controller
         ]);
 
         $enrollment = $this->resolveEnrollment($course);
+        abort_unless($enrollment !== null, 403);
         $progress = $this->resolveProgress($enrollment, $module);
+        abort_unless($progress !== null, 404);
 
         $questions = $module->quizQuestions()->with('answers')->get();
         $score = 0;
@@ -95,7 +98,7 @@ class QuizModuleController extends Controller
         return CourseEnrollment::query()
             ->where('user_id', Auth::id())
             ->where('course_id', $course->getKey())
-            ->firstOrFail();
+            ->first();
     }
 
     private function resolveProgress(CourseEnrollment $enrollment, Module $module): ModuleProgress
@@ -103,6 +106,6 @@ class QuizModuleController extends Controller
         return ModuleProgress::query()
             ->where('course_user_id', $enrollment->getKey())
             ->where('module_id', $module->getKey())
-            ->firstOrFail();
+            ->first();
     }
 }

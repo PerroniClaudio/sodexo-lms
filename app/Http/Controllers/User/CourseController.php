@@ -21,7 +21,8 @@ class CourseController extends Controller
     public function show(Course $course): View
     {
         $user = Auth::user();
-        $enrollment = $user->courseEnrollments()->where('course_id', $course->id)->firstOrFail();
+        $enrollment = $user->courseEnrollments()->where('course_id', $course->id)->first();
+        abort_unless($enrollment !== null, 403);
         $modules = $course->modules()->with(['progressRecords' => function ($q) use ($enrollment) {
             $q->where('course_user_id', $enrollment->id);
         }])->get();
@@ -42,7 +43,8 @@ class CourseController extends Controller
 
         abort_unless((string) $module->belongsTo === (string) $course->getKey(), 404);
 
-        $enrollment = $user->courseEnrollments()->where('course_id', $course->id)->firstOrFail();
+        $enrollment = $user->courseEnrollments()->where('course_id', $course->id)->first();
+        abort_unless($enrollment !== null, 403);
 
         abort_if($enrollment->current_module_id !== $module->getKey(), 403);
 
@@ -50,7 +52,8 @@ class CourseController extends Controller
 
         $progress = $enrollment->moduleProgresses()
             ->where('module_id', $module->getKey())
-            ->firstOrFail();
+            ->first();
+        abort_unless($progress !== null, 404);
 
         return view('user.courses.module', compact('course', 'module', 'enrollment', 'progress'));
     }
