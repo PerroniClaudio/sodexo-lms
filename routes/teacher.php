@@ -1,10 +1,15 @@
 <?php
 
 use App\Http\Controllers\LiveStreamController;
+use App\Http\Controllers\User\CourseController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:docente|superadmin'])->group(function () {
     Route::group(['prefix' => 'teacher', 'as' => 'teacher.'], function () {
+        // Corsi teacher
+        Route::get('courses', [CourseController::class, 'index'])->name('courses.index');
+        Route::get('courses/{course}', [CourseController::class, 'show'])->name('courses.show');
+
         Route::get('/live-stream/{module}/player', [LiveStreamController::class, 'teacherPlayer'])->name('live-stream.player');
         Route::post('/live-stream/{module}/session/start', [LiveStreamController::class, 'startSession'])->name('live-stream.session.start');
         Route::post('/live-stream/{module}/session/end', [LiveStreamController::class, 'endSession'])->name('live-stream.session.end');

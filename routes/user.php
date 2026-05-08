@@ -1,8 +1,12 @@
 <?php
 
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\LiveStreamController;
 use App\Http\Controllers\ScormPlayerController;
 use App\Http\Controllers\ScormRuntimeController;
+use App\Http\Controllers\User\CourseController;
+use App\Http\Controllers\User\QuizModuleController;
+use App\Http\Controllers\User\VideoModuleController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
@@ -32,13 +36,43 @@ Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
             Route::post('/courses/{course}/modules/{module}/scorm/{scormPackage}/runtime/get-last-error', [ScormRuntimeController::class, 'getLastError'])->name('courses.modules.scorm.runtime.get-last-error');
             Route::post('/courses/{course}/modules/{module}/scorm/{scormPackage}/runtime/get-error-string', [ScormRuntimeController::class, 'getErrorString'])->name('courses.modules.scorm.runtime.get-error-string');
             Route::post('/courses/{course}/modules/{module}/scorm/{scormPackage}/runtime/get-diagnostic', [ScormRuntimeController::class, 'getDiagnostic'])->name('courses.modules.scorm.runtime.get-diagnostic');
+
+            // Modulo corrente: player
+            Route::get('/courses/{course}/modules/{module}/player', [CourseController::class, 'showModule'])->name('courses.modules.player');
+
+            // Modulo video: signed playback URL
+            Route::get('/courses/{course}/modules/{module}/video/signed-playback', [VideoModuleController::class, 'signedPlayback'])->name('courses.modules.video.signed-playback');
+            // Modulo video: registra avanzamento
+            Route::post('/courses/{course}/modules/{module}/video/progress', [VideoModuleController::class, 'progress'])->name('courses.modules.video.progress');
+            // Modulo video: segna completato
+            Route::post('/courses/{course}/modules/{module}/video/complete', [VideoModuleController::class, 'complete'])->name('courses.modules.video.complete');
+
+            // Modulo quiz: stato
+            Route::get('/courses/{course}/modules/{module}/quiz/status', [QuizModuleController::class, 'getStatus'])->name('courses.modules.quiz.status');
+            // Modulo quiz: inizia tentativo
+            Route::post('/courses/{course}/modules/{module}/quiz/start', [QuizModuleController::class, 'startAttempt'])->name('courses.modules.quiz.start');
+            // Modulo quiz: prossima domanda
+            Route::get('/courses/{course}/modules/{module}/quiz/next-question', [QuizModuleController::class, 'getNextQuestion'])->name('courses.modules.quiz.next-question');
+            // Modulo quiz: invia risposta
+            Route::post('/courses/{course}/modules/{module}/quiz/answer', [QuizModuleController::class, 'submitAnswer'])->name('courses.modules.quiz.answer');
+            // Modulo quiz: completa tentativo
+            Route::post('/courses/{course}/modules/{module}/quiz/complete', [QuizModuleController::class, 'completeAttempt'])->name('courses.modules.quiz.complete');
+            // Modulo quiz: abbandona tentativo
+            Route::post('/courses/{course}/modules/{module}/quiz/abandon', [QuizModuleController::class, 'abandonAttempt'])->name('courses.modules.quiz.abandon');
+
+            // DEPRECATED: Manteniamo per retrocompatibilità quiz gradimento (se non usa il nuovo flow)
+            // Modulo quiz: domande (legacy)
+            Route::get('/courses/{course}/modules/{module}/quiz', [QuizModuleController::class, 'show'])->name('courses.modules.quiz.show');
+            // Modulo quiz: invio risposte (legacy)
+            Route::post('/courses/{course}/modules/{module}/quiz/submit', [QuizModuleController::class, 'submit'])->name('courses.modules.quiz.submit');
         });
+
         // Profilo utente
-        Route::get('profile', [\App\Http\Controllers\Admin\UserController::class, 'editOwnProfile'])->name('profile.edit');
-        Route::put('profile', [\App\Http\Controllers\Admin\UserController::class, 'updateOwnProfile'])->name('profile.update');
+        Route::get('profile', [UserController::class, 'editOwnProfile'])->name('profile.edit');
+        Route::put('profile', [UserController::class, 'updateOwnProfile'])->name('profile.update');
 
         // Corsi utente
-        Route::get('courses', [\App\Http\Controllers\User\CourseController::class, 'index'])->name('courses.index');
-        Route::get('courses/{course}', [\App\Http\Controllers\User\CourseController::class, 'show'])->name('courses.show');
+        Route::get('courses', [CourseController::class, 'index'])->name('courses.index');
+        Route::get('courses/{course}', [CourseController::class, 'show'])->name('courses.show');
     });
 });

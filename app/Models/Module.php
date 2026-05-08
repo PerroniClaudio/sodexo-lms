@@ -59,6 +59,7 @@ class Module extends Model
         'status',
         'passing_score',
         'max_score',
+        'max_attempts',
         'belongsTo',
         'video_id', // ID del video associato dalla libreria video Mux
     ];
@@ -86,6 +87,7 @@ class Module extends Model
             'appointment_end_time' => 'datetime',
             'passing_score' => 'integer',
             'max_score' => 'integer',
+            'max_attempts' => 'integer',
         ];
     }
 
@@ -271,15 +273,23 @@ class Module extends Model
 
     /**
      * Determina se il quiz del modulo è valido: deve avere almeno una domanda valida,
-     * il punteggio totale delle domande valide deve essere uguale al punteggio massimo del modulo
-     * e il punteggio di superamento deve essere minore o uguale al punteggio massimo.
+     * il punteggio totale delle domande valide deve essere uguale al punteggio massimo del modulo,
+     * il punteggio di superamento deve essere minore o uguale al punteggio massimo
+     * e (per learning_quiz) deve avere max_attempts valorizzato e > 0.
      */
     public function isValidQuiz(): bool
     {
-        return $this->isQuiz()
+        $baseValidation = $this->isQuiz()
             && $this->getValidQuizQuestions()->count() > 0
             && $this->getValidQuizQuestionsTotalPoints() === $this->max_score
             && $this->passing_score <= $this->max_score;
+
+        // Per learning_quiz è richiesto anche max_attempts
+        if ($this->type === 'learning_quiz') {
+            return $baseValidation && $this->max_attempts !== null && $this->max_attempts > 0;
+        }
+
+        return $baseValidation;
     }
 
     /**

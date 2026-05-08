@@ -239,6 +239,7 @@ class CourseModuleController extends Controller
             'description' => $validated['description'] ?? '',
             'status' => $validated['status'],
             'passing_score' => $module->isQuiz() ? $validated['passing_score'] : null,
+            'max_attempts' => $module->type === 'learning_quiz' ? $validated['max_attempts'] : null,
             // 'max_score' => $module->isQuiz() ? $validated['max_score'] : null, --- IGNORE ---
         ];
 
