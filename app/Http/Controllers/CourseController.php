@@ -6,12 +6,18 @@ use App\Http\Requests\StoreCourseRequest;
 use App\Http\Requests\UpdateCourseRequest;
 use App\Models\Course;
 use App\Models\Module;
+use App\Services\CourseValidation\CourseValidatorService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use RuntimeException;
 
 class CourseController extends Controller
 {
+    public function __construct(
+        private readonly CourseValidatorService $courseValidator
+    ) {}
+
     public function create(): View
     {
         return view('admin.course.create', [
@@ -80,16 +86,24 @@ class CourseController extends Controller
             'moduleTypeLabels' => Module::availableTypeLabels(),
             'moduleStatusLabels' => Module::availableStatusLabels(),
             'modules' => $course->modules()->get(),
+            'courseValidator' => $this->courseValidator,
         ]);
     }
 
     public function update(UpdateCourseRequest $request, Course $course): RedirectResponse
     {
-        $course->update($request->validated());
+        try {
+            $course->update($request->validated());
 
-        return redirect()
-            ->route('admin.courses.edit', $course)
-            ->with('status', __('Corso aggiornato con successo.'));
+            return redirect()
+                ->route('admin.courses.edit', $course)
+                ->with('status', __('Corso aggiornato con successo.'));
+        } catch (RuntimeException $e) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
     }
 
     public function destroy(Course $course): RedirectResponse

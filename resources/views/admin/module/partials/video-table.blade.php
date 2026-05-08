@@ -26,6 +26,10 @@
                       <span id="selected-video-status" class="input input-xs w-full text-sm"></span>
                     </div>
                     <div class="flex flex-col">
+                      <span class="font-semibold text-base-content/70 text-sm">{{ __('Validità modulo') }}</span>
+                      <span id="selected-video-validity" class="text-sm"></span>
+                    </div>
+                    <div class="flex flex-col">
                       <span class="font-semibold text-base-content/70 text-sm">{{ __('Moduli che lo usano') }}</span>
                       <span id="selected-video-modules-count" class="input input-xs w-full text-sm"></span>
                     </div>

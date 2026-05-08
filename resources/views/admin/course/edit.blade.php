@@ -28,11 +28,14 @@
             <div class="card border border-base-300 bg-base-100 shadow-sm">
                 <div class="card-body gap-6">
                     <div class="flex items-start justify-between gap-4">
-                        <div>
+                        <div class="flex-1">
                             <h2 class="card-title">{{ __('Dati anagrafici') }}</h2>
                             <p class="text-sm text-base-content/70">
                                 {{ __('Gestisci le informazioni principali del corso.') }}
                             </p>
+                        </div>
+                        <div>
+                            @include('admin.course.partials.course-validity-badge')
                         </div>
                     </div>
 
@@ -196,6 +199,15 @@
                                                         />
                                                         <span>{{ $moduleTypeLabels[$module->type] ?? $module->type }}</span>
                                                     </span>
+                                                    @php
+                                                        $moduleValidator = app(\App\Services\ModuleValidation\ModuleValidatorService::class);
+                                                        $moduleIsValid = $moduleValidator->validate($module);
+                                                    @endphp
+                                                    @if ($moduleIsValid)
+                                                        <span class="badge badge-xs badge-success">{{ __('Valido') }}</span>
+                                                    @else
+                                                        <span class="badge badge-xs badge-error">{{ __('Non valido') }}</span>
+                                                    @endif
                                                 </div>
                                             </div>
                                         </div>

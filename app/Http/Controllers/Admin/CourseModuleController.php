@@ -16,15 +16,20 @@ use App\Models\Module;
 use App\Models\User;
 use App\Models\Video;
 use App\Services\LiveModuleAttendanceService;
+use App\Services\ModuleValidation\ModuleValidatorService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use RuntimeException;
 
 class CourseModuleController extends Controller
 {
-
+    public function __construct(
+        private readonly ModuleValidatorService $moduleValidator
+    ) {}
 
     /**
      * API: Restituisce la lista video per la tabella video-table (paginata, ricerca, ordinamento)
@@ -37,13 +42,12 @@ class CourseModuleController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%$search%")
-                  ->orWhere('mux_video_status', 'like', "%$search%")
-                  ->orWhereHas('modules', function ($q2) use ($search) {
-                      $q2->where('title', 'like', "%$search%")
-                         ->orWhere('id', 'like', "%$search%")
-                         ->orWhere('status', 'like', "%$search%")
-                         ;
-                  });
+                    ->orWhere('mux_video_status', 'like', "%$search%")
+                    ->orWhereHas('modules', function ($q2) use ($search) {
+                        $q2->where('title', 'like', "%$search%")
+                            ->orWhere('id', 'like', "%$search%")
+                            ->orWhere('status', 'like', "%$search%");
+                    });
             });
         }
 
@@ -51,10 +55,10 @@ class CourseModuleController extends Controller
         $sortable = ['title', 'mux_video_status', 'modules_count', 'status'];
         $sort = $request->input('sort', 'created_at');
         $direction = $request->input('direction', 'desc');
-        if (!in_array($sort, $sortable)) {
+        if (! in_array($sort, $sortable)) {
             $sort = 'created_at';
         }
-        if (!in_array($direction, ['asc', 'desc'])) {
+        if (! in_array($direction, ['asc', 'desc'])) {
             $direction = 'desc';
         }
         $query->orderBy($sort, $direction);
@@ -74,7 +78,7 @@ class CourseModuleController extends Controller
 
         return response()->json($videos);
     }
-    
+
     public function store(StoreModuleRequest $request, Course $course): RedirectResponse
     {
         $moduleType = $request->validated('type');
@@ -128,6 +132,9 @@ class CourseModuleController extends Controller
                     ->get()
                 : collect(),
             'isValidQuiz' => $module->type === 'learning_quiz' ? $module->isValidQuiz() : false,
+            'isValid' => $this->moduleValidator->validate($module),
+            'validationErrors' => $this->moduleValidator->getValidationErrors($module),
+            'moduleValidator' => $this->moduleValidator,
             'videos' => $videos,
         ]);
     }
@@ -261,11 +268,18 @@ class CourseModuleController extends Controller
             $moduleAttributes['is_live_teacher'] = $request->boolean('is_live_teacher');
         }
 
-        $module->update($moduleAttributes);
+        try {
+            $module->update($moduleAttributes);
 
-        return redirect()
-            ->route('admin.courses.edit', $course)
-            ->with('status', __('Module updated successfully.'));
+            return redirect()
+                ->route('admin.courses.edit', $course)
+                ->with('status', __('Module updated successfully.'));
+        } catch (RuntimeException $e) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
     }
 
     public function confirmAttendance(
@@ -396,27 +410,43 @@ class CourseModuleController extends Controller
         ]);
     }
 
-        /**
+    /**
      * Assegna un video al modulo (API)
      */
-    public function assignVideoToModule(\Illuminate\Http\Request $request, Module $module): \Illuminate\Http\JsonResponse
+    public function assignVideoToModule(Request $request, Module $module): JsonResponse
     {
         $videoId = $request->input('video_id');
-        if (!$videoId || !\App\Models\Video::find($videoId)) {
+        if (! $videoId || ! Video::find($videoId)) {
             return response()->json(['success' => false, 'message' => 'Video non valido'], 422);
         }
         $module->video_id = $videoId;
         $module->save();
+
         return response()->json(['success' => true, 'video_id' => $videoId]);
     }
 
     /**
      * Rimuove l'assegnazione del video dal modulo (API)
      */
-    public function unassignVideoFromModule(Module $module): \Illuminate\Http\JsonResponse
-    {        
+    public function unassignVideoFromModule(Module $module): JsonResponse
+    {
         $module->video_id = null;
         $module->save();
+
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Restituisce la validità del modulo (API)
+     */
+    public function getModuleValidity(Module $module): JsonResponse
+    {
+        $isValid = $this->moduleValidator->validate($module);
+        $errors = $isValid ? [] : $this->moduleValidator->getValidationErrors($module);
+
+        return response()->json([
+            'isValid' => $isValid,
+            'errors' => $errors,
+        ]);
     }
 }

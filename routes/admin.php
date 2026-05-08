@@ -155,6 +155,7 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             // Assegnazione video a modulo
             Route::post('/modules/{module}/assign-video', [CourseModuleController::class, 'assignVideoToModule']);
             Route::post('/modules/{module}/unassign-video', [CourseModuleController::class, 'unassignVideoFromModule']);
+            Route::get('/modules/{module}/validity', [CourseModuleController::class, 'getModuleValidity']);
         });
     });
 
