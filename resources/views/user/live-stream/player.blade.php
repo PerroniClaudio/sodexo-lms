@@ -309,7 +309,11 @@
                                             <span data-live-stream-background-button-label>{{ __('Sfondo') }}</span>
                                         </button>
                                     </div>
-                                    <div class="grid gap-2" data-live-stream-camera-device-list></div>
+                                    <select
+                                        class="select select-bordered w-full"
+                                        data-live-stream-camera-device-list
+                                        aria-label="{{ __('Dispositivo telecamera') }}"
+                                    ></select>
                                 </div>
                             </div>
 
@@ -324,7 +328,11 @@
 
                                 <div class="space-y-2">
                                     <p class="text-sm font-semibold">{{ __('Dispositivo microfono') }}</p>
-                                    <div class="grid gap-2" data-live-stream-microphone-device-list></div>
+                                    <select
+                                        class="select select-bordered w-full"
+                                        data-live-stream-microphone-device-list
+                                        aria-label="{{ __('Dispositivo microfono') }}"
+                                    ></select>
                                 </div>
                             </div>
                         </div>
