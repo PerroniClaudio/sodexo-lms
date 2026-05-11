@@ -655,51 +655,46 @@ export function createPreviewController(root, options = {}) {
         }
     }
 
-    function renderInputDeviceButtons(container, devices, selectedDeviceId, fallbackLabel, onSelect) {
-        if (!(container instanceof HTMLElement)) {
+    function renderInputDeviceSelect(selectElement, devices, selectedDeviceId, fallbackLabel) {
+        if (!(selectElement instanceof HTMLSelectElement)) {
             return;
         }
 
-        container.replaceChildren();
+        selectElement.replaceChildren();
 
         if (devices.length === 0) {
-            const empty = document.createElement('p');
-            empty.className = 'text-sm text-base-content/60';
-            empty.textContent = `Nessun dispositivo ${fallbackLabel.toLowerCase()} disponibile.`;
-            container.appendChild(empty);
+            const emptyOption = document.createElement('option');
+            emptyOption.value = '';
+            emptyOption.textContent = `Nessun dispositivo ${fallbackLabel.toLowerCase()} disponibile.`;
+            selectElement.appendChild(emptyOption);
+            selectElement.disabled = true;
+
             return;
         }
 
-        devices.forEach((device, index) => {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = [
-                'btn btn-sm min-h-0 h-auto justify-start whitespace-normal py-2 text-left',
-                device.deviceId === selectedDeviceId ? 'btn-primary' : 'btn-outline',
-            ].join(' ');
-            button.textContent = formatMediaInputDeviceLabel(device, index, fallbackLabel);
-            button.addEventListener('click', async () => {
-                await onSelect(device.deviceId);
-            });
+        selectElement.disabled = false;
 
-            container.appendChild(button);
+        devices.forEach((device, index) => {
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            option.textContent = formatMediaInputDeviceLabel(device, index, fallbackLabel);
+            option.selected = device.deviceId === selectedDeviceId;
+            selectElement.appendChild(option);
         });
     }
 
     function renderInputDevices() {
-        renderInputDeviceButtons(
+        renderInputDeviceSelect(
             cameraDeviceList,
             cameraDevices,
             selectedCameraDeviceId,
             'Telecamera',
-            selectCameraDevice,
         );
-        renderInputDeviceButtons(
+        renderInputDeviceSelect(
             microphoneDeviceList,
             microphoneDevices,
             selectedMicrophoneDeviceId,
             'Microfono',
-            selectMicrophoneDevice,
         );
     }
 
@@ -727,6 +722,30 @@ export function createPreviewController(root, options = {}) {
         if (mediaStream) {
             await restartPreview();
         }
+    }
+
+    if (cameraDeviceList instanceof HTMLSelectElement) {
+        cameraDeviceList.addEventListener('change', async (event) => {
+            const deviceId = event.currentTarget.value;
+
+            if (!deviceId) {
+                return;
+            }
+
+            await selectCameraDevice(deviceId);
+        });
+    }
+
+    if (microphoneDeviceList instanceof HTMLSelectElement) {
+        microphoneDeviceList.addEventListener('change', async (event) => {
+            const deviceId = event.currentTarget.value;
+
+            if (!deviceId) {
+                return;
+            }
+
+            await selectMicrophoneDevice(deviceId);
+        });
     }
 
     function renderBackgroundImageOptions() {
