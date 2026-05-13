@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Models\Video;
 use App\Services\LiveModuleAttendanceService;
 use App\Services\ModuleValidation\ModuleValidatorService;
+use App\Services\SyncCourseSatisfactionSurvey;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -28,7 +29,8 @@ use RuntimeException;
 class CourseModuleController extends Controller
 {
     public function __construct(
-        private readonly ModuleValidatorService $moduleValidator
+        private readonly ModuleValidatorService $moduleValidator,
+        private readonly SyncCourseSatisfactionSurvey $syncCourseSatisfactionSurvey,
     ) {}
 
     /**
@@ -82,22 +84,38 @@ class CourseModuleController extends Controller
     public function store(StoreModuleRequest $request, Course $course): RedirectResponse
     {
         $moduleType = $request->validated('type');
-        $nextOrder = (int) $course->modules()->max('order') + 1;
+        $satisfactionModule = $course->satisfactionModule();
+        $nextOrder = $satisfactionModule !== null
+            ? (int) $satisfactionModule->order
+            : ((int) $course->modules()->max('order') + 1);
         $moduleTitle = Module::requiresManualTitle($moduleType)
             ? $request->validated('title')
             : Module::defaultTitleForType($moduleType);
 
-        $module = $course->modules()->create([
-            'title' => $moduleTitle,
-            'description' => '',
-            'type' => $moduleType,
-            'order' => $nextOrder,
-            'appointment_date' => now(),
-            'appointment_start_time' => now(),
-            'appointment_end_time' => now()->addHour(),
-            'status' => 'draft',
-            'belongsTo' => (string) $course->getKey(),
-        ]);
+        $module = DB::transaction(function () use ($course, $moduleTitle, $moduleType, $nextOrder, $satisfactionModule): Module {
+            if ($satisfactionModule !== null) {
+                $course->modules()
+                    ->where('order', '>=', $nextOrder)
+                    ->whereKeyNot($satisfactionModule->getKey())
+                    ->increment('order');
+            }
+
+            $module = $course->modules()->create([
+                'title' => $moduleTitle,
+                'description' => '',
+                'type' => $moduleType,
+                'order' => $nextOrder,
+                'appointment_date' => now(),
+                'appointment_start_time' => now(),
+                'appointment_end_time' => now()->addHour(),
+                'status' => 'draft',
+                'belongsTo' => (string) $course->getKey(),
+            ]);
+
+            $this->normalizeSatisfactionModuleOrder($course);
+
+            return $module->fresh();
+        });
 
         return redirect()
             ->route('admin.courses.modules.edit', [$course, $module])
@@ -245,8 +263,8 @@ class CourseModuleController extends Controller
                 : Module::defaultTitleForType($module->type),
             'description' => $validated['description'] ?? '',
             'status' => $validated['status'],
-            'passing_score' => $module->isQuiz() ? $validated['passing_score'] : null,
-            'max_attempts' => $module->type === 'learning_quiz' ? $validated['max_attempts'] : null,
+            'passing_score' => $module->isLearningQuiz() ? $validated['passing_score'] : null,
+            'max_attempts' => $module->isLearningQuiz() ? $validated['max_attempts'] : null,
             // 'max_score' => $module->isQuiz() ? $validated['max_score'] : null, --- IGNORE ---
         ];
 
@@ -319,7 +337,17 @@ class CourseModuleController extends Controller
         $orderedModuleIds = $request->validated('modules');
 
         DB::transaction(function () use ($course, $orderedModuleIds): void {
-            collect($orderedModuleIds)
+            $satisfactionModuleId = $course->satisfactionModule()?->getKey();
+
+            $normalizedModuleIds = collect($orderedModuleIds)
+                ->reject(fn (int $moduleId): bool => $satisfactionModuleId !== null && $moduleId === (int) $satisfactionModuleId)
+                ->values();
+
+            if ($satisfactionModuleId !== null) {
+                $normalizedModuleIds->push((int) $satisfactionModuleId);
+            }
+
+            $normalizedModuleIds
                 ->values()
                 ->each(function (int $moduleId, int $index) use ($course): void {
                     $course->modules()->whereKey($moduleId)->update([
@@ -328,9 +356,32 @@ class CourseModuleController extends Controller
                 });
         });
 
+        $this->normalizeSatisfactionModuleOrder($course);
+
         return response()->json([
             'message' => __('Module order updated successfully.'),
         ]);
+    }
+
+    private function normalizeSatisfactionModuleOrder(Course $course): void
+    {
+        $satisfactionModule = $course->satisfactionModule();
+
+        if ($satisfactionModule === null) {
+            return;
+        }
+
+        $lastOrder = (int) $course->modules()
+            ->whereKeyNot($satisfactionModule->getKey())
+            ->max('order');
+
+        if ((int) $satisfactionModule->order !== $lastOrder + 1) {
+            Module::query()
+                ->whereKey($satisfactionModule->getKey())
+                ->update([
+                    'order' => $lastOrder + 1,
+                ]);
+        }
     }
 
     private function moduleEditView(Module $module): string

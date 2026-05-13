@@ -30,6 +30,10 @@ async function updateQuizValidityBadge() {
 
 // Recupera il token CSRF dal meta tag
 const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+function isQuizEditable() {
+    const quizList = document.getElementById('quiz-questions-list');
+    return quizList?.dataset.quizEditable === 'true';
+}
 
 
 // Aggiorna il campo max_score del form principale
@@ -119,6 +123,27 @@ function renderQuestions(questions) {
             aNode.querySelector('.js-delete-answer-btn').dataset.aid = a.id;
             answersList.appendChild(aNode);
         });
+
+        if (!isQuizEditable()) {
+            const addQuestionTrigger = document.querySelector('button[onclick*="add-question-modal"]');
+            const addQuestionModal = document.getElementById('add-question-modal');
+            const addQuestionForm = document.getElementById('add-question-form');
+            const addAnswerForm = document.getElementById('add-answer-form');
+
+            addQuestionTrigger?.setAttribute('disabled', 'disabled');
+            addQuestionForm?.querySelectorAll('input, textarea, button').forEach((element) => element.setAttribute('disabled', 'disabled'));
+            addAnswerForm?.querySelectorAll('input, button').forEach((element) => element.setAttribute('disabled', 'disabled'));
+            addQuestionModal?.setAttribute('data-locked', 'true');
+
+            qNode.querySelector('[data-question-text]').setAttribute('disabled', 'disabled');
+            qNode.querySelector('[data-question-points]').setAttribute('disabled', 'disabled');
+            qNode.querySelector('.js-save-question-btn')?.setAttribute('disabled', 'disabled');
+            qNode.querySelector('.js-delete-question-btn')?.setAttribute('disabled', 'disabled');
+            qNode.querySelector('.js-add-answer-btn')?.setAttribute('disabled', 'disabled');
+            qNode.querySelectorAll('[data-answer-text]').forEach((input) => input.setAttribute('disabled', 'disabled'));
+            qNode.querySelectorAll('.js-save-answer-btn, .js-delete-answer-btn, .js-toggle-correct-btn').forEach((button) => button.setAttribute('disabled', 'disabled'));
+        }
+
         container.appendChild(qNode);
     });
 }
@@ -143,6 +168,10 @@ async function loadQuestions() {
 document.addEventListener('DOMContentLoaded', function () {
 
     loadQuestions();
+
+    if (!isQuizEditable()) {
+        return;
+    }
 
     // Submit domanda: click su "Save" (template)
     document.body.addEventListener('click', function(e) {

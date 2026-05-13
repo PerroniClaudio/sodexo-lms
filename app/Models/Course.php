@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
 
 class Course extends Model
 {
@@ -38,6 +39,8 @@ class Course extends Model
         'year',
         'expiry_date',
         'status',
+        'has_satisfaction_survey',
+        'satisfaction_survey_required_for_certificate',
         'hasMany',
     ];
 
@@ -51,6 +54,8 @@ class Course extends Model
         return [
             'id' => 'integer',
             'expiry_date' => 'datetime',
+            'has_satisfaction_survey' => 'boolean',
+            'satisfaction_survey_required_for_certificate' => 'boolean',
         ];
     }
 
@@ -191,5 +196,47 @@ class Course extends Model
                 'deleted_at',
             ])
             ->withTimestamps();
+    }
+
+    public function hasSatisfactionSurveyEnabled(): bool
+    {
+        return (bool) $this->has_satisfaction_survey;
+    }
+
+    public function requiresSatisfactionSurveyForCertificate(): bool
+    {
+        return $this->hasSatisfactionSurveyEnabled()
+            && (bool) $this->satisfaction_survey_required_for_certificate;
+    }
+
+    public function satisfactionModules(): HasMany
+    {
+        return $this->modules()->where('type', Module::TYPE_SATISFACTION_QUIZ);
+    }
+
+    public function satisfactionModule(): ?Module
+    {
+        return $this->satisfactionModules()->orderBy('order')->first();
+    }
+
+    public function shouldCountModuleForCompletion(Module $module): bool
+    {
+        if ($module->type !== Module::TYPE_SATISFACTION_QUIZ) {
+            return true;
+        }
+
+        return $this->requiresSatisfactionSurveyForCertificate();
+    }
+
+    /**
+     * @return Collection<int, Module>
+     */
+    public function completionRelevantModules(): Collection
+    {
+        $this->loadMissing('modules');
+
+        return $this->modules->values()->filter(
+            fn (Module $module): bool => $this->shouldCountModuleForCompletion($module)
+        )->values();
     }
 }

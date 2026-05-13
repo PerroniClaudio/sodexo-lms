@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeDeleteCourseDialog(courseEditPage);
     initializeDeleteModuleDialogs(courseEditPage);
     initializeModuleSorting(courseEditPage);
+    initializeSatisfactionSurveyFields(courseEditPage);
     initializeEnrollmentsTable(courseEditPage);
 });
 
@@ -57,6 +58,26 @@ function initializeCreateModuleDialog(courseEditPage) {
     syncTitleFieldVisibility();
 }
 
+function initializeSatisfactionSurveyFields(courseEditPage) {
+    const enabledCheckbox = courseEditPage.querySelector('[data-satisfaction-enabled]');
+    const requiredCheckbox = courseEditPage.querySelector('[data-satisfaction-required]');
+
+    if (!enabledCheckbox || !requiredCheckbox) {
+        return;
+    }
+
+    const syncState = () => {
+        requiredCheckbox.disabled = !enabledCheckbox.checked;
+
+        if (!enabledCheckbox.checked) {
+            requiredCheckbox.checked = false;
+        }
+    };
+
+    enabledCheckbox.addEventListener('change', syncState);
+    syncState();
+}
+
 function initializeDeleteCourseDialog(courseEditPage) {
     const deleteCourseModal = courseEditPage.querySelector('#delete-course-modal');
     const openDeleteCourseModalButton = courseEditPage.querySelector('[data-open-delete-course-modal]');
@@ -100,6 +121,7 @@ function initializeModuleSorting(courseEditPage) {
     let isSaving = false;
 
     const getItems = () => Array.from(sortableList.querySelectorAll('[data-module-item]'));
+    const isLockedItem = (item) => item?.dataset.moduleType === 'satisfaction_quiz';
     const getCurrentOrder = () => getItems().map((item) => Number(item.dataset.moduleId));
     const setSavingState = (saving) => {
         sortableList.classList.toggle('pointer-events-none', saving);
@@ -153,7 +175,7 @@ function initializeModuleSorting(courseEditPage) {
 
         const targetItem = event.target.closest('[data-module-item]');
 
-        if (!targetItem || targetItem === draggedItem) {
+        if (!targetItem || targetItem === draggedItem || isLockedItem(targetItem)) {
             return;
         }
 
@@ -169,7 +191,8 @@ function initializeModuleSorting(courseEditPage) {
 
     getItems().forEach((item) => {
         item.addEventListener('dragstart', () => {
-            if (isSaving) {
+            if (isSaving || isLockedItem(item)) {
+                draggedItem = null;
                 return;
             }
 
@@ -187,6 +210,11 @@ function initializeModuleSorting(courseEditPage) {
             draggedItem = null;
             await persistOrder();
         });
+
+        if (isLockedItem(item)) {
+            item.classList.add('opacity-90');
+            item.querySelector('.cursor-move')?.classList.add('opacity-40', 'cursor-not-allowed');
+        }
     });
 }
 

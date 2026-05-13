@@ -25,7 +25,7 @@ class StoreModuleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => ['required', 'string', Rule::in(Module::availableTypes())],
+            'type' => ['required', 'string', Rule::in(Module::creatableTypes())],
             'title' => [
                 Rule::requiredIf(fn () => Module::requiresManualTitle((string) $this->input('type'))),
                 'nullable',

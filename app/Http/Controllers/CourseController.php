@@ -6,7 +6,9 @@ use App\Http\Requests\StoreCourseRequest;
 use App\Http\Requests\UpdateCourseRequest;
 use App\Models\Course;
 use App\Models\Module;
+use App\Models\SatisfactionSurveyTemplate;
 use App\Services\CourseValidation\CourseValidatorService;
+use App\Services\SyncCourseSatisfactionSurvey;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -64,12 +66,16 @@ class CourseController extends Controller
 
     public function store(StoreCourseRequest $request): RedirectResponse
     {
+        $validated = $request->validated();
+
         $course = Course::query()->create([
-            ...$request->validated(),
+            ...$validated,
             'description' => '',
             'year' => now()->year,
             'expiry_date' => now()->endOfYear(),
             'status' => 'draft',
+            'has_satisfaction_survey' => (bool) ($validated['has_satisfaction_survey'] ?? false),
+            'satisfaction_survey_required_for_certificate' => (bool) ($validated['satisfaction_survey_required_for_certificate'] ?? false),
             'hasMany' => '0',
         ]);
 
@@ -83,17 +89,31 @@ class CourseController extends Controller
         return view('admin.course.edit', [
             'course' => $course,
             'courseStatusLabels' => Course::availableStatusLabels(),
-            'moduleTypeLabels' => Module::availableTypeLabels(),
+            'moduleTypeLabels' => collect(Module::availableTypeLabels())
+                ->only(Module::creatableTypes())
+                ->all(),
             'moduleStatusLabels' => Module::availableStatusLabels(),
             'modules' => $course->modules()->get(),
             'courseValidator' => $this->courseValidator,
+            'activeSatisfactionSurveyTemplate' => SatisfactionSurveyTemplate::active(),
         ]);
     }
 
-    public function update(UpdateCourseRequest $request, Course $course): RedirectResponse
+    public function update(
+        UpdateCourseRequest $request,
+        Course $course,
+        SyncCourseSatisfactionSurvey $syncCourseSatisfactionSurvey,
+    ): RedirectResponse
     {
         try {
-            $course->update($request->validated());
+            $validated = $request->validated();
+            $course->update([
+                ...$validated,
+                'has_satisfaction_survey' => (bool) ($validated['has_satisfaction_survey'] ?? false),
+                'satisfaction_survey_required_for_certificate' => (bool) (($validated['has_satisfaction_survey'] ?? false)
+                    && ($validated['satisfaction_survey_required_for_certificate'] ?? false)),
+            ]);
+            $syncCourseSatisfactionSurvey->handle($course);
 
             return redirect()
                 ->route('admin.courses.edit', $course)

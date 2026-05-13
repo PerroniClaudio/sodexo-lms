@@ -99,6 +99,8 @@ class ModuleQuizController extends Controller
      */
     public function storeQuestionApi(Request $request, Course $course, Module $module)
     {
+        $this->ensureLearningQuizIsEditable($course, $module);
+
         $data = $request->validate([
             'text' => 'required|string',
             'points' => 'required|integer|min:1',
@@ -119,6 +121,8 @@ class ModuleQuizController extends Controller
      */
     public function updateQuestionApi(Request $request, Course $course, Module $module, ModuleQuizQuestion $question)
     {
+        $this->ensureLearningQuizIsEditable($course, $module);
+
         $data = $request->validate([
             'text' => 'required|string',
             'points' => 'required|integer|min:1',
@@ -137,6 +141,8 @@ class ModuleQuizController extends Controller
      */
     public function deleteQuestionApi(Course $course, Module $module, ModuleQuizQuestion $question)
     {
+        $this->ensureLearningQuizIsEditable($course, $module);
+
         $question->delete();
         $module->updateQuizMaxScore();
         return response()->json([
@@ -150,6 +156,8 @@ class ModuleQuizController extends Controller
      */
     public function storeAnswerApi(Request $request, Course $course, Module $module, ModuleQuizQuestion $question)
     {
+        $this->ensureLearningQuizIsEditable($course, $module);
+
         $data = $request->validate([
             'text' => 'required|string',
         ]);
@@ -167,6 +175,8 @@ class ModuleQuizController extends Controller
      */
     public function updateAnswerApi(Request $request, Course $course, Module $module, ModuleQuizQuestion $question, ModuleQuizAnswer $answer)
     {
+        $this->ensureLearningQuizIsEditable($course, $module);
+
         $data = $request->validate([
             'text' => 'required|string',
         ]);
@@ -184,6 +194,8 @@ class ModuleQuizController extends Controller
      */
     public function deleteAnswerApi(Course $course, Module $module, ModuleQuizQuestion $question, ModuleQuizAnswer $answer)
     {
+        $this->ensureLearningQuizIsEditable($course, $module);
+
         $answer->delete();
         $module->updateQuizMaxScore();
         return response()->json([
@@ -197,6 +209,8 @@ class ModuleQuizController extends Controller
      */
     public function setCorrectAnswerApi(Request $request, Course $course, Module $module, ModuleQuizQuestion $question, ModuleQuizAnswer $answer)
     {
+        $this->ensureLearningQuizIsEditable($course, $module);
+
         $question->correct_answer_id = $question->correct_answer_id === $answer->id ? null : $answer->id;
         $question->save();
         $module->updateQuizMaxScore();
@@ -205,5 +219,15 @@ class ModuleQuizController extends Controller
             'message' => __('Risposta corretta aggiornata.'),
             'question' => $question,
         ]);
+    }
+
+    private function ensureLearningQuizIsEditable(Course $course, Module $module): void
+    {
+        abort_unless($module->belongsTo === (string) $course->getKey(), 404);
+        abort_unless($module->type === Module::TYPE_LEARNING_QUIZ, 404);
+
+        if ($module->status === 'published') {
+            abort(422, __('Non Ã¨ possibile modificare domande o risposte di un quiz pubblicato.'));
+        }
     }
 }

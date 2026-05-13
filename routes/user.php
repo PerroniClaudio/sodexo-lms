@@ -6,6 +6,7 @@ use App\Http\Controllers\ScormPlayerController;
 use App\Http\Controllers\ScormRuntimeController;
 use App\Http\Controllers\User\CourseController;
 use App\Http\Controllers\User\QuizModuleController;
+use App\Http\Controllers\User\SatisfactionSurveyController;
 use App\Http\Controllers\User\VideoModuleController;
 use Illuminate\Support\Facades\Route;
 
@@ -60,6 +61,11 @@ Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
             Route::post('/courses/{course}/modules/{module}/quiz/complete', [QuizModuleController::class, 'completeAttempt'])->name('courses.modules.quiz.complete');
             // Modulo quiz: abbandona tentativo
             Route::post('/courses/{course}/modules/{module}/quiz/abandon', [QuizModuleController::class, 'abandonAttempt'])->name('courses.modules.quiz.abandon');
+
+            Route::get('/courses/{course}/modules/{module}/satisfaction-survey', [SatisfactionSurveyController::class, 'show'])
+                ->name('courses.modules.satisfaction-survey.show');
+            Route::post('/courses/{course}/modules/{module}/satisfaction-survey', [SatisfactionSurveyController::class, 'submit'])
+                ->name('courses.modules.satisfaction-survey.submit');
 
             // DEPRECATED: Manteniamo per retrocompatibilità quiz gradimento (se non usa il nuovo flow)
             // Modulo quiz: domande (legacy)

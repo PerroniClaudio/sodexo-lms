@@ -61,3 +61,26 @@ it('rejects invalid reorder payloads', function () {
     expect($firstModule->fresh()->order)->toBe(1);
     expect($secondModule->fresh()->order)->toBe(2);
 });
+
+it('moves the satisfaction survey back to the last module during reorder', function () {
+    $course = Course::factory()->create();
+    $firstModule = Module::factory()->create([
+        'type' => Module::TYPE_VIDEO,
+        'order' => 1,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+    $surveyModule = Module::factory()->create([
+        'type' => Module::TYPE_SATISFACTION_QUIZ,
+        'order' => 2,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $response = $this->patchJson(route('admin.courses.modules.reorder', $course), [
+        'modules' => [$surveyModule->id, $firstModule->id],
+    ]);
+
+    $response->assertOk();
+
+    expect($firstModule->fresh()->order)->toBe(1);
+    expect($surveyModule->fresh()->order)->toBe(2);
+});

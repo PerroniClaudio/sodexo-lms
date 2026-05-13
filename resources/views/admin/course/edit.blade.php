@@ -132,6 +132,63 @@
                                     <p class="text-sm text-error">{{ $message }}</p>
                                 @enderror
                             </div>
+
+                            <div class="rounded-box border border-base-300 bg-base-200/40 p-4 md:col-span-2">
+                                <div class="flex flex-col gap-4">
+                                    <div>
+                                        <h3 class="text-sm font-semibold text-base-content">{{ __('Questionario di gradimento') }}</h3>
+                                        <p class="text-sm text-base-content/70">
+                                            {{ __('Se abilitato, viene aggiunto automaticamente come ultimo modulo del corso.') }}
+                                        </p>
+                                    </div>
+
+                                    <label class="label cursor-pointer justify-start gap-3 p-0">
+                                        <input
+                                            type="checkbox"
+                                            name="has_satisfaction_survey"
+                                            value="1"
+                                            class="checkbox"
+                                            @checked(old('has_satisfaction_survey', $course->has_satisfaction_survey))
+                                            data-satisfaction-enabled
+                                        >
+                                        <span class="label-text">{{ __('Includi questionario di gradimento') }}</span>
+                                    </label>
+                                    @error('has_satisfaction_survey')
+                                        <p class="text-sm text-error">{{ $message }}</p>
+                                    @enderror
+
+                                    <label class="label cursor-pointer justify-start gap-3 p-0">
+                                        <input
+                                            type="checkbox"
+                                            name="satisfaction_survey_required_for_certificate"
+                                            value="1"
+                                            class="checkbox"
+                                            @checked(old('satisfaction_survey_required_for_certificate', $course->satisfaction_survey_required_for_certificate))
+                                            data-satisfaction-required
+                                        >
+                                        <span class="label-text">{{ __('Rendi il questionario obbligatorio per l\'ottenimento dell\'attestato') }}</span>
+                                    </label>
+                                    @error('satisfaction_survey_required_for_certificate')
+                                        <p class="text-sm text-error">{{ $message }}</p>
+                                    @enderror
+
+                                    <div class="text-sm text-base-content/70">
+                                        @role('superadmin')
+                                            @if($activeSatisfactionSurveyTemplate)
+                                                <a href="{{ route('admin.satisfaction-survey.edit') }}" class="link link-primary">
+                                                    {{ __('Configura domande e risposte globali del questionario') }}
+                                                </a>
+                                            @else
+                                                <a href="{{ route('admin.satisfaction-survey.edit') }}" class="link link-error">
+                                                    {{ __('Configura prima il questionario globale di gradimento') }}
+                                                </a>
+                                            @endif
+                                        @else
+                                            <span>{{ __('La configurazione di domande e risposte Ã¨ riservata ai superadmin.') }}</span>
+                                        @endrole
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="flex justify-end">
@@ -177,9 +234,10 @@
                             @foreach ($modules as $module)
                                 <div
                                     class="rounded-box border border-base-300 bg-base-100 p-4 transition-shadow"
-                                    draggable="true"
+                                    draggable="{{ $module->isSatisfactionQuiz() ? 'false' : 'true' }}"
                                     data-module-item
                                     data-module-id="{{ $module->id }}"
+                                    data-module-type="{{ $module->type }}"
                                 >
                                     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                         <div class="flex items-start gap-3">
@@ -286,8 +344,8 @@
                                     </legend>
 
                                     <div class="grid gap-3 sm:grid-cols-2">
-                                        @foreach ($moduleTypeLabels as $moduleType => $moduleTypeLabel)
-                                            <label class="cursor-pointer">
+                                @foreach ($moduleTypeLabels as $moduleType => $moduleTypeLabel)
+                                    <label class="cursor-pointer">
                                                 <input
                                                     type="radio"
                                                     name="type"
@@ -317,6 +375,7 @@
                                         type="text"
                                         value="{{ old('title') }}"
                                         class="input input-bordered w-full @error('title') input-error @enderror"
+                                        required
                                     >
                                     @error('title')
                                         <p class="text-sm text-error">{{ $message }}</p>

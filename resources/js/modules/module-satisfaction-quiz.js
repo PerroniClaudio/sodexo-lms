@@ -70,6 +70,14 @@ async function loadQuiz(
 
         const data = await response.json();
 
+        if (data.completed) {
+            loadingEl.classList.add('hidden');
+            quizResult.classList.remove('hidden');
+            renderQuizResult(data, quizResult);
+
+            return;
+        }
+
         renderQuizQuestions(data.questions, quizQuestionsEl);
 
         loadingEl.classList.add('hidden');
@@ -159,7 +167,10 @@ async function submitQuiz(
                 Accept: 'application/json',
                 'X-CSRF-TOKEN': moduleData.csrfToken,
             },
-            body: JSON.stringify({ answers }),
+            body: JSON.stringify({
+                template_id: quizData.template_id,
+                answers,
+            }),
         });
 
         const data = await response.json();
@@ -188,7 +199,7 @@ async function submitQuiz(
 function renderQuizResult(data, quizResult) {
     quizResult.innerHTML = `
         <div class="alert alert-success">
-            <span>${escapeHtml('Grazie per aver completato il questionario di gradimento!')}</span>
+            <span>${escapeHtml(data.message || 'Grazie per aver completato il questionario di gradimento!')}</span>
         </div>
     `;
 }

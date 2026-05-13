@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\JobUnitController;
 use App\Http\Controllers\Admin\ModuleQuizController;
 use App\Http\Controllers\Admin\ModuleQuizSubmissionController;
 use App\Http\Controllers\Admin\RegiaController;
+use App\Http\Controllers\Admin\SatisfactionSurveyController;
 use App\Http\Controllers\Admin\ScormPackageController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VideoController;
@@ -78,6 +79,13 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
         Route::resource('users', UserController::class)->except(['show']);
         Route::post('users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
+
+        Route::middleware('role:superadmin')->group(function () {
+            Route::get('/satisfaction-survey', [SatisfactionSurveyController::class, 'edit'])
+                ->name('satisfaction-survey.edit');
+            Route::put('/satisfaction-survey', [SatisfactionSurveyController::class, 'update'])
+                ->name('satisfaction-survey.update');
+        });
 
         // Job Management Routes (require 'manage job data' permission)
         Route::middleware('permission:manage job data')->group(function () {

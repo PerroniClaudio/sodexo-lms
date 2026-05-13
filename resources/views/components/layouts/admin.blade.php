@@ -133,6 +133,14 @@
                                 </ul>
                             </details>
                         </li>
+                        <li>
+                            <a
+                                href="{{ route('admin.satisfaction-survey.edit') }}"
+                                @class(['menu-active' => request()->routeIs('admin.satisfaction-survey.*')])
+                            >
+                                {{ __('Configurazione gradimento') }}
+                            </a>
+                        </li>
                     @endrole
                 </ul>
 

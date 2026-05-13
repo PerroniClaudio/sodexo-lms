@@ -61,6 +61,8 @@ it('updates the course personal data', function () {
         'year' => 2027,
         'expiry_date' => '2027-12-31',
         'status' => 'published',
+        'has_satisfaction_survey' => '1',
+        'satisfaction_survey_required_for_certificate' => '1',
     ]);
 
     $response->assertRedirect(route('admin.courses.edit', $course));
@@ -73,6 +75,10 @@ it('updates the course personal data', function () {
     expect($course->year)->toBe(2027);
     expect($course->expiry_date?->format('Y-m-d'))->toBe('2027-12-31');
     expect($course->status)->toBe('published');
+    expect($course->has_satisfaction_survey)->toBeTrue();
+    expect($course->satisfaction_survey_required_for_certificate)->toBeTrue();
+    expect($course->satisfactionModule()?->type)->toBe(Module::TYPE_SATISFACTION_QUIZ);
+    expect($course->satisfactionModule()?->order)->toBe(1);
 });
 
 it('soft deletes a course', function () {

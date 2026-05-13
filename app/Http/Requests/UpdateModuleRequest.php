@@ -29,8 +29,8 @@ class UpdateModuleRequest extends FormRequest
         $module = $this->module();
         $requiresAppointmentDetails = $module !== null
             && Module::requiresAppointmentDetails($module->type);
-        $requiresQuizScores = $module?->isQuiz() ?? false;
-        $isLearningQuiz = $module?->type === 'learning_quiz';
+        $requiresQuizScores = $module?->isLearningQuiz() ?? false;
+        $isLearningQuiz = $module?->isLearningQuiz() ?? false;
 
         return [
             'title' => [

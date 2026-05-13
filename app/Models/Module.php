@@ -13,23 +13,35 @@ class Module extends Model
 {
     use HasFactory, SoftDeletes;
 
+    public const TYPE_VIDEO = 'video';
+
+    public const TYPE_RESIDENTIAL = 'res';
+
+    public const TYPE_LIVE = 'live';
+
+    public const TYPE_SCORM = 'scorm';
+
+    public const TYPE_LEARNING_QUIZ = 'learning_quiz';
+
+    public const TYPE_SATISFACTION_QUIZ = 'satisfaction_quiz';
+
     public const TYPES_WITH_APPOINTMENT = [
-        'res',
-        'live',
+        self::TYPE_RESIDENTIAL,
+        self::TYPE_LIVE,
     ];
 
     public const TYPES_WITHOUT_MANUAL_TITLE = [
-        'learning_quiz',
-        'satisfaction_quiz',
+        self::TYPE_LEARNING_QUIZ,
+        self::TYPE_SATISFACTION_QUIZ,
     ];
 
     public const TYPES = [
-        'video',
-        'res',
-        'live',
-        'scorm',
-        'learning_quiz',
-        'satisfaction_quiz',
+        self::TYPE_VIDEO,
+        self::TYPE_RESIDENTIAL,
+        self::TYPE_LIVE,
+        self::TYPE_SCORM,
+        self::TYPE_LEARNING_QUIZ,
+        self::TYPE_SATISFACTION_QUIZ,
     ];
 
     public const STATUSES = [
@@ -154,6 +166,17 @@ class Module extends Model
     }
 
     /**
+     * @return array<int, string>
+     */
+    public static function creatableTypes(): array
+    {
+        return array_values(array_filter(
+            self::availableTypes(),
+            fn (string $type): bool => $type !== self::TYPE_SATISFACTION_QUIZ
+        ));
+    }
+
+    /**
      * Get the translated labels for the available module types.
      *
      * @return array<string, string>
@@ -161,12 +184,12 @@ class Module extends Model
     public static function availableTypeLabels(): array
     {
         return [
-            'video' => __('Video'),
-            'res' => __('Residential'),
-            'live' => __('Live'),
-            'scorm' => __('SCORM'),
-            'learning_quiz' => __('Learning quiz'),
-            'satisfaction_quiz' => __('Satisfaction quiz'),
+            self::TYPE_VIDEO => __('Video'),
+            self::TYPE_RESIDENTIAL => __('Residential'),
+            self::TYPE_LIVE => __('Live'),
+            self::TYPE_SCORM => __('SCORM'),
+            self::TYPE_LEARNING_QUIZ => __('Learning quiz'),
+            self::TYPE_SATISFACTION_QUIZ => __('Satisfaction quiz'),
         ];
     }
 
@@ -224,9 +247,19 @@ class Module extends Model
     public function isQuiz(): bool
     {
         return in_array($this->type, [
-            'learning_quiz',
-            'satisfaction_quiz',
+            self::TYPE_LEARNING_QUIZ,
+            self::TYPE_SATISFACTION_QUIZ,
         ], true);
+    }
+
+    public function isLearningQuiz(): bool
+    {
+        return $this->type === self::TYPE_LEARNING_QUIZ;
+    }
+
+    public function isSatisfactionQuiz(): bool
+    {
+        return $this->type === self::TYPE_SATISFACTION_QUIZ;
     }
 
     /**
@@ -234,17 +267,17 @@ class Module extends Model
      */
     public function isVideo(): bool
     {
-        return $this->type === 'video';
+        return $this->type === self::TYPE_VIDEO;
     }
 
     public function usesRegiaLive(): bool
     {
-        return $this->type === 'live' && ! $this->is_live_teacher;
+        return $this->type === self::TYPE_LIVE && ! $this->is_live_teacher;
     }
 
     public function isScorm(): bool
     {
-        return $this->type === 'scorm';
+        return $this->type === self::TYPE_SCORM;
     }
 
     /**
@@ -285,7 +318,7 @@ class Module extends Model
             && $this->passing_score <= $this->max_score;
 
         // Per learning_quiz è richiesto anche max_attempts
-        if ($this->type === 'learning_quiz') {
+        if ($this->type === self::TYPE_LEARNING_QUIZ) {
             return $baseValidation && $this->max_attempts !== null && $this->max_attempts > 0;
         }
 

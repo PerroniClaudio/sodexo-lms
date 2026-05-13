@@ -30,6 +30,8 @@ class UpdateCourseRequest extends FormRequest
             'year' => ['required', 'integer', 'min:1900', 'max:2100'],
             'expiry_date' => ['required', Rule::date()->format('Y-m-d')],
             'status' => ['required', 'string', Rule::in(Course::availableStatuses())],
+            'has_satisfaction_survey' => ['nullable', 'boolean'],
+            'satisfaction_survey_required_for_certificate' => ['nullable', 'boolean'],
         ];
     }
 
@@ -46,6 +48,8 @@ class UpdateCourseRequest extends FormRequest
             'year' => __('Anno del corso'),
             'expiry_date' => __('Data scadenza'),
             'status' => __('Stato'),
+            'has_satisfaction_survey' => __('Includi questionario di gradimento'),
+            'satisfaction_survey_required_for_certificate' => __('Questionario obbligatorio per attestato'),
         ];
     }
 }

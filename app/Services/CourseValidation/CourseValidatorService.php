@@ -24,6 +24,10 @@ class CourseValidatorService
             return false;
         }
 
+        if ($course->hasSatisfactionSurveyEnabled() && $course->satisfactionModule() === null) {
+            return false;
+        }
+
         foreach ($modules as $module) {
             if (! $this->moduleValidator->validate($module)) {
                 return false;
@@ -43,6 +47,10 @@ class CourseValidatorService
         $modules = $course->modules;
 
         if ($modules->isEmpty()) {
+            return false;
+        }
+
+        if ($course->hasSatisfactionSurveyEnabled() && $course->satisfactionModule() === null) {
             return false;
         }
 
@@ -77,6 +85,10 @@ class CourseValidatorService
             return $errors;
         }
 
+        if ($course->hasSatisfactionSurveyEnabled() && $course->satisfactionModule() === null) {
+            $errors[] = 'Il corso richiede un questionario di gradimento, ma il modulo finale non Ã¨ presente.';
+        }
+
         foreach ($modules as $module) {
             $moduleErrors = $this->moduleValidator->getValidationErrors($module);
 
@@ -105,6 +117,10 @@ class CourseValidatorService
             $errors[] = 'Il corso deve avere almeno un modulo per essere pubblicato.';
 
             return $errors;
+        }
+
+        if ($course->hasSatisfactionSurveyEnabled() && $course->satisfactionModule() === null) {
+            $errors[] = 'Il corso richiede un questionario di gradimento finale.';
         }
 
         foreach ($modules as $module) {

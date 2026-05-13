@@ -66,3 +66,34 @@ it('uses the default title for quiz modules', function () {
 
     expect($module->title)->toBe('Quiz di apprendimento');
 });
+
+it('keeps the satisfaction survey at the end when a new module is created', function () {
+    $course = Course::factory()->create();
+    $firstModule = Module::factory()->create([
+        'type' => Module::TYPE_VIDEO,
+        'order' => 1,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+    $surveyModule = Module::factory()->create([
+        'type' => Module::TYPE_SATISFACTION_QUIZ,
+        'title' => Module::defaultTitleForType(Module::TYPE_SATISFACTION_QUIZ),
+        'order' => 2,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $response = $this->post(route('admin.courses.modules.store', $course), [
+        'type' => 'live',
+        'title' => 'Modulo live introduttivo',
+    ]);
+
+    $newModule = Module::query()
+        ->where('belongsTo', (string) $course->getKey())
+        ->where('type', 'live')
+        ->firstOrFail();
+
+    $response->assertRedirect(route('admin.courses.modules.edit', [$course, $newModule]));
+
+    expect($firstModule->fresh()->order)->toBe(1);
+    expect($newModule->fresh()->order)->toBe(2);
+    expect($surveyModule->fresh()->order)->toBe(3);
+});

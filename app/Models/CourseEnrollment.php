@@ -167,8 +167,15 @@ class CourseEnrollment extends Model
 
     public function syncProgressState(): void
     {
+        $this->loadMissing('course');
+
         $moduleProgresses = $this->moduleProgresses()->get();
-        $totalModules = $moduleProgresses->count();
+        $relevantModules = $this->course->completionRelevantModules();
+        $relevantModuleIds = $relevantModules->pluck('id')->map(fn (mixed $id): int => (int) $id);
+        $relevantProgresses = $moduleProgresses->filter(
+            fn (ModuleProgress $progress): bool => $relevantModuleIds->contains((int) $progress->module_id)
+        );
+        $totalModules = $relevantProgresses->count();
 
         if ($totalModules === 0) {
             $this->forceFill([
@@ -180,8 +187,8 @@ class CourseEnrollment extends Model
             return;
         }
 
-        $completedModules = $moduleProgresses->where('status', ModuleProgress::STATUS_COMPLETED)->count();
-        $hasStartedModules = $moduleProgresses->contains(
+        $completedModules = $relevantProgresses->where('status', ModuleProgress::STATUS_COMPLETED)->count();
+        $hasStartedModules = $relevantProgresses->contains(
             fn (ModuleProgress $progress): bool => $progress->started_at !== null
                 || in_array($progress->status, [
                     ModuleProgress::STATUS_IN_PROGRESS,
@@ -228,5 +235,28 @@ class CourseEnrollment extends Model
 
         $this->save();
         $this->syncProgressState();
+    }
+
+    public function refreshCurrentModulePointer(): void
+    {
+        $this->loadMissing('course');
+
+        $progressByModuleId = $this->moduleProgresses()
+            ->get()
+            ->keyBy(fn (ModuleProgress $progress): int => (int) $progress->module_id);
+
+        $modules = $this->course->modules()->orderBy('order')->get();
+        $currentProgress = $modules->first(function (Module $module) use ($progressByModuleId): bool {
+            $progress = $progressByModuleId->get((int) $module->getKey());
+
+            return $progress !== null
+                && $progress->status !== ModuleProgress::STATUS_COMPLETED;
+        });
+
+        $fallbackModule = $modules->last();
+
+        $this->forceFill([
+            'current_module_id' => $currentProgress?->getKey() ?? $fallbackModule?->getKey(),
+        ])->save();
     }
 }

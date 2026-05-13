@@ -49,3 +49,24 @@ it('renders quiz question update and delete forms without nesting forms', functi
     expect($deleteForms->length)->toBe(1);
     expect($xpath->query(sprintf('//form[@action="%s"][.//input[@name="_method" and @value="PUT"]]//form', $updateFormAction))->length)->toBe(0);
 });
+
+it('shows disabled quiz editing controls when the learning quiz is published', function () {
+    $course = Course::factory()->create([
+        'title' => 'Corso test',
+    ]);
+    $module = Module::factory()->create([
+        'type' => 'learning_quiz',
+        'status' => 'published',
+        'title' => 'Quiz di apprendimento',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $html = view('admin.module.partials.quiz-questions', [
+        'course' => $course,
+        'module' => $module,
+    ])->render();
+
+    expect($html)->toContain('New question');
+    expect($html)->toContain('Le domande e le risposte non possono essere modificate quando il quiz');
+    expect($html)->toContain('data-quiz-editable="false"');
+});

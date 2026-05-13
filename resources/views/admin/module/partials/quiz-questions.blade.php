@@ -1,17 +1,22 @@
 <div class="card border border-base-300 bg-base-100 shadow-sm">
     {{-- Inclusione JS standalone per gestione domande quiz --}}
     @vite('resources/js/admin-quiz-questions.js')
+    @php($quizIsEditable = $module->status !== 'published')
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <div class="card-body gap-6">
         <div class="flex justify-between items-center">
                 <h2 class="text-lg font-semibold">{{ __('Quiz questions') }}</h2>
-                {{-- <button type="button" class="btn btn-primary" onclick="document.getElementById('add-question-modal').showModal()">{{ __('Add question') }}</button> --}}
                 <button type="button" class="btn btn-primary" onclick="document.getElementById('add-question-modal').showModal()">
                         <span>{{ __('New question') }}</span>
                         <x-lucide-plus class="h-4 w-4" />
                 </button>
         </div>
+        {{-- @unless($quizIsEditable)
+            <div class="alert alert-warning">
+                <span>{{ __('Le domande e le risposte non possono essere modificate quando il quiz è pubblicato.') }}</span>
+            </div>
+        @endunless --}}
 
         <dialog id="add-question-modal" class="modal">
             <div class="modal-box w-full max-w-xl">
@@ -41,6 +46,7 @@
             data-base-url="{{ url('admin/api/courses') }}"
             data-course-id="{{ $course->id }}"
             data-module-id="{{ $module->id }}"
+            data-quiz-editable="{{ $quizIsEditable ? 'true' : 'false' }}"
             data-max-score-url="{{ route('admin.api.courses.modules.max_score', [$course, $module]) }}"
             data-question-store-url="{{ route('admin.api.courses.modules.quiz.questions.store', [$course, $module]) }}"
         >
@@ -73,7 +79,7 @@
     
     <!-- Template domanda quiz -->
     <template id="quiz-question-template">
-        <div class="mb-6 p-4 border border-base-300 rounded-lg bg-base-200 flex flex-col gap-2" data-question-id>
+        <div class="mb-6 p-4 border border-base-300 rounded-lg flex flex-col gap-2" data-question-id>
             <div class="flex items-center gap-2">
                 <span class="badge badge-sm badge-success whitespace-nowrap" data-valid-badge-valid hidden>{{ __('Valid') }}</span>
                 <span class="badge badge-sm badge-error whitespace-nowrap" data-valid-badge-invalid hidden>{{ __('Not valid') }}</span>

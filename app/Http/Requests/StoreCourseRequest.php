@@ -27,6 +27,8 @@ class StoreCourseRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', 'max:255', Rule::in(Course::availableTypes())],
+            'has_satisfaction_survey' => ['nullable', 'boolean'],
+            'satisfaction_survey_required_for_certificate' => ['nullable', 'boolean'],
         ];
     }
 
@@ -40,6 +42,8 @@ class StoreCourseRequest extends FormRequest
         return [
             'title' => __('Titolo del corso'),
             'type' => __('Tipologia'),
+            'has_satisfaction_survey' => __('Includi questionario di gradimento'),
+            'satisfaction_survey_required_for_certificate' => __('Questionario obbligatorio per attestato'),
         ];
     }
 }

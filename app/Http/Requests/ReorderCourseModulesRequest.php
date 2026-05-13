@@ -67,6 +67,7 @@ class ReorderCourseModulesRequest extends FormRequest
                 ) {
                     $validator->errors()->add('modules', __('The module order is invalid.'));
                 }
+
             },
         ];
     }

@@ -150,7 +150,7 @@ class ModuleProgress extends Model
         $this->loadMissing(['module', 'courseEnrollment']);
         $this->assertTrackableCurrentModule();
 
-        if ($this->module->isQuiz()) {
+        if ($this->module->isLearningQuiz()) {
             $this->assertQuizPassed();
         }
 
@@ -160,7 +160,28 @@ class ModuleProgress extends Model
                 'started_at' => $this->started_at ?? now(),
                 'completed_at' => now(),
                 'last_accessed_at' => now(),
-                'passed_at' => $this->module->isQuiz() ? ($this->passed_at ?? now()) : $this->passed_at,
+                'passed_at' => $this->module->isLearningQuiz() ? ($this->passed_at ?? now()) : $this->passed_at,
+            ])->save();
+
+            $this->courseEnrollment->advanceAfterModuleCompletion($this);
+        });
+    }
+
+    public function completeSatisfactionSurvey(): void
+    {
+        $this->loadMissing(['module', 'courseEnrollment']);
+        $this->assertTrackableCurrentModule();
+
+        if (! $this->module->isSatisfactionQuiz()) {
+            throw new DomainException('Only satisfaction survey modules can be completed without a score.');
+        }
+
+        DB::transaction(function (): void {
+            $this->forceFill([
+                'status' => self::STATUS_COMPLETED,
+                'started_at' => $this->started_at ?? now(),
+                'completed_at' => now(),
+                'last_accessed_at' => now(),
             ])->save();
 
             $this->courseEnrollment->advanceAfterModuleCompletion($this);
@@ -171,7 +192,7 @@ class ModuleProgress extends Model
     {
         $this->loadMissing(['module', 'courseEnrollment']);
 
-        if (! $this->module->isQuiz()) {
+        if (! $this->module->isLearningQuiz()) {
             throw new DomainException('Quiz attempts can only be recorded for quiz modules.');
         }
 
