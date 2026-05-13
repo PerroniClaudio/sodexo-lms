@@ -16,7 +16,9 @@
         "laravel/fortify": "^1.36",
         "laravel/framework": "^13.0",
         "laravel/tinker": "^3.0",
+        "league/flysystem-aws-s3-v3": "^3.32",
         "mallardduck/blade-lucide-icons": "^1.26",
+        "phpoffice/phpword": "^1.4",
         "spatie/laravel-pdf": "^2.6",
         "spatie/laravel-permission": "^7.3",
         "twilio/sdk": "^8.11"
