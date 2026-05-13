@@ -72,6 +72,17 @@
                         </li>
                         <li class="w-full">
                             <a
+                                href="{{ route('admin.certificates.index') }}"
+                                @class([
+                                    'w-full',
+                                    'menu-active' => request()->routeIs('admin.certificates.*'),
+                                ])
+                            >
+                                {{ __('Attestati') }}
+                            </a>
+                        </li>
+                        <li class="w-full">
+                            <a
                                 href="{{ route('admin.videos.index') }}"
                                 @class([
                                     'w-full',

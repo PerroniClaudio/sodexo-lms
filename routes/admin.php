@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\CourseEnrollmentController;
 use App\Http\Controllers\Admin\CourseModuleController;
+use App\Http\Controllers\Admin\CustomCertificateController;
 use App\Http\Controllers\Admin\HomepageCustomizationController;
 use App\Http\Controllers\Admin\JobCategoryController;
 use App\Http\Controllers\Admin\JobLevelController;
@@ -41,6 +42,14 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::post('/homepage/hero', [HomepageCustomizationController::class, 'updateHero'])->name('homepage.hero.update');
         Route::post('/homepage/services', [HomepageCustomizationController::class, 'updateServices'])->name('homepage.services.update');
         Route::post('/homepage/about', [HomepageCustomizationController::class, 'updateAbout'])->name('homepage.about.update');
+        Route::get('/certificates', [CustomCertificateController::class, 'index'])->name('certificates.index');
+        Route::get('/certificates/create', [CustomCertificateController::class, 'create'])->name('certificates.create');
+        Route::post('/certificates', [CustomCertificateController::class, 'store'])->name('certificates.store');
+        Route::get('/certificates/{customCertificate}/edit', [CustomCertificateController::class, 'edit'])->name('certificates.edit');
+        Route::put('/certificates/{customCertificate}', [CustomCertificateController::class, 'update'])->name('certificates.update');
+        Route::post('/certificates/{customCertificate}/restore-version', [CustomCertificateController::class, 'restoreVersion'])->name('certificates.restore-version');
+        Route::get('/certificates/{customCertificate}/preview', [CustomCertificateController::class, 'preview'])->name('certificates.preview');
+        Route::post('/certificates/{customCertificate}/preview-download', [CustomCertificateController::class, 'previewDownload'])->name('certificates.preview-download');
 
         Route::get('/regia', [RegiaController::class, 'index'])->name('regia.index');
         Route::get('/regia/{module}', [RegiaController::class, 'show'])->name('regia.show');

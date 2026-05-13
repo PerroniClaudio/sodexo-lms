@@ -4,6 +4,7 @@ use App\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /*
@@ -19,7 +20,7 @@ use Tests\TestCase;
 
 pest()->extend(TestCase::class)
  // ->use(RefreshDatabase::class)
-    ->in('Feature');
+    ->in('Feature', 'Unit');
 
 /*
 |--------------------------------------------------------------------------
@@ -56,7 +57,18 @@ function actingAsRole(string $role): User
 {
     test()->seed(RoleAndPermissionSeeder::class);
 
-    $user = User::factory()->create();
+    $user = User::query()->create([
+        'email' => fake()->unique()->safeEmail(),
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'name' => fake()->firstName(),
+        'surname' => fake()->lastName(),
+        'fiscal_code' => fake()->unique()->regexify('[A-Z0-9]{16}'),
+        'is_foreigner_or_immigrant' => false,
+    ]);
+
     $user->assignRole($role);
 
     test()->actingAs($user);
@@ -110,4 +122,42 @@ function validScormManifest(): string
     </resources>
 </manifest>
 XML;
+}
+
+function docxUpload(array $entries): UploadedFile
+{
+    $temporaryFile = tempnam(sys_get_temp_dir(), 'docx-test-');
+    $archive = new ZipArchive;
+    $archive->open($temporaryFile, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+
+    $defaults = [
+        '[Content_Types].xml' => <<<'XML'
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+    <Default Extension="xml" ContentType="application/xml"/>
+    <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>
+XML,
+        '_rels/.rels' => <<<'XML'
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>
+XML,
+    ];
+
+    foreach (array_merge($defaults, $entries) as $path => $contents) {
+        $archive->addFromString($path, $contents);
+    }
+
+    $archive->close();
+
+    return new UploadedFile(
+        $temporaryFile,
+        'template.docx',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        null,
+        true
+    );
 }
