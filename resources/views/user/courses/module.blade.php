@@ -43,8 +43,8 @@
                     @include('user.courses.modules.live')
                     @break
 
-                @case('residential')
-                    @include('user.courses.modules.residential')
+                @case('res')
+                    @include('user.courses.modules.res')
                     @break
 
                 @default
