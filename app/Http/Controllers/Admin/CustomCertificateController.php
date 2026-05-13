@@ -245,7 +245,13 @@ class CustomCertificateController extends Controller
             Str::slug(trim(sprintf('%s %s', $user->name, $user->surname)))
         );
 
-        return response()->download($temporaryPath, $downloadName)->deleteFileAfterSend(true);
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        return response()->download($temporaryPath, $downloadName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ])->deleteFileAfterSend(true);
     }
 
     /**
