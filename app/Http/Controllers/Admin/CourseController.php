@@ -10,6 +10,7 @@ use App\Models\Module;
 use App\Models\SatisfactionSurveyTemplate;
 use App\Services\CourseValidation\CourseValidatorService;
 use App\Services\SyncCourseSatisfactionSurvey;
+use Carbon\CarbonInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -109,12 +110,20 @@ class CourseController extends Controller
     ): RedirectResponse {
         try {
             $validated = $request->validated();
-            $course->update([
+            $attributes = [
                 ...$validated,
                 'has_satisfaction_survey' => (bool) ($validated['has_satisfaction_survey'] ?? false),
                 'satisfaction_survey_required_for_certificate' => (bool) (($validated['has_satisfaction_survey'] ?? false)
                     && ($validated['satisfaction_survey_required_for_certificate'] ?? false)),
-            ]);
+            ];
+
+            if ($this->isPublishedCourseStatusOnlyUpdate($course, $attributes)) {
+                $attributes = [
+                    'status' => $validated['status'],
+                ];
+            }
+
+            $course->update($attributes);
             $syncCourseSatisfactionSurvey->handle($course);
 
             return redirect()
@@ -126,6 +135,39 @@ class CourseController extends Controller
                 ->withInput()
                 ->with('error', $e->getMessage());
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function isPublishedCourseStatusOnlyUpdate(Course $course, array $attributes): bool
+    {
+        if ($course->status !== 'published') {
+            return false;
+        }
+
+        $normalizedOriginal = [
+            'title' => (string) $course->title,
+            'description' => (string) $course->description,
+            'year' => (int) $course->year,
+            'expiry_date' => $course->expiry_date instanceof CarbonInterface
+                ? $course->expiry_date->format('Y-m-d')
+                : (string) $course->expiry_date,
+            'has_satisfaction_survey' => (bool) $course->has_satisfaction_survey,
+            'satisfaction_survey_required_for_certificate' => (bool) $course->satisfaction_survey_required_for_certificate,
+        ];
+
+        $normalizedIncoming = [
+            'title' => (string) ($attributes['title'] ?? ''),
+            'description' => (string) ($attributes['description'] ?? ''),
+            'year' => (int) ($attributes['year'] ?? 0),
+            'expiry_date' => (string) ($attributes['expiry_date'] ?? ''),
+            'has_satisfaction_survey' => (bool) ($attributes['has_satisfaction_survey'] ?? false),
+            'satisfaction_survey_required_for_certificate' => (bool) ($attributes['satisfaction_survey_required_for_certificate'] ?? false),
+        ];
+
+        return $normalizedOriginal === $normalizedIncoming
+            && ($attributes['status'] ?? null) !== $course->status;
     }
 
     public function destroy(Course $course): RedirectResponse

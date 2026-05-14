@@ -5,8 +5,6 @@
 
 import { getModuleRoot, getModuleData, escapeHtml } from './module-base.js';
 
-let currentSubmissionId = null;
-
 /**
  * Inizializza il modulo quiz di apprendimento
  */
@@ -45,7 +43,6 @@ async function loadQuizStatus(moduleData) {
         // Se c'è un tentativo in corso, riprendi
         if (data.active_submission) {
             statusContainer.classList.add('hidden');
-            currentSubmissionId = data.active_submission.id;
             startQuizFlow(moduleData);
         } else {
             // Mostra lo stato e il bottone per iniziare
@@ -88,10 +85,14 @@ function renderQuizStatus(data, moduleData) {
         
         data.past_attempts.forEach(attempt => {
             const date = new Date(attempt.submitted_at).toLocaleString('it-IT');
+            const attemptWasAbandoned = attempt.status === 'failed' && attempt.score === null;
             const resultClass = attempt.passed ? 'badge-success' : 'badge-error';
-            const resultText = attempt.passed ? 'Superato' : 'Non superato';
-            
-            html += `<tr><td>${date}</td><td>${attempt.score} / ${attempt.total_score}</td><td><span class="badge ${resultClass}">${resultText}</span></td></tr>`;
+            const resultText = attemptWasAbandoned ? 'Abbandonato' : (attempt.passed ? 'Superato' : 'Non superato');
+            const scoreText = attempt.score === null || attempt.total_score === null
+                ? '-'
+                : `${attempt.score} / ${attempt.total_score}`;
+
+            html += `<tr><td>${date}</td><td>${scoreText}</td><td><span class="badge ${resultClass}">${resultText}</span></td></tr>`;
         });
         
         html += '</tbody></table></div>';
@@ -155,8 +156,6 @@ async function startQuizAttempt(moduleData) {
             alert(data.error || 'Errore durante l\'avvio del quiz');
             return;
         }
-
-        currentSubmissionId = data.submission_id;
 
         // Nascondi status e mostra quiz attivo
         document.getElementById('quiz-status').classList.add('hidden');

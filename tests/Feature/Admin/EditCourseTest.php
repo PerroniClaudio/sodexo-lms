@@ -194,6 +194,40 @@ it('updates the course personal data', function () {
     expect($course->satisfactionModule()?->order)->toBe(1);
 });
 
+it('allows changing only the status for a published course when other form values are unchanged', function () {
+    $course = Course::factory()->create([
+        'title' => 'Titolo pubblicato',
+        'description' => 'Descrizione pubblicata',
+        'year' => 2026,
+        'expiry_date' => now()->setDate(2027, 12, 31)->setTime(15, 45),
+        'status' => 'published',
+        'has_satisfaction_survey' => true,
+        'satisfaction_survey_required_for_certificate' => false,
+    ]);
+
+    $response = $this->put(route('admin.courses.update', $course), [
+        'title' => 'Titolo pubblicato',
+        'description' => 'Descrizione pubblicata',
+        'year' => 2026,
+        'expiry_date' => '2027-12-31',
+        'status' => 'archived',
+        'has_satisfaction_survey' => '1',
+    ]);
+
+    $response->assertRedirect(route('admin.courses.edit', $course));
+    $response->assertSessionHas('status', 'Corso aggiornato con successo.');
+
+    $course->refresh();
+
+    expect($course->status)->toBe('archived');
+    expect($course->title)->toBe('Titolo pubblicato');
+    expect($course->description)->toBe('Descrizione pubblicata');
+    expect($course->year)->toBe(2026);
+    expect($course->expiry_date?->format('Y-m-d'))->toBe('2027-12-31');
+    expect($course->has_satisfaction_survey)->toBeTrue();
+    expect($course->satisfaction_survey_required_for_certificate)->toBeFalse();
+});
+
 it('soft deletes a course', function () {
     $course = Course::factory()->create();
 

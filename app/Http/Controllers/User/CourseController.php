@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\User;
 
+use App\Actions\AbandonLearningQuizAttempt;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Module;
+use App\Models\ModuleQuizSubmission;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -13,6 +15,8 @@ use Illuminate\View\View;
 
 class CourseController extends Controller
 {
+    public function __construct(private readonly AbandonLearningQuizAttempt $abandonLearningQuizAttempt) {}
+
     public function index(): View
     {
         $user = $this->authUser();
@@ -52,6 +56,27 @@ class CourseController extends Controller
         abort_unless($progress !== null, 404);
 
         abort_if($progress->status === 'locked', 403);
+
+        if ($module->isLearningQuiz()) {
+            $activeSubmission = $module->quizSubmissions()
+                ->where('course_enrollment_id', $enrollment->getKey())
+                ->where('source_type', ModuleQuizSubmission::SOURCE_ONLINE)
+                ->whereIn('status', [
+                    ModuleQuizSubmission::STATUS_STARTED,
+                    ModuleQuizSubmission::STATUS_IN_PROGRESS,
+                ])
+                ->first();
+
+            if ($activeSubmission !== null) {
+                ($this->abandonLearningQuizAttempt)(
+                    $activeSubmission,
+                    $progress,
+                    'Tentativo abbandonato (ricaricamento pagina o ritorno al corso).'
+                );
+
+                $progress->refresh();
+            }
+        }
 
         $nextModule = $course->modules()
             ->where('order', '>', $module->order)

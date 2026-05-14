@@ -2,21 +2,26 @@
 
 namespace App\Http\Controllers\User;
 
+use App\Actions\AbandonLearningQuizAttempt;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleProgress;
+use App\Models\ModuleQuizQuestion;
 use App\Models\ModuleQuizSubmission;
 use App\Models\ModuleQuizSubmissionAnswer;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class QuizModuleController extends Controller
 {
+    public function __construct(private readonly AbandonLearningQuizAttempt $abandonLearningQuizAttempt) {}
+
     /**
      * Get the current status of the quiz module for the user.
      */
@@ -31,12 +36,16 @@ class QuizModuleController extends Controller
         $progress = $this->resolveProgress($enrollment, $module);
         abort_unless($progress !== null, 404);
 
-        // Ottieni tutti i tentativi completati
+        // Ottieni tutti i tentativi consumati
         $submissions = ModuleQuizSubmission::query()
             ->where('module_id', $module->id)
             ->where('course_enrollment_id', $enrollment->id)
             ->where('source_type', ModuleQuizSubmission::SOURCE_ONLINE)
-            ->whereIn('status', [ModuleQuizSubmission::STATUS_SUBMITTED, ModuleQuizSubmission::STATUS_FINALIZED])
+            ->whereIn('status', [
+                ModuleQuizSubmission::STATUS_SUBMITTED,
+                ModuleQuizSubmission::STATUS_FINALIZED,
+                ModuleQuizSubmission::STATUS_FAILED,
+            ])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -48,7 +57,11 @@ class QuizModuleController extends Controller
             ->whereIn('status', [ModuleQuizSubmission::STATUS_STARTED, ModuleQuizSubmission::STATUS_IN_PROGRESS])
             ->first();
 
-        $attemptsUsed = $submissions->count() + ($activeSubmission ? 1 : 0);
+        $attemptsUsed = ModuleQuizSubmission::query()
+            ->where('module_id', $module->id)
+            ->where('course_enrollment_id', $enrollment->id)
+            ->where('source_type', ModuleQuizSubmission::SOURCE_ONLINE)
+            ->count();
         $maxAttempts = $module->max_attempts ?? null;
         $canStartNewAttempt = $maxAttempts === null || $attemptsUsed < $maxAttempts;
         
@@ -83,6 +96,7 @@ class QuizModuleController extends Controller
                 'id' => $s->id,
                 'score' => $s->score,
                 'total_score' => $s->total_score,
+                'status' => $s->status,
                 'passed' => $s->score >= $module->passing_score,
                 'submitted_at' => $s->submitted_at?->toISOString(),
             ]),
@@ -141,6 +155,7 @@ class QuizModuleController extends Controller
                 'course_enrollment_id' => $enrollment->id,
                 'status' => ModuleQuizSubmission::STATUS_STARTED,
                 'started_at' => now(),
+                'provider_payload' => $this->buildAttemptPayload($module),
             ]);
 
             // Aggiorna il progress per segnare come iniziato
@@ -182,14 +197,14 @@ class QuizModuleController extends Controller
         }
 
         // Ottieni le domande già risposte
-        $answeredQuestionIds = $submission->answers()->pluck('module_quiz_question_id')->toArray();
-
-        // Ottieni la prossima domanda non risposta
-        $nextQuestion = $module->quizQuestions()
-            ->with('answers')
-            ->whereNotIn('id', $answeredQuestionIds)
-            ->orderBy('id')
-            ->first();
+        $attemptPayload = $this->ensureAttemptPayload($submission, $module);
+        $answeredQuestionIds = $submission->answers()->pluck('module_quiz_question_id')->all();
+        $nextQuestionId = collect($attemptPayload['question_order'])
+            ->map(fn (mixed $questionId): int => (int) $questionId)
+            ->first(fn (int $questionId): bool => ! in_array($questionId, $answeredQuestionIds, true));
+        $nextQuestion = $nextQuestionId === null
+            ? null
+            : $module->quizQuestions()->with('answers')->find($nextQuestionId);
 
         if (!$nextQuestion) {
             // Tutte le domande sono state risposte
@@ -209,7 +224,7 @@ class QuizModuleController extends Controller
                 'id' => $nextQuestion->id,
                 'text' => $nextQuestion->text,
                 'points' => $nextQuestion->points,
-                'answers' => $nextQuestion->answers->map(fn ($a) => [
+                'answers' => $this->orderedAnswersForQuestion($nextQuestion, $attemptPayload)->map(fn ($a) => [
                     'id' => $a->id,
                     'text' => $a->text,
                 ]),
@@ -243,6 +258,17 @@ class QuizModuleController extends Controller
 
         if (!$submission) {
             return response()->json(['error' => 'Nessun tentativo in corso.'], 422);
+        }
+
+        $attemptPayload = $this->ensureAttemptPayload($submission, $module);
+        $expectedQuestionId = $this->nextQuestionIdForSubmission($submission, $attemptPayload);
+
+        if ($expectedQuestionId === null) {
+            return response()->json(['error' => 'Il quiz risulta gia completato.'], 422);
+        }
+
+        if ((int) $validated['question_id'] !== $expectedQuestionId) {
+            return response()->json(['error' => 'La domanda inviata non corrisponde a quella attesa.'], 422);
         }
 
         // Verifica che la domanda appartenga al modulo
@@ -397,20 +423,11 @@ class QuizModuleController extends Controller
             return response()->json(['error' => 'Nessun tentativo in corso.'], 422);
         }
 
-        // Segna il tentativo come fallito/abbandonato
-        DB::transaction(function () use ($submission, $module, $progress) {
-            $submission->update([
-                'status' => ModuleQuizSubmission::STATUS_FAILED,
-                'submitted_at' => now(),
-                'error_message' => 'Tentativo abbandonato (ricaricamento pagina o navigazione).',
-            ]);
-
-            // Incrementa i tentativi nel progress
-            $progress->forceFill([
-                'quiz_attempts' => $progress->quiz_attempts + 1,
-                'last_accessed_at' => now(),
-            ])->save();
-        });
+        ($this->abandonLearningQuizAttempt)(
+            $submission,
+            $progress,
+            'Tentativo abbandonato (ricaricamento pagina o navigazione).'
+        );
 
         return response()->json([
             'success' => true,
@@ -432,5 +449,98 @@ class QuizModuleController extends Controller
             ->where('course_user_id', $enrollment->getKey())
             ->where('module_id', $module->getKey())
             ->first();
+    }
+
+    /**
+     * @return array{
+     *     question_order: array<int, int>,
+     *     answer_order: array<int|string, array<int, int>>
+     * }
+     */
+    private function buildAttemptPayload(Module $module): array
+    {
+        $questions = $module->quizQuestions()
+            ->with('answers')
+            ->get()
+            ->shuffle()
+            ->values();
+
+        return [
+            'question_order' => $questions
+                ->map(fn (ModuleQuizQuestion $question): int => (int) $question->getKey())
+                ->all(),
+            'answer_order' => $questions
+                ->mapWithKeys(fn (ModuleQuizQuestion $question): array => [
+                    (string) $question->getKey() => $question->answers
+                        ->shuffle()
+                        ->map(fn ($answer): int => (int) $answer->getKey())
+                        ->all(),
+                ])
+                ->all(),
+        ];
+    }
+
+    /**
+     * @return array{
+     *     question_order: array<int, int>,
+     *     answer_order: array<int|string, array<int, int>>
+     * }
+     */
+    private function ensureAttemptPayload(ModuleQuizSubmission $submission, Module $module): array
+    {
+        $payload = $submission->provider_payload;
+
+        if (
+            is_array($payload)
+            && array_key_exists('question_order', $payload)
+            && array_key_exists('answer_order', $payload)
+        ) {
+            return $payload;
+        }
+
+        $payload = $this->buildAttemptPayload($module);
+        $submission->update(['provider_payload' => $payload]);
+
+        return $payload;
+    }
+
+    /**
+     * @param  array{
+     *     question_order: array<int, int>,
+     *     answer_order: array<int|string, array<int, int>>
+     * }  $attemptPayload
+     */
+    private function nextQuestionIdForSubmission(ModuleQuizSubmission $submission, array $attemptPayload): ?int
+    {
+        $answeredQuestionIds = $submission->answers()->pluck('module_quiz_question_id')->all();
+
+        return collect($attemptPayload['question_order'])
+            ->map(fn (mixed $questionId): int => (int) $questionId)
+            ->first(fn (int $questionId): bool => ! in_array($questionId, $answeredQuestionIds, true));
+    }
+
+    /**
+     * @param  array{
+     *     question_order: array<int, int>,
+     *     answer_order: array<int|string, array<int, int>>
+     * }  $attemptPayload
+     * @return Collection<int, \App\Models\ModuleQuizAnswer>
+     */
+    private function orderedAnswersForQuestion(ModuleQuizQuestion $question, array $attemptPayload): Collection
+    {
+        $answerOrder = collect($attemptPayload['answer_order'][(string) $question->getKey()] ?? [])
+            ->map(fn (mixed $answerId): int => (int) $answerId);
+        $answersById = $question->answers->keyBy(fn ($answer): int => (int) $answer->getKey());
+
+        $orderedAnswers = $answerOrder
+            ->map(fn (int $answerId) => $answersById->get($answerId))
+            ->filter()
+            ->values();
+
+        if ($orderedAnswers->isNotEmpty()) {
+            return $orderedAnswers;
+        }
+
+        return $question->answers->values();
     }
 }
