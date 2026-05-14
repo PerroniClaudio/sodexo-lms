@@ -10,9 +10,9 @@ use App\Http\Requests\ReorderCourseModulesRequest;
 use App\Http\Requests\StoreModuleRequest;
 use App\Http\Requests\UpdateModuleRequest;
 use App\Models\Course;
-use App\Models\CourseTeacherEnrollment;
-use App\Models\CourseTutorEnrollment;
 use App\Models\Module;
+use App\Models\ModuleTeacherEnrollment;
+use App\Models\ModuleTutorEnrollment;
 use App\Models\User;
 use App\Models\Video;
 use App\Services\LiveModuleAttendanceService;
@@ -134,10 +134,10 @@ class CourseModuleController extends Controller
             'moduleEditView' => $this->moduleEditView($module),
             'moduleTypeLabels' => Module::availableTypeLabels(),
             'moduleStatusLabels' => Module::availableStatusLabels(),
-            'assignedTeachers' => $this->assignedTeachers($course),
-            'availableTeachers' => $this->availableTeachers($course),
-            'assignedTutors' => $this->assignedTutors($course),
-            'availableTutors' => $this->availableTutors($course),
+            'assignedTeachers' => $this->assignedTeachers($module),
+            'availableTeachers' => $this->availableTeachers($module),
+            'assignedTutors' => $this->assignedTutors($module),
+            'availableTutors' => $this->availableTutors($module),
             'liveAttendanceRows' => $module->type === 'live'
                 ? $liveModuleAttendanceService->buildReport($module)
                 : collect(),
@@ -167,20 +167,20 @@ class CourseModuleController extends Controller
             ->unique()
             ->values();
 
-        DB::transaction(function () use ($course, $teacherIds): void {
-            $existingAssignments = CourseTeacherEnrollment::withTrashed()
-                ->where('course_id', $course->getKey())
+        DB::transaction(function () use ($module, $teacherIds): void {
+            $existingAssignments = ModuleTeacherEnrollment::withTrashed()
+                ->where('module_id', $module->getKey())
                 ->whereIn('user_id', $teacherIds)
                 ->get()
                 ->keyBy('user_id');
 
             foreach ($teacherIds as $teacherId) {
-                /** @var CourseTeacherEnrollment|null $assignment */
+                /** @var ModuleTeacherEnrollment|null $assignment */
                 $assignment = $existingAssignments->get($teacherId);
 
                 if ($assignment === null) {
-                    CourseTeacherEnrollment::query()->create([
-                        'course_id' => $course->getKey(),
+                    ModuleTeacherEnrollment::query()->create([
+                        'module_id' => $module->getKey(),
                         'user_id' => $teacherId,
                         'assigned_at' => now(),
                     ]);
@@ -214,20 +214,20 @@ class CourseModuleController extends Controller
             ->unique()
             ->values();
 
-        DB::transaction(function () use ($course, $tutorIds): void {
-            $existingAssignments = CourseTutorEnrollment::withTrashed()
-                ->where('course_id', $course->getKey())
+        DB::transaction(function () use ($module, $tutorIds): void {
+            $existingAssignments = ModuleTutorEnrollment::withTrashed()
+                ->where('module_id', $module->getKey())
                 ->whereIn('user_id', $tutorIds)
                 ->get()
                 ->keyBy('user_id');
 
             foreach ($tutorIds as $tutorId) {
-                /** @var CourseTutorEnrollment|null $assignment */
+                /** @var ModuleTutorEnrollment|null $assignment */
                 $assignment = $existingAssignments->get($tutorId);
 
                 if ($assignment === null) {
-                    CourseTutorEnrollment::query()->create([
-                        'course_id' => $course->getKey(),
+                    ModuleTutorEnrollment::query()->create([
+                        'module_id' => $module->getKey(),
                         'user_id' => $tutorId,
                         'assigned_at' => now(),
                     ]);
@@ -389,18 +389,18 @@ class CourseModuleController extends Controller
         return sprintf('admin.module.types.%s', $module->type);
     }
 
-    private function assignedTeachers(Course $course)
+    private function assignedTeachers(Module $module)
     {
-        return $course->teacherEnrollments()
+        return $module->teacherEnrollments()
             ->with('user')
             ->whereNull('deleted_at')
             ->latest('assigned_at')
             ->get();
     }
 
-    private function availableTeachers(Course $course)
+    private function availableTeachers(Module $module)
     {
-        $assignedTeacherIds = $course->teacherEnrollments()
+        $assignedTeacherIds = $module->teacherEnrollments()
             ->whereNull('deleted_at')
             ->pluck('user_id');
 
@@ -412,18 +412,18 @@ class CourseModuleController extends Controller
             ->get();
     }
 
-    private function assignedTutors(Course $course)
+    private function assignedTutors(Module $module)
     {
-        return $course->tutorEnrollments()
+        return $module->tutorEnrollments()
             ->with('user')
             ->whereNull('deleted_at')
             ->latest('assigned_at')
             ->get();
     }
 
-    private function availableTutors(Course $course)
+    private function availableTutors(Module $module)
     {
-        $assignedTutorIds = $course->tutorEnrollments()
+        $assignedTutorIds = $module->tutorEnrollments()
             ->whereNull('deleted_at')
             ->pluck('user_id');
 

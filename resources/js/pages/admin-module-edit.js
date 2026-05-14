@@ -29,9 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initializeAssignmentDialog(moduleEditPage, modalSelector, openButtonSelector, closeButtonSelector, errorFlag) {
-    const modal = moduleEditPage.querySelector(modalSelector);
-    const openButton = moduleEditPage.querySelector(openButtonSelector);
-    const closeButton = moduleEditPage.querySelector(closeButtonSelector);
+    const modal = document.querySelector(modalSelector);
+    const openButton = document.querySelector(openButtonSelector);
+    const closeButton = document.querySelector(closeButtonSelector);
 
     if (!modal || !openButton || !closeButton) {
         return;

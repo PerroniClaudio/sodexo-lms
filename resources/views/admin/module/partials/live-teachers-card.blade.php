@@ -21,7 +21,7 @@
 
         @if ($assignedTeachers->isEmpty())
             <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-4 text-sm text-base-content/70">
-                {{ __('Nessun docente assegnato a questo corso.') }}
+                {{ __('Nessun docente assegnato a questo modulo live.') }}
             </div>
         @else
             <div class="grid gap-3 md:grid-cols-2">
@@ -43,7 +43,7 @@
 
         @if ($availableTeachers->isEmpty())
             <p class="text-sm text-base-content/70">
-                {{ __('Tutti i docenti disponibili sono già assegnati a questo corso.') }}
+                {{ __('Tutti i docenti disponibili sono già assegnati a questo modulo live.') }}
             </p>
         @endif
 

@@ -3,8 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\CourseEnrollment;
-use App\Models\CourseTeacherEnrollment;
-use App\Models\CourseTutorEnrollment;
 use App\Models\LiveStreamAttendanceMinute;
 use App\Models\LiveStreamDocument;
 use App\Models\LiveStreamHandRaise;
@@ -13,6 +11,8 @@ use App\Models\LiveStreamParticipant;
 use App\Models\LiveStreamPoll;
 use App\Models\LiveStreamSession;
 use App\Models\Module;
+use App\Models\ModuleTeacherEnrollment;
+use App\Models\ModuleTutorEnrollment;
 use App\Services\MuxLiveService;
 use App\Services\TwilioVideoService;
 use Illuminate\Filesystem\FilesystemAdapter;
@@ -1387,9 +1387,9 @@ class LiveStreamController extends Controller
 
         $module->loadMissing('course');
 
-        $isAssigned = CourseTeacherEnrollment::query()
+        $isAssigned = ModuleTeacherEnrollment::query()
             ->where('user_id', $request->user()->getKey())
-            ->where('course_id', $module->course?->getKey())
+            ->where('module_id', $module->getKey())
             ->whereNull('deleted_at')
             ->exists();
 
@@ -1404,9 +1404,9 @@ class LiveStreamController extends Controller
 
         $module->loadMissing('course');
 
-        $isAssigned = CourseTutorEnrollment::query()
+        $isAssigned = ModuleTutorEnrollment::query()
             ->where('user_id', $request->user()->getKey())
-            ->where('course_id', $module->course?->getKey())
+            ->where('module_id', $module->getKey())
             ->whereNull('deleted_at')
             ->exists();
 

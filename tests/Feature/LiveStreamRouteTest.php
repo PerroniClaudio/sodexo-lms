@@ -2,12 +2,12 @@
 
 use App\Models\Course;
 use App\Models\CourseEnrollment;
-use App\Models\CourseTeacherEnrollment;
-use App\Models\CourseTutorEnrollment;
 use App\Models\JobUnit;
 use App\Models\LiveStreamDocument;
 use App\Models\LiveStreamSession;
 use App\Models\Module;
+use App\Models\ModuleTeacherEnrollment;
+use App\Models\ModuleTutorEnrollment;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -361,9 +361,9 @@ test('teacher live stream route renders the updated preview controls', function 
         'belongsTo' => (string) $course->getKey(),
     ]);
 
-    CourseTeacherEnrollment::factory()->create([
+    ModuleTeacherEnrollment::factory()->create([
         'user_id' => $teacher->getKey(),
-        'course_id' => $course->getKey(),
+        'module_id' => $module->getKey(),
     ]);
 
     $response = $this
@@ -426,9 +426,9 @@ test('tutor live stream route renders the updated user player layout without han
         'status' => LiveStreamSession::STATUS_LIVE,
     ]);
 
-    CourseTutorEnrollment::factory()->create([
+    ModuleTutorEnrollment::factory()->create([
         'user_id' => $tutor->getKey(),
-        'course_id' => $course->getKey(),
+        'module_id' => $module->getKey(),
     ]);
 
     $response = $this

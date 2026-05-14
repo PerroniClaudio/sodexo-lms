@@ -6,8 +6,6 @@ use App\Enums\OnboardingStep;
 use App\Enums\UserStatus;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,6 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
+
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
@@ -52,7 +51,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'is_foreigner_or_immigrant',
         'notes',
     ];
-    
+
     protected $hidden = ['password', 'remember_token'];
 
     /**
@@ -148,6 +147,16 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(CourseTutorEnrollment::class);
     }
 
+    public function moduleTeacherEnrollments(): HasMany
+    {
+        return $this->hasMany(ModuleTeacherEnrollment::class);
+    }
+
+    public function moduleTutorEnrollments(): HasMany
+    {
+        return $this->hasMany(ModuleTutorEnrollment::class);
+    }
+
     /**
      * Get the courses assigned to the user.
      */
@@ -197,6 +206,28 @@ class User extends Authenticatable implements MustVerifyEmail
             ->withTimestamps();
     }
 
+    public function teachingModules(): BelongsToMany
+    {
+        return $this->belongsToMany(Module::class, 'module_teacher_enrollments')
+            ->withPivot([
+                'id',
+                'assigned_at',
+                'deleted_at',
+            ])
+            ->withTimestamps();
+    }
+
+    public function tutoringModules(): BelongsToMany
+    {
+        return $this->belongsToMany(Module::class, 'module_tutor_enrollments')
+            ->withPivot([
+                'id',
+                'assigned_at',
+                'deleted_at',
+            ])
+            ->withTimestamps();
+    }
+
     /**
      * Get full name attribute
      */
@@ -204,7 +235,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return "{$this->name} {$this->surname}";
     }
-    
+
     public function homeCountry(): BelongsTo
     {
         return $this->belongsTo(WorldCountry::class, 'home_country_id');
@@ -418,5 +449,4 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->jobUnit?->province?->code ?? null;
     }
-
 }

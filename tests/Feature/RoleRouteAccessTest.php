@@ -2,9 +2,9 @@
 
 use App\Models\Course;
 use App\Models\CourseEnrollment;
-use App\Models\CourseTeacherEnrollment;
-use App\Models\CourseTutorEnrollment;
 use App\Models\Module;
+use App\Models\ModuleTeacherEnrollment;
+use App\Models\ModuleTutorEnrollment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -65,9 +65,9 @@ it('forbids access to teacher routes for non teacher roles', function () {
 it('allows teachers to access teacher routes', function () {
     $teacher = actingAsRole('teacher');
     $module = liveStreamModule();
-    CourseTeacherEnrollment::factory()->create([
+    ModuleTeacherEnrollment::factory()->create([
         'user_id' => $teacher->getKey(),
-        'course_id' => (int) $module->belongsTo,
+        'module_id' => $module->getKey(),
     ]);
 
     $this->actingAs($teacher)->get(route('teacher.live-stream.player', $module))->assertOk();
@@ -94,9 +94,9 @@ it('forbids access to tutor routes for non tutor roles', function () {
 it('allows tutors to access tutor routes', function () {
     $tutor = actingAsRole('tutor');
     $module = liveStreamModule();
-    CourseTutorEnrollment::factory()->create([
+    ModuleTutorEnrollment::factory()->create([
         'user_id' => $tutor->getKey(),
-        'course_id' => (int) $module->belongsTo,
+        'module_id' => $module->getKey(),
     ]);
 
     $this->actingAs($tutor)->get(route('tutor.live-stream.player', $module))->assertOk();

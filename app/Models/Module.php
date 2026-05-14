@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -143,6 +144,38 @@ class Module extends Model
     public function liveStreamAttendanceMinutes(): HasMany
     {
         return $this->hasMany(LiveStreamAttendanceMinute::class);
+    }
+
+    public function teacherEnrollments(): HasMany
+    {
+        return $this->hasMany(ModuleTeacherEnrollment::class);
+    }
+
+    public function tutorEnrollments(): HasMany
+    {
+        return $this->hasMany(ModuleTutorEnrollment::class);
+    }
+
+    public function teachers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'module_teacher_enrollments')
+            ->withPivot([
+                'id',
+                'assigned_at',
+                'deleted_at',
+            ])
+            ->withTimestamps();
+    }
+
+    public function tutors(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'module_tutor_enrollments')
+            ->withPivot([
+                'id',
+                'assigned_at',
+                'deleted_at',
+            ])
+            ->withTimestamps();
     }
 
     /**

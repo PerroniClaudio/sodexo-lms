@@ -2,11 +2,11 @@
 
 use App\Models\Course;
 use App\Models\CourseEnrollment;
-use App\Models\CourseTeacherEnrollment;
-use App\Models\CourseTutorEnrollment;
 use App\Models\LiveStreamAttendanceMinute;
 use App\Models\LiveStreamSession;
 use App\Models\Module;
+use App\Models\ModuleTeacherEnrollment;
+use App\Models\ModuleTutorEnrollment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -56,16 +56,6 @@ it('shows the edit module page', function () {
         'email' => 'luca.verdi@example.test',
     ]);
 
-    CourseTeacherEnrollment::factory()->create([
-        'course_id' => $course->getKey(),
-        'user_id' => $teacher->getKey(),
-    ]);
-
-    CourseTutorEnrollment::factory()->create([
-        'course_id' => $course->getKey(),
-        'user_id' => $assignedTutor->getKey(),
-    ]);
-
     $module = Module::factory()->create([
         'title' => 'Modulo iniziale',
         'description' => 'Descrizione modulo',
@@ -77,6 +67,17 @@ it('shows the edit module page', function () {
         'appointment_end_time' => Carbon::parse('2026-05-20 16:00:00'),
         'belongsTo' => (string) $course->getKey(),
     ]);
+
+    ModuleTeacherEnrollment::factory()->create([
+        'module_id' => $module->getKey(),
+        'user_id' => $teacher->getKey(),
+    ]);
+
+    ModuleTutorEnrollment::factory()->create([
+        'module_id' => $module->getKey(),
+        'user_id' => $assignedTutor->getKey(),
+    ]);
+
     $session = LiveStreamSession::factory()->create([
         'module_id' => $module->getKey(),
         'status' => LiveStreamSession::STATUS_LIVE,

@@ -2,8 +2,6 @@
 
 use App\Models\Course;
 use App\Models\CourseEnrollment;
-use App\Models\CourseTeacherEnrollment;
-use App\Models\CourseTutorEnrollment;
 use App\Models\JobUnit;
 use App\Models\LiveStreamAttendanceMinute;
 use App\Models\LiveStreamDocument;
@@ -13,6 +11,8 @@ use App\Models\LiveStreamParticipant;
 use App\Models\LiveStreamPoll;
 use App\Models\LiveStreamSession;
 use App\Models\Module;
+use App\Models\ModuleTeacherEnrollment;
+use App\Models\ModuleTutorEnrollment;
 use App\Models\User;
 use App\Services\TwilioVideoService;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -47,17 +47,17 @@ function enrollUserForModule($user, Module $module): void
 
 function assignTeacherToModule($user, Module $module): void
 {
-    CourseTeacherEnrollment::factory()->create([
+    ModuleTeacherEnrollment::factory()->create([
         'user_id' => $user->getKey(),
-        'course_id' => (int) $module->belongsTo,
+        'module_id' => $module->getKey(),
     ]);
 }
 
 function assignTutorToModule($user, Module $module): void
 {
-    CourseTutorEnrollment::factory()->create([
+    ModuleTutorEnrollment::factory()->create([
         'user_id' => $user->getKey(),
-        'course_id' => (int) $module->belongsTo,
+        'module_id' => $module->getKey(),
     ]);
 }
 
