@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCourseRequest;
 use App\Http\Requests\UpdateCourseRequest;
 use App\Models\Course;
@@ -103,8 +104,7 @@ class CourseController extends Controller
         UpdateCourseRequest $request,
         Course $course,
         SyncCourseSatisfactionSurvey $syncCourseSatisfactionSurvey,
-    ): RedirectResponse
-    {
+    ): RedirectResponse {
         try {
             $validated = $request->validated();
             $course->update([

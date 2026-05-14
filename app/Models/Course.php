@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -126,22 +128,6 @@ class Course extends Model
     }
 
     /**
-     * Get the teacher enrollments for the course.
-     */
-    public function teacherEnrollments(): HasMany
-    {
-        return $this->hasMany(CourseTeacherEnrollment::class);
-    }
-
-    /**
-     * Get the tutor enrollments for the course.
-     */
-    public function tutorEnrollments(): HasMany
-    {
-        return $this->hasMany(CourseTutorEnrollment::class);
-    }
-
-    /**
      * Get the SCORM packages for the course.
      */
     public function scormPackages(): HasMany
@@ -170,32 +156,44 @@ class Course extends Model
             ->withTimestamps();
     }
 
-    /**
-     * Get the teachers assigned to the course.
-     */
-    public function teachers(): BelongsToMany
+    public function getTeachersQuery(): Builder
     {
-        return $this->belongsToMany(User::class, 'course_teacher_enrollments')
-            ->withPivot([
-                'id',
-                'assigned_at',
-                'deleted_at',
-            ])
-            ->withTimestamps();
+        return User::query()
+            ->select('users.*')
+            ->selectRaw('COUNT(DISTINCT module_teacher_enrollments.module_id) as module_enrollments_count')
+            ->join('module_teacher_enrollments', 'module_teacher_enrollments.user_id', '=', 'users.id')
+            ->join('modules', 'modules.id', '=', 'module_teacher_enrollments.module_id')
+            ->where('modules.belongsTo', (string) $this->getKey())
+            ->whereNull('modules.deleted_at')
+            ->whereNull('module_teacher_enrollments.deleted_at')
+            ->groupBy('users.id')
+            ->orderBy('users.surname')
+            ->orderBy('users.name');
     }
 
-    /**
-     * Get the tutors assigned to the course.
-     */
-    public function tutors(): BelongsToMany
+    public function getTeachers(): EloquentCollection
     {
-        return $this->belongsToMany(User::class, 'course_tutor_enrollments')
-            ->withPivot([
-                'id',
-                'assigned_at',
-                'deleted_at',
-            ])
-            ->withTimestamps();
+        return $this->getTeachersQuery()->get();
+    }
+
+    public function getTutorsQuery(): Builder
+    {
+        return User::query()
+            ->select('users.*')
+            ->selectRaw('COUNT(DISTINCT module_tutor_enrollments.module_id) as module_enrollments_count')
+            ->join('module_tutor_enrollments', 'module_tutor_enrollments.user_id', '=', 'users.id')
+            ->join('modules', 'modules.id', '=', 'module_tutor_enrollments.module_id')
+            ->where('modules.belongsTo', (string) $this->getKey())
+            ->whereNull('modules.deleted_at')
+            ->whereNull('module_tutor_enrollments.deleted_at')
+            ->groupBy('users.id')
+            ->orderBy('users.surname')
+            ->orderBy('users.name');
+    }
+
+    public function getTutors(): EloquentCollection
+    {
+        return $this->getTutorsQuery()->get();
     }
 
     public function hasSatisfactionSurveyEnabled(): bool

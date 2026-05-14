@@ -47,9 +47,12 @@
             </div>
         </div>
 
-        @if ($module->type === 'live')
+        @if ($module->supportsStaffAssignments())
             @include('admin.module.partials.live-teachers-card')
             @include('admin.module.partials.live-tutors-card')
+        @endif
+
+        @if ($module->type === 'live')
             @include('admin.module.partials.live-attendance-card')
         @endif
 

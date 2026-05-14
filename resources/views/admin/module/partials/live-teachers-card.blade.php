@@ -2,10 +2,12 @@
     <div class="card-body gap-4">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div class="space-y-1">
-                <h3 class="text-base font-semibold text-base-content">{{ __('Docenti assegnati alla live') }}</h3>
-                <p class="text-sm text-base-content/70">
-                    {{ __('I docenti assegnati potranno accedere e trasmettere le dirette.') }}
-                </p>
+                <h3 class="text-base font-semibold text-base-content">{{ __('Docenti assegnati') }}</h3>
+                @if ($module->type === 'live')
+                    <p class="text-sm text-base-content/70">
+                        {{ __('I docenti assegnati potranno accedere e trasmettere le dirette.') }}
+                    </p>
+                @endif
             </div>
 
             <button
@@ -21,21 +23,34 @@
 
         @if ($assignedTeachers->isEmpty())
             <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-4 text-sm text-base-content/70">
-                {{ __('Nessun docente assegnato a questo modulo live.') }}
+                {{ __('Nessun docente assegnato a questo modulo.') }}
             </div>
         @else
             <div class="grid gap-3 md:grid-cols-2">
                 @foreach ($assignedTeachers as $teacherEnrollment)
                     <div class="rounded-box border border-base-300 bg-base-100 p-4">
-                        <p class="font-medium text-base-content">
-                            {{ $teacherEnrollment->user?->full_name ?? __('Docente non disponibile') }}
-                        </p>
-                        <p class="mt-1 text-sm text-base-content/70">
-                            {{ $teacherEnrollment->user?->email }}
-                        </p>
-                        <p class="mt-2 text-xs uppercase tracking-wide text-base-content/50">
-                            {{ __('Assegnato il :date', ['date' => $teacherEnrollment->assigned_at?->format('d/m/Y H:i')]) }}
-                        </p>
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="font-medium text-base-content">
+                                    {{ $teacherEnrollment->user?->full_name ?? __('Docente non disponibile') }}
+                                </p>
+                                <p class="mt-1 text-sm text-base-content/70">
+                                    {{ $teacherEnrollment->user?->email }}
+                                </p>
+                                <p class="mt-2 text-xs uppercase tracking-wide text-base-content/50">
+                                    {{ __('Assegnato il :date', ['date' => $teacherEnrollment->assigned_at?->format('d/m/Y H:i')]) }}
+                                </p>
+                            </div>
+
+                            <form method="POST" action="{{ route('admin.courses.modules.teachers.destroy', [$course, $module, $teacherEnrollment]) }}">
+                                @csrf
+                                @method('DELETE')
+
+                                <button type="submit" class="btn btn-error btn-xs">
+                                    {{ __('Rimuovi') }}
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 @endforeach
             </div>
@@ -43,16 +58,16 @@
 
         @if ($availableTeachers->isEmpty())
             <p class="text-sm text-base-content/70">
-                {{ __('Tutti i docenti disponibili sono già assegnati a questo modulo live.') }}
+                {{ __('Tutti i docenti disponibili sono già assegnati a questo modulo.') }}
             </p>
         @endif
 
         <dialog id="assign-teachers-modal" class="modal">
             <div class="modal-box max-w-2xl">
                 <div class="space-y-2">
-                    <h3 class="text-lg font-semibold">{{ __('Aggiungi docenti alla live') }}</h3>
+                    <h3 class="text-lg font-semibold">{{ __('Aggiungi docenti al modulo') }}</h3>
                     <p class="text-sm text-base-content/70">
-                        {{ __('Seleziona uno o più docenti da abilitare sulle live di questo corso.') }}
+                        {{ __('Seleziona uno o più docenti da assegnare a questo modulo.') }}
                     </p>
                 </div>
 

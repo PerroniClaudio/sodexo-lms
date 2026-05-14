@@ -160,7 +160,7 @@ class CourseModuleController extends Controller
     public function assignTeachers(AssignModuleTeachersRequest $request, Course $course, Module $module): RedirectResponse
     {
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
-        abort_unless($module->type === 'live', 404);
+        abort_unless($module->supportsStaffAssignments(), 404);
 
         $teacherIds = collect($request->validated('teacher_ids'))
             ->map(fn (mixed $teacherId): int => (int) $teacherId)
@@ -207,7 +207,7 @@ class CourseModuleController extends Controller
     public function assignTutors(AssignModuleTutorsRequest $request, Course $course, Module $module): RedirectResponse
     {
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
-        abort_unless($module->type === 'live', 404);
+        abort_unless($module->supportsStaffAssignments(), 404);
 
         $tutorIds = collect($request->validated('tutor_ids'))
             ->map(fn (mixed $tutorId): int => (int) $tutorId)
@@ -249,6 +249,38 @@ class CourseModuleController extends Controller
         return redirect()
             ->route('admin.courses.modules.edit', [$course, $module])
             ->with('status', __('Tutor assegnati con successo.'));
+    }
+
+    public function unassignTeacher(
+        Course $course,
+        Module $module,
+        ModuleTeacherEnrollment $teacherEnrollment,
+    ): RedirectResponse {
+        abort_unless($module->belongsTo === (string) $course->getKey(), 404);
+        abort_unless($module->supportsStaffAssignments(), 404);
+        abort_unless($teacherEnrollment->module_id === $module->getKey(), 404);
+
+        $teacherEnrollment->delete();
+
+        return redirect()
+            ->route('admin.courses.modules.edit', [$course, $module])
+            ->with('status', __('Docente rimosso con successo.'));
+    }
+
+    public function unassignTutor(
+        Course $course,
+        Module $module,
+        ModuleTutorEnrollment $tutorEnrollment,
+    ): RedirectResponse {
+        abort_unless($module->belongsTo === (string) $course->getKey(), 404);
+        abort_unless($module->supportsStaffAssignments(), 404);
+        abort_unless($tutorEnrollment->module_id === $module->getKey(), 404);
+
+        $tutorEnrollment->delete();
+
+        return redirect()
+            ->route('admin.courses.modules.edit', [$course, $module])
+            ->with('status', __('Tutor rimosso con successo.'));
     }
 
     public function update(UpdateModuleRequest $request, Course $course, Module $module): RedirectResponse

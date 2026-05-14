@@ -12,10 +12,10 @@ beforeEach(function () {
     actingAsRole('admin');
 });
 
-it('assigns selected teachers to the module from a live module modal', function () {
+it('assigns selected teachers to supported modules', function () {
     $course = Course::factory()->create();
     $module = Module::factory()->create([
-        'type' => 'live',
+        'type' => 'video',
         'belongsTo' => (string) $course->getKey(),
     ]);
 
@@ -68,10 +68,10 @@ it('rejects assigning non teacher users from the modal', function () {
     expect(ModuleTeacherEnrollment::query()->count())->toBe(0);
 });
 
-it('returns not found when assigning teachers from a non live module', function () {
+it('returns not found when assigning teachers from unsupported modules', function () {
     $course = Course::factory()->create();
     $module = Module::factory()->create([
-        'type' => 'video',
+        'type' => 'satisfaction_quiz',
         'belongsTo' => (string) $course->getKey(),
     ]);
 
@@ -81,4 +81,27 @@ it('returns not found when assigning teachers from a non live module', function 
     $this->post(route('admin.courses.modules.teachers.assign', [$course, $module]), [
         'teacher_ids' => [$teacher->getKey()],
     ])->assertNotFound();
+});
+
+it('soft deletes a teacher assignment from a supported module', function () {
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => 'video',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $teacher = User::factory()->create();
+    $teacher->assignRole('teacher');
+
+    $enrollment = ModuleTeacherEnrollment::factory()->create([
+        'module_id' => $module->getKey(),
+        'user_id' => $teacher->getKey(),
+    ]);
+
+    $response = $this->delete(route('admin.courses.modules.teachers.destroy', [$course, $module, $enrollment]));
+
+    $response->assertRedirect(route('admin.courses.modules.edit', [$course, $module]));
+    $response->assertSessionHas('status', 'Docente rimosso con successo.');
+
+    expect($enrollment->fresh()->trashed())->toBeTrue();
 });

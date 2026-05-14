@@ -12,10 +12,10 @@ beforeEach(function () {
     actingAsRole('admin');
 });
 
-it('assigns selected tutors to the module from a live module modal', function () {
+it('assigns selected tutors to supported modules', function () {
     $course = Course::factory()->create();
     $module = Module::factory()->create([
-        'type' => 'live',
+        'type' => 'scorm',
         'belongsTo' => (string) $course->getKey(),
     ]);
 
@@ -68,10 +68,10 @@ it('rejects assigning non tutor users from the modal', function () {
     expect(ModuleTutorEnrollment::query()->count())->toBe(0);
 });
 
-it('returns not found when assigning tutors from a non live module', function () {
+it('returns not found when assigning tutors from unsupported modules', function () {
     $course = Course::factory()->create();
     $module = Module::factory()->create([
-        'type' => 'video',
+        'type' => 'learning_quiz',
         'belongsTo' => (string) $course->getKey(),
     ]);
 
@@ -81,4 +81,27 @@ it('returns not found when assigning tutors from a non live module', function ()
     $this->post(route('admin.courses.modules.tutors.assign', [$course, $module]), [
         'tutor_ids' => [$tutor->getKey()],
     ])->assertNotFound();
+});
+
+it('soft deletes a tutor assignment from a supported module', function () {
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => 'res',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $tutor = User::factory()->create();
+    $tutor->assignRole('tutor');
+
+    $enrollment = ModuleTutorEnrollment::factory()->create([
+        'module_id' => $module->getKey(),
+        'user_id' => $tutor->getKey(),
+    ]);
+
+    $response = $this->delete(route('admin.courses.modules.tutors.destroy', [$course, $module, $enrollment]));
+
+    $response->assertRedirect(route('admin.courses.modules.edit', [$course, $module]));
+    $response->assertSessionHas('status', 'Tutor rimosso con successo.');
+
+    expect($enrollment->fresh()->trashed())->toBeTrue();
 });

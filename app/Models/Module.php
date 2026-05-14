@@ -36,6 +36,13 @@ class Module extends Model
         self::TYPE_SATISFACTION_QUIZ,
     ];
 
+    public const TYPES_WITH_STAFF_ASSIGNMENTS = [
+        self::TYPE_VIDEO,
+        self::TYPE_RESIDENTIAL,
+        self::TYPE_LIVE,
+        self::TYPE_SCORM,
+    ];
+
     public const TYPES = [
         self::TYPE_VIDEO,
         self::TYPE_RESIDENTIAL,
@@ -311,6 +318,11 @@ class Module extends Model
     public function isScorm(): bool
     {
         return $this->type === self::TYPE_SCORM;
+    }
+
+    public function supportsStaffAssignments(): bool
+    {
+        return in_array($this->type, self::TYPES_WITH_STAFF_ASSIGNMENTS, true);
     }
 
     /**

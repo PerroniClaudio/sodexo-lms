@@ -6,7 +6,9 @@ use App\Enums\OnboardingStep;
 use App\Enums\UserStatus;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -131,22 +133,6 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(CourseEnrollment::class);
     }
 
-    /**
-     * Get the teacher course enrollments for the user.
-     */
-    public function courseTeacherEnrollments(): HasMany
-    {
-        return $this->hasMany(CourseTeacherEnrollment::class);
-    }
-
-    /**
-     * Get the tutor course enrollments for the user.
-     */
-    public function courseTutorEnrollments(): HasMany
-    {
-        return $this->hasMany(CourseTutorEnrollment::class);
-    }
-
     public function moduleTeacherEnrollments(): HasMany
     {
         return $this->hasMany(ModuleTeacherEnrollment::class);
@@ -178,34 +164,6 @@ class User extends Authenticatable implements MustVerifyEmail
             ->withTimestamps();
     }
 
-    /**
-     * Get the courses assigned to the teacher.
-     */
-    public function teachingCourses(): BelongsToMany
-    {
-        return $this->belongsToMany(Course::class, 'course_teacher_enrollments')
-            ->withPivot([
-                'id',
-                'assigned_at',
-                'deleted_at',
-            ])
-            ->withTimestamps();
-    }
-
-    /**
-     * Get the courses assigned to the tutor.
-     */
-    public function tutoringCourses(): BelongsToMany
-    {
-        return $this->belongsToMany(Course::class, 'course_tutor_enrollments')
-            ->withPivot([
-                'id',
-                'assigned_at',
-                'deleted_at',
-            ])
-            ->withTimestamps();
-    }
-
     public function teachingModules(): BelongsToMany
     {
         return $this->belongsToMany(Module::class, 'module_teacher_enrollments')
@@ -226,6 +184,46 @@ class User extends Authenticatable implements MustVerifyEmail
                 'deleted_at',
             ])
             ->withTimestamps();
+    }
+
+    public function getTeachingCoursesQuery(): Builder
+    {
+        return Course::query()
+            ->select('courses.*')
+            ->selectRaw('COUNT(DISTINCT module_teacher_enrollments.module_id) as assigned_modules_count')
+            ->join('modules', 'modules.belongsTo', '=', 'courses.id')
+            ->join('module_teacher_enrollments', 'module_teacher_enrollments.module_id', '=', 'modules.id')
+            ->where('module_teacher_enrollments.user_id', $this->getKey())
+            ->whereNull('courses.deleted_at')
+            ->whereNull('modules.deleted_at')
+            ->whereNull('module_teacher_enrollments.deleted_at')
+            ->groupBy('courses.id')
+            ->orderByDesc('courses.created_at');
+    }
+
+    public function getTeachingCourses(): EloquentCollection
+    {
+        return $this->getTeachingCoursesQuery()->get();
+    }
+
+    public function getTutoringCoursesQuery(): Builder
+    {
+        return Course::query()
+            ->select('courses.*')
+            ->selectRaw('COUNT(DISTINCT module_tutor_enrollments.module_id) as assigned_modules_count')
+            ->join('modules', 'modules.belongsTo', '=', 'courses.id')
+            ->join('module_tutor_enrollments', 'module_tutor_enrollments.module_id', '=', 'modules.id')
+            ->where('module_tutor_enrollments.user_id', $this->getKey())
+            ->whereNull('courses.deleted_at')
+            ->whereNull('modules.deleted_at')
+            ->whereNull('module_tutor_enrollments.deleted_at')
+            ->groupBy('courses.id')
+            ->orderByDesc('courses.created_at');
+    }
+
+    public function getTutoringCourses(): EloquentCollection
+    {
+        return $this->getTutoringCoursesQuery()->get();
     }
 
     /**

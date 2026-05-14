@@ -2,8 +2,8 @@
 
 use App\Models\Course;
 use App\Models\CourseEnrollment;
-use App\Models\CourseTeacherEnrollment;
 use App\Models\Module;
+use App\Models\ModuleTeacherEnrollment;
 use App\Models\User;
 use Database\Seeders\AsyncLiveCourseDemoSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -11,7 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-test('it seeds an async course with one live module, one enrolled learner, and one assigned teacher', function () {
+test('it seeds an async course with one live module, one enrolled learner, and one teacher assigned to that module', function () {
     $this->seed([
         RoleAndPermissionSeeder::class,
         AsyncLiveCourseDemoSeeder::class,
@@ -43,12 +43,13 @@ test('it seeds an async course with one live module, one enrolled learner, and o
     expect($user->hasRole('user'))->toBeTrue();
 
     expect(
-        CourseTeacherEnrollment::query()
+        ModuleTeacherEnrollment::query()
             ->where('user_id', $teacher->getKey())
-            ->where('course_id', $course->getKey())
+            ->where('module_id', $module->getKey())
             ->whereNull('deleted_at')
             ->exists()
     )->toBeTrue();
+    expect($teacher->getTeachingCourses()->pluck('id')->all())->toContain($course->getKey());
 
     $enrollment = CourseEnrollment::query()
         ->where('user_id', $user->getKey())

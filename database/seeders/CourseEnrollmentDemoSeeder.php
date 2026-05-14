@@ -5,8 +5,8 @@ namespace Database\Seeders;
 use App\Enums\UserStatus;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
-use App\Models\CourseTeacherEnrollment;
 use App\Models\Module;
+use App\Models\ModuleTeacherEnrollment;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -31,7 +31,7 @@ class CourseEnrollmentDemoSeeder extends Seeder
     {
         $course = $this->createCourse();
 
-        $this->createModules($course);
+        $modules = $this->createModules($course);
 
         $teacher = $this->upsertUser(
             role: 'teacher',
@@ -49,7 +49,7 @@ class CourseEnrollmentDemoSeeder extends Seeder
             fiscalCode: 'UTEDEM80A01H501Y',
         );
 
-        $this->enrollTeacher($teacher, $course);
+        $this->assignTeacherToModule($teacher, $modules['live']);
         $this->enrollUser($user, $course);
     }
 
@@ -73,13 +73,13 @@ class CourseEnrollmentDemoSeeder extends Seeder
         return $course;
     }
 
-    private function createModules(Course $course): void
+    private function createModules(Course $course): array
     {
         $liveAppointment = Carbon::today()->setHour(9)->setMinute(0)->setSecond(0);
         $quizAppointment = $liveAppointment->copy()->addDay()->setHour(14);
         $satisfactionAppointment = $quizAppointment->copy()->addHour();
 
-        Module::query()->updateOrCreate(
+        $liveModule = Module::query()->updateOrCreate(
             [
                 'belongsTo' => (string) $course->getKey(),
                 'order' => 1,
@@ -98,7 +98,7 @@ class CourseEnrollmentDemoSeeder extends Seeder
             ]
         );
 
-        Module::query()->updateOrCreate(
+        $learningQuizModule = Module::query()->updateOrCreate(
             [
                 'belongsTo' => (string) $course->getKey(),
                 'order' => 2,
@@ -117,7 +117,7 @@ class CourseEnrollmentDemoSeeder extends Seeder
             ]
         );
 
-        Module::query()->updateOrCreate(
+        $satisfactionQuizModule = Module::query()->updateOrCreate(
             [
                 'belongsTo' => (string) $course->getKey(),
                 'order' => 3,
@@ -135,6 +135,12 @@ class CourseEnrollmentDemoSeeder extends Seeder
                 'max_score' => 1,
             ]
         );
+
+        return [
+            'live' => $liveModule,
+            'learning_quiz' => $learningQuizModule,
+            'satisfaction_quiz' => $satisfactionQuizModule,
+        ];
     }
 
     private function upsertUser(
@@ -180,11 +186,11 @@ class CourseEnrollmentDemoSeeder extends Seeder
         CourseEnrollment::enroll($user, $course);
     }
 
-    private function enrollTeacher(User $user, Course $course): void
+    private function assignTeacherToModule(User $user, Module $module): void
     {
-        $existingEnrollment = CourseTeacherEnrollment::query()
+        $existingEnrollment = ModuleTeacherEnrollment::query()
             ->where('user_id', $user->getKey())
-            ->where('course_id', $course->getKey())
+            ->where('module_id', $module->getKey())
             ->whereNull('deleted_at')
             ->exists();
 
@@ -192,6 +198,6 @@ class CourseEnrollmentDemoSeeder extends Seeder
             return;
         }
 
-        CourseTeacherEnrollment::enroll($user, $course);
+        ModuleTeacherEnrollment::enroll($user, $module);
     }
 }

@@ -68,12 +68,12 @@ it('shows the edit module page', function () {
         'belongsTo' => (string) $course->getKey(),
     ]);
 
-    ModuleTeacherEnrollment::factory()->create([
+    $teacherEnrollment = ModuleTeacherEnrollment::factory()->create([
         'module_id' => $module->getKey(),
         'user_id' => $teacher->getKey(),
     ]);
 
-    ModuleTutorEnrollment::factory()->create([
+    $tutorEnrollment = ModuleTutorEnrollment::factory()->create([
         'module_id' => $module->getKey(),
         'user_id' => $assignedTutor->getKey(),
     ]);
@@ -115,18 +115,22 @@ it('shows the edit module page', function () {
     $response->assertSee('value="14:30"', escape: false);
     $response->assertSee('name="appointment_end_time"', escape: false);
     $response->assertSee('value="16:00"', escape: false);
-    $response->assertSeeText('Docenti assegnati alla live');
+    $response->assertSeeText('Docenti assegnati');
+    $response->assertSeeText('I docenti assegnati potranno accedere e trasmettere le dirette.');
     $response->assertSeeText('Mario Rossi');
     $response->assertSeeText('mario.rossi@example.test');
     $response->assertSee('data-open-teacher-assignment-modal', escape: false);
     $response->assertSee('id="assign-teachers-modal"', escape: false);
+    $response->assertSee(route('admin.courses.modules.teachers.destroy', [$course, $module, $teacherEnrollment]), escape: false);
     $response->assertSeeText('Giulia Neri');
     $response->assertSee('name="teacher_ids[]"', escape: false);
-    $response->assertSeeText('Tutor assegnati alla live');
+    $response->assertSeeText('Tutor assegnati');
+    $response->assertSeeText('I tutor assegnati potranno accedere e moderare le dirette.');
     $response->assertSeeText('Paolo Blu');
     $response->assertSeeText('paolo.blu@example.test');
     $response->assertSee('data-open-tutor-assignment-modal', escape: false);
     $response->assertSee('id="assign-tutors-modal"', escape: false);
+    $response->assertSee(route('admin.courses.modules.tutors.destroy', [$course, $module, $tutorEnrollment]), escape: false);
     $response->assertSeeText('Sara Gialli');
     $response->assertSee('name="tutor_ids[]"', escape: false);
     $response->assertSeeText('Partecipazione alla live');
@@ -175,13 +179,53 @@ it('does not show the editable title field for quiz modules', function () {
     $response->assertDontSee('name="appointment_date"', escape: false);
     $response->assertDontSee('name="appointment_start_time"', escape: false);
     $response->assertDontSee('name="appointment_end_time"', escape: false);
+    $response->assertDontSeeText('Docenti assegnati');
+    $response->assertDontSeeText('Tutor assegnati');
 });
 
 it('resolves the dedicated edit view for video modules', function () {
     $course = Course::factory()->create();
+    $assignedTeacher = User::factory()->create([
+        'name' => 'Giulia',
+        'surname' => 'Neri',
+        'email' => 'giulia.neri@example.test',
+    ]);
+    $assignedTeacher->assignRole('teacher');
+
+    $availableTeacher = User::factory()->create([
+        'name' => 'Mario',
+        'surname' => 'Rossi',
+        'email' => 'mario.rossi@example.test',
+    ]);
+    $availableTeacher->assignRole('teacher');
+
+    $assignedTutor = User::factory()->create([
+        'name' => 'Paolo',
+        'surname' => 'Blu',
+        'email' => 'paolo.blu@example.test',
+    ]);
+    $assignedTutor->assignRole('tutor');
+
+    $availableTutor = User::factory()->create([
+        'name' => 'Sara',
+        'surname' => 'Gialli',
+        'email' => 'sara.gialli@example.test',
+    ]);
+    $availableTutor->assignRole('tutor');
+
     $module = Module::factory()->create([
         'type' => 'video',
         'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    ModuleTeacherEnrollment::factory()->create([
+        'module_id' => $module->getKey(),
+        'user_id' => $assignedTeacher->getKey(),
+    ]);
+
+    ModuleTutorEnrollment::factory()->create([
+        'module_id' => $module->getKey(),
+        'user_id' => $assignedTutor->getKey(),
     ]);
 
     $response = $this->get(route('admin.courses.modules.edit', [$course, $module]));
@@ -191,4 +235,14 @@ it('resolves the dedicated edit view for video modules', function () {
     $response->assertSee('name="title"', escape: false);
     $response->assertDontSee('name="is_live_teacher"', escape: false);
     $response->assertDontSee('name="appointment_date"', escape: false);
+    $response->assertSeeText('Docenti assegnati');
+    $response->assertSeeText('Tutor assegnati');
+    $response->assertSeeText('Giulia Neri');
+    $response->assertSeeText('Paolo Blu');
+    $response->assertSeeText('Mario Rossi');
+    $response->assertSeeText('Sara Gialli');
+    $response->assertSee('id="assign-teachers-modal"', escape: false);
+    $response->assertSee('id="assign-tutors-modal"', escape: false);
+    $response->assertDontSeeText('I docenti assegnati potranno accedere e trasmettere le dirette.');
+    $response->assertDontSeeText('I tutor assegnati potranno accedere e moderare le dirette.');
 });

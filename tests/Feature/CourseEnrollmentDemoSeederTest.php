@@ -2,9 +2,9 @@
 
 use App\Models\Course;
 use App\Models\CourseEnrollment;
-use App\Models\CourseTeacherEnrollment;
 use App\Models\Module;
 use App\Models\ModuleProgress;
+use App\Models\ModuleTeacherEnrollment;
 use App\Models\User;
 use Database\Seeders\CourseEnrollmentDemoSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -12,7 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-test('it seeds a demo course with a teacher assignment and a learner enrollment with expected roles', function () {
+test('it seeds a demo course with a teacher module assignment and a learner enrollment with expected roles', function () {
     $this->seed([
         RoleAndPermissionSeeder::class,
         CourseEnrollmentDemoSeeder::class,
@@ -51,13 +51,14 @@ test('it seeds a demo course with a teacher assignment and a learner enrollment 
     expect($utente->hasPermissionTo('view courses'))->toBeTrue();
     expect($utente->hasPermissionTo('manage attendance'))->toBeFalse();
 
-    $teacherEnrollment = CourseTeacherEnrollment::query()
+    $teacherEnrollment = ModuleTeacherEnrollment::query()
         ->where('user_id', $teacher->getKey())
-        ->where('course_id', $course->getKey())
+        ->where('module_id', $modules->first()->getKey())
         ->first();
 
     expect($teacherEnrollment)->not->toBeNull();
     expect($teacherEnrollment?->assigned_at)->not->toBeNull();
+    expect($teacher->getTeachingCourses()->pluck('id')->all())->toContain($course->getKey());
 
     $enrollments = CourseEnrollment::query()
         ->where('course_id', $course->getKey())

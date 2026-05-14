@@ -5,8 +5,8 @@ namespace Database\Seeders;
 use App\Enums\UserStatus;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
-use App\Models\CourseTeacherEnrollment;
 use App\Models\Module;
+use App\Models\ModuleTeacherEnrollment;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -31,7 +31,7 @@ class AsyncLiveCourseDemoSeeder extends Seeder
     public function run(): void
     {
         $course = $this->createCourse();
-        $this->createLiveModule($course);
+        $module = $this->createLiveModule($course);
 
         $teacher = $this->upsertUser(
             role: 'teacher',
@@ -49,7 +49,7 @@ class AsyncLiveCourseDemoSeeder extends Seeder
             fiscalCode: 'UTLASY80A01H501R',
         );
 
-        $this->enrollTeacher($teacher, $course);
+        $this->assignTeacherToModule($teacher, $module);
         $this->enrollUser($user, $course);
     }
 
@@ -127,11 +127,11 @@ class AsyncLiveCourseDemoSeeder extends Seeder
         return $user;
     }
 
-    private function enrollTeacher(User $teacher, Course $course): void
+    private function assignTeacherToModule(User $teacher, Module $module): void
     {
-        $alreadyAssigned = CourseTeacherEnrollment::query()
+        $alreadyAssigned = ModuleTeacherEnrollment::query()
             ->where('user_id', $teacher->getKey())
-            ->where('course_id', $course->getKey())
+            ->where('module_id', $module->getKey())
             ->whereNull('deleted_at')
             ->exists();
 
@@ -139,7 +139,7 @@ class AsyncLiveCourseDemoSeeder extends Seeder
             return;
         }
 
-        CourseTeacherEnrollment::enroll($teacher, $course);
+        ModuleTeacherEnrollment::enroll($teacher, $module);
     }
 
     private function enrollUser(User $user, Course $course): void
