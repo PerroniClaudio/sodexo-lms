@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\DocumentConversionJobStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PreviewCustomCertificateRequest;
 use App\Http\Requests\StoreCustomCertificateRequest;
@@ -9,14 +10,17 @@ use App\Http\Requests\UpdateCustomCertificateRequest;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\CustomCertificate;
+use App\Models\DocumentConversionJob;
 use App\Models\User;
 use App\Services\Certificates\CertificateVariableResolver;
 use App\Services\Certificates\DocxTemplateRenderer;
+use Illuminate\Http\File;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use RuntimeException;
 
 class CustomCertificateController extends Controller
 {
@@ -223,7 +227,7 @@ class CustomCertificateController extends Controller
         CustomCertificate $customCertificate,
         CertificateVariableResolver $certificateVariableResolver,
         DocxTemplateRenderer $docxTemplateRenderer
-    ): BinaryFileResponse {
+    ): RedirectResponse {
         $validated = $request->validated();
 
         $course = Course::query()->findOrFail($validated['course_id']);
@@ -238,14 +242,44 @@ class CustomCertificateController extends Controller
             $certificateVariableResolver->resolve($course, $user, $enrollment)
         );
 
-        $downloadName = sprintf(
-            'attestato-%s-preview-%s-%s.docx',
-            $customCertificate->type,
-            Str::slug($course->title),
-            Str::slug(trim(sprintf('%s %s', $user->name, $user->surname)))
-        );
+        try {
+            $userFiscalCode = Str::upper(
+                Str::of($user->fiscal_code ?? 'unknown')
+                    ->replaceMatches('/[^A-Za-z0-9]/', '')
+                    ->value()
+            );
 
-        return response()->download($temporaryPath, $downloadName)->deleteFileAfterSend(true);
+            $fileName = sprintf(
+                '%s_%s_%s.docx',
+                $course->getKey(),
+                $userFiscalCode,
+                now()->format('Ymd')
+            );
+
+            $inputPath = Storage::disk(self::STORAGE_DISK)->putFileAs(
+                'certificates/word',
+                new File($temporaryPath),
+                $fileName
+            );
+
+            if ($inputPath === false) {
+                throw new RuntimeException('Unable to store the preview certificate on S3.');
+            }
+
+            DocumentConversionJob::query()->create([
+                'status' => DocumentConversionJobStatus::PENDING,
+                'input_disk' => self::STORAGE_DISK,
+                'input_path' => $inputPath,
+                'output_disk' => self::STORAGE_DISK,
+                'output_path' => (string) str($inputPath)->replaceEnd('.docx', '.pdf'),
+            ]);
+        } finally {
+            @unlink($temporaryPath);
+        }
+
+        return redirect()
+            ->route('admin.certificates.preview', $customCertificate)
+            ->with('status', __('Attestato di prova accodato con successo.'));
     }
 
     /**

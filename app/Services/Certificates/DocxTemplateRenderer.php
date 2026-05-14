@@ -21,15 +21,30 @@ class DocxTemplateRenderer
             throw new RuntimeException('Unable to allocate a temporary file for the rendered certificate.');
         }
 
-        $templateProcessor = new TemplateProcessor($templatePath);
-        $templateProcessor->setMacroChars('${', '}');
+        $outputPath .= '.docx';
 
-        foreach ($variables as $placeholder => $value) {
-            $templateProcessor->setValue($placeholder, $value);
+        try {
+            $templateProcessor = new TemplateProcessor($templatePath);
+            $templateProcessor->setMacroChars('${', '}');
+
+            foreach ($variables as $placeholder => $value) {
+                $templateProcessor->setValue($placeholder, $value);
+            }
+
+            $templateProcessor->saveAs($outputPath);
+
+            // Verify the file was created and is readable
+            if (! file_exists($outputPath) || ! is_readable($outputPath)) {
+                throw new RuntimeException('Failed to create the certificate file.');
+            }
+
+            // Verify the file has content
+            if (filesize($outputPath) === 0) {
+                throw new RuntimeException('Generated certificate file is empty.');
+            }
+        } finally {
+            @unlink($templatePath);
         }
-
-        $templateProcessor->saveAs($outputPath);
-        @unlink($templatePath);
 
         return $outputPath;
     }
