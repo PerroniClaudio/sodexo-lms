@@ -37,7 +37,7 @@ php artisan user:create [email] [nome] [cognome] [codice_fiscale] [ruolo]
 
 - **`superadmin`** - Amministratore totale del sistema
 - **`admin`** - Amministratore area back-office
-- **`docente`** - Docente/Formatore
+- **`teacher`** - Docente/Formatore
 - **`tutor`** - Tutor di corso
 - **`user`** - Utente discente (ruolo predefinito)
 
@@ -53,7 +53,7 @@ php artisan user:create [email] [nome] [cognome] [codice_fiscale] [ruolo]
 - `--job-role` (Ruolo)
 - `--job-sector` (Settore)
 
-Per ruoli `superadmin`, `admin`, `docente`, `tutor` **NON sono richiesti**.
+Per ruoli `superadmin`, `admin`, `teacher`, `tutor` **NON sono richiesti**.
 
 ### Modalità di Creazione
 
@@ -99,14 +99,14 @@ php artisan user:create \
   --active
 ```
 
-### 3. Docente
+### 3. Teacher (UI: Docente)
 ```bash
 php artisan user:create \
-  docente@sodexo.it \
+  teacher@sodexo.it \
   "Laura" \
   "Bianchi" \
   BNCLRA75M45F205Z \
-  docente \
+  teacher \
   --active
 ```
 
@@ -225,12 +225,12 @@ Errore di validazione:
 ### Creare Utenti con Factory
 
 Il `UserFactory` segue le stesse regole del comando:
-- **Admin/Superadmin/Docente/Tutor**: campi job NULL
+- **Admin/Superadmin/Teacher/Tutor**: campi job NULL
 - **User normale**: richiede campi job (usa `->withJobData()`)
 
 ### Esempi Factory
 
-#### Admin/Superadmin/Docente/Tutor (senza job data)
+#### Admin/Superadmin/Teacher/Tutor (senza job data)
 ```php
 use App\Models\User;
 
@@ -242,9 +242,9 @@ $admin->assignRole('admin');
 $superadmin = User::factory()->create();
 $superadmin->assignRole('superadmin');
 
-// Docente
-$docente = User::factory()->create();
-$docente->assignRole('docente');
+// Teacher
+$teacher = User::factory()->create();
+$teacher->assignRole('teacher');
 
 // Tutor
 $tutor = User::factory()->create();
@@ -298,7 +298,7 @@ User::factory()
 
 - [ ] Email univoca (non già usata)
 - [ ] Codice fiscale valido (16 caratteri) e univoco
-- [ ] Ruolo corretto: `superadmin`, `admin`, `docente`, `tutor`, o `user`
+- [ ] Ruolo corretto: `superadmin`, `admin`, `teacher`, `tutor`, o `user`
 - [ ] Se ruolo = `user`, aggiungi i 4 parametri job obbligatori
 - [ ] Se utente per setup/test, usa `--active`
 - [ ] Se utente reale, NON usare `--active` (riceverà email)

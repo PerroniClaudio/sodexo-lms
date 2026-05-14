@@ -296,7 +296,7 @@
     "profile.fields.work_address": "Work unit address",
     "profile.options.account.user": "User",
     "profile.options.account.admin": "Admin",
-    "profile.options.account.docente": "Teacher",
+    "profile.options.account.teacher": "Teacher",
     "profile.options.account.tutor": "Tutor",
     "profile.options.unspecified": "Not specified",
     "profile.options.no": "No",

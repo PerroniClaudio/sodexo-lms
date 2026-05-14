@@ -18,7 +18,7 @@ class CourseEnrollmentDemoSeeder extends Seeder
 
     private const COURSE_TITLE = 'Corso demo iscrizioni';
 
-    private const DOCENTE_EMAIL = 'docente-corso-demo@test.com';
+    private const TEACHER_EMAIL = 'docente-corso-demo@test.com';
 
     private const USER_EMAIL = 'utente-corso-demo@test.com';
 
@@ -33,9 +33,9 @@ class CourseEnrollmentDemoSeeder extends Seeder
 
         $this->createModules($course);
 
-        $docente = $this->upsertUser(
-            role: 'docente',
-            email: self::DOCENTE_EMAIL,
+        $teacher = $this->upsertUser(
+            role: 'teacher',
+            email: self::TEACHER_EMAIL,
             name: 'Docente',
             surname: 'Demo',
             fiscalCode: 'DOCDEM80A01H501Z',
@@ -49,7 +49,7 @@ class CourseEnrollmentDemoSeeder extends Seeder
             fiscalCode: 'UTEDEM80A01H501Y',
         );
 
-        $this->enrollTeacher($docente, $course);
+        $this->enrollTeacher($teacher, $course);
         $this->enrollUser($user, $course);
     }
 

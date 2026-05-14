@@ -31,7 +31,7 @@ class CreateUserCommand extends Command
         $fiscalCode = $this->argument('fiscal_code') ?? $this->ask('Codice fiscale');
         $role = $this->argument('role') ?? $this->choice(
             'Ruolo',
-            ['superadmin', 'admin', 'docente', 'tutor', 'user'],
+            ['superadmin', 'admin', 'teacher', 'tutor', 'user'],
             4
         );
 
@@ -61,7 +61,7 @@ class CreateUserCommand extends Command
             'name' => ['required', 'string', 'max:255'],
             'surname' => ['required', 'string', 'max:255'],
             'fiscal_code' => ['required', 'string', 'size:16', 'unique:users,fiscal_code'],
-            'role' => ['required', 'in:superadmin,admin,docente,tutor,user'],
+            'role' => ['required', 'in:superadmin,admin,teacher,tutor,user'],
             'password' => ['required', 'string', 'min:8'],
         ]);
 

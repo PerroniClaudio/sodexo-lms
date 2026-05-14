@@ -23,13 +23,13 @@ it('assigns selected teachers to the course from a live module modal', function 
         'name' => 'Anna',
         'surname' => 'Bianchi',
     ]);
-    $firstTeacher->assignRole('docente');
+    $firstTeacher->assignRole('teacher');
 
     $secondTeacher = User::factory()->create([
         'name' => 'Luca',
         'surname' => 'Verdi',
     ]);
-    $secondTeacher->assignRole('docente');
+    $secondTeacher->assignRole('teacher');
 
     $response = $this->post(route('admin.courses.modules.teachers.assign', [$course, $module]), [
         'teacher_ids' => [
@@ -76,7 +76,7 @@ it('returns not found when assigning teachers from a non live module', function 
     ]);
 
     $teacher = User::factory()->create();
-    $teacher->assignRole('docente');
+    $teacher->assignRole('teacher');
 
     $this->post(route('admin.courses.modules.teachers.assign', [$course, $module]), [
         'teacher_ids' => [$teacher->getKey()],

@@ -18,7 +18,7 @@
                 <select name="account_type" id="account_type" class="select select-bordered w-full" required>
                     <option value="user" @selected(old('account_type', $user->account_type ?? '') == 'user')>{{ __('profile.options.account.user') }}</option>
                     <option value="admin" @selected(old('account_type', $user->account_type ?? '') == 'admin')>{{ __('profile.options.account.admin') }}</option>
-                    <option value="docente" @selected(old('account_type', $user->account_type ?? '') == 'docente')>{{ __('profile.options.account.docente') }}</option>
+                    <option value="teacher" @selected(old('account_type', $user->account_type ?? '') == 'teacher')>{{ __('profile.options.account.teacher') }}</option>
                     <option value="tutor" @selected(old('account_type', $user->account_type ?? '') == 'tutor')>{{ __('profile.options.account.tutor') }}</option>
                 </select>
                 @error('account_type')<span class="text-error text-sm">{{ $message }}</span>@enderror

@@ -83,8 +83,8 @@ class RoleAndPermissionSeeder extends Seeder
             'manage job data',
         ]);
 
-        $docente = Role::create(['name' => 'docente']);
-        $docente->givePermissionTo([
+        $teacher = Role::create(['name' => 'teacher']);
+        $teacher->givePermissionTo([
             'view courses',
             'view modules',
             'view documents', 'upload documents',

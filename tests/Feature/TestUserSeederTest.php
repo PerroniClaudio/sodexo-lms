@@ -14,7 +14,7 @@ test('it creates one test user for each configured role', function () {
         TestUserSeeder::class,
     ]);
 
-    $roles = ['superadmin', 'admin', 'user', 'docente', 'tutor'];
+    $roles = ['superadmin', 'admin', 'user', 'teacher', 'tutor'];
 
     expect(User::query()->count())->toBe(count($roles));
 

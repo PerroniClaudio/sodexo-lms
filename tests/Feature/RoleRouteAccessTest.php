@@ -53,7 +53,7 @@ it('redirects admins to dashboard with an error when they access another role ar
         ->assertSessionHas('error', 'Non sei autorizzato ad accedere a questa sezione.');
 });
 
-it('forbids access to teacher routes for non docente roles', function () {
+it('forbids access to teacher routes for non teacher roles', function () {
     actingAsRole('user');
     $module = liveStreamModule();
 
@@ -62,8 +62,8 @@ it('forbids access to teacher routes for non docente roles', function () {
         ->assertSessionHas('error', 'Non sei autorizzato ad accedere a questa sezione.');
 });
 
-it('allows docenti to access teacher routes', function () {
-    $teacher = actingAsRole('docente');
+it('allows teachers to access teacher routes', function () {
+    $teacher = actingAsRole('teacher');
     $module = liveStreamModule();
     CourseTeacherEnrollment::factory()->create([
         'user_id' => $teacher->getKey(),
@@ -73,8 +73,8 @@ it('allows docenti to access teacher routes', function () {
     $this->actingAs($teacher)->get(route('teacher.live-stream.player', $module))->assertOk();
 });
 
-it('forbids teacher routes for docenti not assigned to the course', function () {
-    $teacher = actingAsRole('docente');
+it('forbids teacher routes for teachers not assigned to the course', function () {
+    $teacher = actingAsRole('teacher');
     $module = liveStreamModule();
 
     $this->actingAs($teacher)

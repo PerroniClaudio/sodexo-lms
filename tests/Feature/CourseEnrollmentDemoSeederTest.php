@@ -38,21 +38,21 @@ test('it seeds a demo course with a teacher assignment and a learner enrollment 
     ]);
     expect($modules->first()->is_live_teacher)->toBeTrue();
 
-    $docente = User::query()->where('email', 'docente-corso-demo@test.com')->first();
+    $teacher = User::query()->where('email', 'teacher-corso-demo@test.com')->first();
     $utente = User::query()->where('email', 'utente-corso-demo@test.com')->first();
 
-    expect($docente)->not->toBeNull();
+    expect($teacher)->not->toBeNull();
     expect($utente)->not->toBeNull();
-    expect($docente->hasRole('docente'))->toBeTrue();
+    expect($teacher->hasRole('teacher'))->toBeTrue();
     expect($utente->hasRole('user'))->toBeTrue();
-    expect($docente->getAttributes())->not->toHaveKey('account_type');
+    expect($teacher->getAttributes())->not->toHaveKey('account_type');
     expect($utente->getAttributes())->not->toHaveKey('account_type');
-    expect($docente->hasPermissionTo('manage attendance'))->toBeTrue();
+    expect($teacher->hasPermissionTo('manage attendance'))->toBeTrue();
     expect($utente->hasPermissionTo('view courses'))->toBeTrue();
     expect($utente->hasPermissionTo('manage attendance'))->toBeFalse();
 
     $teacherEnrollment = CourseTeacherEnrollment::query()
-        ->where('user_id', $docente->getKey())
+        ->where('user_id', $teacher->getKey())
         ->where('course_id', $course->getKey())
         ->first();
 

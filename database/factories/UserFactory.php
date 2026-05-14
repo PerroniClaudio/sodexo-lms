@@ -25,7 +25,7 @@ class UserFactory extends Factory
     protected const AVAILABLE_ACCOUNT_ROLES = [
         'superadmin',
         'admin',
-        'docente',
+        'teacher',
         'tutor',
         'user',
     ];
@@ -289,9 +289,9 @@ class UserFactory extends Factory
         return $this->withRole('admin');
     }
 
-    public function asDocente(): static
+    public function asTeacher(): static
     {
-        return $this->withRole('docente');
+        return $this->withRole('teacher');
     }
 
     public function asTutor(): static

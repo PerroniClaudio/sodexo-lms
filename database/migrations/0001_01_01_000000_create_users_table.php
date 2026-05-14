@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('password');
             $table->timestamp('email_verified_at')->nullable();
-            $table->string('account_type')->default('user'); // superadmin, admin, docente, tutor, user
+            $table->string('account_type')->default('user'); // superadmin, admin, teacher, tutor, user
             $table->string('account_state')->default('pending'); // pending, onboarding, active, update_required, suspended
             $table->timestamp('datapsw')->nullable();
             $table->timestamp('data_richiesta_mail')->nullable();

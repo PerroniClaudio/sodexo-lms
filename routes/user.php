@@ -1,12 +1,12 @@
 <?php
 
-use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\LiveStreamController;
 use App\Http\Controllers\ScormPlayerController;
 use App\Http\Controllers\ScormRuntimeController;
 use App\Http\Controllers\User\CourseController;
 use App\Http\Controllers\User\QuizModuleController;
 use App\Http\Controllers\User\SatisfactionSurveyController;
+use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\User\VideoModuleController;
 use Illuminate\Support\Facades\Route;
 

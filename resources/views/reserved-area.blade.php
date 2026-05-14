@@ -4,7 +4,7 @@
         $user = auth()->user();
         $role = $user?->getRoleNames()->first() ?? __('nessun ruolo');
         $roleLabel = str($role)->headline();
-        $avatarClass = $user?->hasRole('docente') ? 'bg-secondary text-secondary-content' : 'bg-primary text-primary-content';
+        $avatarClass = $user?->hasRole('teacher') ? 'bg-secondary text-secondary-content' : 'bg-primary text-primary-content';
     @endphp
 
     <section class="min-h-screen bg-base-200 px-4 py-10 sm:px-6 lg:px-8">

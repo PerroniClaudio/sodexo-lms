@@ -14,22 +14,25 @@
             </main>
         </div>
         <div class="drawer-side">
+            @php
+                $authUserRole = auth()->user()?->getRoleNames()->first() ?? 'user'; // Spatie restituisce una collection
+            @endphp
             <label for="user-drawer" aria-label="{{ __('layout.close_sidebar') }}" class="drawer-overlay"></label>
             <div class="flex min-h-full w-72 flex-col bg-base-200 p-4">
                 <ul class="menu w-full gap-1">
                     <li class="w-full">
-                        <a href="{{ route('user.courses.index') }}" @class([
+                        <a href="{{ route($authUserRole . '.courses.index') }}" @class([
                             'w-full',
-                            'menu-active' => request()->routeIs('user.courses.*'),
+                            'menu-active' => request()->routeIs($authUserRole . '.courses.*'),
                         ])>
                             <x-lucide-graduation-cap class="inline-block mr-2 h-5 w-5" />
                             {{ __('I miei corsi') }}
                         </a>
                     </li>
                     <li class="w-full">
-                        <a href="{{ route('user.profile.edit') }}" @class([
+                        <a href="{{ route($authUserRole . '.profile.edit') }}" @class([
                             'w-full',
-                            'menu-active' => request()->routeIs('user.profile.*'),
+                            'menu-active' => request()->routeIs($authUserRole . '.profile.*'),
                         ])>
                             <x-lucide-user-round class="inline-block mr-2 h-5 w-5" />
                             {{ __('Profilo') }}

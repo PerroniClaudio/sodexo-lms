@@ -27,14 +27,14 @@ it('shows the edit module page', function () {
         'surname' => 'Rossi',
         'email' => 'mario.rossi@example.test',
     ]);
-    $teacher->assignRole('docente');
+    $teacher->assignRole('teacher');
 
     $availableTeacher = User::factory()->create([
         'name' => 'Giulia',
         'surname' => 'Neri',
         'email' => 'giulia.neri@example.test',
     ]);
-    $availableTeacher->assignRole('docente');
+    $availableTeacher->assignRole('teacher');
 
     $assignedTutor = User::factory()->create([
         'name' => 'Paolo',

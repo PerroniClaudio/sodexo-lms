@@ -8,7 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 test('teacher enrollment stores only the course assignment without learner progress fields', function () {
-    $teacher = actingAsRole('docente');
+    $teacher = actingAsRole('teacher');
     $course = Course::factory()->create();
 
     Module::factory()->create([

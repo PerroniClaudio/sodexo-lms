@@ -6,18 +6,20 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\UserRequest;
 use App\Models\JobCategory;
 use App\Models\JobLevel;
-use App\Models\User;
-use App\Models\JobTitle;
 use App\Models\JobRole;
 use App\Models\JobSector;
+use App\Models\JobTitle;
 use App\Models\JobUnit;
 use App\Models\Province;
+use App\Models\User;
 use App\Models\WorldCity;
 use App\Models\WorldCountry;
 use App\Models\WorldDivision;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Http\Request;
+use App\Support\UserGeographyMapper;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
 
 /**
@@ -26,42 +28,10 @@ use Illuminate\View\View;
  */
 class UserController extends Controller
 {
+    public function __construct(
+        private readonly UserGeographyMapper $userGeographyMapper,
+    ) {}
 
-    /**
-     * Mostra la pagina di modifica del proprio profilo utente
-     */
-    public function editOwnProfile(): \Illuminate\View\View
-    {
-        $user = auth()->user();
-        return view('user.profile.edit', compact('user'));
-    }
-
-    /**
-     * Aggiorna i dati personali dell'utente autenticato (profilo proprio)
-     */
-    public function updateOwnProfile(\Illuminate\Http\Request $request): \Illuminate\Http\RedirectResponse
-    {
-        $user = auth()->user();
-        $validated = $request->validate([
-            'phone_prefix' => ['nullable', 'string', 'max:8'],
-            'phone' => ['nullable', 'string', 'max:32'],
-            'birth_date' => ['nullable', 'date'],
-            'birth_place' => ['nullable', 'string', 'max:255'],
-            'gender' => ['nullable', 'string', 'max:1'],
-            'country' => ['nullable', 'string', 'max:100'],
-            'region' => ['nullable', 'string', 'max:100'],
-            'province' => ['nullable', 'string', 'max:100'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'address' => ['nullable', 'string', 'max:255'],
-            'postal_code' => ['nullable', 'string', 'max:16'],
-        ]);
-
-        // Conversione geografica come in update
-        $data = $this->convertGeographicNamesToHomeIds($validated);
-
-        $user->update($data);
-        return redirect()->route('user.profile.edit')->with('status', __('Profilo aggiornato con successo!'));
-    }
     public function index(Request $request): View
     {
         $query = User::query()->with('jobRole');
@@ -76,9 +46,9 @@ class UserController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%$search%")
-                  ->orWhere('surname', 'like', "%$search%")
-                  ->orWhere('fiscal_code', 'like', "%$search%")
-                  ->orWhere('email', 'like', "%$search%") ;
+                    ->orWhere('surname', 'like', "%$search%")
+                    ->orWhere('fiscal_code', 'like', "%$search%")
+                    ->orWhere('email', 'like', "%$search%");
             });
         }
 
@@ -86,10 +56,10 @@ class UserController extends Controller
         $sortable = ['name', 'surname', 'fiscal_code', 'email', 'account_type', 'role', 'status'];
         $sort = $request->input('sort', 'surname');
         $direction = $request->input('direction', 'asc');
-        if (!in_array($sort, $sortable)) {
+        if (! in_array($sort, $sortable)) {
             $sort = 'surname';
         }
-        if (!in_array($direction, ['asc', 'desc'])) {
+        if (! in_array($direction, ['asc', 'desc'])) {
             $direction = 'asc';
         }
 
@@ -102,12 +72,11 @@ class UserController extends Controller
             $perPage = 20;
             $page = $request->input('page', 1);
             $paged = $users->slice(($page - 1) * $perPage, $perPage)->values();
-            $users = new \Illuminate\Pagination\LengthAwarePaginator($paged, $users->count(), $perPage, $page, [
+            $users = new LengthAwarePaginator($paged, $users->count(), $perPage, $page, [
                 'path' => $request->url(),
                 'query' => $request->query(),
             ]);
-        }
-        elseif ($sort === 'account_type') {
+        } elseif ($sort === 'account_type') {
             // Ordina per ruolo Spatie (primo ruolo alfabetico) lato PHP dopo la query
             $users = $query->get()->sortBy(function ($user) {
                 return $user->getRoleNames()->first() ?? '';
@@ -116,7 +85,7 @@ class UserController extends Controller
             $perPage = 20;
             $page = $request->input('page', 1);
             $paged = $users->slice(($page - 1) * $perPage, $perPage)->values();
-            $users = new \Illuminate\Pagination\LengthAwarePaginator($paged, $users->count(), $perPage, $page, [
+            $users = new LengthAwarePaginator($paged, $users->count(), $perPage, $page, [
                 'path' => $request->url(),
                 'query' => $request->query(),
             ]);
@@ -130,6 +99,7 @@ class UserController extends Controller
             $query->orderBy($sort, $direction);
             $users = $query->paginate(20)->appends($request->only(['search', 'sort', 'direction', 'show_trashed']));
         }
+
         return view('admin.users.index', compact('users', 'sort', 'direction', 'search', 'showTrashed'));
     }
 
@@ -141,17 +111,18 @@ class UserController extends Controller
         $jobRoles = JobRole::all();
         $jobSectors = JobSector::all();
         $jobUnits = JobUnit::all();
+
         return view('admin.users.create', compact('jobCategories', 'jobLevels', 'jobTitles', 'jobRoles', 'jobSectors', 'jobUnits'));
     }
 
     public function store(UserRequest $request): RedirectResponse
     {
-        $data = $this->convertGeographicNamesToHomeIds($request->validated());
+        $data = $this->userGeographyMapper->toHomeIds($request->validated());
         $accountType = $data['account_type'] ?? 'user';
         unset($data['account_type']);
 
         // Normalizza i campi opzionali a null se stringa vuota
-        foreach (["job_category_id", "job_level_id"] as $field) {
+        foreach (['job_category_id', 'job_level_id'] as $field) {
             if (array_key_exists($field, $data) && ($data[$field] === '' || $data[$field] === null)) {
                 $data[$field] = null;
             }
@@ -187,15 +158,16 @@ class UserController extends Controller
         $jobRoles = JobRole::all();
         $jobSectors = JobSector::all();
         $jobUnits = JobUnit::all();
+
         return view('admin.users.edit', compact('user', 'jobCategories', 'jobLevels', 'jobTitles', 'jobRoles', 'jobSectors', 'jobUnits'));
     }
 
     public function update(UserRequest $request, User $user): RedirectResponse
     {
-        $data = $this->convertGeographicNamesToHomeIds($request->validated());
+        $data = $this->userGeographyMapper->toHomeIds($request->validated());
 
         // Normalizza i campi opzionali a null se stringa vuota
-        foreach (["job_category_id", "job_level_id"] as $field) {
+        foreach (['job_category_id', 'job_level_id'] as $field) {
             if (array_key_exists($field, $data) && ($data[$field] === '' || $data[$field] === null)) {
                 $data[$field] = null;
             }
@@ -220,75 +192,33 @@ class UserController extends Controller
             unset($data['password']);
         }
         $user->update($data);
+
         return redirect()->route('admin.users.index')->with('success', 'Utente aggiornato con successo');
     }
 
     public function destroy(User $user): RedirectResponse
     {
         $user->delete();
+
         return redirect()->route('admin.users.index')->with('success', 'Utente eliminato con successo');
     }
 
-    public function restore($id): \Illuminate\Http\RedirectResponse
+    public function restore($id): RedirectResponse
     {
         $user = User::withTrashed()->findOrFail($id);
         $user->restore();
+
         return redirect()->route('admin.users.index')->with('success', 'Utente ripristinato con successo');
-    }
-
-    /**
-     * Converti i nomi geografici in ID per il salvataggio nel database.
-     */
-    private function convertGeographicNamesToHomeIds(array $data): array
-    {
-        // Converti country code in country_id
-        if (isset($data['country'])) {
-            $country = WorldCountry::where('code', $data['country'])->first();
-            $data['home_country_id'] = $country?->id;
-            unset($data['country']);
-        }
-
-        // Converti region name in region_id
-        if (isset($data['region'])) {
-            $region = WorldDivision::where('name', $data['region'])->first();
-            $data['home_region_id'] = $region?->id;
-            unset($data['region']);
-        }
-
-        // Converti province name in province_id
-        if (isset($data['province']) && $data['province']) {
-            $province = Province::where('name', $data['province'])->first();
-            $data['home_province_id'] = $province?->id;
-            unset($data['province']);
-        } else {
-            $data['home_province_id'] = null;
-            unset($data['province']);
-        }
-
-        // Converti city name in city_id
-        if (isset($data['city'])) {
-            $city = WorldCity::where('name', $data['city'])->first();
-            $data['home_city_id'] = $city?->id;
-            unset($data['city']);
-        }
-
-        return $data;
     }
 
     /**
      * Verifica la coerenza tra città, provincia, regione e nazione (solo per i valori inseriti).
      * Restituisce true se coerenti, false se incoerenti, null se non verificabile.
-     *
-     * @param int|null $cityId
-     * @param int|null $provinceId
-     * @param int|null $regionId
-     * @param int|null $countryId
-     * @return bool|null
      */
     private function checkGeographicConsistency(?int $cityId, ?int $provinceId, ?int $regionId, ?int $countryId): ?bool
     {
         // Se nessun valore è inserito, non verificabile
-        if (!$cityId && !$provinceId && !$regionId && !$countryId) {
+        if (! $cityId && ! $provinceId && ! $regionId && ! $countryId) {
             return null;
         }
 

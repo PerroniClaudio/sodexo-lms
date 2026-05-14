@@ -347,7 +347,7 @@ test('live stream player route returns not found for non live modules', function
 });
 
 test('teacher live stream route renders the updated preview controls', function () {
-    $teacher = actingAsRole('docente');
+    $teacher = actingAsRole('teacher');
 
     $course = Course::factory()->create([
         'title' => 'Corso sicurezza',

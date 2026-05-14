@@ -15,7 +15,7 @@ class UserRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
-            'account_type' => ['required', 'string', 'in:user,admin,docente,tutor'],
+            'account_type' => ['required', 'string', 'in:user,admin,teacher,tutor'],
             'email' => ['required', 'email', 'max:255'],
             'name' => ['required', 'string', 'max:255'],
             'surname' => ['required', 'string', 'max:255'],
@@ -46,6 +46,7 @@ class UserRequest extends FormRequest
             'address' => ['nullable', 'string', 'max:255'],
             'postal_code' => ['nullable', 'string', 'max:16'],
         ];
+
         return $rules;
     }
 }

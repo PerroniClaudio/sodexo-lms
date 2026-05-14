@@ -2,9 +2,10 @@
 
 use App\Http\Controllers\LiveStreamController;
 use App\Http\Controllers\User\CourseController;
+use App\Http\Controllers\User\UserController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'role:docente|superadmin'])->group(function () {
+Route::middleware(['auth', 'role:teacher|superadmin'])->group(function () {
     Route::group(['prefix' => 'teacher', 'as' => 'teacher.'], function () {
         // Corsi teacher
         Route::get('courses', [CourseController::class, 'index'])->name('courses.index');
@@ -24,5 +25,9 @@ Route::middleware(['auth', 'role:docente|superadmin'])->group(function () {
         Route::get('/live-stream/{module}/documents/{document}', [LiveStreamController::class, 'downloadTeacherDocument'])->name('live-stream.documents.download');
         Route::delete('/live-stream/{module}/documents/{document}', [LiveStreamController::class, 'destroyTeacherDocument'])->name('live-stream.documents.destroy');
         Route::patch('/live-stream/{module}/participants/{participant}/speaker', [LiveStreamController::class, 'updateSpeaker'])->name('live-stream.participants.speaker');
+
+        // Profilo utente
+        Route::get('profile', [UserController::class, 'editOwnProfile'])->name('profile.edit');
+        Route::put('profile', [UserController::class, 'updateOwnProfile'])->name('profile.update');
     });
 });

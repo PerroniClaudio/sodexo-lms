@@ -19,7 +19,7 @@ class AsyncLiveCourseDemoSeeder extends Seeder
 
     private const COURSE_TITLE = 'Corso demo FAD asincrono con live';
 
-    private const DOCENTE_EMAIL = 'docente-live-async-demo@test.com';
+    private const TEACHER_EMAIL = 'docente-live-async-demo@test.com';
 
     private const USER_EMAIL = 'utente-live-async-demo@test.com';
 
@@ -34,8 +34,8 @@ class AsyncLiveCourseDemoSeeder extends Seeder
         $this->createLiveModule($course);
 
         $teacher = $this->upsertUser(
-            role: 'docente',
-            email: self::DOCENTE_EMAIL,
+            role: 'teacher',
+            email: self::TEACHER_EMAIL,
             name: 'Docente',
             surname: 'Live Async Demo',
             fiscalCode: 'DCLASY80A01H501Q',

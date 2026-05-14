@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\LiveStreamController;
 use App\Http\Controllers\User\CourseController;
+use App\Http\Controllers\User\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:tutor|superadmin'])->group(function () {
@@ -17,5 +18,9 @@ Route::middleware(['auth', 'role:tutor|superadmin'])->group(function () {
         Route::post('/live-stream/{module}/messages', [LiveStreamController::class, 'storeTutorMessage'])->name('live-stream.messages.store');
         Route::get('/live-stream/{module}/documents/{document}', [LiveStreamController::class, 'downloadTutorDocument'])->name('live-stream.documents.download');
         Route::delete('/live-stream/{module}/messages/{message}', [LiveStreamController::class, 'destroyTutorMessage'])->name('live-stream.messages.destroy');
+
+        // Profilo utente
+        Route::get('profile', [UserController::class, 'editOwnProfile'])->name('profile.edit');
+        Route::put('profile', [UserController::class, 'updateOwnProfile'])->name('profile.update');
     });
 });

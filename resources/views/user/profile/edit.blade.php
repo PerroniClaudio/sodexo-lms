@@ -13,10 +13,11 @@
                         <h1 class="card-title justify-center text-2xl">
                             {{ __('Il mio profilo') }}
                             @php
-                                $accountType = $user->getRoleNames()->first() ?? ($user->account_type ?? null);
+                                $userRole = $user->getRoleNames()->first() ?? ($user->account_type ?? null);
                             @endphp
-                            @if($accountType)
-                                <span class="text-base font-normal text-base-content/60">({{ ucfirst($accountType) }})</span>
+                            @if($userRole)
+                                {{-- <span class="text-base font-normal text-base-content/60">({{ ucfirst($userRole) }})</span> --}}
+                                <span class="text-base font-normal text-base-content/60">({{ __("profile.options.account." . $userRole) }})</span>
                             @endif
                         </h1>
                         <p class="text-sm text-base-content/70 mt-2">
@@ -27,7 +28,7 @@
                         </p>
                     </div>
 
-                    <form method="POST" action="{{ route('user.profile.update') }}" class="flex flex-col gap-6">
+                    <form method="POST" action="{{ route($userRole . '.profile.update') }}" class="flex flex-col gap-6">
                         @csrf
                         @method('PUT')
 

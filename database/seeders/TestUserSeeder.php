@@ -25,7 +25,7 @@ class TestUserSeeder extends Seeder
         'superadmin',
         'admin',
         'user',
-        'docente',
+        'teacher',
         'tutor',
     ];
 
@@ -64,7 +64,7 @@ class TestUserSeeder extends Seeder
             'superadmin' => 'SPRDMN80A01H501A',
             'admin' => 'ADMINN80A01H501B',
             'user' => 'USERXX80A01H501C',
-            'docente' => 'DOCENT80A01H501D',
+            'teacher' => 'DOCENT80A01H501D',
             'tutor' => 'TUTORX80A01H501E',
         };
     }

@@ -34,12 +34,12 @@ test('it seeds an async course with one live module, one enrolled learner, and o
     expect($module->type)->toBe('live');
     expect($module->is_live_teacher)->toBeTrue();
 
-    $teacher = User::query()->where('email', 'docente-live-async-demo@test.com')->first();
+    $teacher = User::query()->where('email', 'teacher-live-async-demo@test.com')->first();
     $user = User::query()->where('email', 'utente-live-async-demo@test.com')->first();
 
     expect($teacher)->not->toBeNull();
     expect($user)->not->toBeNull();
-    expect($teacher->hasRole('docente'))->toBeTrue();
+    expect($teacher->hasRole('teacher'))->toBeTrue();
     expect($user->hasRole('user'))->toBeTrue();
 
     expect(

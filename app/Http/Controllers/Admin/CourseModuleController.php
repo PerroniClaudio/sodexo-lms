@@ -405,7 +405,7 @@ class CourseModuleController extends Controller
             ->pluck('user_id');
 
         return User::query()
-            ->whereHas('roles', fn ($query) => $query->where('name', 'docente'))
+            ->whereHas('roles', fn ($query) => $query->where('name', 'teacher'))
             ->whereNotIn('id', $assignedTeacherIds)
             ->orderBy('surname')
             ->orderBy('name')

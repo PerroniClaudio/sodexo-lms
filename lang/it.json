@@ -296,7 +296,7 @@
     "profile.fields.work_address": "Indirizzo Unità Produttiva",
     "profile.options.account.user": "User",
     "profile.options.account.admin": "Admin",
-    "profile.options.account.docente": "Docente",
+    "profile.options.account.teacher": "Docente",
     "profile.options.account.tutor": "Tutor",
     "profile.options.unspecified": "Non specificato",
     "profile.options.no": "No",
@@ -330,4 +330,3 @@
     "Numero massimo di tentativi permessi per questo quiz": "Numero massimo di tentativi permessi per questo quiz",
     "Available" : "Disponibile"
 }
-

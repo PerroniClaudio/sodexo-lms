@@ -62,7 +62,7 @@ function assignTutorToModule($user, Module $module): void
 }
 
 test('teacher can start a live session only once for the same module', function () {
-    $teacher = actingAsRole('docente');
+    $teacher = actingAsRole('teacher');
     $module = createLiveModuleWithCourse();
 
     assignTeacherToModule($teacher, $module);
@@ -91,7 +91,7 @@ test('teacher can start a live session only once for the same module', function 
 });
 
 test('teacher start session requires an enrollment in the course', function () {
-    $teacher = actingAsRole('docente');
+    $teacher = actingAsRole('teacher');
     $module = createLiveModuleWithCourse();
 
     $service = Mockery::mock(TwilioVideoService::class);
@@ -152,7 +152,7 @@ test('admin can start a regia live session and receives mux credentials', functi
 });
 
 test('teacher end session overwrites module appointment end time', function () {
-    $teacher = actingAsRole('docente');
+    $teacher = actingAsRole('teacher');
     $module = createLiveModuleWithCourse()->forceFill([
         'appointment_end_time' => now()->addHours(4),
     ]);
@@ -340,7 +340,7 @@ test('tutor join requires an enrollment in the course', function () {
 });
 
 test('teacher state excludes hidden and stale participants', function () {
-    $teacher = actingAsRole('docente');
+    $teacher = actingAsRole('teacher');
     $module = createLiveModuleWithCourse();
     assignTeacherToModule($teacher, $module);
     $session = LiveStreamSession::factory()->create([
@@ -391,7 +391,7 @@ test('teacher state excludes hidden and stale participants', function () {
 test('teacher can upload a pdf and state returns the shared live materials', function () {
     Storage::fake('local');
 
-    $teacher = actingAsRole('docente');
+    $teacher = actingAsRole('teacher');
     $module = createLiveModuleWithCourse();
     assignTeacherToModule($teacher, $module);
 
@@ -450,7 +450,7 @@ test('hand raise is resolved when teacher grants microphone access', function ()
     $this->seed(RoleAndPermissionSeeder::class);
 
     $teacher = User::factory()->create();
-    $teacher->assignRole('docente');
+    $teacher->assignRole('teacher');
     assignTeacherToModule($teacher, $module);
 
     $student = User::factory()->create();
@@ -743,7 +743,7 @@ test('joined tutor can remove a live stream chat message for moderation', functi
 });
 
 test('teacher state returns recent live stream chat messages in chronological order', function () {
-    $teacher = actingAsRole('docente');
+    $teacher = actingAsRole('teacher');
     $module = createLiveModuleWithCourse();
     assignTeacherToModule($teacher, $module);
     $session = LiveStreamSession::factory()->create([
@@ -790,7 +790,7 @@ test('teacher can publish a poll and teacher state shows aggregated response per
     $this->seed(RoleAndPermissionSeeder::class);
 
     $teacher = User::factory()->create();
-    $teacher->assignRole('docente');
+    $teacher->assignRole('teacher');
     assignTeacherToModule($teacher, $module);
 
     $firstStudent = User::factory()->create();
@@ -870,7 +870,7 @@ test('teacher can close an open poll and unanswered users no longer receive it',
     $this->seed(RoleAndPermissionSeeder::class);
 
     $teacher = User::factory()->create();
-    $teacher->assignRole('docente');
+    $teacher->assignRole('teacher');
     assignTeacherToModule($teacher, $module);
 
     $student = User::factory()->create();

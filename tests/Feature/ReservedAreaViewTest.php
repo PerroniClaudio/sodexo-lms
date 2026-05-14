@@ -34,7 +34,7 @@ test('reserved area shows logged user card and logout action for teachers', func
         'name' => 'Laura',
         'surname' => 'Bianchi',
     ]);
-    $user->assignRole('docente');
+    $user->assignRole('teacher');
 
     $response = $this
         ->actingAs($user)

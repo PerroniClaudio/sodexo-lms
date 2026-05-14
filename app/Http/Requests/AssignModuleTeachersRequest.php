@@ -44,7 +44,7 @@ class AssignModuleTeachersRequest extends FormRequest
 
                 $teachersCount = User::query()
                     ->whereIn('id', $teacherIds)
-                    ->whereHas('roles', fn ($query) => $query->where('name', 'docente'))
+                    ->whereHas('roles', fn ($query) => $query->where('name', 'teacher'))
                     ->count();
 
                 if ($teachersCount !== $teacherIds->count()) {
