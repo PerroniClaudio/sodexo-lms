@@ -7,6 +7,7 @@ use App\Models\Course;
 use App\Models\Module;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
@@ -115,10 +116,12 @@ class CourseController extends Controller
             ->whereNull('modules.deleted_at')
             ->orderBy('order')
             ->get();
+        $modules = $course->modules()->get();
 
         $this->normalizeAssignedModuleDates($assignedModules);
+        $this->decorateStaffCourseModules($modules, $assignedModules);
 
-        return view('teacher.courses.show', compact('course', 'assignedModules'));
+        return view('teacher.courses.show', compact('course', 'assignedModules', 'modules'));
     }
 
     private function tutorShow(User $user, Course $course): View
@@ -134,10 +137,12 @@ class CourseController extends Controller
             ->whereNull('modules.deleted_at')
             ->orderBy('order')
             ->get();
+        $modules = $course->modules()->get();
 
         $this->normalizeAssignedModuleDates($assignedModules);
+        $this->decorateStaffCourseModules($modules, $assignedModules);
 
-        return view('tutor.courses.show', compact('course', 'assignedModules'));
+        return view('tutor.courses.show', compact('course', 'assignedModules', 'modules'));
     }
 
     private function normalizeAssignedModuleDates($assignedModules): void
@@ -147,6 +152,19 @@ class CourseController extends Controller
             $module->assigned_at_display = filled($assignedAt)
                 ? CarbonImmutable::parse($assignedAt)->format('d/m/Y H:i')
                 : null;
+        });
+    }
+
+    private function decorateStaffCourseModules(EloquentCollection $modules, EloquentCollection $assignedModules): void
+    {
+        $assignedModulesById = $assignedModules->keyBy(fn (Module $module): int => (int) $module->getKey());
+
+        $modules->each(function (Module $module) use ($assignedModulesById): void {
+            /** @var Module|null $assignedModule */
+            $assignedModule = $assignedModulesById->get((int) $module->getKey());
+
+            $module->is_assigned_to_staff = $assignedModule !== null;
+            $module->assigned_at_display = $assignedModule?->assigned_at_display;
         });
     }
 

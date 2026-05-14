@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
         '[data-close-attendance-confirmation-modal]',
         'hasAttendanceConfirmationErrors',
     );
+    initializeTargetDialogs(moduleEditPage, '[data-open-staff-removal-modal]');
 });
 
 function initializeAssignmentDialog(moduleEditPage, modalSelector, openButtonSelector, closeButtonSelector, errorFlag) {
@@ -48,4 +49,22 @@ function initializeAssignmentDialog(moduleEditPage, modalSelector, openButtonSel
     if (moduleEditPage.dataset[errorFlag] === 'true') {
         modal.showModal();
     }
+}
+
+function initializeTargetDialogs(moduleEditPage, openButtonSelector) {
+    const openButtons = moduleEditPage.querySelectorAll(openButtonSelector);
+
+    if (openButtons.length === 0) {
+        return;
+    }
+
+    openButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const modal = moduleEditPage.querySelector(button.dataset.modalTarget);
+
+            if (modal) {
+                modal.showModal();
+            }
+        });
+    });
 }

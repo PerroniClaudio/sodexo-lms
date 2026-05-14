@@ -295,6 +295,7 @@
     "profile.fields.work_postal_code": "Work unit ZIP code",
     "profile.fields.work_address": "Work unit address",
     "profile.options.account.user": "User",
+    "profile.options.account.superadmin": "Superadmin",
     "profile.options.account.admin": "Admin",
     "profile.options.account.teacher": "Teacher",
     "profile.options.account.tutor": "Tutor",

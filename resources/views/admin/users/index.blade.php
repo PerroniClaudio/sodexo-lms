@@ -76,7 +76,7 @@
                     <td>{{ $user->fiscal_code }}</td>
                     <td>
                         @php $role = $user->getRoleNames()->first(); @endphp
-                        {{ $role ? __(ucfirst($role)) : '-' }}
+                        {{ $role ? __('profile.options.account.' . $role) : '-' }}
                     </td>
                     {{-- <td>{{ $user->jobRole?->name ?? '-' }}</td> --}}
                     <td>

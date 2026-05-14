@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\LiveStreamController;
 use App\Http\Controllers\User\CourseController;
+use App\Http\Controllers\User\CourseEnrollmentController;
 use App\Http\Controllers\User\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -10,6 +11,7 @@ Route::middleware(['auth', 'role:teacher|superadmin'])->group(function () {
         // Corsi teacher
         Route::get('courses', [CourseController::class, 'index'])->name('courses.index');
         Route::get('courses/{course}', [CourseController::class, 'show'])->name('courses.show');
+        Route::get('api/courses/{course}/enrollments', [CourseEnrollmentController::class, 'indexApi'])->name('api.courses.enrollments.index');
 
         Route::get('/live-stream/{module}/player', [LiveStreamController::class, 'teacherPlayer'])->name('live-stream.player');
         Route::post('/live-stream/{module}/session/start', [LiveStreamController::class, 'startSession'])->name('live-stream.session.start');

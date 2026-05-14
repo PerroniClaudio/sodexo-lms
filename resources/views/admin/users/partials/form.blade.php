@@ -1,3 +1,17 @@
+@php
+    $selectedAccountType = old('account_type', isset($user) ? ($user->getRoleNames()->first() ?? 'user') : 'user');
+    $accountTypeLabels = collect([
+        'user' => __('profile.options.account.user'),
+        'admin' => __('profile.options.account.admin'),
+        'teacher' => __('profile.options.account.teacher'),
+        'tutor' => __('profile.options.account.tutor'),
+    ]);
+
+    if ($selectedAccountType === 'superadmin') {
+        $accountTypeLabels->put('superadmin', __('Superadmin'));
+    }
+@endphp
+
 <!-- Altri campi facoltativi possono essere aggiunti qui -->
 
 <div class="flex flex-col gap-4">
@@ -16,10 +30,9 @@
                     <span class="label-text font-semibold">{{ __('profile.fields.account_type') }} <span class="text-error">*</span></span>
                 </label>
                 <select name="account_type" id="account_type" class="select select-bordered w-full" required>
-                    <option value="user" @selected(old('account_type', $user->account_type ?? '') == 'user')>{{ __('profile.options.account.user') }}</option>
-                    <option value="admin" @selected(old('account_type', $user->account_type ?? '') == 'admin')>{{ __('profile.options.account.admin') }}</option>
-                    <option value="teacher" @selected(old('account_type', $user->account_type ?? '') == 'teacher')>{{ __('profile.options.account.teacher') }}</option>
-                    <option value="tutor" @selected(old('account_type', $user->account_type ?? '') == 'tutor')>{{ __('profile.options.account.tutor') }}</option>
+                    @foreach ($accountTypeLabels as $accountTypeValue => $accountTypeLabel)
+                        <option value="{{ $accountTypeValue }}" @selected($selectedAccountType === $accountTypeValue)>{{ $accountTypeLabel }}</option>
+                    @endforeach
                 </select>
                 @error('account_type')<span class="text-error text-sm">{{ $message }}</span>@enderror
             </div>

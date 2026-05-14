@@ -12,9 +12,8 @@ use App\Services\GoogleDocumentAiQuizService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
-use Tests\TestCase;
 
-uses(TestCase::class, RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 beforeEach(function () {
     config()->set('services.google_document_ai.access_token', 'test-token');

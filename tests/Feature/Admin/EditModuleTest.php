@@ -10,50 +10,83 @@ use App\Models\ModuleTutorEnrollment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Hash;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
     actingAsRole('admin');
     $this->withoutVite();
+    config()->set('app.key', 'base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=');
+    config()->set('app.cipher', 'aes-256-cbc');
 });
 
 it('shows the edit module page', function () {
     $course = Course::factory()->create([
         'title' => 'Corso sicurezza',
     ]);
-    $teacher = User::factory()->create([
+    $teacher = User::query()->create([
         'name' => 'Mario',
         'surname' => 'Rossi',
         'email' => 'mario.rossi@example.test',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'fiscal_code' => 'RSSMRA80A01H501Z',
+        'is_foreigner_or_immigrant' => false,
     ]);
     $teacher->assignRole('teacher');
 
-    $availableTeacher = User::factory()->create([
+    $availableTeacher = User::query()->create([
         'name' => 'Giulia',
         'surname' => 'Neri',
         'email' => 'giulia.neri@example.test',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'fiscal_code' => 'NERGLI80A01H501Z',
+        'is_foreigner_or_immigrant' => false,
     ]);
     $availableTeacher->assignRole('teacher');
 
-    $assignedTutor = User::factory()->create([
+    $assignedTutor = User::query()->create([
         'name' => 'Paolo',
         'surname' => 'Blu',
         'email' => 'paolo.blu@example.test',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'fiscal_code' => 'BLUPLA80A01H501Z',
+        'is_foreigner_or_immigrant' => false,
     ]);
     $assignedTutor->assignRole('tutor');
 
-    $availableTutor = User::factory()->create([
+    $availableTutor = User::query()->create([
         'name' => 'Sara',
         'surname' => 'Gialli',
         'email' => 'sara.gialli@example.test',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'fiscal_code' => 'GLLSRA80A01H501Z',
+        'is_foreigner_or_immigrant' => false,
     ]);
     $availableTutor->assignRole('tutor');
 
-    $participant = User::factory()->create([
+    $participant = User::query()->create([
         'name' => 'Luca',
         'surname' => 'Verdi',
         'email' => 'luca.verdi@example.test',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'fiscal_code' => 'VRDLCU80A01H501Z',
+        'is_foreigner_or_immigrant' => false,
     ]);
 
     $module = Module::factory()->create([
@@ -68,19 +101,25 @@ it('shows the edit module page', function () {
         'belongsTo' => (string) $course->getKey(),
     ]);
 
-    $teacherEnrollment = ModuleTeacherEnrollment::factory()->create([
+    $teacherEnrollment = ModuleTeacherEnrollment::query()->create([
         'module_id' => $module->getKey(),
         'user_id' => $teacher->getKey(),
+        'assigned_at' => now(),
     ]);
 
-    $tutorEnrollment = ModuleTutorEnrollment::factory()->create([
+    $tutorEnrollment = ModuleTutorEnrollment::query()->create([
         'module_id' => $module->getKey(),
         'user_id' => $assignedTutor->getKey(),
+        'assigned_at' => now(),
     ]);
 
-    $session = LiveStreamSession::factory()->create([
+    $session = LiveStreamSession::query()->create([
         'module_id' => $module->getKey(),
+        'teacher_user_id' => $teacher->getKey(),
+        'twilio_room_sid' => 'RM12345678901234567890123456789012',
+        'twilio_room_name' => 'live-module-test-room',
         'status' => LiveStreamSession::STATUS_LIVE,
+        'started_at' => now(),
     ]);
 
     CourseEnrollment::enroll($participant, $course);
@@ -122,6 +161,9 @@ it('shows the edit module page', function () {
     $response->assertSee('data-open-teacher-assignment-modal', escape: false);
     $response->assertSee('id="assign-teachers-modal"', escape: false);
     $response->assertSee(route('admin.courses.modules.teachers.destroy', [$course, $module, $teacherEnrollment]), escape: false);
+    $response->assertSee('data-open-staff-removal-modal', escape: false);
+    $response->assertSee('id="remove-teacher-modal-'.$teacherEnrollment->getKey().'"', escape: false);
+    $response->assertSeeText('Conferma rimozione docente');
     $response->assertSeeText('Giulia Neri');
     $response->assertSee('name="teacher_ids[]"', escape: false);
     $response->assertSeeText('Tutor assegnati');
@@ -131,6 +173,8 @@ it('shows the edit module page', function () {
     $response->assertSee('data-open-tutor-assignment-modal', escape: false);
     $response->assertSee('id="assign-tutors-modal"', escape: false);
     $response->assertSee(route('admin.courses.modules.tutors.destroy', [$course, $module, $tutorEnrollment]), escape: false);
+    $response->assertSee('id="remove-tutor-modal-'.$tutorEnrollment->getKey().'"', escape: false);
+    $response->assertSeeText('Conferma rimozione tutor');
     $response->assertSeeText('Sara Gialli');
     $response->assertSee('name="tutor_ids[]"', escape: false);
     $response->assertSeeText('Partecipazione alla live');
@@ -185,31 +229,55 @@ it('does not show the editable title field for quiz modules', function () {
 
 it('resolves the dedicated edit view for video modules', function () {
     $course = Course::factory()->create();
-    $assignedTeacher = User::factory()->create([
+    $assignedTeacher = User::query()->create([
         'name' => 'Giulia',
         'surname' => 'Neri',
         'email' => 'giulia.neri@example.test',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'fiscal_code' => 'NERGLI80A01H501Z',
+        'is_foreigner_or_immigrant' => false,
     ]);
     $assignedTeacher->assignRole('teacher');
 
-    $availableTeacher = User::factory()->create([
+    $availableTeacher = User::query()->create([
         'name' => 'Mario',
         'surname' => 'Rossi',
         'email' => 'mario.rossi@example.test',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'fiscal_code' => 'RSSMRA80A01H501Z',
+        'is_foreigner_or_immigrant' => false,
     ]);
     $availableTeacher->assignRole('teacher');
 
-    $assignedTutor = User::factory()->create([
+    $assignedTutor = User::query()->create([
         'name' => 'Paolo',
         'surname' => 'Blu',
         'email' => 'paolo.blu@example.test',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'fiscal_code' => 'BLUPLA80A01H501Z',
+        'is_foreigner_or_immigrant' => false,
     ]);
     $assignedTutor->assignRole('tutor');
 
-    $availableTutor = User::factory()->create([
+    $availableTutor = User::query()->create([
         'name' => 'Sara',
         'surname' => 'Gialli',
         'email' => 'sara.gialli@example.test',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'fiscal_code' => 'GLLSRA80A01H501Z',
+        'is_foreigner_or_immigrant' => false,
     ]);
     $availableTutor->assignRole('tutor');
 
@@ -218,14 +286,16 @@ it('resolves the dedicated edit view for video modules', function () {
         'belongsTo' => (string) $course->getKey(),
     ]);
 
-    ModuleTeacherEnrollment::factory()->create([
+    ModuleTeacherEnrollment::query()->create([
         'module_id' => $module->getKey(),
         'user_id' => $assignedTeacher->getKey(),
+        'assigned_at' => now(),
     ]);
 
-    ModuleTutorEnrollment::factory()->create([
+    ModuleTutorEnrollment::query()->create([
         'module_id' => $module->getKey(),
         'user_id' => $assignedTutor->getKey(),
+        'assigned_at' => now(),
     ]);
 
     $response = $this->get(route('admin.courses.modules.edit', [$course, $module]));

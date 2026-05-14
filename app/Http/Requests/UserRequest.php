@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UserRequest extends FormRequest
@@ -14,8 +15,15 @@ class UserRequest extends FormRequest
 
     public function rules(): array
     {
+        $accountTypes = ['user', 'admin', 'teacher', 'tutor'];
+        $routeUser = $this->route('user');
+
+        if ($routeUser instanceof User && $routeUser->hasRole('superadmin')) {
+            $accountTypes[] = 'superadmin';
+        }
+
         $rules = [
-            'account_type' => ['required', 'string', 'in:user,admin,teacher,tutor'],
+            'account_type' => ['required', 'string', 'in:'.implode(',', $accountTypes)],
             'email' => ['required', 'email', 'max:255'],
             'name' => ['required', 'string', 'max:255'],
             'surname' => ['required', 'string', 'max:255'],

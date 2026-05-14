@@ -2,12 +2,16 @@
 
 use App\Models\Course;
 use App\Models\Module;
+use App\Models\ModuleTeacherEnrollment;
+use App\Models\ModuleTutorEnrollment;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
     actingAsRole('admin');
+    $this->withoutVite();
 });
 
 it('shows the edit course page with the update form and modules card', function () {
@@ -24,6 +28,26 @@ it('shows the edit course page with the update form and modules card', function 
         'order' => 1,
         'belongsTo' => (string) $course->getKey(),
     ]);
+    $teacher = User::factory()->create([
+        'name' => 'Mario',
+        'surname' => 'Rossi',
+        'email' => 'mario.rossi@example.test',
+    ]);
+    $teacher->assignRole('teacher');
+    ModuleTeacherEnrollment::factory()->create([
+        'module_id' => $course->modules()->first()->getKey(),
+        'user_id' => $teacher->getKey(),
+    ]);
+    $tutor = User::factory()->create([
+        'name' => 'Paolo',
+        'surname' => 'Blu',
+        'email' => 'paolo.blu@example.test',
+    ]);
+    $tutor->assignRole('tutor');
+    ModuleTutorEnrollment::factory()->create([
+        'module_id' => $course->modules()->first()->getKey(),
+        'user_id' => $tutor->getKey(),
+    ]);
 
     $response = $this->get(route('admin.courses.edit', $course));
 
@@ -36,6 +60,13 @@ it('shows the edit course page with the update form and modules card', function 
     $response->assertSeeText('Elimina corso');
     $response->assertSeeText('Elimina modulo');
     $response->assertSeeText('Aggiungi un nuovo modulo scegliendo la tipologia da creare.');
+    $response->assertSeeText('Docenti assegnati ai moduli');
+    $response->assertSeeText('Mario Rossi');
+    $response->assertSeeText('mario.rossi@example.test');
+    $response->assertSeeText('Tutor assegnati ai moduli');
+    $response->assertSeeText('Paolo Blu');
+    $response->assertSeeText('paolo.blu@example.test');
+    $response->assertSeeText('Moduli assegnati');
     $response->assertSeeText('Titolo del modulo');
     $response->assertSeeText('Conferma eliminazione');
     $response->assertSee('data-modules-sortable-list', escape: false);
@@ -44,6 +75,88 @@ it('shows the edit course page with the update form and modules card', function 
     $response->assertSeeText('Pubblicato');
     $response->assertSeeText('Archiviato');
     $response->assertSeeText('Salva dati');
+
+    $assignedTeachers = $response->viewData('assignedTeachers');
+    $assignedTutors = $response->viewData('assignedTutors');
+
+    expect($assignedTeachers)->toHaveCount(1);
+    expect($assignedTeachers->first()->module_enrollments_count)->toBe(1);
+    expect($assignedTutors)->toHaveCount(1);
+    expect($assignedTutors->first()->module_enrollments_count)->toBe(1);
+});
+
+it('aggregates assigned teachers by course modules', function () {
+    $course = Course::factory()->create();
+    $firstModule = Module::factory()->create([
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+    $secondModule = Module::factory()->create([
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $teacher = User::factory()->create([
+        'name' => 'Giulia',
+        'surname' => 'Neri',
+        'email' => 'giulia.neri@example.test',
+    ]);
+    $teacher->assignRole('teacher');
+
+    ModuleTeacherEnrollment::factory()->create([
+        'module_id' => $firstModule->getKey(),
+        'user_id' => $teacher->getKey(),
+    ]);
+    ModuleTeacherEnrollment::factory()->create([
+        'module_id' => $secondModule->getKey(),
+        'user_id' => $teacher->getKey(),
+    ]);
+
+    $response = $this->get(route('admin.courses.edit', $course));
+
+    $response->assertOk();
+    $response->assertSeeText('Giulia Neri');
+    $response->assertSeeText('giulia.neri@example.test');
+
+    $assignedTeachers = $response->viewData('assignedTeachers');
+
+    expect($assignedTeachers)->toHaveCount(1);
+    expect((int) $assignedTeachers->first()->module_enrollments_count)->toBe(2);
+});
+
+it('aggregates assigned tutors by course modules', function () {
+    $course = Course::factory()->create();
+    $firstModule = Module::factory()->create([
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+    $secondModule = Module::factory()->create([
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $tutor = User::factory()->create([
+        'name' => 'Sara',
+        'surname' => 'Gialli',
+        'email' => 'sara.gialli@example.test',
+    ]);
+    $tutor->assignRole('tutor');
+
+    ModuleTutorEnrollment::factory()->create([
+        'module_id' => $firstModule->getKey(),
+        'user_id' => $tutor->getKey(),
+    ]);
+    ModuleTutorEnrollment::factory()->create([
+        'module_id' => $secondModule->getKey(),
+        'user_id' => $tutor->getKey(),
+    ]);
+
+    $response = $this->get(route('admin.courses.edit', $course));
+
+    $response->assertOk();
+    $response->assertSeeText('Sara Gialli');
+    $response->assertSeeText('sara.gialli@example.test');
+
+    $assignedTutors = $response->viewData('assignedTutors');
+
+    expect($assignedTutors)->toHaveCount(1);
+    expect((int) $assignedTutors->first()->module_enrollments_count)->toBe(2);
 });
 
 it('updates the course personal data', function () {

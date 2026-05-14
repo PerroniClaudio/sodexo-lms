@@ -151,7 +151,7 @@ class UserController extends Controller
 
     public function edit(User $user): View
     {
-        $user->load('homeCountry', 'homeRegion', 'homeProvince', 'homeCity');
+        $user->load('roles', 'homeCountry', 'homeRegion', 'homeProvince', 'homeCity');
         $jobCategories = JobCategory::all();
         $jobLevels = JobLevel::all();
         $jobTitles = JobTitle::all();
@@ -165,6 +165,8 @@ class UserController extends Controller
     public function update(UserRequest $request, User $user): RedirectResponse
     {
         $data = $this->userGeographyMapper->toHomeIds($request->validated());
+        $accountType = $data['account_type'] ?? $user->getRoleNames()->first() ?? 'user';
+        unset($data['account_type']);
 
         // Normalizza i campi opzionali a null se stringa vuota
         foreach (['job_category_id', 'job_level_id'] as $field) {
@@ -192,6 +194,7 @@ class UserController extends Controller
             unset($data['password']);
         }
         $user->update($data);
+        $user->syncRoles([$accountType]);
 
         return redirect()->route('admin.users.index')->with('success', 'Utente aggiornato con successo');
     }

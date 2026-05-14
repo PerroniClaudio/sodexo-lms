@@ -295,6 +295,7 @@
     "profile.fields.work_postal_code": "CAP Unità Produttiva",
     "profile.fields.work_address": "Indirizzo Unità Produttiva",
     "profile.options.account.user": "User",
+    "profile.options.account.superadmin": "Superadmin",
     "profile.options.account.admin": "Admin",
     "profile.options.account.teacher": "Docente",
     "profile.options.account.tutor": "Tutor",

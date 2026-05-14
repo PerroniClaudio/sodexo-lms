@@ -95,6 +95,8 @@ class CourseController extends Controller
                 ->all(),
             'moduleStatusLabels' => Module::availableStatusLabels(),
             'modules' => $course->modules()->get(),
+            'assignedTeachers' => $course->getTeachers(),
+            'assignedTutors' => $course->getTutors(),
             'courseValidator' => $this->courseValidator,
             'activeSatisfactionSurveyTemplate' => SatisfactionSurveyTemplate::active(),
         ]);

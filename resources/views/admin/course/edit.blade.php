@@ -438,6 +438,100 @@
             </div>
 
             <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-6">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <h2 class="card-title">{{ __('Docenti assegnati ai moduli') }}</h2>
+                            <p class="text-sm text-base-content/70">
+                                {{ __('Elenco dei docenti collegati ai moduli di questo corso e numero di moduli assegnati.') }}
+                            </p>
+                        </div>
+                        <span class="badge badge-outline">
+                            {{ trans_choice(':count docente|:count docenti', $assignedTeachers->count(), ['count' => $assignedTeachers->count()]) }}
+                        </span>
+                    </div>
+
+                    @if ($assignedTeachers->isEmpty())
+                        <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-center text-sm text-base-content/70">
+                            {{ __('Nessun docente assegnato ai moduli di questo corso.') }}
+                        </div>
+                    @else
+                        <div class="overflow-x-auto rounded-box border border-base-300">
+                            <table class="table table-zebra w-full">
+                                <thead>
+                                    <tr>
+                                        <th>{{ __('Docente') }}</th>
+                                        <th>{{ __('Email') }}</th>
+                                        <th class="text-right">{{ __('Moduli assegnati') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($assignedTeachers as $assignedTeacher)
+                                        <tr>
+                                            <td class="font-medium text-base-content">{{ $assignedTeacher->full_name }}</td>
+                                            <td>{{ $assignedTeacher->email }}</td>
+                                            <td class="text-right">
+                                                <span class="badge badge-primary badge-outline">
+                                                    {{ $assignedTeacher->module_enrollments_count }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-6">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <h2 class="card-title">{{ __('Tutor assegnati ai moduli') }}</h2>
+                            <p class="text-sm text-base-content/70">
+                                {{ __('Elenco dei tutor collegati ai moduli di questo corso e numero di moduli assegnati.') }}
+                            </p>
+                        </div>
+                        <span class="badge badge-outline">
+                            {{ trans_choice(':count tutor|:count tutor', $assignedTutors->count(), ['count' => $assignedTutors->count()]) }}
+                        </span>
+                    </div>
+
+                    @if ($assignedTutors->isEmpty())
+                        <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-center text-sm text-base-content/70">
+                            {{ __('Nessun tutor assegnato ai moduli di questo corso.') }}
+                        </div>
+                    @else
+                        <div class="overflow-x-auto rounded-box border border-base-300">
+                            <table class="table table-zebra w-full">
+                                <thead>
+                                    <tr>
+                                        <th>{{ __('Tutor') }}</th>
+                                        <th>{{ __('Email') }}</th>
+                                        <th class="text-right">{{ __('Moduli assegnati') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($assignedTutors as $assignedTutor)
+                                        <tr>
+                                            <td class="font-medium text-base-content">{{ $assignedTutor->full_name }}</td>
+                                            <td>{{ $assignedTutor->email }}</td>
+                                            <td class="text-right">
+                                                <span class="badge badge-secondary badge-outline">
+                                                    {{ $assignedTutor->module_enrollments_count }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
                 <div
                     class="card-body gap-6"
                     data-enrollments-table

@@ -42,16 +42,47 @@
                                 </p>
                             </div>
 
-                            <form method="POST" action="{{ route('admin.courses.modules.teachers.destroy', [$course, $module, $teacherEnrollment]) }}">
-                                @csrf
-                                @method('DELETE')
-
-                                <button type="submit" class="btn btn-error btn-xs">
-                                    {{ __('Rimuovi') }}
-                                </button>
-                            </form>
+                            <button
+                                type="button"
+                                class="btn btn-error btn-xs"
+                                data-open-staff-removal-modal
+                                data-modal-target="#remove-teacher-modal-{{ $teacherEnrollment->getKey() }}"
+                            >
+                                {{ __('Rimuovi') }}
+                            </button>
                         </div>
                     </div>
+
+                    <dialog id="remove-teacher-modal-{{ $teacherEnrollment->getKey() }}" class="modal">
+                        <div class="modal-box max-w-lg">
+                            <div class="space-y-2">
+                                <h3 class="text-lg font-semibold">{{ __('Conferma rimozione docente') }}</h3>
+                                <p class="text-sm text-base-content/70">
+                                    {{ __('Vuoi rimuovere :teacher dai docenti assegnati a questo modulo?', ['teacher' => $teacherEnrollment->user?->full_name ?? __('questo docente')]) }}
+                                </p>
+                            </div>
+
+                            <div class="modal-action mt-6">
+                                <form method="dialog">
+                                    <button type="submit" class="btn btn-ghost">
+                                        {{ __('Annulla') }}
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ route('admin.courses.modules.teachers.destroy', [$course, $module, $teacherEnrollment]) }}">
+                                    @csrf
+                                    @method('DELETE')
+
+                                    <button type="submit" class="btn btn-error">
+                                        {{ __('Conferma rimozione') }}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <form method="dialog" class="modal-backdrop">
+                            <button type="submit">{{ __('Close') }}</button>
+                        </form>
+                    </dialog>
                 @endforeach
             </div>
         @endif
