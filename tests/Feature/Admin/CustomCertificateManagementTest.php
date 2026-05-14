@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\DocumentConversionJobStatus;
 use App\Models\Course;
 use App\Models\CustomCertificate;
+use App\Models\DocumentConversionJob;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -153,7 +155,7 @@ it('requires course and user for preview download', function () {
         ->assertSessionHasErrors(['course_id', 'user_id']);
 });
 
-it('downloads a preview docx using fallback values when enrollment data is missing', function () {
+it('creates a conversion job for a preview docx using fallback values when enrollment data is missing', function () {
     Storage::fake('s3');
     actingAsRole('admin');
 
@@ -193,9 +195,21 @@ it('downloads a preview docx using fallback values when enrollment data is missi
         'user_id' => $user->getKey(),
     ]);
 
-    $response->assertDownload();
+    $response
+        ->assertRedirect(route('admin.certificates.preview', $certificate))
+        ->assertSessionHas('status', 'Attestato di prova accodato con successo.');
 
-    $downloadedFile = $response->getFile()->getPathname();
+    $job = DocumentConversionJob::query()->sole();
+
+    expect($job->status)->toBe(DocumentConversionJobStatus::PENDING)
+        ->and($job->input_disk)->toBe('s3')
+        ->and($job->input_path)->toBe('certificates/word/'.$course->getKey().'_RSSMRA80A01H501Z_'.now()->format('Ymd').'.docx')
+        ->and($job->output_disk)->toBe('s3')
+        ->and($job->output_path)->toBe('certificates/word/'.$course->getKey().'_RSSMRA80A01H501Z_'.now()->format('Ymd').'.pdf');
+
+    Storage::disk('s3')->assertExists($job->input_path);
+
+    $downloadedFile = Storage::disk('s3')->path($job->input_path);
     $archive = new ZipArchive;
     $archive->open($downloadedFile);
 

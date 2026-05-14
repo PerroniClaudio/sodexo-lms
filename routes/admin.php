@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\CourseEnrollmentController;
 use App\Http\Controllers\Admin\CourseModuleController;
 use App\Http\Controllers\Admin\CustomCertificateController;
+use App\Http\Controllers\Admin\DocumentConversionJobDebugController;
 use App\Http\Controllers\Admin\HomepageCustomizationController;
 use App\Http\Controllers\Admin\JobCategoryController;
 use App\Http\Controllers\Admin\JobLevelController;
@@ -90,6 +91,12 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::post('users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
 
         Route::middleware('role:superadmin')->group(function () {
+            Route::get('/document-conversion-jobs', [DocumentConversionJobDebugController::class, 'index'])
+                ->name('document-conversion-jobs.index');
+            Route::post('/document-conversion-jobs/{documentConversionJob}/retry', [DocumentConversionJobDebugController::class, 'retry'])
+                ->name('document-conversion-jobs.retry');
+            Route::get('/document-conversion-jobs/{documentConversionJob}/download', [DocumentConversionJobDebugController::class, 'download'])
+                ->name('document-conversion-jobs.download');
             Route::get('/satisfaction-survey', [SatisfactionSurveyController::class, 'edit'])
                 ->name('satisfaction-survey.edit');
             Route::put('/satisfaction-survey', [SatisfactionSurveyController::class, 'update'])

@@ -68,7 +68,7 @@
                         </a>
                         <button type="submit" class="btn btn-primary">
                             <x-lucide-download class="h-4 w-4" />
-                            <span>{{ __('Scarica DOCX di prova') }}</span>
+                            <span>{{ __('Scarica attestato di prova') }}</span>
                         </button>
                     </div>
                 </form>

@@ -146,6 +146,14 @@
                         </li>
                         <li>
                             <a
+                                href="{{ route('admin.document-conversion-jobs.index') }}"
+                                @class(['menu-active' => request()->routeIs('admin.document-conversion-jobs.*')])
+                            >
+                                {{ __('Debug conversioni documenti') }}
+                            </a>
+                        </li>
+                        <li>
+                            <a
                                 href="{{ route('admin.satisfaction-survey.edit') }}"
                                 @class(['menu-active' => request()->routeIs('admin.satisfaction-survey.*')])
                             >
