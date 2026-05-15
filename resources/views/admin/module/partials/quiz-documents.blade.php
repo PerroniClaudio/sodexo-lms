@@ -8,12 +8,12 @@
             <a href="{{ route('admin.courses.modules.quiz.answer-sheet.pdf.download', [$course, $module]) }}" class="btn btn-outline">
                 <span>{{ __('Scarica PDF scheda risposte') }}</span>
             </a>
-            <a href="{{ route('admin.courses.modules.quiz.submissions.index', [$course, $module, 'source_type' => 'upload']) }}" class="btn btn-outline">
-                <span>{{ __('Visualizza correzione documento OCR') }}</span>
+            <a href="{{ route('admin.courses.modules.quiz.document-uploads.index', [$course, $module]) }}" class="btn btn-outline">
+                <span>{{ __('Visualizza upload documenti') }}</span>
             </a>
         </div>
 
-        <form method="POST" action="{{ route('admin.courses.modules.quiz.submissions.store', [$course, $module]) }}" enctype="multipart/form-data" class="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+        <form method="POST" action="{{ route('admin.courses.modules.quiz.document-uploads.store', [$course, $module]) }}" enctype="multipart/form-data" class="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
             @csrf
             <div class="grid gap-2">
                 <label for="quiz-submission" class="label p-0">

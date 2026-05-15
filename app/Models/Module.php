@@ -421,6 +421,11 @@ class Module extends Model
         return $this->hasMany(ModuleQuizSubmission::class);
     }
 
+    public function documentUploads(): HasMany
+    {
+        return $this->hasMany(ModuleQuizDocumentUpload::class);
+    }
+
     public function submissions(): HasMany
     {
         return $this->quizSubmissions();

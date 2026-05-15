@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\JobSectorController;
 use App\Http\Controllers\Admin\JobTitleController;
 use App\Http\Controllers\Admin\JobUnitController;
 use App\Http\Controllers\Admin\ModuleQuizController;
+use App\Http\Controllers\Admin\ModuleQuizDocumentUploadController;
 use App\Http\Controllers\Admin\ModuleQuizSubmissionController;
 use App\Http\Controllers\Admin\RegiaController;
 use App\Http\Controllers\Admin\SatisfactionSurveyController;
@@ -136,7 +137,12 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::post('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}/set-correct', [ModuleQuizController::class, 'setCorrectAnswer'])->name('courses.modules.quiz.answers.set-correct');
 
         Route::scopeBindings()->group(function () {
-            Route::post('/courses/{course}/modules/{module}/quiz/submissions', [ModuleQuizSubmissionController::class, 'store'])->name('courses.modules.quiz.submissions.store');
+            // Document uploads
+            Route::post('/courses/{course}/modules/{module}/quiz/document-uploads', [ModuleQuizDocumentUploadController::class, 'store'])->name('courses.modules.quiz.document-uploads.store');
+            Route::get('/courses/{course}/modules/{module}/quiz/document-uploads', [ModuleQuizDocumentUploadController::class, 'index'])->name('courses.modules.quiz.document-uploads.index');
+            Route::get('/courses/{course}/modules/{module}/quiz/document-uploads/{documentUpload}', [ModuleQuizDocumentUploadController::class, 'show'])->name('courses.modules.quiz.document-uploads.show');
+
+            // Submissions
             Route::get('/courses/{course}/modules/{module}/quiz/submissions', [ModuleQuizSubmissionController::class, 'index'])->name('courses.modules.quiz.submissions.index');
             Route::get('/courses/{course}/modules/{module}/quiz/submissions/{submission}', [ModuleQuizSubmissionController::class, 'show'])->name('courses.modules.quiz.submissions.show');
             Route::get('/courses/{course}/modules/{module}/quiz/submissions/{submission}/review', [ModuleQuizSubmissionController::class, 'review'])->name('courses.modules.quiz.submissions.review');

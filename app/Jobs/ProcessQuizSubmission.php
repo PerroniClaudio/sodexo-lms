@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Models\ModuleQuizSubmission;
+use App\Models\ModuleQuizDocumentUpload;
 use App\Services\GoogleDocumentAiQuizService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -20,31 +20,31 @@ class ProcessQuizSubmission implements ShouldQueue
     public int $timeout = 120;
 
     #[WithoutRelations]
-    public ModuleQuizSubmission $submission;
+    public ModuleQuizDocumentUpload $documentUpload;
 
-    public function __construct(ModuleQuizSubmission $submission)
+    public function __construct(ModuleQuizDocumentUpload $documentUpload)
     {
-        $this->submission = $submission;
+        $this->documentUpload = $documentUpload;
     }
 
     public function handle(GoogleDocumentAiQuizService $googleDocumentAiQuizService): void
     {
-        $submission = $this->submission->fresh(['module.quizQuestions.answers']);
+        $documentUpload = $this->documentUpload->fresh(['module.quizQuestions.answers']);
 
-        if ($submission === null || $submission->status === ModuleQuizSubmission::STATUS_FINALIZED) {
+        if ($documentUpload === null || $documentUpload->status === ModuleQuizDocumentUpload::STATUS_PROCESSED) {
             return;
         }
 
-        $submission->forceFill([
-            'status' => ModuleQuizSubmission::STATUS_PROCESSING,
+        $documentUpload->forceFill([
+            'status' => ModuleQuizDocumentUpload::STATUS_PROCESSING,
             'error_message' => null,
         ])->save();
 
         try {
-            $googleDocumentAiQuizService->processSubmission($submission);
+            $googleDocumentAiQuizService->processDocumentUpload($documentUpload);
         } catch (Throwable $exception) {
-            $submission->forceFill([
-                'status' => ModuleQuizSubmission::STATUS_FAILED,
+            $documentUpload->forceFill([
+                'status' => ModuleQuizDocumentUpload::STATUS_FAILED,
                 'error_message' => $exception->getMessage(),
                 'processed_at' => now(),
             ])->save();

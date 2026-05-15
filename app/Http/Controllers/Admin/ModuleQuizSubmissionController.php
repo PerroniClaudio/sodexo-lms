@@ -4,8 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\FinalizeQuizSubmissionRequest;
-use App\Http\Requests\StoreQuizSubmissionRequest;
-use App\Jobs\ProcessQuizSubmission;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Module;
@@ -48,7 +46,7 @@ class ModuleQuizSubmissionController extends Controller
         return view('admin.module.quiz-submissions.show', [
             'course' => $course,
             'module' => $module,
-            'submission' => $submission->load(['answers.question', 'answers.answer', 'user', 'uploadedBy']),
+            'submission' => $submission->load(['answers.question', 'answers.answer', 'user', 'uploadedBy', 'documentUpload']),
         ]);
     }
 
@@ -65,7 +63,7 @@ class ModuleQuizSubmissionController extends Controller
         return view('admin.module.quiz-submissions.review', [
             'course' => $course,
             'module' => $module,
-            'submission' => $submission->load(['answers', 'user']),
+            'submission' => $submission->load(['answers', 'user', 'documentUpload']),
         ]);
     }
 

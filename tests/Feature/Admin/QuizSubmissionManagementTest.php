@@ -6,6 +6,7 @@ use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\ModuleQuizAnswer;
+use App\Models\ModuleQuizDocumentUpload;
 use App\Models\ModuleQuizQuestion;
 use App\Models\ModuleQuizSubmission;
 use App\Models\User;
@@ -47,6 +48,7 @@ function createLearningQuizModule(): array
         'passing_score' => 2,
         'max_score' => 3,
         'title' => 'Quiz OCR',
+        'permitted_submission' => 'all',
     ]);
 
     $firstQuestion = ModuleQuizQuestion::query()->create([
@@ -94,17 +96,16 @@ it('shows OCR upload controls on the learning quiz module page', function () {
     $response = $this->get(route('admin.courses.modules.edit', [$course, $module]));
 
     $response->assertOk();
-    $response->assertSee(route('admin.courses.modules.quiz.submissions.store', [$course, $module]), escape: false);
-    $response->assertSeeText('Avvia OCR');
-    $response->assertSeeText('Vedi submission OCR');
+    $response->assertSee(route('admin.courses.modules.quiz.document-uploads.store', [$course, $module]), escape: false);
+    $response->assertSeeText('Avvia correzione');
 });
 
-it('stores an uploaded quiz submission and dispatches the OCR job', function () {
+it('stores an uploaded quiz document and dispatches the OCR job', function () {
     Storage::fake('local');
     Queue::fake();
     [$course, $module] = createLearningQuizModule();
 
-    $response = $this->post(route('admin.courses.modules.quiz.submissions.store', [$course, $module]), [
+    $response = $this->post(route('admin.courses.modules.quiz.document-uploads.store', [$course, $module]), [
         'submission' => UploadedFile::fake()->create('quiz.pdf', 200, 'application/pdf'),
     ]);
 
@@ -112,14 +113,14 @@ it('stores an uploaded quiz submission and dispatches the OCR job', function () 
         ->assertRedirect(route('admin.courses.modules.edit', [$course, $module]))
         ->assertSessionHas('status');
 
-    $submission = ModuleQuizSubmission::query()->firstOrFail();
+    $documentUpload = ModuleQuizDocumentUpload::query()->firstOrFail();
 
-    expect($submission->module_id)->toBe($module->getKey());
-    expect($submission->status)->toBe(ModuleQuizSubmission::STATUS_UPLOADED);
-    Storage::disk('local')->assertExists($submission->path);
+    expect($documentUpload->module_id)->toBe($module->getKey());
+    expect($documentUpload->status)->toBe(ModuleQuizDocumentUpload::STATUS_UPLOADED);
+    Storage::disk('local')->assertExists($documentUpload->path);
 
-    Queue::assertPushed(ProcessQuizSubmission::class, function (ProcessQuizSubmission $job) use ($submission): bool {
-        return $job->submission->is($submission);
+    Queue::assertPushed(ProcessQuizSubmission::class, function (ProcessQuizSubmission $job) use ($documentUpload): bool {
+        return $job->documentUpload->is($documentUpload);
     });
 });
 
@@ -134,12 +135,21 @@ it('renders the OCR submissions list and review page', function () {
         'fiscal_code' => 'MARIORSS0000001',
     ]);
 
-    $submission = ModuleQuizSubmission::query()->create([
+    // Crea un document upload
+    $documentUpload = ModuleQuizDocumentUpload::query()->create([
         'module_id' => $module->getKey(),
-        'user_id' => $user->getKey(),
         'uploaded_by' => auth()->id(),
         'disk' => 'local',
         'path' => 'quiz-submissions/test.pdf',
+        'status' => ModuleQuizDocumentUpload::STATUS_PROCESSED,
+    ]);
+
+    $submission = ModuleQuizSubmission::query()->create([
+        'module_id' => $module->getKey(),
+        'user_id' => $user->getKey(),
+        'document_upload_id' => $documentUpload->getKey(),
+        'source_type' => ModuleQuizSubmission::SOURCE_UPLOAD,
+        'uploaded_by' => auth()->id(),
         'status' => ModuleQuizSubmission::STATUS_NEEDS_REVIEW,
     ]);
 
@@ -159,7 +169,7 @@ it('renders the OCR submissions list and review page', function () {
     $this->get(route('admin.courses.modules.quiz.submissions.index', [$course, $module]))
         ->assertOk()
         ->assertSeeText('Mario Rossi')
-        ->assertSeeText(ModuleQuizSubmission::STATUS_NEEDS_REVIEW);
+        ->assertSeeText('Upload');
 
     $this->get(route('admin.courses.modules.quiz.submissions.review', [$course, $module, $submission]))
         ->assertOk()
@@ -183,12 +193,21 @@ it('finalizes a reviewed submission and updates module progress', function () {
     $enrollment = CourseEnrollment::enroll($user, $course);
     $progress = $enrollment->moduleProgresses()->where('module_id', $module->getKey())->firstOrFail();
 
-    $submission = ModuleQuizSubmission::query()->create([
+    // Crea un document upload
+    $documentUpload = ModuleQuizDocumentUpload::query()->create([
         'module_id' => $module->getKey(),
-        'user_id' => $user->getKey(),
         'uploaded_by' => auth()->id(),
         'disk' => 'local',
         'path' => 'quiz-submissions/test.pdf',
+        'status' => ModuleQuizDocumentUpload::STATUS_PROCESSED,
+    ]);
+
+    $submission = ModuleQuizSubmission::query()->create([
+        'module_id' => $module->getKey(),
+        'user_id' => $user->getKey(),
+        'document_upload_id' => $documentUpload->getKey(),
+        'source_type' => ModuleQuizSubmission::SOURCE_UPLOAD,
+        'uploaded_by' => auth()->id(),
         'status' => ModuleQuizSubmission::STATUS_NEEDS_REVIEW,
     ]);
 

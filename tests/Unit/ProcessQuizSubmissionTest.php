@@ -5,6 +5,7 @@ use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleQuizAnswer;
+use App\Models\ModuleQuizDocumentUpload;
 use App\Models\ModuleQuizQuestion;
 use App\Models\ModuleQuizSubmission;
 use App\Models\User;
@@ -57,20 +58,20 @@ function buildQuizSubmissionFixture(): array
 
     Storage::disk('local')->put('quiz-submissions/test.pdf', 'pdf');
 
-    $submission = ModuleQuizSubmission::query()->create([
+    $documentUpload = ModuleQuizDocumentUpload::query()->create([
         'module_id' => $module->getKey(),
         'uploaded_by' => $user->getKey(),
         'disk' => 'local',
         'path' => 'quiz-submissions/test.pdf',
-        'status' => ModuleQuizSubmission::STATUS_UPLOADED,
+        'status' => ModuleQuizDocumentUpload::STATUS_UPLOADED,
         'provider' => 'google_document_ai',
     ]);
 
-    return [$course, $module, $question, $user, $submission];
+    return [$course, $module, $question, $user, $documentUpload];
 }
 
-it('marks a submission as needs review when OCR succeeds', function () {
-    [$course, $module, $question, $user, $submission] = buildQuizSubmissionFixture();
+it('marks a document upload as processed and creates a submission when OCR succeeds', function () {
+    [$course, $module, $question, $user, $documentUpload] = buildQuizSubmissionFixture();
 
     Http::fake([
         'https://eu-documentai.googleapis.com/*' => Http::response([
@@ -90,21 +91,28 @@ it('marks a submission as needs review when OCR succeeds', function () {
         ]),
     ]);
 
-    $job = new ProcessQuizSubmission($submission);
+    $job = new ProcessQuizSubmission($documentUpload);
     $job->handle(app(GoogleDocumentAiQuizService::class));
 
-    $submission->refresh();
+    $documentUpload->refresh();
 
+    expect($documentUpload->status)->toBe(ModuleQuizDocumentUpload::STATUS_PROCESSED);
+    expect($documentUpload->provider_payload)->not->toBeNull();
+
+    // Verifica che sia stata creata una submission
+    expect($documentUpload->submissions)->toHaveCount(1);
+    $submission = $documentUpload->submissions->first();
     expect($submission->status)->toBe(ModuleQuizSubmission::STATUS_NEEDS_REVIEW);
     expect($submission->user_id)->toBe($user->getKey());
-    expect($submission->provider_payload)->not->toBeNull();
+    expect($submission->source_type)->toBe(ModuleQuizSubmission::SOURCE_UPLOAD);
+    expect($submission->document_upload_id)->toBe($documentUpload->getKey());
     expect($submission->answers)->toHaveCount(1);
     expect($submission->answers->first()->module_quiz_question_id)->toBe($question->getKey());
     expect($submission->answers->first()->selected_option_key)->toBe('A');
 });
 
-it('marks a submission as failed when QR binding is invalid', function () {
-    [, $module, , $user, $submission] = buildQuizSubmissionFixture();
+it('marks a document upload as failed when QR binding is invalid', function () {
+    [, $module, , $user, $documentUpload] = buildQuizSubmissionFixture();
 
     Http::fake([
         'https://eu-documentai.googleapis.com/*' => Http::response([
@@ -119,11 +127,11 @@ it('marks a submission as failed when QR binding is invalid', function () {
         ]),
     ]);
 
-    expect(fn () => (new ProcessQuizSubmission($submission))->handle(app(GoogleDocumentAiQuizService::class)))
+    expect(fn () => (new ProcessQuizSubmission($documentUpload))->handle(app(GoogleDocumentAiQuizService::class)))
         ->toThrow(RuntimeException::class);
 
-    $submission->refresh();
+    $documentUpload->refresh();
 
-    expect($submission->status)->toBe(ModuleQuizSubmission::STATUS_FAILED);
-    expect($submission->error_message)->toContain('QR');
+    expect($documentUpload->status)->toBe(ModuleQuizDocumentUpload::STATUS_FAILED);
+    expect($documentUpload->error_message)->toContain('QR');
 });

@@ -381,6 +381,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.showFlash('success', data.message || 'Risposta aggiunta');
                 document.getElementById('add-answer-modal').close();
                 await loadQuestions();
+                updateMaxScoreInput();
+                updateQuizValidityBadge();
             } else {
                 window.showFlash('error', data.message || 'Errore');
             }
@@ -415,6 +417,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.success) {
                     window.showFlash('success', data.message || 'Risposta aggiornata');
                     await loadQuestions();
+                    updateMaxScoreInput();
+                    updateQuizValidityBadge();
                 } else {
                     window.showFlash('error', data.message || 'Errore');
                 }

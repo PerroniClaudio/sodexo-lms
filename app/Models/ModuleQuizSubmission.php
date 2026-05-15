@@ -39,20 +39,17 @@ class ModuleQuizSubmission extends Model
 
     protected $fillable = [
         'module_id',
+        'document_upload_id',
         'source_type',
         'user_id',
         'course_enrollment_id',
         'uploaded_by',
         'finalized_by',
-        'disk',
-        'path',
         'status',
         'score',
         'total_score',
-        'provider',
         'provider_payload',
         'error_message',
-        'processed_at',
         'finalized_at',
         'started_at',
         'submitted_at',
@@ -62,7 +59,6 @@ class ModuleQuizSubmission extends Model
     {
         return [
             'provider_payload' => 'array',
-            'processed_at' => 'datetime',
             'finalized_at' => 'datetime',
             'started_at' => 'datetime',
             'submitted_at' => 'datetime',
@@ -89,6 +85,11 @@ class ModuleQuizSubmission extends Model
     public function uploadedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploaded_by');
+    }
+
+    public function documentUpload(): BelongsTo
+    {
+        return $this->belongsTo(ModuleQuizDocumentUpload::class, 'document_upload_id');
     }
 
     public function finalizedBy(): BelongsTo

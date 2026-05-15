@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CourseEnrollment;
+use App\Models\ModuleQuizDocumentUpload;
 use App\Models\ModuleQuizSubmission;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Arr;
@@ -13,19 +14,19 @@ use RuntimeException;
 
 class GoogleDocumentAiQuizService
 {
-    public function processSubmission(ModuleQuizSubmission $submission): void
+    public function processDocumentUpload(ModuleQuizDocumentUpload $documentUpload): void
     {
-        $submission->loadMissing([
+        $documentUpload->loadMissing([
             'module.quizQuestions' => fn ($query) => $query->orderBy('id')->with([
                 'answers' => fn ($answerQuery) => $answerQuery->orderBy('id'),
             ]),
         ]);
 
-        $payload = $this->processDocumentPayload($submission);
+        $payload = $this->processDocument($documentUpload);
         $normalized = $this->normalizePayload($payload);
         $qrPayload = $normalized['qr'];
 
-        if ($qrPayload['moduleId'] !== $submission->module_id) {
+        if ($qrPayload['moduleId'] !== $documentUpload->module_id) {
             throw new RuntimeException('Il QR non corrisponde al modulo del caricamento.');
         }
 
@@ -39,9 +40,18 @@ class GoogleDocumentAiQuizService
             throw new RuntimeException('Nessuna iscrizione attiva trovata per il QR rilevato.');
         }
 
-        $submission->answers()->delete();
+        // Crea una submission per l'utente rilevato nel documento
+        $submission = ModuleQuizSubmission::create([
+            'module_id' => $documentUpload->module_id,
+            'document_upload_id' => $documentUpload->getKey(),
+            'source_type' => ModuleQuizSubmission::SOURCE_UPLOAD,
+            'user_id' => $qrPayload['userId'],
+            'uploaded_by' => $documentUpload->uploaded_by,
+            'status' => ModuleQuizSubmission::STATUS_NEEDS_REVIEW,
+        ]);
 
-        foreach ($submission->module->quizQuestions as $index => $question) {
+        // Crea le risposte per questa submission
+        foreach ($documentUpload->module->quizQuestions as $index => $question) {
             $questionNumber = $index + 1;
             $answerPayload = $normalized['answers'][$questionNumber] ?? null;
             $selectedOptionKey = $answerPayload['selectedOptionKey'] ?? null;
@@ -58,9 +68,9 @@ class GoogleDocumentAiQuizService
             ]);
         }
 
-        $submission->forceFill([
-            'user_id' => $qrPayload['userId'],
-            'status' => ModuleQuizSubmission::STATUS_NEEDS_REVIEW,
+        // Aggiorna il documento come processato
+        $documentUpload->forceFill([
+            'status' => ModuleQuizDocumentUpload::STATUS_PROCESSED,
             'provider_payload' => $payload,
             'processed_at' => now(),
         ])->save();
@@ -69,9 +79,9 @@ class GoogleDocumentAiQuizService
     /**
      * @return array<string, mixed>
      */
-    private function processDocumentPayload(ModuleQuizSubmission $submission): array
+    private function processDocument(ModuleQuizDocumentUpload $documentUpload): array
     {
-        $documentContents = Storage::disk($submission->disk)->get($submission->path);
+        $documentContents = Storage::disk($documentUpload->disk)->get($documentUpload->path);
 
         return $this->request()
             ->post($this->processorPath(), [
