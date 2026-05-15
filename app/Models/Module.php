@@ -401,7 +401,10 @@ class Module extends Model
 
         // Per learning_quiz è richiesto anche max_attempts
         if ($this->type === self::TYPE_LEARNING_QUIZ) {
-            return $baseValidation && $this->max_attempts !== null && $this->max_attempts > 0;
+            return $baseValidation
+                && $this->max_attempts !== null
+                && $this->max_attempts > 0
+                && in_array($this->permitted_submission, self::availablePermittedSubmissions(), true);
         }
 
         return $baseValidation;

@@ -67,6 +67,7 @@ describe('ModuleValidatorService', function () {
             'passing_score' => 60,
             'max_score' => 100,
             'max_attempts' => 3,
+            'permitted_submission' => Module::PERMITTED_SUBMISSION_ONLINE,
         ]);
 
         // Create 2 valid questions worth 50 points each
@@ -96,6 +97,7 @@ describe('ModuleValidatorService', function () {
             'passing_score' => 60,
             'max_score' => 100,
             'max_attempts' => 3,
+            'permitted_submission' => Module::PERMITTED_SUBMISSION_ONLINE,
         ]);
 
         $validator = app(ModuleValidatorService::class);
@@ -112,6 +114,7 @@ describe('ModuleValidatorService', function () {
             'passing_score' => 60,
             'max_score' => 200, // Wrong! Should be 100
             'max_attempts' => 3,
+            'permitted_submission' => Module::PERMITTED_SUBMISSION_ONLINE,
         ]);
 
         // Create 2 valid questions worth 50 points each (total 100)
@@ -139,6 +142,7 @@ describe('ModuleValidatorService', function () {
             'passing_score' => 150, // Wrong! Greater than max_score
             'max_score' => 100,
             'max_attempts' => 3,
+            'permitted_submission' => Module::PERMITTED_SUBMISSION_ONLINE,
         ]);
 
         // Create valid questions
@@ -169,6 +173,7 @@ describe('ModuleValidatorService', function () {
             'passing_score' => 60,
             'max_score' => 100,
             'max_attempts' => 0, // Wrong! Must be > 0
+            'permitted_submission' => Module::PERMITTED_SUBMISSION_ONLINE,
         ]);
 
         // Create valid questions
@@ -188,6 +193,36 @@ describe('ModuleValidatorService', function () {
         $validator = app(ModuleValidatorService::class);
 
         expect($validator->validate($module))->toBeFalse();
+    });
+
+    it('fails validation for learning quiz with missing permitted submission', function () {
+        $module = Module::factory()->create([
+            'type' => 'learning_quiz',
+            'passing_score' => 60,
+            'max_score' => 100,
+            'max_attempts' => 3,
+            'permitted_submission' => null,
+        ]);
+
+        for ($i = 0; $i < 2; $i++) {
+            $question = ModuleQuizQuestion::factory()->create([
+                'module_id' => $module->id,
+                'points' => 50,
+            ]);
+
+            $answers = ModuleQuizAnswer::factory()->count(4)->create([
+                'question_id' => $question->id,
+            ]);
+
+            $question->update(['correct_answer_id' => $answers->first()->id]);
+        }
+
+        $validator = app(ModuleValidatorService::class);
+
+        expect($validator->validate($module))->toBeFalse();
+
+        $errors = $validator->getValidationErrors($module);
+        expect($errors)->toContain('La modalita di consegna consentita deve essere valida.');
     });
 
     it('validates live module as always valid', function () {

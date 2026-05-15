@@ -54,6 +54,10 @@ class LearningQuizValidator implements ModuleValidatorInterface
             $this->errors[] = 'Il numero massimo di tentativi deve essere maggiore di 0.';
         }
 
+        if (! in_array($module->permitted_submission, Module::availablePermittedSubmissions(), true)) {
+            $this->errors[] = 'La modalita di consegna consentita deve essere valida.';
+        }
+
         return empty($this->errors);
     }
 

@@ -83,6 +83,12 @@ function scormZipUpload(array $files): UploadedFile
     $archive->open($temporaryFile, ZipArchive::CREATE | ZipArchive::OVERWRITE);
 
     foreach ($files as $path => $contents) {
+        if ($contents === null) {
+            $archive->addEmptyDir(rtrim($path, '/'));
+
+            continue;
+        }
+
         $archive->addFromString($path, $contents);
     }
 

@@ -60,6 +60,29 @@ it('allows updating a module without a description', function () {
     expect($module->description)->toBe('');
 });
 
+it('clears quiz-only submission settings when updating a non quiz module', function () {
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'title' => 'Modulo SCORM',
+        'description' => 'Descrizione iniziale',
+        'type' => 'scorm',
+        'permitted_submission' => 'online',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $response = $this->put(route('admin.courses.modules.update', [$course, $module]), [
+        'title' => 'Modulo SCORM aggiornato',
+        'description' => 'Descrizione SCORM aggiornata',
+        'status' => 'draft',
+    ]);
+
+    $response->assertRedirect(route('admin.courses.edit', $course));
+
+    $module->refresh();
+
+    expect($module->permitted_submission)->toBeNull();
+});
+
 it('updates appointment details for live modules', function () {
     $course = Course::factory()->create();
     $module = Module::factory()->create([
@@ -148,13 +171,16 @@ it('keeps the automatic title for quiz modules on update', function () {
     $module = Module::factory()->create([
         'title' => 'Titolo manuale da ignorare',
         'type' => 'learning_quiz',
+        'permitted_submission' => 'online',
+        'max_attempts' => 3,
         'belongsTo' => (string) $course->getKey(),
     ]);
 
     $response = $this->put(route('admin.courses.modules.update', [$course, $module]), [
         'description' => 'Descrizione quiz aggiornata',
         'passing_score' => 7,
-        'max_score' => 10,
+        'max_attempts' => 3,
+        'permitted_submission' => 'online',
         'status' => 'published',
     ]);
 
@@ -165,7 +191,6 @@ it('keeps the automatic title for quiz modules on update', function () {
     expect($module->title)->toBe('Quiz di apprendimento');
     expect($module->description)->toBe('Descrizione quiz aggiornata');
     expect($module->passing_score)->toBe(7);
-    expect($module->max_score)->toBe(10);
     expect($module->status)->toBe('published');
 });
 
@@ -183,5 +208,5 @@ it('requires quiz scoring thresholds when updating quiz modules', function () {
         ]);
 
     $response->assertRedirect(route('admin.courses.modules.edit', [$course, $module]));
-    $response->assertSessionHasErrors(['passing_score', 'max_score']);
+    $response->assertSessionHasErrors(['passing_score', 'max_attempts', 'permitted_submission']);
 });

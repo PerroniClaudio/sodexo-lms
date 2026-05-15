@@ -28,6 +28,8 @@ class ModuleFactory extends Factory
             'status' => 'draft',
             'passing_score' => null,
             'max_score' => null,
+            'max_attempts' => null,
+            'permitted_submission' => null,
             'belongsTo' => (string) fake()->numberBetween(1, 100),
         ];
     }

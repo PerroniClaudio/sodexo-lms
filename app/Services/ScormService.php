@@ -328,6 +328,10 @@ class ScormService
                 continue;
             }
 
+            if ($this->shouldIgnoreArchiveEntry($normalizedPath)) {
+                continue;
+            }
+
             if (str_ends_with($entryName, '/')) {
                 $disk->makeDirectory(sprintf('%s/%s', $extractedPath, $normalizedPath));
 
@@ -929,6 +933,7 @@ class ScormService
         $normalizedPath = str_replace('\\', '/', trim($path));
         $normalizedPath = preg_replace('#/+#', '/', $normalizedPath) ?: '';
         $normalizedPath = ltrim($normalizedPath, '/');
+        $normalizedPath = rtrim($normalizedPath, '/');
 
         if ($normalizedPath === '') {
             return '';
@@ -945,6 +950,22 @@ class ScormService
         }
 
         return $normalizedPath;
+    }
+
+    private function shouldIgnoreArchiveEntry(string $path): bool
+    {
+        $segments = explode('/', $path);
+        $basename = basename($path);
+
+        if (in_array('__MACOSX', $segments, true)) {
+            return true;
+        }
+
+        if ($basename === '.DS_Store') {
+            return true;
+        }
+
+        return Str::startsWith($basename, '._');
     }
 
     private function normalizeRelativePath(string $basePath, string $relativePath): string

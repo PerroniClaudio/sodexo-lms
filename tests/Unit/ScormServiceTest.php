@@ -62,3 +62,30 @@ it('rejects archives containing path traversal entries', function () {
         'lesson/index.html' => '<html><body>SCORM lesson</body></html>',
     ])))->toThrow(RuntimeException::class, 'not allowed');
 });
+
+it('accepts directory entries and ignores macOS metadata inside SCORM archives', function () {
+    Storage::fake('local');
+
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'title' => 'Modulo SCORM',
+        'type' => 'scorm',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $package = app(ScormService::class)->storeUploadedPackage($module, scormZipUpload([
+        'Etiquette/' => null,
+        '__MACOSX/' => null,
+        '__MACOSX/._imsmanifest.xml' => 'metadata',
+        'Etiquette/imsmanifest.xml' => validScormManifest(),
+        'Etiquette/lesson/index.html' => '<html><body>SCORM lesson</body></html>',
+        'Etiquette/.DS_Store' => 'metadata',
+        'Etiquette/other/index.html' => '<html><body>Other lesson</body></html>',
+    ]));
+
+    expect($package->status)->toBe('ready');
+    expect($package->entry_point)->toBe('Etiquette/lesson/index.html');
+    expect(Storage::disk('local')->exists($package->extracted_path.'/Etiquette/lesson/index.html'))->toBeTrue();
+    expect(Storage::disk('local')->exists($package->extracted_path.'/__MACOSX'))->toBeFalse();
+    expect(Storage::disk('local')->exists($package->extracted_path.'/Etiquette/.DS_Store'))->toBeFalse();
+});

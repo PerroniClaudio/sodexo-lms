@@ -109,6 +109,9 @@ class CourseModuleController extends Controller
                 'appointment_start_time' => now(),
                 'appointment_end_time' => now()->addHour(),
                 'status' => 'draft',
+                'permitted_submission' => $moduleType === Module::TYPE_LEARNING_QUIZ
+                    ? Module::PERMITTED_SUBMISSION_ONLINE
+                    : null,
                 'belongsTo' => (string) $course->getKey(),
             ]);
 
