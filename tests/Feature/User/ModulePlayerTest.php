@@ -230,7 +230,7 @@ test('learning quiz player page abandons an active attempt when re-entering the 
     $this->get(route('user.courses.modules.player', [$course, $module]))
         ->assertOk();
 
-    expect($submission->fresh()->status)->toBe(ModuleQuizSubmission::STATUS_FAILED);
+    expect($submission->fresh()->status)->toBe(ModuleQuizSubmission::STATUS_ABANDONED);
     expect($submission->fresh()->submitted_at)->not->toBeNull();
     expect($submission->fresh()->error_message)->toContain('ritorno al corso');
 

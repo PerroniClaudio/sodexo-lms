@@ -85,8 +85,8 @@ function renderQuizStatus(data, moduleData) {
         
         data.past_attempts.forEach(attempt => {
             const date = new Date(attempt.submitted_at).toLocaleString('it-IT');
-            const attemptWasAbandoned = attempt.status === 'failed' && attempt.score === null;
-            const resultClass = attempt.passed ? 'badge-success' : 'badge-error';
+            const attemptWasAbandoned = attempt.status === 'abandoned';
+            const resultClass = attemptWasAbandoned ? 'badge-warning' : (attempt.passed ? 'badge-success' : 'badge-error');
             const resultText = attemptWasAbandoned ? 'Abbandonato' : (attempt.passed ? 'Superato' : 'Non superato');
             const scoreText = attempt.score === null || attempt.total_score === null
                 ? '-'

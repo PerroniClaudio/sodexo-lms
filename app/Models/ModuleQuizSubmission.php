@@ -30,6 +30,8 @@ class ModuleQuizSubmission extends Model
 
     public const STATUS_SUBMITTED = 'submitted';
 
+    public const STATUS_ABANDONED = 'abandoned';
+
     // Source types
     public const SOURCE_UPLOAD = 'upload';
 
@@ -113,6 +115,7 @@ class ModuleQuizSubmission extends Model
             self::STATUS_STARTED,
             self::STATUS_IN_PROGRESS,
             self::STATUS_SUBMITTED,
+            self::STATUS_ABANDONED,
         ]);
     }
 

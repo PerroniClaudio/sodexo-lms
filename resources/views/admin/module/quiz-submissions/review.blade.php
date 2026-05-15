@@ -15,7 +15,7 @@
             <div class="card-body gap-6">
                 <div class="rounded-lg bg-base-200 p-4 text-sm">
                     <p><span class="font-medium">{{ __('Utente rilevato:') }}</span> {{ $submission->user?->name ? $submission->user->name.' '.$submission->user->surname : __('Non rilevato') }}</p>
-                    <p><span class="font-medium">{{ __('Stato OCR:') }}</span> {{ $submission->status }}</p>
+                    <p><span class="font-medium">{{ __('Stato OCR:') }}</span> {{ __(ucfirst($submission->status)) }}</p>
                 </div>
 
                 @if ($errors->has('submission'))

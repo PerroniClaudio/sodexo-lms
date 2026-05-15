@@ -12,7 +12,7 @@ class AbandonLearningQuizAttempt
     {
         DB::transaction(function () use ($submission, $progress, $reason): void {
             $submission->update([
-                'status' => ModuleQuizSubmission::STATUS_FAILED,
+                'status' => ModuleQuizSubmission::STATUS_ABANDONED,
                 'submitted_at' => now(),
                 'error_message' => $reason,
             ]);

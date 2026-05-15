@@ -56,17 +56,23 @@
             @include('admin.module.partials.live-attendance-card')
         @endif
 
-        @if ($course->type === 'res' && $module->type === 'learning_quiz')
+        {{-- @if ($course->type === 'res' && $module->type === 'learning_quiz')
             @include('admin.module.partials.quiz-documents', ['course' => $course, 'module' => $module])
-        @endif
+        @endif --}}
 
         @if ($module->type === 'learning_quiz')
             @include('admin.module.partials.quiz-questions', ['course' => $course, 'module' => $module])
+            @if (in_array($module->permitted_submission, ['upload', 'all']))
+                @include('admin.module.partials.quiz-documents', ['course' => $course, 'module' => $module])
+            @endif
+            @include('admin.module.partials.quiz-recent-submissions', ['course' => $course, 'module' => $module])
         @endif
 
         @if ($module->type === 'video')
             @include('admin.module.partials.video-table', ['course' => $course, 'module' => $module])
         @endif
+
+        @include('admin.module.partials.module-enrollments-card')
     </div>
 
     @vite('resources/js/pages/admin-module-edit.js')

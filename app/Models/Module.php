@@ -58,6 +58,18 @@ class Module extends Model
         'archived',
     ];
 
+    public const PERMITTED_SUBMISSION_ONLINE = 'online';
+
+    public const PERMITTED_SUBMISSION_UPLOAD = 'upload';
+
+    public const PERMITTED_SUBMISSION_ALL = 'all';
+
+    public const PERMITTED_SUBMISSIONS = [
+        self::PERMITTED_SUBMISSION_ONLINE,
+        self::PERMITTED_SUBMISSION_UPLOAD,
+        self::PERMITTED_SUBMISSION_ALL,
+    ];
+
     /**
      * The attributes that are mass assignable.
      *
@@ -80,6 +92,7 @@ class Module extends Model
         'passing_score',
         'max_score',
         'max_attempts',
+        'permitted_submission',
         'belongsTo',
         'video_id', // ID del video associato dalla libreria video Mux
     ];
@@ -254,6 +267,30 @@ class Module extends Model
             'draft' => __('Draft'),
             'published' => __('Published'),
             'archived' => __('Archived'),
+        ];
+    }
+
+    /**
+     * Get the available permitted submission types.
+     *
+     * @return array<int, string>
+     */
+    public static function availablePermittedSubmissions(): array
+    {
+        return self::PERMITTED_SUBMISSIONS;
+    }
+
+    /**
+     * Get the translated labels for the available permitted submission types.
+     *
+     * @return array<string, string>
+     */
+    public static function availablePermittedSubmissionLabels(): array
+    {
+        return [
+            self::PERMITTED_SUBMISSION_ONLINE => __('Online'),
+            self::PERMITTED_SUBMISSION_UPLOAD => __('Upload'),
+            self::PERMITTED_SUBMISSION_ALL => __('Tutti'),
         ];
     }
 

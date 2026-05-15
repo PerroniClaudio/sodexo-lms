@@ -13,22 +13,31 @@ use App\Models\ModuleProgress;
 use App\Models\ModuleQuizSubmission;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ModuleQuizSubmissionController extends Controller
 {
-    public function index(Course $course, Module $module): View
+    public function index(Request $request, Course $course, Module $module): View
     {
         $this->abortUnlessLearningQuizModule($course, $module);
+
+        $sourceType = $request->query('source_type');
+
+        $query = $module->quizSubmissions()
+            ->with(['user', 'uploadedBy'])
+            ->latest();
+
+        if ($sourceType !== null && in_array($sourceType, [ModuleQuizSubmission::SOURCE_ONLINE, ModuleQuizSubmission::SOURCE_UPLOAD])) {
+            $query->where('source_type', $sourceType);
+        }
 
         return view('admin.module.quiz-submissions.index', [
             'course' => $course,
             'module' => $module,
-            'submissions' => $module->quizSubmissions()
-                ->with(['user', 'uploadedBy'])
-                ->latest()
-                ->paginate(20),
+            'submissions' => $query->paginate(20),
+            'sourceType' => $sourceType,
         ]);
     }
 

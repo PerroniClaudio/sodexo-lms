@@ -37,7 +37,7 @@ class ModuleQuizController extends Controller
         Module $module,
     ) {
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
-        abort_unless($course->type === 'res', 404);
+        abort_unless(in_array($module->permitted_submission, ['upload', 'all']), 404);
         abort_unless($module->type === 'learning_quiz', 404);
 
         $module->load([
@@ -62,7 +62,7 @@ class ModuleQuizController extends Controller
         BuildLearningQuizPdfPayload $buildLearningQuizPdfPayload,
     ) {
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
-        abort_unless($course->type === 'res', 404);
+        abort_unless(in_array($module->permitted_submission, ['upload', 'all']), 404);
         abort_unless($module->type === 'learning_quiz', 404);
 
         $course->load([

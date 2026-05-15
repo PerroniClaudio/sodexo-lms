@@ -54,4 +54,25 @@
             <p class="text-sm text-error">{{ $message }}</p>
         @enderror
     </div>
+
+    <div class="grid gap-2">
+        <label for="permitted_submission" class="label p-0">
+            <span class="label-text font-medium">{{ __('Modalità') }} <span class="text-error">*</span></span>
+        </label>
+        <select
+            id="permitted_submission"
+            name="permitted_submission"
+            class="select select-bordered w-full @error('permitted_submission') select-error @enderror"
+            required
+        >
+            @foreach(\App\Models\Module::availablePermittedSubmissionLabels() as $value => $label)
+                <option value="{{ $value }}" @selected(old('permitted_submission', $module->permitted_submission ?? 'online') === $value)>
+                    {{ $label }}
+                </option>
+            @endforeach
+        </select>
+        @error('permitted_submission')
+            <p class="text-sm text-error">{{ $message }}</p>
+        @enderror
+    </div>
 @endif

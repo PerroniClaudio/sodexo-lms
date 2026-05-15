@@ -8,6 +8,7 @@ use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleProgress;
+use App\Models\ModuleQuizAnswer;
 use App\Models\ModuleQuizQuestion;
 use App\Models\ModuleQuizSubmission;
 use App\Models\ModuleQuizSubmissionAnswer;
@@ -45,6 +46,7 @@ class QuizModuleController extends Controller
                 ModuleQuizSubmission::STATUS_SUBMITTED,
                 ModuleQuizSubmission::STATUS_FINALIZED,
                 ModuleQuizSubmission::STATUS_FAILED,
+                ModuleQuizSubmission::STATUS_ABANDONED,
             ])
             ->orderBy('created_at', 'desc')
             ->get();
@@ -57,14 +59,11 @@ class QuizModuleController extends Controller
             ->whereIn('status', [ModuleQuizSubmission::STATUS_STARTED, ModuleQuizSubmission::STATUS_IN_PROGRESS])
             ->first();
 
-        $attemptsUsed = ModuleQuizSubmission::query()
-            ->where('module_id', $module->id)
-            ->where('course_enrollment_id', $enrollment->id)
-            ->where('source_type', ModuleQuizSubmission::SOURCE_ONLINE)
-            ->count();
+        // Usa il contatore dei tentativi dal progress
+        $attemptsUsed = $progress->quiz_attempts;
         $maxAttempts = $module->max_attempts ?? null;
         $canStartNewAttempt = $maxAttempts === null || $attemptsUsed < $maxAttempts;
-        
+
         $bestScore = $submissions->max('score');
         $passed = $progress->status === ModuleProgress::STATUS_COMPLETED;
 
@@ -79,7 +78,7 @@ class QuizModuleController extends Controller
             'progress' => [
                 'status' => $progress->status,
                 'attempts_used' => $attemptsUsed,
-                'can_start_new_attempt' => $canStartNewAttempt && !$passed,
+                'can_start_new_attempt' => $canStartNewAttempt && ! $passed,
                 'passed' => $passed,
                 'best_score' => $bestScore,
                 'quiz_score' => $progress->quiz_score,
@@ -117,6 +116,11 @@ class QuizModuleController extends Controller
         $progress = $this->resolveProgress($enrollment, $module);
         abort_unless($progress !== null, 404);
 
+        // Verifica che la modalità online sia permessa
+        if ($module->permitted_submission === 'upload') {
+            return response()->json(['error' => 'Questo quiz non può essere svolto online. Contatta il docente per l\'upload del documento.'], 403);
+        }
+
         // Verifica se c'è già un tentativo in corso
         $activeSubmission = ModuleQuizSubmission::query()
             ->where('module_id', $module->id)
@@ -129,13 +133,8 @@ class QuizModuleController extends Controller
             return response()->json(['error' => 'Hai già un tentativo in corso.'], 422);
         }
 
-        // Verifica se ha ancora tentativi disponibili
-        $attemptsUsed = ModuleQuizSubmission::query()
-            ->where('module_id', $module->id)
-            ->where('course_enrollment_id', $enrollment->id)
-            ->where('source_type', ModuleQuizSubmission::SOURCE_ONLINE)
-            ->count();
-
+        // Verifica se ha ancora tentativi disponibili usando il contatore del progress
+        $attemptsUsed = $progress->quiz_attempts;
         $maxAttempts = $module->max_attempts;
         if ($maxAttempts !== null && $attemptsUsed >= $maxAttempts) {
             return response()->json(['error' => 'Hai esaurito i tentativi disponibili.'], 422);
@@ -184,6 +183,11 @@ class QuizModuleController extends Controller
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
 
+        // Verifica che la modalità online sia permessa
+        if ($module->permitted_submission === 'upload') {
+            return response()->json(['error' => 'Questo quiz non può essere svolto online.'], 403);
+        }
+
         // Verifica il tentativo in corso
         $submission = ModuleQuizSubmission::query()
             ->where('module_id', $module->id)
@@ -192,7 +196,7 @@ class QuizModuleController extends Controller
             ->whereIn('status', [ModuleQuizSubmission::STATUS_STARTED, ModuleQuizSubmission::STATUS_IN_PROGRESS])
             ->first();
 
-        if (!$submission) {
+        if (! $submission) {
             return response()->json(['error' => 'Nessun tentativo in corso. Devi prima iniziare il quiz.'], 422);
         }
 
@@ -206,7 +210,7 @@ class QuizModuleController extends Controller
             ? null
             : $module->quizQuestions()->with('answers')->find($nextQuestionId);
 
-        if (!$nextQuestion) {
+        if (! $nextQuestion) {
             // Tutte le domande sono state risposte
             return response()->json([
                 'completed' => true,
@@ -256,7 +260,7 @@ class QuizModuleController extends Controller
             ->whereIn('status', [ModuleQuizSubmission::STATUS_STARTED, ModuleQuizSubmission::STATUS_IN_PROGRESS])
             ->first();
 
-        if (!$submission) {
+        if (! $submission) {
             return response()->json(['error' => 'Nessun tentativo in corso.'], 422);
         }
 
@@ -273,13 +277,13 @@ class QuizModuleController extends Controller
 
         // Verifica che la domanda appartenga al modulo
         $question = $module->quizQuestions()->with('answers')->find($validated['question_id']);
-        if (!$question) {
+        if (! $question) {
             return response()->json(['error' => 'Domanda non valida.'], 422);
         }
 
         // Verifica che la risposta appartenga alla domanda
         $answer = $question->answers->find($validated['answer_id']);
-        if (!$answer) {
+        if (! $answer) {
             return response()->json(['error' => 'Risposta non valida.'], 422);
         }
 
@@ -293,7 +297,7 @@ class QuizModuleController extends Controller
         }
 
         // Salva la risposta
-        DB::transaction(function () use ($submission, $validated, $question) {
+        DB::transaction(function () use ($submission, $validated) {
             $answeredCount = $submission->answers()->count();
 
             ModuleQuizSubmissionAnswer::create([
@@ -337,7 +341,7 @@ class QuizModuleController extends Controller
             ->whereIn('status', [ModuleQuizSubmission::STATUS_STARTED, ModuleQuizSubmission::STATUS_IN_PROGRESS])
             ->first();
 
-        if (!$submission) {
+        if (! $submission) {
             return response()->json(['error' => 'Nessun tentativo in corso.'], 422);
         }
 
@@ -371,7 +375,7 @@ class QuizModuleController extends Controller
         $passed = $score >= ($module->passing_score ?? 0);
 
         // Aggiorna la submission e il progress
-        DB::transaction(function () use ($submission, $score, $totalScore, $progress, $passed) {
+        DB::transaction(function () use ($submission, $score, $totalScore, $progress) {
             $submission->update([
                 'status' => ModuleQuizSubmission::STATUS_SUBMITTED,
                 'score' => $score,
@@ -419,7 +423,7 @@ class QuizModuleController extends Controller
             ->whereIn('status', [ModuleQuizSubmission::STATUS_STARTED, ModuleQuizSubmission::STATUS_IN_PROGRESS])
             ->first();
 
-        if (!$submission) {
+        if (! $submission) {
             return response()->json(['error' => 'Nessun tentativo in corso.'], 422);
         }
 
@@ -524,7 +528,7 @@ class QuizModuleController extends Controller
      *     question_order: array<int, int>,
      *     answer_order: array<int|string, array<int, int>>
      * }  $attemptPayload
-     * @return Collection<int, \App\Models\ModuleQuizAnswer>
+     * @return Collection<int, ModuleQuizAnswer>
      */
     private function orderedAnswersForQuestion(ModuleQuizQuestion $question, array $attemptPayload): Collection
     {

@@ -8,8 +8,8 @@
             <a href="{{ route('admin.courses.modules.quiz.answer-sheet.pdf.download', [$course, $module]) }}" class="btn btn-outline">
                 <span>{{ __('Scarica PDF scheda risposte') }}</span>
             </a>
-            <a href="{{ route('admin.courses.modules.quiz.submissions.index', [$course, $module]) }}" class="btn btn-outline">
-                <span>{{ __('Visualizza correzione documento') }}</span>
+            <a href="{{ route('admin.courses.modules.quiz.submissions.index', [$course, $module, 'source_type' => 'upload']) }}" class="btn btn-outline">
+                <span>{{ __('Visualizza correzione documento OCR') }}</span>
             </a>
         </div>
 
@@ -36,7 +36,7 @@
             </button>
         </form>
 
-        @if ($recentQuizSubmissions->isNotEmpty())
+        {{-- @if ($recentQuizSubmissions->isNotEmpty())
             <div class="grid gap-3">
                 <h3 class="text-base font-semibold">{{ __('Submission recenti') }}</h3>
 
@@ -47,7 +47,7 @@
                                 {{ $submission->user?->name ? $submission->user->name.' '.$submission->user->surname : __('Utente non rilevato') }}
                             </p>
                             <p class="text-sm text-base-content/70">
-                                {{ __('Stato: :status', ['status' => $submission->status]) }} · {{ $submission->created_at?->format('d/m/Y H:i') }}
+                                {{ __('Stato: :status', ['status' => __(ucfirst($submission->status))]) }} · {{ $submission->created_at?->format('d/m/Y H:i') }}
                             </p>
                         </div>
 
@@ -65,6 +65,6 @@
                     </div>
                 @endforeach
             </div>
-        @endif
+        @endif --}}
     </div>
 </div>

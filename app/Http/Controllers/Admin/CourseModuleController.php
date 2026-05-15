@@ -149,6 +149,25 @@ class CourseModuleController extends Controller
                     ->limit(5)
                     ->get()
                 : collect(),
+            'moduleEnrollments' => $course->enrollments()
+                ->with([
+                    'user',
+                    'moduleProgresses' => fn ($q) => $q->where('module_id', $module->getKey()),
+                ])
+                ->get()
+                ->map(function ($enrollment) {
+                    $progress = $enrollment->moduleProgresses->first();
+
+                    return (object) [
+                        'user' => $enrollment->user,
+                        'progress' => $progress,
+                        'quiz_attempts' => $progress?->quiz_attempts ?? 0,
+                        'quiz_score' => $progress?->quiz_score,
+                        'quiz_total_score' => $progress?->quiz_total_score,
+                        'status' => $progress?->status ?? 'locked',
+                        'passed' => $progress && $progress->status === 'completed',
+                    ];
+                }),
             'isValidQuiz' => $module->type === 'learning_quiz' ? $module->isValidQuiz() : false,
             'isValid' => $this->moduleValidator->validate($module),
             'validationErrors' => $this->moduleValidator->getValidationErrors($module),
@@ -297,6 +316,7 @@ class CourseModuleController extends Controller
             'status' => $validated['status'],
             'passing_score' => $module->isLearningQuiz() ? $validated['passing_score'] : null,
             'max_attempts' => $module->isLearningQuiz() ? $validated['max_attempts'] : null,
+            'permitted_submission' => $module->isLearningQuiz() ? ($validated['permitted_submission'] ?? 'online') : null,
             // 'max_score' => $module->isQuiz() ? $validated['max_score'] : null, --- IGNORE ---
         ];
 
