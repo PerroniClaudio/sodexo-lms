@@ -9,7 +9,7 @@ class Kernel extends ConsoleKernel
 {
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('videos:sync-mux-status')->everyFiveMinutes();
+        $schedule->command('videos:sync-mux-status')->everyThirtyMinutes();
     }
 
     protected function commands()

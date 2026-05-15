@@ -1,4 +1,4 @@
-<div class="flex items-center gap-3">
+<div id="module-validity-badge" class="flex items-center gap-3">
     @if ($isValid)
         <span class="badge badge-sm badge-success">{{ __('Valido') }}</span>
     @else

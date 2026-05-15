@@ -18,10 +18,16 @@
                 <div class="flex flex-col gap-1">
                     <h1 class="text-3xl font-semibold text-base-content">Libreria Video</h1>
                 </div>
-                <div class="shrink-0">
+                <div class="shrink-0 flex gap-2">
                     <button type="button" class="btn btn-primary" onclick="openVideoUploadModal()">
                         <span>Carica nuovo</span>
                         <svg xmlns='http://www.w3.org/2000/svg' class='h-4 w-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 4v16m8-8H4'/></svg>
+                    </button>
+                    <button type="button" id="sync-mux-btn" class="btn btn-outline" onclick="syncMuxVideosStatus()">
+                        <span>Sincronizza Mux</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
                     </button>
                 </div>
             </div>
@@ -60,6 +66,40 @@
             if (modal) {
                 modal.classList.add('hidden');
             }
+        }
+
+        function syncMuxVideosStatus() {
+            const btn = document.getElementById('sync-mux-btn');
+            const originalHtml = btn.innerHTML;
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading loading-spinner loading-sm"></span><span>Sincronizzazione...</span>';
+            
+            fetch('{{ route('admin.videos.sync-mux-status') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✓ ' + data.message);
+                    // Ricarica la pagina dopo 2 secondi per vedere i nuovi stati
+                    setTimeout(() => window.location.reload(), 2000);
+                } else {
+                    alert('⚠ ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Errore durante la sincronizzazione: ' + error.message);
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            });
         }
         </script>
 

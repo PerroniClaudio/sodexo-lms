@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreVideoRequest;
+use App\Jobs\SyncMuxVideosStatusJob;
 use App\Models\Video;
 use App\Services\MuxService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class VideoController extends Controller
 {
@@ -216,5 +218,40 @@ class VideoController extends Controller
         $video->restore();
 
         return redirect()->route('admin.videos.index')->with('success', 'Video ripristinato');
+    }
+
+    /**
+     * Avvia la sincronizzazione manuale dello stato video Mux tramite Job
+     */
+    public function syncMuxStatus()
+    {
+        // Usa Cache come lock per evitare dispatch multipli
+        $lockKey = 'sync-mux-videos-dispatch-lock';
+        
+        if (Cache::has($lockKey)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sincronizzazione già in corso o in coda',
+            ], 429);
+        }
+
+        // Imposta lock per 2 minuti
+        Cache::put($lockKey, true, 120);
+
+        try {
+            SyncMuxVideosStatusJob::dispatch();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Job di sincronizzazione aggiunto alla coda',
+            ]);
+        } catch (\Exception $e) {
+            Cache::forget($lockKey);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

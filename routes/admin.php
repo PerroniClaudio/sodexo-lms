@@ -40,6 +40,7 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::get('videos/{video}/signed-playback', [VideoController::class, 'signedPlayback'])->name('videos.signed-playback');
         Route::get('videos/{video}/signed-thumbnail', [VideoController::class, 'signedThumbnail'])->name('videos.signed-thumbnail');
         Route::get('videos/{video}/signed-playback-url', [VideoController::class, 'signedPlaybackApi']);
+        Route::post('videos/sync-mux-status', [VideoController::class, 'syncMuxStatus'])->name('videos.sync-mux-status');
         Route::get('/homepage', [HomepageCustomizationController::class, 'index'])->name('homepage.index');
         Route::post('/homepage/navigation', [HomepageCustomizationController::class, 'updateNavigation'])->name('homepage.navigation.update');
         Route::post('/homepage/hero', [HomepageCustomizationController::class, 'updateHero'])->name('homepage.hero.update');

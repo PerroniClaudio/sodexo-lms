@@ -157,6 +157,8 @@ function fetchSelectedVideo(videoId) {
         if (loading) loading.classList.add('hidden');
         if (details) details.classList.add('hidden');
         if (empty) empty.classList.remove('hidden');
+        // Aggiorna comunque la validità quando il video viene rimosso
+        fetchModuleValidity();
         return;
     }
     if (loading) loading.classList.remove('hidden');
@@ -209,33 +211,62 @@ function formatDuration(seconds) {
 
 function fetchModuleValidity() {
     const validityElement = document.getElementById('selected-video-validity');
-    if (!validityElement || !moduleVideoState.moduleId) return;
+    const mainValidityBadge = document.getElementById('module-validity-badge');
+    if (!moduleVideoState.moduleId) return;
     
     fetch(`/admin/api/modules/${moduleVideoState.moduleId}/validity`)
         .then(r => r.json())
         .then(data => {
-            validityElement.innerHTML = '';
-            if (data.isValid) {
-                const badge = document.createElement('span');
-                badge.className = 'badge badge-sm badge-success';
-                badge.textContent = 'Valido';
-                validityElement.appendChild(badge);
-            } else {
-                const badge = document.createElement('span');
-                badge.className = 'badge badge-sm badge-error';
-                badge.textContent = 'Non valido';
-                validityElement.appendChild(badge);
-                
-                if (data.errors && data.errors.length > 0) {
-                    const errorText = document.createElement('span');
-                    errorText.className = 'text-xs text-error ml-2';
-                    errorText.textContent = data.errors.join(' ');
-                    validityElement.appendChild(errorText);
+            // Aggiorna il badge nella sezione video
+            if (validityElement) {
+                validityElement.innerHTML = '';
+                if (data.isValid) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge badge-sm badge-success';
+                    badge.textContent = 'Valido';
+                    validityElement.appendChild(badge);
+                } else {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge badge-sm badge-error';
+                    badge.textContent = 'Non valido';
+                    validityElement.appendChild(badge);
+                    
+                    if (data.errors && data.errors.length > 0) {
+                        const errorText = document.createElement('span');
+                        errorText.className = 'text-xs text-error ml-2';
+                        errorText.textContent = data.errors.join(' ');
+                        validityElement.appendChild(errorText);
+                    }
+                }
+            }
+            
+            // Aggiorna il badge principale nel dettaglio modulo
+            if (mainValidityBadge) {
+                mainValidityBadge.innerHTML = '';
+                if (data.isValid) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge badge-sm badge-success';
+                    badge.textContent = 'Valido';
+                    mainValidityBadge.appendChild(badge);
+                } else {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge badge-sm badge-error whitespace-nowrap';
+                    badge.textContent = 'Non valido';
+                    mainValidityBadge.appendChild(badge);
+                    
+                    if (data.errors && data.errors.length > 0) {
+                        const errorText = document.createElement('span');
+                        errorText.className = 'text-xs text-error';
+                        errorText.textContent = data.errors.join(' ');
+                        mainValidityBadge.appendChild(errorText);
+                    }
                 }
             }
         })
         .catch(() => {
-            validityElement.innerHTML = '<span class="text-xs text-base-content/60">-</span>';
+            if (validityElement) {
+                validityElement.innerHTML = '<span class="text-xs text-base-content/60">-</span>';
+            }
         });
 }
 
@@ -318,3 +349,44 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchModuleVideos();
     fetchSelectedVideo(moduleVideoState.assignedVideoId);
 });
+
+// Funzione per sincronizzare lo stato dei video Mux
+function syncMuxVideosStatusFromModule() {
+    const btn = document.getElementById('module-sync-mux-btn');
+    if (!btn) return;
+    
+    const originalHtml = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading loading-spinner loading-sm"></span><span>Sincronizzazione...</span>';
+    
+    fetch('/admin/videos/sync-mux-status', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+            'Accept': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✓ ' + data.message);
+            // Ricarica la tabella video e la validità del modulo
+            fetchModuleVideos();
+            fetchSelectedVideo(moduleVideoState.assignedVideoId);
+        } else {
+            alert('⚠ ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Errore durante la sincronizzazione: ' + error.message);
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    });
+}
+
+// Espone la funzione per l'onclick nel markup
+window.syncMuxVideosStatusFromModule = syncMuxVideosStatusFromModule;
