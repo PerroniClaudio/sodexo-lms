@@ -54,6 +54,8 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::post('/certificates/{customCertificate}/restore-version', [CustomCertificateController::class, 'restoreVersion'])->name('certificates.restore-version');
         Route::get('/certificates/{customCertificate}/preview', [CustomCertificateController::class, 'preview'])->name('certificates.preview');
         Route::post('/certificates/{customCertificate}/preview-download', [CustomCertificateController::class, 'previewDownload'])->name('certificates.preview-download');
+        Route::get('/certificates/{customCertificate}/preview-jobs/{documentConversionJob}', [CustomCertificateController::class, 'previewJob'])->name('certificates.preview-job');
+        Route::get('/certificates/{customCertificate}/preview-jobs/{documentConversionJob}/download', [CustomCertificateController::class, 'previewJobDownload'])->name('certificates.preview-job-download');
 
         Route::get('/regia', [RegiaController::class, 'index'])->name('regia.index');
         Route::get('/regia/{module}', [RegiaController::class, 'show'])->name('regia.show');

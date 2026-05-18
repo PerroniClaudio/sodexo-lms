@@ -14,6 +14,7 @@ use App\Models\DocumentConversionJob;
 use App\Models\User;
 use App\Services\Certificates\CertificateVariableResolver;
 use App\Services\Certificates\DocxTemplateRenderer;
+use App\Services\CloudRunJobClient;
 use Illuminate\Http\File;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CustomCertificateController extends Controller
 {
@@ -226,7 +228,8 @@ class CustomCertificateController extends Controller
         PreviewCustomCertificateRequest $request,
         CustomCertificate $customCertificate,
         CertificateVariableResolver $certificateVariableResolver,
-        DocxTemplateRenderer $docxTemplateRenderer
+        DocxTemplateRenderer $docxTemplateRenderer,
+        CloudRunJobClient $cloudRunJobClient
     ): RedirectResponse {
         $validated = $request->validated();
 
@@ -266,20 +269,47 @@ class CustomCertificateController extends Controller
                 throw new RuntimeException('Unable to store the preview certificate on S3.');
             }
 
-            DocumentConversionJob::query()->create([
+            $conversionJob = DocumentConversionJob::query()->create([
                 'status' => DocumentConversionJobStatus::PENDING,
                 'input_disk' => self::STORAGE_DISK,
                 'input_path' => $inputPath,
                 'output_disk' => self::STORAGE_DISK,
                 'output_path' => (string) str($inputPath)->replaceEnd('.docx', '.pdf'),
             ]);
+
+            $cloudRunJobClient->runDocumentConversionJob($conversionJob);
+
+            return redirect()
+                ->route('admin.certificates.preview-job', [$customCertificate, $conversionJob]);
         } finally {
             @unlink($temporaryPath);
         }
+    }
 
-        return redirect()
-            ->route('admin.certificates.preview', $customCertificate)
-            ->with('status', __('Attestato di prova accodato con successo.'));
+    public function previewJob(CustomCertificate $customCertificate, DocumentConversionJob $documentConversionJob): View
+    {
+        return view('admin.certificates.preview-job', [
+            'certificate' => $customCertificate,
+            'documentConversionJob' => $documentConversionJob,
+            'shouldAutoRefresh' => in_array($documentConversionJob->status, [
+                DocumentConversionJobStatus::PENDING,
+                DocumentConversionJobStatus::PROCESSING,
+            ], true),
+        ]);
+    }
+
+    public function previewJobDownload(CustomCertificate $customCertificate, DocumentConversionJob $documentConversionJob): StreamedResponse
+    {
+        abort_unless($documentConversionJob->hasGeneratedFile(), 404);
+
+        $disk = Storage::disk($documentConversionJob->output_disk);
+
+        abort_unless($disk->exists($documentConversionJob->output_path), 404);
+
+        return $disk->download(
+            $documentConversionJob->output_path,
+            $documentConversionJob->outputFileName()
+        );
     }
 
     /**
