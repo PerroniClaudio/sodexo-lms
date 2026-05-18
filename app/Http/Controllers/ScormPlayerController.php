@@ -9,6 +9,7 @@ use App\Models\ModuleProgress;
 use App\Models\ScormPackage;
 use App\Services\ScormService;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -104,35 +105,10 @@ class ScormPlayerController extends Controller
         $mimeType = $disk->mimeType($storagePath) ?: 'application/octet-stream';
 
         if ($this->isHtmlAsset($normalizedPath, $mimeType)) {
-            $contents = $this->injectScormBridge($disk->get($storagePath));
-
-            return response()->stream(function () use ($contents): void {
-                $this->clearOutputBuffers();
-
-                echo $contents;
-            }, Response::HTTP_OK, [
-                'Content-Type' => $mimeType,
-                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
-                'Pragma' => 'no-cache',
-                'Expires' => '0',
-            ]);
+            return $this->streamHtmlAsset($disk, $storagePath, $mimeType);
         }
 
-        $stream = $disk->readStream($storagePath);
-
-        abort_unless(is_resource($stream), Response::HTTP_NOT_FOUND);
-
-        return response()->stream(function () use ($stream): void {
-            $this->clearOutputBuffers();
-
-            fpassthru($stream);
-            fclose($stream);
-        }, Response::HTTP_OK, [
-            'Content-Type' => $mimeType,
-            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
-            'Pragma' => 'no-cache',
-            'Expires' => '0',
-        ]);
+        return $this->streamStaticAsset($request, $disk, $storagePath, $mimeType);
     }
 
     /**
@@ -179,6 +155,106 @@ class ScormPlayerController extends Controller
     {
         return Str::endsWith(Str::lower($path), ['.html', '.htm', '.xhtml'])
             || Str::contains(Str::lower($mimeType), ['text/html', 'application/xhtml']);
+    }
+
+    private function streamHtmlAsset(FilesystemAdapter $disk, string $storagePath, string $mimeType): StreamedResponse
+    {
+        $contents = $this->injectScormBridge($disk->get($storagePath));
+
+        return $this->streamAssetResponse(function () use ($contents): void {
+            echo $contents;
+        }, $this->uncachedAssetHeaders($mimeType));
+    }
+
+    private function streamStaticAsset(
+        Request $request,
+        FilesystemAdapter $disk,
+        string $storagePath,
+        string $mimeType,
+    ): HttpResponse|StreamedResponse {
+        $headers = $this->cacheableAssetHeaders($disk, $storagePath, $mimeType);
+
+        if ($this->assetWasNotModified($request, $headers['ETag'], (int) $disk->lastModified($storagePath))) {
+            return response('', Response::HTTP_NOT_MODIFIED, $headers);
+        }
+
+        $stream = $disk->readStream($storagePath);
+
+        abort_unless(is_resource($stream), Response::HTTP_NOT_FOUND);
+
+        return $this->streamAssetResponse(function () use ($stream): void {
+            try {
+                fpassthru($stream);
+            } finally {
+                fclose($stream);
+            }
+        }, $headers);
+    }
+
+    /**
+     * @param  callable(): void  $callback
+     */
+    private function streamAssetResponse(callable $callback, array $headers): StreamedResponse
+    {
+        return response()->stream(function () use ($callback): void {
+            $this->clearOutputBuffers();
+            $callback();
+        }, Response::HTTP_OK, $headers);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function uncachedAssetHeaders(string $mimeType): array
+    {
+        return [
+            'Content-Type' => $mimeType,
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function cacheableAssetHeaders(FilesystemAdapter $disk, string $storagePath, string $mimeType): array
+    {
+        $lastModified = (int) $disk->lastModified($storagePath);
+        $size = (int) $disk->size($storagePath);
+        $etag = sprintf('W/"%s"', sha1($storagePath.'|'.$size.'|'.$lastModified));
+
+        return [
+            'Content-Type' => $mimeType,
+            'Cache-Control' => 'private, max-age=31536000, immutable',
+            'ETag' => $etag,
+            'Last-Modified' => gmdate(DATE_RFC7231, $lastModified),
+        ];
+    }
+
+    private function assetWasNotModified(Request $request, string $etag, int $lastModified): bool
+    {
+        $ifNoneMatch = $request->headers->get('if-none-match');
+
+        if (is_string($ifNoneMatch) && $ifNoneMatch !== '') {
+            $clientEtags = collect(explode(',', $ifNoneMatch))
+                ->map(fn (string $value): string => trim($value))
+                ->filter();
+
+            if ($clientEtags->contains('*') || $clientEtags->contains($etag)) {
+                return true;
+            }
+        }
+
+        $ifModifiedSince = $request->headers->get('if-modified-since');
+
+        if (! is_string($ifModifiedSince) || $ifModifiedSince === '') {
+            return false;
+        }
+
+        $timestamp = strtotime($ifModifiedSince);
+
+        return $timestamp !== false && $lastModified <= $timestamp;
     }
 
     private function clearOutputBuffers(): void
