@@ -106,16 +106,16 @@ class ScormPlayerController extends Controller
         if ($this->isHtmlAsset($normalizedPath, $mimeType)) {
             $contents = $this->injectScormBridge($disk->get($storagePath));
 
-            return response(
-                $contents,
-                Response::HTTP_OK,
-                [
-                    'Content-Type' => $mimeType,
-                    'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
-                    'Pragma' => 'no-cache',
-                    'Expires' => '0',
-                ],
-            );
+            return response()->stream(function () use ($contents): void {
+                $this->clearOutputBuffers();
+
+                echo $contents;
+            }, Response::HTTP_OK, [
+                'Content-Type' => $mimeType,
+                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+                'Pragma' => 'no-cache',
+                'Expires' => '0',
+            ]);
         }
 
         $stream = $disk->readStream($storagePath);
@@ -123,6 +123,8 @@ class ScormPlayerController extends Controller
         abort_unless(is_resource($stream), Response::HTTP_NOT_FOUND);
 
         return response()->stream(function () use ($stream): void {
+            $this->clearOutputBuffers();
+
             fpassthru($stream);
             fclose($stream);
         }, Response::HTTP_OK, [
@@ -177,6 +179,13 @@ class ScormPlayerController extends Controller
     {
         return Str::endsWith(Str::lower($path), ['.html', '.htm', '.xhtml'])
             || Str::contains(Str::lower($mimeType), ['text/html', 'application/xhtml']);
+    }
+
+    private function clearOutputBuffers(): void
+    {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
     }
 
     private function injectScormBridge(string $contents): string
