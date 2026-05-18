@@ -111,8 +111,80 @@ it('marks a document upload as processed and creates a submission when OCR succe
     expect($submission->answers->first()->selected_option_key)->toBe('A');
 });
 
-it('marks a document upload as failed when QR binding is invalid', function () {
-    [, $module, , $user, $documentUpload] = buildQuizSubmissionFixture();
+it('creates one submission for each QR detected in the uploaded document', function () {
+    [$course, $module, $question, $firstUser, $documentUpload] = buildQuizSubmissionFixture();
+
+    $secondUser = User::query()->create([
+        'email' => 'second-ocr-user@example.test',
+        'password' => bcrypt('password'),
+        'account_state' => 'active',
+        'name' => 'Second',
+        'surname' => 'User',
+        'fiscal_code' => 'OCRUSER00000002',
+    ]);
+    CourseEnrollment::enroll($secondUser, $course);
+
+    Http::fake([
+        'https://eu-documentai.googleapis.com/*' => Http::response([
+            'document' => [
+                'entities' => [
+                    [
+                        'type' => 'submission_qr',
+                        'mentionText' => base64_encode($course->getKey().'*'.$module->getKey().'*'.$firstUser->getKey()),
+                        'pageAnchor' => ['pageRefs' => [['page' => '0']]],
+                    ],
+                    [
+                        'type' => 'q_1',
+                        'mentionText' => 'A',
+                        'confidence' => 0.97,
+                        'pageAnchor' => ['pageRefs' => [['page' => '0']]],
+                    ],
+                    [
+                        'type' => 'submission_qr',
+                        'mentionText' => base64_encode($course->getKey().'*'.$module->getKey().'*'.$secondUser->getKey()),
+                        'pageAnchor' => ['pageRefs' => [['page' => '1']]],
+                    ],
+                    [
+                        'type' => 'q_1',
+                        'mentionText' => 'B',
+                        'confidence' => 0.88,
+                        'pageAnchor' => ['pageRefs' => [['page' => '1']]],
+                    ],
+                ],
+            ],
+        ]),
+    ]);
+
+    (new ProcessQuizSubmission($documentUpload))->handle(app(GoogleDocumentAiQuizService::class));
+
+    $documentUpload->refresh();
+
+    $submissions = ModuleQuizSubmission::query()
+        ->with('answers')
+        ->where('module_id', $module->getKey())
+        ->orderBy('id')
+        ->get();
+
+    expect($submissions)->toHaveCount(2);
+    expect($documentUpload->status)->toBe(ModuleQuizDocumentUpload::STATUS_PROCESSED);
+
+    expect($submissions[0]->user_id)->toBe($firstUser->getKey());
+    expect($submissions[0]->status)->toBe(ModuleQuizSubmission::STATUS_NEEDS_REVIEW);
+    expect($submissions[0]->document_upload_id)->toBe($documentUpload->getKey());
+    expect($submissions[0]->answers)->toHaveCount(1);
+    expect($submissions[0]->answers->first()->module_quiz_question_id)->toBe($question->getKey());
+    expect($submissions[0]->answers->first()->selected_option_key)->toBe('A');
+
+    expect($submissions[1]->user_id)->toBe($secondUser->getKey());
+    expect($submissions[1]->status)->toBe(ModuleQuizSubmission::STATUS_NEEDS_REVIEW);
+    expect($submissions[1]->document_upload_id)->toBe($documentUpload->getKey());
+    expect($submissions[1]->answers)->toHaveCount(1);
+    expect($submissions[1]->answers->first()->module_quiz_question_id)->toBe($question->getKey());
+    expect($submissions[1]->answers->first()->selected_option_key)->toBe('B');
+});
+
+it('marks a submission as failed when QR binding is invalid', function () {
+    [, , , $user, $documentUpload] = buildQuizSubmissionFixture();
 
     Http::fake([
         'https://eu-documentai.googleapis.com/*' => Http::response([

@@ -8,6 +8,7 @@ use App\Models\ModuleQuizSubmission;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -23,57 +24,22 @@ class GoogleDocumentAiQuizService
         ]);
 
         $payload = $this->processDocument($documentUpload);
-        $normalized = $this->normalizePayload($payload);
-        $qrPayload = $normalized['qr'];
+        $normalizedSubmissions = $this->normalizePayload($payload);
 
-        if ($qrPayload['moduleId'] !== $documentUpload->module_id) {
-            throw new RuntimeException('Il QR non corrisponde al modulo del caricamento.');
-        }
+        DB::transaction(function () use ($documentUpload, $normalizedSubmissions, $payload): void {
+            $documentUpload->submissions()->delete();
 
-        $courseEnrollment = CourseEnrollment::query()
-            ->where('course_id', $qrPayload['courseId'])
-            ->where('user_id', $qrPayload['userId'])
-            ->whereNull('deleted_at')
-            ->first();
+            foreach ($normalizedSubmissions as $normalized) {
+                $this->storeNormalizedSubmission($documentUpload, $normalized, $payload);
+            }
 
-        if ($courseEnrollment === null) {
-            throw new RuntimeException('Nessuna iscrizione attiva trovata per il QR rilevato.');
-        }
-
-        // Crea una submission per l'utente rilevato nel documento
-        $submission = ModuleQuizSubmission::create([
-            'module_id' => $documentUpload->module_id,
-            'document_upload_id' => $documentUpload->getKey(),
-            'source_type' => ModuleQuizSubmission::SOURCE_UPLOAD,
-            'user_id' => $qrPayload['userId'],
-            'uploaded_by' => $documentUpload->uploaded_by,
-            'status' => ModuleQuizSubmission::STATUS_NEEDS_REVIEW,
-        ]);
-
-        // Crea le risposte per questa submission
-        foreach ($documentUpload->module->quizQuestions as $index => $question) {
-            $questionNumber = $index + 1;
-            $answerPayload = $normalized['answers'][$questionNumber] ?? null;
-            $selectedOptionKey = $answerPayload['selectedOptionKey'] ?? null;
-            $selectedAnswer = $selectedOptionKey !== null
-                ? $question->answers->values()->get($this->optionKeyIndex($selectedOptionKey))
-                : null;
-
-            $submission->answers()->create([
-                'module_quiz_question_id' => $question->getKey(),
-                'module_quiz_answer_id' => $selectedAnswer?->getKey(),
-                'question_number' => $questionNumber,
-                'selected_option_key' => $selectedOptionKey,
-                'confidence' => $answerPayload['confidence'] ?? null,
-            ]);
-        }
-
-        // Aggiorna il documento come processato
-        $documentUpload->forceFill([
-            'status' => ModuleQuizDocumentUpload::STATUS_PROCESSED,
-            'provider_payload' => $payload,
-            'processed_at' => now(),
-        ])->save();
+            $documentUpload->forceFill([
+                'status' => ModuleQuizDocumentUpload::STATUS_PROCESSED,
+                'provider_payload' => $payload,
+                'error_message' => null,
+                'processed_at' => now(),
+            ])->save();
+        });
     }
 
     /**
@@ -97,31 +63,50 @@ class GoogleDocumentAiQuizService
 
     /**
      * @param  array<string, mixed>  $payload
-     * @return array{
+     * @return array<int, array{
+     *     page: int|null,
      *     qr: array{courseId: int, moduleId: int, userId: int},
      *     answers: array<int, array{selectedOptionKey: string, confidence: float|null}>
-     * }
+     * }>
      */
     private function normalizePayload(array $payload): array
     {
         $entities = collect(Arr::get($payload, 'document.entities', []));
-        $qrText = (string) Arr::get($entities->firstWhere('type', 'submission_qr'), 'mentionText', '');
+        $qrEntities = $entities
+            ->filter(fn (array $entity): bool => in_array((string) Arr::get($entity, 'type'), ['submission_qr', 'qr_code'], true))
+            ->values();
 
-        if ($qrText === '') {
-            $qrText = (string) Arr::get($entities->firstWhere('type', 'qr_code'), 'mentionText', '');
-        }
-
-        if ($qrText === '') {
+        if ($qrEntities->isEmpty()) {
             throw new RuntimeException('QR non rilevato dal provider OCR.');
         }
 
-        $qrParts = explode('*', base64_decode($qrText, true) ?: '');
+        $submissions = $qrEntities
+            ->map(function (array $entity): array {
+                $qrText = (string) Arr::get($entity, 'mentionText', '');
+                $qrParts = explode('*', base64_decode($qrText, true) ?: '');
 
-        if (count($qrParts) !== 3) {
-            throw new RuntimeException('QR non valido.');
+                if (count($qrParts) !== 3) {
+                    throw new RuntimeException('QR non valido.');
+                }
+
+                return [
+                    'page' => $this->entityPage($entity),
+                    'qr' => [
+                        'courseId' => (int) $qrParts[0],
+                        'moduleId' => (int) $qrParts[1],
+                        'userId' => (int) $qrParts[2],
+                    ],
+                    'answers' => [],
+                ];
+            })
+            ->values()
+            ->all();
+
+        $hasMultipleSubmissions = count($submissions) > 1;
+
+        if ($hasMultipleSubmissions && collect($submissions)->contains(fn (array $normalized): bool => $normalized['page'] === null)) {
+            throw new RuntimeException('Impossibile associare i QR alle pagine del documento.');
         }
-
-        $answers = [];
 
         foreach ($entities as $entity) {
             $type = (string) Arr::get($entity, 'type');
@@ -137,20 +122,100 @@ class GoogleDocumentAiQuizService
                 continue;
             }
 
-            $answers[$questionNumber] = [
+            $submissionIndex = $this->submissionIndexForEntity($submissions, $entity, $hasMultipleSubmissions);
+
+            $submissions[$submissionIndex]['answers'][$questionNumber] = [
                 'selectedOptionKey' => $selectedOptionKey,
                 'confidence' => Arr::has($entity, 'confidence') ? (float) $entity['confidence'] : null,
             ];
         }
 
-        return [
-            'qr' => [
-                'courseId' => (int) $qrParts[0],
-                'moduleId' => (int) $qrParts[1],
-                'userId' => (int) $qrParts[2],
-            ],
-            'answers' => $answers,
-        ];
+        return $submissions;
+    }
+
+    /**
+     * @param  array{
+     *     qr: array{courseId: int, moduleId: int, userId: int},
+     *     answers: array<int, array{selectedOptionKey: string, confidence: float|null}>
+     * }  $normalized
+     * @param  array<string, mixed>  $payload
+     */
+    private function storeNormalizedSubmission(ModuleQuizDocumentUpload $documentUpload, array $normalized, array $payload): void
+    {
+        $qrPayload = $normalized['qr'];
+
+        if ($qrPayload['moduleId'] !== $documentUpload->module_id) {
+            throw new RuntimeException('Il QR non corrisponde al modulo del caricamento.');
+        }
+
+        $courseEnrollment = CourseEnrollment::query()
+            ->where('course_id', $qrPayload['courseId'])
+            ->where('user_id', $qrPayload['userId'])
+            ->whereNull('deleted_at')
+            ->first();
+
+        if ($courseEnrollment === null) {
+            throw new RuntimeException('Nessuna iscrizione attiva trovata per il QR rilevato.');
+        }
+
+        $submission = ModuleQuizSubmission::query()->create([
+            'module_id' => $documentUpload->module_id,
+            'document_upload_id' => $documentUpload->getKey(),
+            'source_type' => ModuleQuizSubmission::SOURCE_UPLOAD,
+            'user_id' => $qrPayload['userId'],
+            'course_enrollment_id' => $courseEnrollment->getKey(),
+            'uploaded_by' => $documentUpload->uploaded_by,
+            'status' => ModuleQuizSubmission::STATUS_NEEDS_REVIEW,
+            'provider_payload' => $payload,
+        ]);
+
+        foreach ($documentUpload->module->quizQuestions as $index => $question) {
+            $questionNumber = $index + 1;
+            $answerPayload = $normalized['answers'][$questionNumber] ?? null;
+            $selectedOptionKey = $answerPayload['selectedOptionKey'] ?? null;
+            $selectedAnswer = $selectedOptionKey !== null
+                ? $question->answers->values()->get($this->optionKeyIndex($selectedOptionKey))
+                : null;
+
+            $submission->answers()->create([
+                'module_quiz_question_id' => $question->getKey(),
+                'module_quiz_answer_id' => $selectedAnswer?->getKey(),
+                'question_number' => $questionNumber,
+                'selected_option_key' => $selectedOptionKey,
+                'confidence' => $answerPayload['confidence'] ?? null,
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<int, array{page: int|null}>  $submissions
+     */
+    private function submissionIndexForEntity(array $submissions, array $entity, bool $hasMultipleSubmissions): int
+    {
+        if (! $hasMultipleSubmissions) {
+            return 0;
+        }
+
+        $page = $this->entityPage($entity);
+
+        if ($page === null) {
+            throw new RuntimeException('Impossibile associare una risposta alla pagina del documento.');
+        }
+
+        foreach ($submissions as $index => $submission) {
+            if ($submission['page'] === $page) {
+                return $index;
+            }
+        }
+
+        throw new RuntimeException('Risposta rilevata su una pagina senza QR associato.');
+    }
+
+    private function entityPage(array $entity): ?int
+    {
+        $page = Arr::get($entity, 'pageAnchor.pageRefs.0.page');
+
+        return $page === null ? null : (int) $page;
     }
 
     private function request(): PendingRequest
