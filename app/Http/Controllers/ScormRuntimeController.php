@@ -132,10 +132,24 @@ class ScormRuntimeController extends Controller
             $request->validated('values', []),
         );
 
+        $navigation = $scormService->resolveNavigationRequest(
+            $scormPackage,
+            $request->input('values.adl.nav.request')
+        );
+
         return response()->json([
             'success' => true,
             'error' => '0',
             'state' => $snapshot,
+            'navigation' => $navigation === null ? null : [
+                'sco_identifier' => $navigation['sco_identifier'],
+                'url' => route('user.courses.modules.scorm.player', [
+                    $course,
+                    $module,
+                    $scormPackage,
+                    'sco' => $navigation['sco_identifier'],
+                ]),
+            ],
         ]);
     }
 

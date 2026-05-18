@@ -5,6 +5,7 @@ use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\ScormSession;
+use App\Models\ScormTracking;
 use App\Models\User;
 use App\Services\ScormService;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -127,6 +128,150 @@ it('initializes runtime, persists values, resumes state and terminates the sessi
     expect($enrollment->completion_percentage)->toBe(100);
     expect($moduleProgress->time_spent_seconds)->toBe(60);
     expect(ScormSession::query()->where('session_id', 'session-1')->value('status'))->toBe('terminated');
+    expect(ScormTracking::query()->where('scorm_package_id', $package->getKey())->count())->toBeGreaterThan(0);
+    expect(ScormTracking::query()
+        ->where('scorm_package_id', $package->getKey())
+        ->where('element', 'cmi.core.lesson_location')
+        ->exists())->toBeTrue();
+    expect(ScormTracking::query()
+        ->where('scorm_package_id', $package->getKey())
+        ->where('element', '__meta.last_location')
+        ->exists())->toBeTrue();
+});
+
+it('persists scorm 2004 values, progress and interaction data', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+    $user = User::factory()->create();
+    $user->assignRole('user');
+    $this->actingAs($user);
+
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => 'scorm',
+        'title' => 'Modulo SCORM 2004',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    Storage::fake('local');
+
+    $package = app(ScormService::class)->storeUploadedPackage($module, scormZipUpload([
+        'imsmanifest.xml' => validScorm2004Manifest(),
+        'lesson2004/index.html' => '<html><body>SCORM 2004 lesson</body></html>',
+        'lesson2004/assessment.html' => '<html><body>Assessment lesson</body></html>',
+    ]));
+
+    CourseEnrollment::enroll($user, $course);
+
+    $this->postJson(route('user.courses.modules.scorm.runtime.initialize', [$course, $module, $package]), [
+        'session_id' => 'session-2004',
+        'sco_identifier' => 'ITEM-2004',
+        'version' => '2004',
+    ])->assertOk();
+
+    $this->postJson(route('user.courses.modules.scorm.runtime.commit', [$course, $module, $package]), [
+        'session_id' => 'session-2004',
+        'sco_identifier' => 'ITEM-2004',
+        'values' => [
+            'cmi.location' => '12',
+            'cmi.progress_measure' => '0.92',
+            'cmi.completion_status' => 'completed',
+            'cmi.success_status' => 'passed',
+            'cmi.score.raw' => '97',
+            'cmi.interactions.0.id' => 'final-test-q1',
+            'cmi.interactions.0.learner_response' => 'B',
+            'cmi.session_time' => 'PT0H1M30S',
+        ],
+    ])->assertOk();
+
+    expect(ScormTracking::query()
+        ->where('scorm_package_id', $package->getKey())
+        ->where('element', 'cmi.location')
+        ->value('value'))->toBe('12');
+    expect(ScormTracking::query()
+        ->where('scorm_package_id', $package->getKey())
+        ->where('element', 'cmi.interactions.0.learner_response')
+        ->value('value'))->toBe('B');
+    expect(ScormTracking::query()
+        ->where('scorm_package_id', $package->getKey())
+        ->where('element', '__meta.max_progress_measure')
+        ->exists())->toBeTrue();
+    expect(ScormTracking::query()
+        ->where('scorm_package_id', $package->getKey())
+        ->where('element', '__meta.max_numeric_location')
+        ->exists())->toBeTrue();
+});
+
+it('supports scorm 2004 data buckets and jump navigation request', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+    $user = User::factory()->create();
+    $user->assignRole('user');
+    $this->actingAs($user);
+
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => 'scorm',
+        'title' => 'Modulo SCORM 2004 Notes',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    Storage::fake('local');
+
+    $package = app(ScormService::class)->storeUploadedPackage($module, scormZipUpload([
+        'imsmanifest.xml' => validScorm2004Manifest(),
+        'lesson2004/index.html' => '<html><body>SCORM 2004 lesson</body></html>',
+        'lesson2004/assessment.html' => '<html><body>Assessment lesson</body></html>',
+    ]));
+
+    CourseEnrollment::enroll($user, $course);
+
+    $this->postJson(route('user.courses.modules.scorm.runtime.initialize', [$course, $module, $package]), [
+        'session_id' => 'session-2004-notes',
+        'sco_identifier' => 'ITEM-2004',
+        'version' => '2004',
+    ])->assertOk();
+
+    $this->postJson(route('user.courses.modules.scorm.runtime.get-value', [$course, $module, $package]), [
+        'session_id' => 'session-2004-notes',
+        'sco_identifier' => 'ITEM-2004',
+        'element' => 'adl.data._count',
+    ])->assertOk()->assertJsonPath('value', '1');
+
+    $this->postJson(route('user.courses.modules.scorm.runtime.set-value', [$course, $module, $package]), [
+        'session_id' => 'session-2004-notes',
+        'sco_identifier' => 'ITEM-2004',
+        'element' => 'adl.data.0.store',
+        'value' => 'My notes',
+    ])->assertOk();
+
+    $this->postJson(route('user.courses.modules.scorm.runtime.get-value', [$course, $module, $package]), [
+        'session_id' => 'session-2004-notes',
+        'sco_identifier' => 'ITEM-2004',
+        'element' => 'adl.data.0.store',
+    ])->assertOk()->assertJsonPath('value', 'My notes');
+
+    $terminateResponse = $this->postJson(route('user.courses.modules.scorm.runtime.terminate', [$course, $module, $package]), [
+        'session_id' => 'session-2004-notes',
+        'sco_identifier' => 'ITEM-2004',
+        'values' => [
+            'adl.nav.request' => '{target=assessment_item}jump',
+            'cmi.session_time' => 'PT0H0M10S',
+        ],
+    ])->assertOk();
+
+    $terminateResponse->assertJsonPath(
+        'navigation.url',
+        route('user.courses.modules.scorm.player', [$course, $module, $package, 'sco' => 'assessment_item'])
+    );
+
+    $this->get(route('user.courses.modules.scorm.player', [
+        $course,
+        $module,
+        $package,
+        'sco' => 'assessment_item',
+    ]))
+        ->assertOk()
+        ->assertSee('content=assessment', escape: false)
+        ->assertSee('assessment_item', escape: false);
 });
 
 it('launches the SCORM player for the enrolled learner', function () {
@@ -155,7 +300,8 @@ it('launches the SCORM player for the enrolled learner', function () {
     $playerResponse
         ->assertOk()
         ->assertSeeText('SCORM Player')
-        ->assertSee('data-scorm-player-config', escape: false);
+        ->assertSee('data-scorm-player-config', escape: false)
+        ->assertSee('data-scorm-player-iframe', escape: false);
 });
 
 it('blocks SCORM access for non enrolled users', function () {

@@ -51,6 +51,16 @@ test('module player page is accessible for enrolled user on current module', fun
         ->assertOk();
 });
 
+test('scorm module player page renders the scorm template and packages endpoint', function () {
+    [, $course, $module] = enrollUserInCourseWithModule('scorm');
+    $this->withoutVite();
+
+    $this->get(route('user.courses.modules.player', [$course, $module]))
+        ->assertOk()
+        ->assertSee('tpl-scorm', escape: false)
+        ->assertSee(route('user.courses.modules.scorm.packages.index', [$course, $module]), escape: false);
+});
+
 test('module player page returns 403 if module is not the current module', function () {
     [$user, $course, $module] = enrollUserInCourseWithModule('video');
 

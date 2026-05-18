@@ -17,7 +17,8 @@
 
                     <div class="grid gap-2 text-sm text-base-content/70">
                         <p><span class="font-medium text-base-content">{{ __('Version') }}:</span> {{ strtoupper($package->version ?? 'n/a') }}</p>
-                        <p><span class="font-medium text-base-content">{{ __('Entry point') }}:</span> {{ $package->entry_point }}</p>
+                        <p><span class="font-medium text-base-content">{{ __('SCO') }}:</span> {{ $launchSco['sco_identifier'] }}</p>
+                        <p><span class="font-medium text-base-content">{{ __('Entry point') }}:</span> {{ $launchSco['entry_point'] }}</p>
                     </div>
                 </div>
             </div>
@@ -28,7 +29,7 @@
                 </div>
 
                 <iframe
-                    src="{{ route('user.courses.modules.scorm.asset', [$course, $module, $package, 'path' => $package->entry_point]) }}"
+                    src="{{ $scormPlayerConfig['entryPointUrl'] }}"
                     title="{{ __('SCORM content player') }}"
                     class="h-[78vh] w-full rounded-b-box border-0"
                     allowfullscreen

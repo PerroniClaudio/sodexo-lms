@@ -2,12 +2,14 @@
 
 namespace App\Services;
 
+use App\Models\Course;
 use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\ScormPackage;
 use App\Models\ScormSession;
 use App\Models\ScormTracking;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +25,8 @@ class ScormService
     private const STORAGE_DISK = 'local';
 
     private const STORAGE_ROOT = 'scorm';
+
+    private const DEFAULT_DATA_BUCKET_ID = 'com.scorm.golfsamples.sequencing.forcedsequential.notesStorage';
 
     /**
      * @var array<string, string>
@@ -192,15 +196,14 @@ class ScormService
         ?string $sessionId = null,
         ?ModuleProgress $moduleProgress = null,
     ): ScormTracking {
-        $tracking = ScormTracking::query()->create([
-            'user_id' => $user->getKey(),
-            'scorm_package_id' => $package->getKey(),
-            'sco_identifier' => $scoIdentifier,
-            'element' => $element,
-            'value' => $value,
-            'tracked_at' => now(),
-            'session_id' => $sessionId,
-        ]);
+        $tracking = $this->createTrackingRecordIfChanged(
+            $user,
+            $package,
+            $scoIdentifier,
+            $element,
+            $value,
+            $sessionId,
+        );
 
         $session = $sessionId !== null
             ? ScormSession::query()
@@ -227,6 +230,8 @@ class ScormService
                 $this->getRuntimeSnapshot($user, $package, $scoIdentifier, $moduleProgress),
             );
         }
+
+        $this->persistDerivedTrackingValues($user, $package, $scoIdentifier, $element, $value, $sessionId);
 
         return $tracking;
     }
@@ -299,6 +304,86 @@ class ScormService
     public function getDiagnostic(string $code): string
     {
         return sprintf('%s (%s)', $this->getErrorString($code), $code);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getLearnerPackageSummaries(
+        User $user,
+        Course $course,
+        Module $module,
+    ): array {
+        return $module->scormPackages()
+            ->latest()
+            ->get()
+            ->map(fn (ScormPackage $package): array => $this->buildLearnerPackageSummary(
+                $user,
+                $course,
+                $module,
+                $package,
+            ))
+            ->all();
+    }
+
+    /**
+     * @return array{sco_identifier: string, entry_point: string, title: ?string}
+     */
+    public function resolveLaunchSco(ScormPackage $package, ?string $requestedScoIdentifier = null): array
+    {
+        $scoData = collect($package->sco_data ?? []);
+
+        if ($requestedScoIdentifier !== null && $requestedScoIdentifier !== '') {
+            $requestedSco = $scoData->first(
+                fn (array $sco): bool => ($sco['identifier'] ?? null) === $requestedScoIdentifier
+            );
+
+            if (is_array($requestedSco) && filled($requestedSco['entry_point'] ?? null)) {
+                return [
+                    'sco_identifier' => (string) $requestedSco['identifier'],
+                    'entry_point' => $this->applyItemParameters(
+                        (string) $requestedSco['entry_point'],
+                        $requestedSco['parameters'] ?? null,
+                    ),
+                    'title' => $requestedSco['title'] ?? null,
+                ];
+            }
+        }
+
+        $defaultSco = $scoData->first(fn (array $sco): bool => filled($sco['entry_point'] ?? null));
+
+        if (is_array($defaultSco)) {
+            return [
+                'sco_identifier' => (string) ($defaultSco['identifier'] ?? $package->identifier ?? 'default-sco'),
+                'entry_point' => $this->applyItemParameters(
+                    (string) $defaultSco['entry_point'],
+                    $defaultSco['parameters'] ?? null,
+                ),
+                'title' => $defaultSco['title'] ?? null,
+            ];
+        }
+
+        return [
+            'sco_identifier' => (string) ($package->identifier ?? 'default-sco'),
+            'entry_point' => (string) $package->entry_point,
+            'title' => null,
+        ];
+    }
+
+    /**
+     * @return array{sco_identifier: string, entry_point: string, title: ?string}|null
+     */
+    public function resolveNavigationRequest(ScormPackage $package, ?string $navigationRequest): ?array
+    {
+        if (! is_string($navigationRequest) || $navigationRequest === '') {
+            return null;
+        }
+
+        if (preg_match('/^\{target=([^}]+)\}(?:jump|choice)$/', $navigationRequest, $matches) !== 1) {
+            return null;
+        }
+
+        return $this->resolveLaunchSco($package, $matches[1]);
     }
 
     /**
@@ -568,6 +653,7 @@ class ScormService
                     'title' => null,
                     'resource_identifier' => $resource['identifier'],
                     'entry_point' => $resource['entry_point'],
+                    'parameters' => null,
                     'scorm_type' => $resource['scorm_type'],
                 ];
             }
@@ -593,6 +679,7 @@ class ScormService
                     'title' => $item['title'],
                     'resource_identifier' => $resourceIdentifier,
                     'entry_point' => $resource['entry_point'],
+                    'parameters' => $item['parameters'] ?? null,
                     'scorm_type' => $resource['scorm_type'],
                 ];
             }
@@ -640,6 +727,7 @@ class ScormService
                     'title' => $item['title'],
                     'resource_identifier' => $resourceIdentifier,
                     'entry_point' => $resource['entry_point'],
+                    'parameters' => $item['parameters'] ?? null,
                     'scorm_type' => $resource['scorm_type'],
                     'files' => $resource['files'],
                 ];
@@ -713,6 +801,7 @@ class ScormService
             ->where('user_id', $user->getKey())
             ->where('scorm_package_id', $package->getKey())
             ->where('sco_identifier', $scoIdentifier)
+            ->where('element', 'not like', '__meta.%')
             ->orderBy('tracked_at')
             ->orderBy('id')
             ->get()
@@ -748,6 +837,10 @@ class ScormService
                 'cmi.total_time' => $existingState['cmi.total_time'] ?? $this->formatTotalTime($moduleProgress?->time_spent_seconds ?? 0, '2004'),
                 'cmi.entry' => $existingState['cmi.entry'] ?? ($resume ? 'resume' : 'ab-initio'),
                 'cmi.mode' => $existingState['cmi.mode'] ?? 'normal',
+                'adl.nav.request' => $existingState['adl.nav.request'] ?? '_none_',
+                'adl.data._count' => $existingState['adl.data._count'] ?? '1',
+                'adl.data.0.id' => $existingState['adl.data.0.id'] ?? self::DEFAULT_DATA_BUCKET_ID,
+                'adl.data.0.store' => $existingState['adl.data.0.store'] ?? '',
             ];
         }
 
@@ -902,12 +995,15 @@ class ScormService
     private function parseSessionTime(string $value, ?string $version): int
     {
         if (Str::startsWith($value, 'P')) {
-            $interval = new \DateInterval($value);
+            if (preg_match('/^P(?:\d+Y)?(?:\d+M)?(?:\d+D)?(?:T(?:(?<hours>\d+(?:[.,]\d+)?)H)?(?:(?<minutes>\d+(?:[.,]\d+)?)M)?(?:(?<seconds>\d+(?:[.,]\d+)?)S)?)?$/', $value, $matches) !== 1) {
+                throw new RuntimeException(sprintf('Unsupported session time format [%s] for SCORM %s.', $value, $version ?? 'unknown'));
+            }
 
-            return ($interval->d * 86400)
-                + ($interval->h * 3600)
-                + ($interval->i * 60)
-                + $interval->s;
+            $hours = (float) str_replace(',', '.', $matches['hours'] ?? '0');
+            $minutes = (float) str_replace(',', '.', $matches['minutes'] ?? '0');
+            $seconds = (float) str_replace(',', '.', $matches['seconds'] ?? '0');
+
+            return (int) floor(($hours * 3600) + ($minutes * 60) + $seconds);
         }
 
         if (! preg_match('/^(?<hours>\d{2,4}):(?<minutes>\d{2}):(?<seconds>\d{2})(?:\.\d+)?$/', $value, $matches)) {
@@ -1005,5 +1101,349 @@ class ScormService
         if ($package->extracted_path !== null) {
             $disk->deleteDirectory($package->extracted_path);
         }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildLearnerPackageSummary(
+        User $user,
+        Course $course,
+        Module $module,
+        ScormPackage $package,
+    ): array {
+        $latestSession = ScormSession::query()
+            ->where('user_id', $user->getKey())
+            ->where('scorm_package_id', $package->getKey())
+            ->orderByDesc('last_activity_at')
+            ->orderByDesc('id')
+            ->first();
+
+        $state = $this->getLatestPackageState($user, $package);
+        $latestTrackedScoIdentifier = $this->getLatestTrackedScoIdentifier($user, $package);
+        $primaryScoIdentifier = $latestSession?->sco_identifier
+            ?? $latestTrackedScoIdentifier
+            ?? data_get($package->sco_data, '0.identifier')
+            ?? $package->identifier;
+
+        $packageTrackedSeconds = (int) ScormSession::query()
+            ->where('user_id', $user->getKey())
+            ->where('scorm_package_id', $package->getKey())
+            ->max('recorded_session_seconds');
+        $launchSco = $this->resolveLaunchSco($package, (string) $primaryScoIdentifier);
+
+        $scoreRaw = $state['cmi.core.score.raw'] ?? $state['cmi.score.raw'] ?? null;
+        $scoreMin = $state['cmi.core.score.min'] ?? $state['cmi.score.min'] ?? null;
+        $scoreMax = $state['cmi.core.score.max'] ?? $state['cmi.score.max'] ?? null;
+        $progressMeasure = $state['cmi.progress_measure'] ?? null;
+        $progressPercent = is_numeric($progressMeasure)
+            ? (int) round(max(0, min(1, (float) $progressMeasure)) * 100)
+            : null;
+        $maxProgressMeasure = $this->getMaxPackageMetaValue($user, $package, '__meta.max_progress_measure');
+        $maxProgressPercent = is_numeric($maxProgressMeasure)
+            ? (int) round(max(0, min(1, (float) $maxProgressMeasure)) * 100)
+            : null;
+        $maxNumericLocation = $this->getMaxPackageMetaValue($user, $package, '__meta.max_numeric_location');
+        $lessonLocation = $state['cmi.core.lesson_location'] ?? $state['cmi.location'] ?? null;
+        $suspendData = $state['cmi.suspend_data'] ?? null;
+        $sessionTotalTime = $state['cmi.core.total_time'] ?? $state['cmi.total_time'] ?? null;
+        $completionStatus = $state['cmi.core.lesson_status'] ?? $state['cmi.completion_status'] ?? null;
+        $successStatus = $state['cmi.success_status'] ?? null;
+        $learnerStatus = $this->deriveLearnerPackageStatus($completionStatus, $successStatus, $latestSession, $state);
+        $defaultOrganization = data_get($package->manifest_data, 'default_organization');
+        $resources = data_get($package->manifest_data, 'resources', []);
+        $defaultOrganizationData = collect(data_get($package->manifest_data, 'organizations', []))
+            ->firstWhere('identifier', $defaultOrganization);
+        $organizationTitle = is_array($defaultOrganizationData)
+            ? ($defaultOrganizationData['title'] ?? null)
+            : null;
+
+        return [
+            'id' => $package->getKey(),
+            'title' => $package->title,
+            'description' => $package->description,
+            'status' => $package->status,
+            'status_label' => $this->formatPackageStatus($package->status),
+            'learner_status' => $learnerStatus,
+            'is_completed' => $learnerStatus === 'Completato',
+            'version' => $package->version,
+            'identifier' => $package->identifier,
+            'entry_point' => $launchSco['entry_point'],
+            'error_message' => $package->error_message,
+            'player_url' => $package->isReady()
+                ? route('user.courses.modules.scorm.player', [
+                    $course,
+                    $module,
+                    $package,
+                    'sco' => $primaryScoIdentifier,
+                ])
+                : null,
+            'launchable' => $package->isReady(),
+            'default_organization' => $defaultOrganization,
+            'default_organization_title' => $organizationTitle,
+            'sco_count' => count($package->sco_data ?? []),
+            'resource_count' => count(is_array($resources) ? $resources : []),
+            'sco_identifier' => $primaryScoIdentifier,
+            'progress_percent' => $progressPercent,
+            'progress_measure' => is_numeric($progressMeasure) ? (float) $progressMeasure : null,
+            'max_progress_percent' => $maxProgressPercent,
+            'max_numeric_location' => $maxNumericLocation,
+            'score' => [
+                'raw' => $scoreRaw,
+                'min' => $scoreMin,
+                'max' => $scoreMax,
+                'display' => $scoreRaw !== null && $scoreMax !== null
+                    ? sprintf('%s / %s', $scoreRaw, $scoreMax)
+                    : null,
+            ],
+            'completion_status' => $completionStatus,
+            'success_status' => $successStatus,
+            'lesson_location' => $lessonLocation,
+            'resume_entry' => $state['cmi.core.entry'] ?? $state['cmi.entry'] ?? null,
+            'suspend_data_present' => filled($suspendData),
+            'tracked_time' => $sessionTotalTime,
+            'module_time_spent' => $this->formatDuration($packageTrackedSeconds),
+            'session' => [
+                'status' => $latestSession?->status,
+                'last_error_code' => $latestSession?->last_error_code,
+                'recorded_session_seconds' => $latestSession?->recorded_session_seconds,
+                'recorded_session_label' => $latestSession !== null
+                    ? $this->formatDuration((int) $latestSession->recorded_session_seconds)
+                    : null,
+                'initialized_at' => $latestSession?->initialized_at?->toIso8601String(),
+                'initialized_label' => $this->formatDateTime($latestSession?->initialized_at),
+                'last_activity_at' => $latestSession?->last_activity_at?->toIso8601String(),
+                'last_activity_label' => $this->formatDateTime($latestSession?->last_activity_at),
+                'terminated_at' => $latestSession?->terminated_at?->toIso8601String(),
+                'terminated_label' => $this->formatDateTime($latestSession?->terminated_at),
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, ?string>
+     */
+    private function getLatestPackageState(User $user, ScormPackage $package): array
+    {
+        return ScormTracking::query()
+            ->where('user_id', $user->getKey())
+            ->where('scorm_package_id', $package->getKey())
+            ->where('element', 'not like', '__meta.%')
+            ->orderBy('tracked_at')
+            ->orderBy('id')
+            ->get()
+            ->reduce(function (array $state, ScormTracking $tracking): array {
+                $state[$tracking->element] = $tracking->value;
+
+                return $state;
+            }, []);
+    }
+
+    private function getLatestTrackedScoIdentifier(User $user, ScormPackage $package): ?string
+    {
+        return ScormTracking::query()
+            ->where('user_id', $user->getKey())
+            ->where('scorm_package_id', $package->getKey())
+            ->orderByDesc('tracked_at')
+            ->orderByDesc('id')
+            ->value('sco_identifier');
+    }
+
+    private function getMaxPackageMetaValue(User $user, ScormPackage $package, string $element): ?string
+    {
+        $values = ScormTracking::query()
+            ->where('user_id', $user->getKey())
+            ->where('scorm_package_id', $package->getKey())
+            ->where('element', $element)
+            ->pluck('value')
+            ->filter(fn (?string $value): bool => is_numeric($value));
+
+        if ($values->isEmpty()) {
+            return null;
+        }
+
+        return (string) $values
+            ->map(fn (string $value): float => (float) $value)
+            ->max();
+    }
+
+    /**
+     * @param  array<string, ?string>  $state
+     */
+    private function deriveLearnerPackageStatus(
+        ?string $completionStatus,
+        ?string $successStatus,
+        ?ScormSession $latestSession,
+        array $state,
+    ): string {
+        if (in_array($completionStatus, ['completed', 'passed'], true) || $successStatus === 'passed') {
+            return 'Completato';
+        }
+
+        if ($completionStatus === 'failed' || $successStatus === 'failed') {
+            return 'Fallito';
+        }
+
+        if (in_array($completionStatus, ['incomplete', 'browsed'], true)) {
+            return 'In corso';
+        }
+
+        if ($latestSession !== null || filled($state['cmi.core.lesson_location'] ?? $state['cmi.location'] ?? null) || filled($state['cmi.suspend_data'] ?? null)) {
+            return 'In corso';
+        }
+
+        return 'Non avviato';
+    }
+
+    private function formatPackageStatus(string $status): string
+    {
+        return match ($status) {
+            ScormPackage::STATUS_PENDING => 'In attesa',
+            ScormPackage::STATUS_PROCESSING => 'In elaborazione',
+            ScormPackage::STATUS_READY => 'Pronto',
+            ScormPackage::STATUS_ERROR => 'Errore',
+            default => $status,
+        };
+    }
+
+    private function formatDuration(int $seconds): string
+    {
+        $seconds = max(0, $seconds);
+
+        return sprintf('%02d:%02d:%02d', intdiv($seconds, 3600), intdiv($seconds % 3600, 60), $seconds % 60);
+    }
+
+    private function formatDateTime(?CarbonInterface $value): ?string
+    {
+        return $value?->format('d/m/Y H:i');
+    }
+
+    private function applyItemParameters(string $entryPoint, mixed $parameters): string
+    {
+        if (! is_string($parameters)) {
+            return $entryPoint;
+        }
+
+        $normalizedParameters = ltrim(trim($parameters), '?');
+
+        if ($normalizedParameters === '') {
+            return $entryPoint;
+        }
+
+        return $entryPoint.(str_contains($entryPoint, '?') ? '&' : '?').$normalizedParameters;
+    }
+
+    private function createTrackingRecordIfChanged(
+        User $user,
+        ScormPackage $package,
+        string $scoIdentifier,
+        string $element,
+        ?string $value,
+        ?string $sessionId = null,
+    ): ScormTracking {
+        $latestTracking = ScormTracking::query()
+            ->where('user_id', $user->getKey())
+            ->where('scorm_package_id', $package->getKey())
+            ->where('sco_identifier', $scoIdentifier)
+            ->where('element', $element)
+            ->orderByDesc('tracked_at')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($latestTracking !== null && $latestTracking->value === $value) {
+            return $latestTracking;
+        }
+
+        return ScormTracking::query()->create([
+            'user_id' => $user->getKey(),
+            'scorm_package_id' => $package->getKey(),
+            'sco_identifier' => $scoIdentifier,
+            'element' => $element,
+            'value' => $value,
+            'tracked_at' => now(),
+            'session_id' => $sessionId,
+        ]);
+    }
+
+    private function persistDerivedTrackingValues(
+        User $user,
+        ScormPackage $package,
+        string $scoIdentifier,
+        string $element,
+        ?string $value,
+        ?string $sessionId = null,
+    ): void {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (in_array($element, ['cmi.core.lesson_location', 'cmi.location'], true)) {
+            $this->createTrackingRecordIfChanged($user, $package, $scoIdentifier, '__meta.last_location', $value, $sessionId);
+        }
+
+        if (in_array($element, ['cmi.core.lesson_status', 'cmi.completion_status', 'cmi.success_status'], true)) {
+            $this->createTrackingRecordIfChanged($user, $package, $scoIdentifier, '__meta.last_status', $value, $sessionId);
+        }
+
+        if ($element === 'cmi.suspend_data') {
+            $this->createTrackingRecordIfChanged($user, $package, $scoIdentifier, '__meta.resume_available', '1', $sessionId);
+        }
+
+        if (in_array($element, ['cmi.progress_measure'], true) && is_numeric($value)) {
+            $this->persistMaxTrackingValue(
+                $user,
+                $package,
+                $scoIdentifier,
+                '__meta.max_progress_measure',
+                (float) $value,
+                $sessionId,
+            );
+        }
+
+        if (in_array($element, ['cmi.core.score.raw', 'cmi.score.raw'], true) && is_numeric($value)) {
+            $this->persistMaxTrackingValue(
+                $user,
+                $package,
+                $scoIdentifier,
+                '__meta.max_score_raw',
+                (float) $value,
+                $sessionId,
+            );
+        }
+
+        if (preg_match('/^\d+$/', $value) === 1 && in_array($element, ['cmi.core.lesson_location', 'cmi.location'], true)) {
+            $this->persistMaxTrackingValue(
+                $user,
+                $package,
+                $scoIdentifier,
+                '__meta.max_numeric_location',
+                (float) $value,
+                $sessionId,
+            );
+        }
+    }
+
+    private function persistMaxTrackingValue(
+        User $user,
+        ScormPackage $package,
+        string $scoIdentifier,
+        string $element,
+        float $value,
+        ?string $sessionId = null,
+    ): void {
+        $currentValue = $this->getLastValue($user, $package, $scoIdentifier, $element);
+
+        if ($currentValue !== null && is_numeric($currentValue) && (float) $currentValue >= $value) {
+            return;
+        }
+
+        $this->createTrackingRecordIfChanged(
+            $user,
+            $package,
+            $scoIdentifier,
+            $element,
+            (string) $value,
+            $sessionId,
+        );
     }
 }

@@ -36,6 +36,12 @@ if (root) {
             console.info('[module-loader] Modulo live non ancora implementato');
             break;
 
+        case 'scorm':
+            import('./module-scorm.js').then(({ initScormModule }) => {
+                initScormModule();
+            });
+            break;
+
         case 'residential':
             // TODO: Implementare quando disponibile
             console.info('[module-loader] Modulo residential non ancora implementato');

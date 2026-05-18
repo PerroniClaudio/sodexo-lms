@@ -35,6 +35,7 @@ export function getModuleData(root) {
         signedPlaybackUrl: root.dataset.signedPlaybackUrl,
         videoProgressUrl: root.dataset.videoProgressUrl,
         videoCompleteUrl: root.dataset.videoCompleteUrl,
+        scormPackagesUrl: root.dataset.scormPackagesUrl,
         quizUrl: root.dataset.quizUrl,
         quizSubmitUrl: root.dataset.quizSubmitUrl,
         nextModuleUrl: root.dataset.nextModuleUrl,

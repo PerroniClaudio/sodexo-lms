@@ -130,6 +130,38 @@ function validScormManifest(): string
 XML;
 }
 
+function validScorm2004Manifest(): string
+{
+    return <<<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="manifest-2004" version="1.3"
+    xmlns="http://www.imsglobal.org/xsd/imscp_v1p1"
+    xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_v1p3"
+    xmlns:adlseq="http://www.adlnet.org/xsd/adlseq_v1p3"
+    xmlns:imsss="http://www.imsglobal.org/xsd/imsss">
+    <metadata>
+        <schema>ADL SCORM</schema>
+        <schemaversion>2004 4th Edition</schemaversion>
+    </metadata>
+    <organizations default="ORG-2004">
+        <organization identifier="ORG-2004">
+            <title>SCORM 2004 Org</title>
+            <item identifier="ITEM-2004" identifierref="RES-2004" parameters="content=intro">
+                <title>Launch 2004</title>
+            </item>
+            <item identifier="assessment_item" identifierref="RES-2004-ASSESSMENT" parameters="content=assessment">
+                <title>Assessment</title>
+            </item>
+        </organization>
+    </organizations>
+    <resources>
+        <resource identifier="RES-2004" type="webcontent" adlcp:scormType="sco" href="lesson2004/index.html" />
+        <resource identifier="RES-2004-ASSESSMENT" type="webcontent" adlcp:scormType="sco" href="lesson2004/assessment.html" />
+    </resources>
+</manifest>
+XML;
+}
+
 function docxUpload(array $entries): UploadedFile
 {
     $temporaryFile = tempnam(sys_get_temp_dir(), 'docx-test-');

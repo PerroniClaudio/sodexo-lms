@@ -10,6 +10,7 @@ use App\Models\ScormPackage;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -39,11 +40,16 @@ class ScormPlayerController extends Controller
     public function player(Request $request, Course $course, Module $module, ScormPackage $scormPackage): View
     {
         [$enrollment, $moduleProgress] = $this->resolveLearnerContext($request, $course, $module, $scormPackage);
+        $launchSco = app(\App\Services\ScormService::class)->resolveLaunchSco(
+            $scormPackage,
+            $request->query('sco')
+        );
 
         return view('scorm.player', [
             'course' => $course,
             'module' => $module,
             'package' => $scormPackage,
+            'launchSco' => $launchSco,
             'enrollment' => $enrollment,
             'moduleProgress' => $moduleProgress,
             'scormPlayerConfig' => [
@@ -52,7 +58,7 @@ class ScormPlayerController extends Controller
                     'course' => $course,
                     'module' => $module,
                     'scormPackage' => $scormPackage,
-                    'path' => $scormPackage->entry_point,
+                    'path' => $launchSco['entry_point'],
                 ]),
                 'runtime' => [
                     'initialize' => route('user.courses.modules.scorm.runtime.initialize', [$course, $module, $scormPackage]),
@@ -64,10 +70,13 @@ class ScormPlayerController extends Controller
                     'getErrorString' => route('user.courses.modules.scorm.runtime.get-error-string', [$course, $module, $scormPackage]),
                     'getDiagnostic' => route('user.courses.modules.scorm.runtime.get-diagnostic', [$course, $module, $scormPackage]),
                 ],
-                'defaultScoIdentifier' => data_get($scormPackage->sco_data, '0.identifier')
-                    ?? data_get($scormPackage->manifest_data, 'default_organization')
-                    ?? $scormPackage->identifier
-                    ?? 'default-sco',
+                'defaultScoIdentifier' => $launchSco['sco_identifier'],
+                'currentPlayerUrl' => route('user.courses.modules.scorm.player', [
+                    $course,
+                    $module,
+                    $scormPackage,
+                    'sco' => $launchSco['sco_identifier'],
+                ]),
                 'csrfToken' => csrf_token(),
             ],
         ]);
@@ -82,7 +91,7 @@ class ScormPlayerController extends Controller
         Module $module,
         ScormPackage $scormPackage,
         string $path,
-    ): BinaryFileResponse {
+    ): BinaryFileResponse|HttpResponse {
         $this->resolveLearnerContext($request, $course, $module, $scormPackage);
 
         $normalizedPath = $this->normalizeAssetPath($path);
@@ -91,8 +100,23 @@ class ScormPlayerController extends Controller
 
         abort_unless($disk->exists($storagePath), Response::HTTP_NOT_FOUND);
 
+        $mimeType = $disk->mimeType($storagePath) ?: 'application/octet-stream';
+
+        if ($this->isHtmlAsset($normalizedPath, $mimeType)) {
+            $contents = $disk->get($storagePath);
+
+            return response(
+                $this->injectScormBridge($contents),
+                Response::HTTP_OK,
+                [
+                    'Content-Type' => $mimeType,
+                    'Cache-Control' => 'private, max-age=60',
+                ],
+            );
+        }
+
         return response()->file($disk->path($storagePath), [
-            'Content-Type' => $disk->mimeType($storagePath) ?: 'application/octet-stream',
+            'Content-Type' => $mimeType,
             'Cache-Control' => 'private, max-age=60',
         ]);
     }
@@ -135,5 +159,84 @@ class ScormPlayerController extends Controller
         abort_if($normalizedPath === '' || Str::contains($normalizedPath, ['../', '..\\', "\0"]), Response::HTTP_NOT_FOUND);
 
         return $normalizedPath;
+    }
+
+    private function isHtmlAsset(string $path, string $mimeType): bool
+    {
+        return Str::endsWith(Str::lower($path), ['.html', '.htm', '.xhtml'])
+            || Str::contains(Str::lower($mimeType), ['text/html', 'application/xhtml']);
+    }
+
+    private function injectScormBridge(string $contents): string
+    {
+        $bridgeScript = <<<'HTML'
+<script>
+(function () {
+    if (!window.parent || window.parent === window) {
+        return;
+    }
+
+    var forward = function (name) {
+        return function () {
+            var fn = window.parent[name];
+
+            if (typeof fn !== 'function') {
+                return '';
+            }
+
+            return fn.apply(window.parent, arguments);
+        };
+    };
+
+    window.API = window.parent.API;
+    window.API_1484_11 = window.parent.API_1484_11;
+    window.LMSInitialize = forward('LMSInitialize');
+    window.LMSGetValue = forward('LMSGetValue');
+    window.LMSSetValue = forward('LMSSetValue');
+    window.LMSCommit = forward('LMSCommit');
+    window.LMSFinish = forward('LMSFinish');
+    window.LMSGetLastError = forward('LMSGetLastError');
+    window.LMSGetErrorString = forward('LMSGetErrorString');
+    window.LMSGetDiagnostic = forward('LMSGetDiagnostic');
+    window.Initialize = forward('Initialize');
+    window.GetValue = forward('GetValue');
+    window.SetValue = forward('SetValue');
+    window.Commit = forward('Commit');
+    window.Terminate = forward('Terminate');
+    window.GetLastError = forward('GetLastError');
+    window.GetErrorString = forward('GetErrorString');
+    window.GetDiagnostic = forward('GetDiagnostic');
+    window.ScormProcessInitialize = forward('ScormProcessInitialize');
+    window.ScormProcessGetValue = forward('ScormProcessGetValue');
+    window.ScormProcessSetValue = forward('ScormProcessSetValue');
+    window.ScormProcessCommit = forward('ScormProcessCommit');
+    window.ScormProcessFinish = forward('ScormProcessFinish');
+    window.ScormProcessTerminate = forward('ScormProcessTerminate');
+    window.ScormProcessGetLastError = forward('ScormProcessGetLastError');
+    window.ScormProcessGetErrorString = forward('ScormProcessGetErrorString');
+    window.ScormProcessGetDiagnostic = forward('ScormProcessGetDiagnostic');
+    window.doInitialize = forward('doInitialize');
+    window.doGetValue = forward('doGetValue');
+    window.doSetValue = forward('doSetValue');
+    window.doCommit = forward('doCommit');
+    window.doTerminate = forward('doTerminate');
+    window.GetAPI = function () { return window.API; };
+    window.GetAPI_1484_11 = function () { return window.API_1484_11; };
+    window.AddLicenseInfo = function () {
+        if (typeof window.parent.AddLicenseInfo === 'function') {
+            return window.parent.AddLicenseInfo.apply(window.parent, arguments);
+        }
+
+        return true;
+    };
+})();
+</script>
+HTML;
+
+        if (preg_match('/<head\b[^>]*>/i', $contents) === 1) {
+            return preg_replace('/<head\b[^>]*>/i', '$0'.$bridgeScript, $contents, 1) ?? $contents;
+        }
+
+        return $bridgeScript.$contents;
     }
 }

@@ -5,6 +5,7 @@ use App\Http\Controllers\ScormPlayerController;
 use App\Http\Controllers\ScormRuntimeController;
 use App\Http\Controllers\User\CourseController;
 use App\Http\Controllers\User\QuizModuleController;
+use App\Http\Controllers\User\ScormModulePackageController;
 use App\Http\Controllers\User\SatisfactionSurveyController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\User\VideoModuleController;
@@ -24,6 +25,7 @@ Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
         Route::delete('/live-stream/{module}/hand-raises/current', [LiveStreamController::class, 'destroyHandRaise'])->name('live-stream.hand-raises.destroy');
 
         Route::scopeBindings()->group(function () {
+            Route::get('/courses/{course}/modules/{module}/scorm/packages', [ScormModulePackageController::class, 'index'])->name('courses.modules.scorm.packages.index');
             Route::post('/courses/{course}/modules/{module}/scorm/{scormPackage}/launch', [ScormPlayerController::class, 'launch'])->name('courses.modules.scorm.launch');
             Route::get('/courses/{course}/modules/{module}/scorm/{scormPackage}/player', [ScormPlayerController::class, 'player'])->name('courses.modules.scorm.player');
             Route::get('/courses/{course}/modules/{module}/scorm/{scormPackage}/asset/{path}', [ScormPlayerController::class, 'asset'])

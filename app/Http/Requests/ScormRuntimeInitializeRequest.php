@@ -21,7 +21,7 @@ class ScormRuntimeInitializeRequest extends FormRequest
         return [
             'session_id' => ['required', 'string', 'max:120'],
             'sco_identifier' => ['required', 'string', 'max:255'],
-            'version' => ['required', 'string', Rule::in(['1.2', '2004'])],
+            'version' => ['required', 'string', Rule::in(['1.1', '1.2', '2004'])],
         ];
     }
 }
