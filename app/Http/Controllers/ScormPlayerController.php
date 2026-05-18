@@ -7,6 +7,7 @@ use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\ScormPackage;
+use App\Services\ScormService;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,8 +15,8 @@ use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ScormPlayerController extends Controller
 {
@@ -40,7 +41,7 @@ class ScormPlayerController extends Controller
     public function player(Request $request, Course $course, Module $module, ScormPackage $scormPackage): View
     {
         [$enrollment, $moduleProgress] = $this->resolveLearnerContext($request, $course, $module, $scormPackage);
-        $launchSco = app(\App\Services\ScormService::class)->resolveLaunchSco(
+        $launchSco = app(ScormService::class)->resolveLaunchSco(
             $scormPackage,
             $request->query('sco')
         );
@@ -91,7 +92,7 @@ class ScormPlayerController extends Controller
         Module $module,
         ScormPackage $scormPackage,
         string $path,
-    ): BinaryFileResponse|HttpResponse {
+    ): HttpResponse|StreamedResponse {
         $this->resolveLearnerContext($request, $course, $module, $scormPackage);
 
         $normalizedPath = $this->normalizeAssetPath($path);
@@ -103,21 +104,32 @@ class ScormPlayerController extends Controller
         $mimeType = $disk->mimeType($storagePath) ?: 'application/octet-stream';
 
         if ($this->isHtmlAsset($normalizedPath, $mimeType)) {
-            $contents = $disk->get($storagePath);
+            $contents = $this->injectScormBridge($disk->get($storagePath));
 
             return response(
-                $this->injectScormBridge($contents),
+                $contents,
                 Response::HTTP_OK,
                 [
                     'Content-Type' => $mimeType,
-                    'Cache-Control' => 'private, max-age=60',
+                    'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+                    'Pragma' => 'no-cache',
+                    'Expires' => '0',
                 ],
             );
         }
 
-        return response()->file($disk->path($storagePath), [
+        $stream = $disk->readStream($storagePath);
+
+        abort_unless(is_resource($stream), Response::HTTP_NOT_FOUND);
+
+        return response()->stream(function () use ($stream): void {
+            fpassthru($stream);
+            fclose($stream);
+        }, Response::HTTP_OK, [
             'Content-Type' => $mimeType,
-            'Cache-Control' => 'private, max-age=60',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
         ]);
     }
 
@@ -174,6 +186,40 @@ class ScormPlayerController extends Controller
 (function () {
     if (!window.parent || window.parent === window) {
         return;
+    }
+
+    if ('serviceWorker' in navigator) {
+        var serviceWorker = navigator.serviceWorker;
+
+        if (typeof serviceWorker.getRegistrations === 'function') {
+            serviceWorker.getRegistrations().then(function (registrations) {
+                registrations.forEach(function (registration) {
+                    registration.unregister();
+                });
+            }).catch(function () {});
+        } else if (typeof serviceWorker.getRegistration === 'function') {
+            serviceWorker.getRegistration().then(function (registration) {
+                if (registration) {
+                    registration.unregister();
+                }
+            }).catch(function () {});
+        }
+
+        if (typeof serviceWorker.register === 'function') {
+            try {
+                serviceWorker.register = function () {
+                    return Promise.resolve();
+                };
+            } catch (error) {}
+        }
+    }
+
+    if ('caches' in window && typeof window.caches.keys === 'function') {
+        window.caches.keys().then(function (keys) {
+            return Promise.all(keys.map(function (key) {
+                return window.caches.delete(key);
+            }));
+        }).catch(function () {});
     }
 
     var forward = function (name) {

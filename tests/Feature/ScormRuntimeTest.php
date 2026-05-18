@@ -304,6 +304,82 @@ it('launches the SCORM player for the enrolled learner', function () {
         ->assertSee('data-scorm-player-iframe', escape: false);
 });
 
+it('serves scorm json assets without truncating the payload', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+    $user = User::factory()->create();
+    $user->assignRole('user');
+    $this->actingAs($user);
+
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => 'scorm',
+        'title' => 'Modulo SCORM JSON',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $expectedJson = '{"items":[{"id":1,"title":"Intro"}],"meta":{"complete":true}}';
+
+    Storage::fake('local');
+
+    $package = app(ScormService::class)->storeUploadedPackage($module, scormZipUpload([
+        'imsmanifest.xml' => validScormManifest(),
+        'lesson/index.html' => '<html><body>SCORM lesson</body></html>',
+        'lesson/data.json' => $expectedJson,
+    ]));
+
+    CourseEnrollment::enroll($user, $course);
+
+    $response = $this->get(route('user.courses.modules.scorm.asset', [
+        $course,
+        $module,
+        $package,
+        'path' => 'lesson/data.json',
+    ]));
+
+    $response
+        ->assertOk()
+        ->assertHeader('Content-Type', 'application/json')
+        ->assertContent($expectedJson);
+});
+
+it('injects the scorm bridge into html assets without truncating the document', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+    $user = User::factory()->create();
+    $user->assignRole('user');
+    $this->actingAs($user);
+
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => 'scorm',
+        'title' => 'Modulo SCORM HTML',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $expectedHtml = '<html><head><title>SCORM</title></head><body><script>window.lesson={"complete":true};</script><div id="root"></div></body></html>';
+
+    Storage::fake('local');
+
+    $package = app(ScormService::class)->storeUploadedPackage($module, scormZipUpload([
+        'imsmanifest.xml' => validScormManifest(),
+        'lesson/index.html' => $expectedHtml,
+    ]));
+
+    CourseEnrollment::enroll($user, $course);
+
+    $response = $this->get(route('user.courses.modules.scorm.asset', [
+        $course,
+        $module,
+        $package,
+        'path' => 'lesson/index.html',
+    ]));
+
+    $response
+        ->assertOk()
+        ->assertSee('window.API = window.parent.API;', escape: false)
+        ->assertSee('<div id="root"></div></body></html>', escape: false)
+        ->assertSee('window.lesson={"complete":true};', escape: false);
+});
+
 it('blocks SCORM access for non enrolled users', function () {
     $this->seed(RoleAndPermissionSeeder::class);
     $user = User::factory()->create();
