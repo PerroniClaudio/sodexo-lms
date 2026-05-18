@@ -5,6 +5,7 @@ use App\Models\Course;
 use App\Models\CustomCertificate;
 use App\Models\DocumentConversionJob;
 use App\Models\User;
+use App\Services\CloudRunJobClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
@@ -159,6 +160,21 @@ it('creates a conversion job for a preview docx using fallback values when enrol
     Storage::fake('s3');
     actingAsRole('admin');
 
+    $this->mock(CloudRunJobClient::class, function ($mock): void {
+        $mock->shouldReceive('runDocumentConversionJob')
+            ->once()
+            ->withArgs(fn (DocumentConversionJob $job): bool => $job->exists
+                && $job->status === DocumentConversionJobStatus::PENDING
+                && $job->input_disk === 's3'
+                && str_starts_with($job->input_path, 'certificates/word/'))
+            ->andReturn([
+                'operation_name' => 'operations/docx-conversion-preview',
+                'payload' => [
+                    'name' => 'operations/docx-conversion-preview',
+                ],
+            ]);
+    });
+
     $course = Course::factory()->create([
         'title' => 'Corso sicurezza',
     ]);
@@ -195,11 +211,9 @@ it('creates a conversion job for a preview docx using fallback values when enrol
         'user_id' => $user->getKey(),
     ]);
 
-    $response
-        ->assertRedirect(route('admin.certificates.preview', $certificate))
-        ->assertSessionHas('status', 'Attestato di prova accodato con successo.');
-
     $job = DocumentConversionJob::query()->sole();
+
+    $response->assertRedirect(route('admin.certificates.preview-job', [$certificate, $job]));
 
     expect($job->status)->toBe(DocumentConversionJobStatus::PENDING)
         ->and($job->input_disk)->toBe('s3')
@@ -223,6 +237,47 @@ it('creates a conversion job for a preview docx using fallback values when enrol
         ->and($documentContent)->toContain('Mario')
         ->and($headerContent)->toContain('RSSMRA80A01H501Z')
         ->and($footerContent)->toContain(today()->format('d/m/Y'));
+});
+
+it('shows a monitoring page for pending preview jobs', function () {
+    actingAsRole('admin');
+
+    $certificate = CustomCertificate::factory()->create();
+    $job = DocumentConversionJob::query()->create([
+        'status' => DocumentConversionJobStatus::PENDING,
+        'input_disk' => 's3',
+        'input_path' => 'certificates/word/job-preview.docx',
+        'output_disk' => 's3',
+        'output_path' => 'certificates/word/job-preview.pdf',
+    ]);
+
+    $this->get(route('admin.certificates.preview-job', [$certificate, $job]))
+        ->assertOk()
+        ->assertSeeText('Stiamo preparando il tuo attestato')
+        ->assertSeeText('Richiesta inviata')
+        ->assertSeeText('Elaborazione')
+        ->assertSeeText('PDF pronto')
+        ->assertSee('window.location.reload()', escape: false);
+});
+
+it('allows admins to download a completed preview pdf', function () {
+    Storage::fake('s3');
+    actingAsRole('admin');
+
+    $certificate = CustomCertificate::factory()->create();
+    $job = DocumentConversionJob::query()->create([
+        'status' => DocumentConversionJobStatus::COMPLETED,
+        'input_disk' => 's3',
+        'input_path' => 'certificates/word/job-preview.docx',
+        'output_disk' => 's3',
+        'output_path' => 'certificates/word/job-preview.pdf',
+        'completed_at' => now(),
+    ]);
+
+    Storage::disk('s3')->put('certificates/word/job-preview.pdf', 'pdf-content');
+
+    $this->get(route('admin.certificates.preview-job-download', [$certificate, $job]))
+        ->assertDownload('job-preview.pdf');
 });
 
 it('shows the certificates menu item to admins', function () {

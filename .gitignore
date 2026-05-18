@@ -67,3 +67,4 @@ Makefile
 dev-setup.ps1
 DEVELOPMENT.md
 .env.local
+service-account.sh

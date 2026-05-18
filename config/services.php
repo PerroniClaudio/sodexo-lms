@@ -62,13 +62,28 @@ return [
         ],
     ],
 
+    'google' => [
+        'service_account_json_base64' => env('GCP_SERVICE_ACCOUNT_JSON_BASE64'),
+        'timeout' => [
+            'connect' => (int) env('GOOGLE_CONNECT_TIMEOUT', 5),
+            'request' => (int) env('GOOGLE_REQUEST_TIMEOUT', 30),
+        ],
+    ],
 
+    'cloud_run' => [
+        'project_id' => env('GCP_PROJECT_ID', 'labor-2023'),
+        'region' => env('GCP_REGION', 'europe-west8'),
+        'job' => env('CLOUD_RUN_JOB', 'sodexo-docx-worker'),
+        'timeout' => [
+            'connect' => (int) env('CLOUD_RUN_CONNECT_TIMEOUT', 5),
+            'request' => (int) env('CLOUD_RUN_REQUEST_TIMEOUT', 30),
+        ],
+    ],
 
     'google_document_ai' => [
         'project_id' => env('GOOGLE_DOCUMENT_AI_PROJECT_ID'),
         'location' => env('GOOGLE_DOCUMENT_AI_LOCATION', 'eu'),
         'processor_id' => env('GOOGLE_DOCUMENT_AI_PROCESSOR_ID'),
-        'credentials' => env('GOOGLE_DOCUMENT_AI_CREDENTIALS'),
         'access_token' => env('GOOGLE_DOCUMENT_AI_ACCESS_TOKEN'),
         'timeout' => [
             'connect' => (int) env('GOOGLE_DOCUMENT_AI_CONNECT_TIMEOUT', 5),

@@ -11,6 +11,7 @@ use App\Models\ModuleQuizSubmission;
 use App\Models\User;
 use App\Services\GoogleDocumentAiQuizService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
@@ -207,3 +208,49 @@ it('marks a submission as failed when QR binding is invalid', function () {
     expect($documentUpload->status)->toBe(ModuleQuizDocumentUpload::STATUS_FAILED);
     expect($documentUpload->error_message)->toContain('QR');
 });
+
+it('can authenticate document ai with the shared google service account credentials', function () {
+    config()->set('services.google_document_ai.access_token', null);
+    config()->set('services.google.service_account_json_base64', base64_encode(json_encode([
+        'client_email' => 'document-ai@example.iam.gserviceaccount.com',
+        'private_key' => processQuizSubmissionPrivateKey(),
+        'token_uri' => 'https://oauth2.googleapis.com/token',
+    ], JSON_THROW_ON_ERROR)));
+
+    [$course, $module, , $user, $documentUpload] = buildQuizSubmissionFixture();
+
+    Http::fake([
+        'https://oauth2.googleapis.com/token' => Http::response([
+            'access_token' => 'shared-service-account-token',
+            'expires_in' => 3600,
+            'token_type' => 'Bearer',
+        ]),
+        'https://eu-documentai.googleapis.com/*' => Http::response([
+            'document' => [
+                'entities' => [
+                    [
+                        'type' => 'submission_qr',
+                        'mentionText' => base64_encode($course->getKey().'*'.$module->getKey().'*'.$user->getKey()),
+                    ],
+                ],
+            ],
+        ]),
+    ]);
+
+    (new ProcessQuizSubmission($documentUpload))->handle(app(GoogleDocumentAiQuizService::class));
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://eu-documentai.googleapis.com/v1/projects/test-project/locations/eu/processors/processor-123:process'
+        && $request->hasHeader('Authorization', 'Bearer shared-service-account-token'));
+});
+
+function processQuizSubmissionPrivateKey(): string
+{
+    $key = openssl_pkey_new([
+        'private_key_bits' => 2048,
+        'private_key_type' => OPENSSL_KEYTYPE_RSA,
+    ]);
+
+    openssl_pkey_export($key, $privateKey);
+
+    return $privateKey;
+}

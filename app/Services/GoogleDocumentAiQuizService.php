@@ -7,7 +7,6 @@ use App\Models\ModuleQuizDocumentUpload;
 use App\Models\ModuleQuizSubmission;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -15,6 +14,10 @@ use RuntimeException;
 
 class GoogleDocumentAiQuizService
 {
+    public function __construct(
+        private readonly GoogleServiceAccountTokenProvider $tokenProvider
+    ) {}
+
     public function processDocumentUpload(ModuleQuizDocumentUpload $documentUpload): void
     {
         $documentUpload->loadMissing([
@@ -254,61 +257,7 @@ class GoogleDocumentAiQuizService
             return $configuredAccessToken;
         }
 
-        $credentialsPath = $this->requireValue(config('services.google_document_ai.credentials'), 'services.google_document_ai.credentials');
-
-        if (! is_file($credentialsPath)) {
-            throw new RuntimeException('Google Document AI credentials file not found.');
-        }
-
-        /** @var array<string, mixed> $credentials */
-        $credentials = json_decode((string) file_get_contents($credentialsPath), true, flags: JSON_THROW_ON_ERROR);
-        $clientEmail = (string) ($credentials['client_email'] ?? '');
-        $privateKey = (string) ($credentials['private_key'] ?? '');
-        $tokenUri = (string) ($credentials['token_uri'] ?? 'https://oauth2.googleapis.com/token');
-
-        if ($clientEmail === '' || $privateKey === '') {
-            throw new RuntimeException('Google Document AI credentials are incomplete.');
-        }
-
-        return Cache::remember('google-document-ai-access-token-'.md5($clientEmail), now()->addMinutes(45), function () use ($clientEmail, $privateKey, $tokenUri): string {
-            $issuedAt = now()->timestamp;
-            $expiresAt = $issuedAt + 3600;
-
-            $header = $this->base64UrlEncode(json_encode(['alg' => 'RS256', 'typ' => 'JWT'], JSON_THROW_ON_ERROR));
-            $payload = $this->base64UrlEncode(json_encode([
-                'iss' => $clientEmail,
-                'scope' => 'https://www.googleapis.com/auth/cloud-platform',
-                'aud' => $tokenUri,
-                'exp' => $expiresAt,
-                'iat' => $issuedAt,
-            ], JSON_THROW_ON_ERROR));
-
-            $signatureInput = $header.'.'.$payload;
-            openssl_sign($signatureInput, $signature, $privateKey, OPENSSL_ALGO_SHA256);
-
-            $assertion = $signatureInput.'.'.$this->base64UrlEncode($signature);
-
-            $response = Http::asForm()
-                ->post($tokenUri, [
-                    'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-                    'assertion' => $assertion,
-                ])
-                ->throw()
-                ->json();
-
-            $accessToken = (string) ($response['access_token'] ?? '');
-
-            if ($accessToken === '') {
-                throw new RuntimeException('Google OAuth token response is missing access_token.');
-            }
-
-            return $accessToken;
-        });
-    }
-
-    private function base64UrlEncode(string $value): string
-    {
-        return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+        return $this->tokenProvider->cloudPlatformAccessToken();
     }
 
     private function requireValue(?string $value, string $configKey): string
