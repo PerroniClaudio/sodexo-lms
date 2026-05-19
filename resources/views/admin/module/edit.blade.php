@@ -10,6 +10,7 @@
     <div
         class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8"
         data-module-edit-page
+        data-course-edit-page
         data-has-teacher-assignment-errors="{{ $hasTeacherAssignmentErrors ? 'true' : 'false' }}"
         data-has-tutor-assignment-errors="{{ $hasTutorAssignmentErrors ? 'true' : 'false' }}"
         data-has-attendance-confirmation-errors="{{ $hasAttendanceConfirmationErrors ? 'true' : 'false' }}"
@@ -52,6 +53,10 @@
             @include('admin.module.partials.live-tutors-card')
         @endif
 
+        @if ($appointmentControlledByClasses)
+            @include('admin.module.partials.classes-card')
+        @endif
+
         @if ($module->type === 'live')
             @include('admin.module.partials.live-attendance-card')
         @endif
@@ -75,5 +80,5 @@
         @include('admin.module.partials.module-enrollments-card')
     </div>
 
-    @vite('resources/js/pages/admin-module-edit.js')
+    @vite(['resources/js/pages/admin-module-edit.js', 'resources/js/pages/admin-course-edit.js'])
 </x-layouts.admin>

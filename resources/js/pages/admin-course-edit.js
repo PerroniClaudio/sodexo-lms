@@ -35,12 +35,15 @@ function initializeCourseClasses(courseEditPage) {
     const tableContainer = container.querySelector('[data-course-classes-table-container]');
     const tableLoader = container.querySelector('[data-course-classes-loader]');
     const rowTemplate = container.querySelector('[data-course-class-row-template]');
+    const scheduleTemplate = container.querySelector('[data-course-class-schedule-template]');
     const openClassModalButton = container.querySelector('[data-open-course-class-modal]');
     const classModal = container.querySelector('[data-course-class-modal]');
     const closeClassModalButton = container.querySelector('[data-close-course-class-modal]');
     const classForm = container.querySelector('[data-course-class-form]');
     const classModalTitle = container.querySelector('[data-course-class-modal-title]');
     const classFormError = container.querySelector('[data-course-class-form-error]');
+    const schedulesContainer = container.querySelector('[data-course-class-schedules]');
+    const addScheduleButton = container.querySelector('[data-add-course-class-schedule]');
     const peopleModal = container.querySelector('[data-course-class-people-modal]');
     const closePeopleModalButton = container.querySelector('[data-close-course-class-people-modal]');
     const peopleTitle = container.querySelector('[data-course-class-people-title]');
@@ -54,7 +57,7 @@ function initializeCourseClasses(courseEditPage) {
     const peopleConfirmRemovalButton = container.querySelector('[data-course-class-people-confirm-removal]');
     const peopleError = container.querySelector('[data-course-class-people-error]');
 
-    if (!indexUrl || !storeUrl || !tbody || !emptyState || !tableContainer || !tableLoader || !rowTemplate || !openClassModalButton || !classModal || !closeClassModalButton || !classForm || !classModalTitle || !classFormError || !peopleModal || !closePeopleModalButton || !peopleTitle || !peopleSubtitle || !peopleCount || !peopleSearch || !peopleSearchButton || !peopleResults || !peopleConfirmButton || !peopleAssigned || !peopleConfirmRemovalButton || !peopleError) {
+    if (!indexUrl || !storeUrl || !tbody || !emptyState || !tableContainer || !tableLoader || !rowTemplate || !scheduleTemplate || !openClassModalButton || !classModal || !closeClassModalButton || !classForm || !classModalTitle || !classFormError || !schedulesContainer || !addScheduleButton || !peopleModal || !closePeopleModalButton || !peopleTitle || !peopleSubtitle || !peopleCount || !peopleSearch || !peopleSearchButton || !peopleResults || !peopleConfirmButton || !peopleAssigned || !peopleConfirmRemovalButton || !peopleError) {
         return;
     }
 
@@ -164,9 +167,11 @@ function initializeCourseClasses(courseEditPage) {
         state.classes.forEach((courseClass) => {
             const row = rowTemplate.content.firstElementChild.cloneNode(true);
             row.dataset.classId = courseClass.id;
+            row.querySelector('[data-class-module]').textContent = courseClass.module_title || '-';
             row.querySelector('[data-class-name]').textContent = courseClass.name;
             row.querySelector('[data-class-starts]').textContent = courseClass.starts_at_label || '-';
             row.querySelector('[data-class-ends]').textContent = courseClass.ends_at_label || '-';
+            row.querySelector('[data-class-schedules-count]').textContent = courseClass.schedules_count || 0;
             row.querySelector('[data-class-users]').textContent = `${courseClass.users_count}/30`;
             row.querySelector('[data-class-teachers]').textContent = courseClass.teachers_count;
             row.querySelector('[data-edit-class]').addEventListener('click', () => openClassForm(courseClass));
@@ -177,14 +182,45 @@ function initializeCourseClasses(courseEditPage) {
         });
     };
 
+    const hydrateScheduleInputNames = () => {
+        schedulesContainer.querySelectorAll('[data-course-class-schedule-row]').forEach((row, index) => {
+            row.querySelector('[data-schedule-starts-date]').name = `schedules[${index}][starts_at_date]`;
+            row.querySelector('[data-schedule-starts-time]').name = `schedules[${index}][starts_at_time]`;
+            row.querySelector('[data-schedule-ends-date]').name = `schedules[${index}][ends_at_date]`;
+            row.querySelector('[data-schedule-ends-time]').name = `schedules[${index}][ends_at_time]`;
+        });
+    };
+
+    const appendScheduleRow = (schedule = null) => {
+        const row = scheduleTemplate.content.firstElementChild.cloneNode(true);
+        row.querySelector('[data-schedule-starts-date]').value = schedule?.starts_at_date || '';
+        row.querySelector('[data-schedule-starts-time]').value = schedule?.starts_at_time || '';
+        row.querySelector('[data-schedule-ends-date]').value = schedule?.ends_at_date || '';
+        row.querySelector('[data-schedule-ends-time]').value = schedule?.ends_at_time || '';
+        row.querySelector('[data-remove-course-class-schedule]').addEventListener('click', () => {
+            if (schedulesContainer.children.length <= 1) {
+                return;
+            }
+
+            row.remove();
+            hydrateScheduleInputNames();
+        });
+        schedulesContainer.appendChild(row);
+        hydrateScheduleInputNames();
+    };
+
     const openClassForm = (courseClass = null) => {
         state.editingClass = courseClass;
         classModalTitle.textContent = courseClass ? 'Modifica classe' : 'Nuova classe';
+        classForm.module_id.value = courseClass?.module_id || '';
         classForm.name.value = courseClass?.name || '';
-        classForm.starts_at_date.value = courseClass?.starts_at_date || '';
-        classForm.starts_at_time.value = courseClass?.starts_at_time || '';
-        classForm.ends_at_date.value = courseClass?.ends_at_date || '';
-        classForm.ends_at_time.value = courseClass?.ends_at_time || '';
+        schedulesContainer.innerHTML = '';
+        (courseClass?.schedules || []).forEach((schedule) => appendScheduleRow(schedule));
+
+        if (schedulesContainer.children.length === 0) {
+            appendScheduleRow();
+        }
+
         showError(classFormError, '');
         classModal.showModal();
     };
@@ -202,7 +238,17 @@ function initializeCourseClasses(courseEditPage) {
         event.preventDefault();
         showError(classFormError, '');
 
-        const payload = Object.fromEntries(new FormData(classForm).entries());
+        const formData = new FormData(classForm);
+        const payload = {
+            module_id: Number(formData.get('module_id')),
+            name: formData.get('name'),
+            schedules: Array.from(schedulesContainer.querySelectorAll('[data-course-class-schedule-row]')).map((row) => ({
+                starts_at_date: row.querySelector('[data-schedule-starts-date]').value,
+                starts_at_time: row.querySelector('[data-schedule-starts-time]').value,
+                ends_at_date: row.querySelector('[data-schedule-ends-date]').value,
+                ends_at_time: row.querySelector('[data-schedule-ends-time]').value,
+            })),
+        };
         const url = state.editingClass?.routes.update || storeUrl;
         const submitButton = classForm.querySelector('button[type="submit"]');
 
@@ -425,6 +471,7 @@ function initializeCourseClasses(courseEditPage) {
 
     openClassModalButton.addEventListener('click', () => openClassForm());
     closeClassModalButton.addEventListener('click', () => classModal.close());
+    addScheduleButton.addEventListener('click', () => appendScheduleRow());
     closePeopleModalButton.addEventListener('click', () => peopleModal.close());
     peopleModal.addEventListener('cancel', (event) => {
         event.preventDefault();

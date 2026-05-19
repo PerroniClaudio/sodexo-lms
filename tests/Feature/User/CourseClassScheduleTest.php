@@ -113,7 +113,13 @@ function liveCourseAndModule(string $startsAt, string $endsAt): array
 
 function assignUserToClass(Course $course, User $user, string $startsAt, string $endsAt): CourseClass
 {
-    $courseClass = CourseClass::factory()->forCourse($course)->create([
+    $module = Module::query()
+        ->where('belongsTo', (string) $course->getKey())
+        ->where('type', 'live')
+        ->firstOrFail();
+    $courseClass = CourseClass::factory()->forModule($module)->create();
+    $courseClass->schedules()->delete();
+    $courseClass->schedules()->create([
         'starts_at' => Carbon::parse($startsAt),
         'ends_at' => Carbon::parse($endsAt),
     ]);

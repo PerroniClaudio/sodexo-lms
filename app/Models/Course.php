@@ -127,11 +127,6 @@ class Course extends Model
         return $this->hasMany(CourseEnrollment::class);
     }
 
-    public function classes(): HasMany
-    {
-        return $this->hasMany(CourseClass::class);
-    }
-
     public function supportsClasses(): bool
     {
         return in_array($this->type, ['res', 'async'], true);

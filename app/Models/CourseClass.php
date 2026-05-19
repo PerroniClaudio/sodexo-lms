@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 class CourseClass extends Model
 {
@@ -19,23 +20,18 @@ class CourseClass extends Model
     public const MAX_USERS = 30;
 
     protected $fillable = [
-        'course_id',
+        'module_id',
         'name',
-        'starts_at',
-        'ends_at',
     ];
 
-    protected function casts(): array
+    public function module(): BelongsTo
     {
-        return [
-            'starts_at' => 'datetime',
-            'ends_at' => 'datetime',
-        ];
+        return $this->belongsTo(Module::class);
     }
 
-    public function course(): BelongsTo
+    public function schedules(): HasMany
     {
-        return $this->belongsTo(Course::class);
+        return $this->hasMany(CourseClassSchedule::class)->orderBy('starts_at');
     }
 
     public function userAssignments(): HasMany
@@ -86,13 +82,36 @@ class CourseClass extends Model
         return $this->remainingUserSlots() >= $additionalUsers;
     }
 
-    public function scheduledStartAt(): Carbon
+    public function scheduledStartAt(): ?Carbon
     {
-        return $this->starts_at;
+        return $this->resolvedSchedule()?->starts_at;
     }
 
-    public function scheduledEndAt(): Carbon
+    public function scheduledEndAt(): ?Carbon
     {
-        return $this->ends_at;
+        return $this->resolvedSchedule()?->ends_at;
+    }
+
+    public function resolvedSchedule(?Carbon $reference = null): ?CourseClassSchedule
+    {
+        $reference ??= now();
+        $schedules = $this->orderedSchedules();
+
+        return $schedules
+            ->first(fn (CourseClassSchedule $schedule): bool => $schedule->starts_at->lte($reference) && $schedule->ends_at->gt($reference))
+            ?? $schedules->first(fn (CourseClassSchedule $schedule): bool => $schedule->starts_at->gt($reference))
+            ?? $schedules->last();
+    }
+
+    /**
+     * @return Collection<int, CourseClassSchedule>
+     */
+    public function orderedSchedules(): Collection
+    {
+        $schedules = $this->relationLoaded('schedules')
+            ? $this->schedules
+            : $this->schedules()->get();
+
+        return $schedules->sortBy('starts_at')->values();
     }
 }

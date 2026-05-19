@@ -18,7 +18,7 @@ class DeleteCourseClassUsersRequest extends FormRequest
         return $course instanceof Course
             && $course->supportsClasses()
             && $courseClass instanceof CourseClass
-            && $courseClass->course_id === $course->getKey();
+            && (int) $courseClass->module?->belongsTo === (int) $course->getKey();
     }
 
     /**

@@ -16,7 +16,7 @@ class SyncCourseClassUsers
     public function handle(CourseClass $courseClass, array $userIds): void
     {
         DB::transaction(function () use ($courseClass, $userIds): void {
-            $courseClass->loadMissing('course');
+            $courseClass->loadMissing('module.course');
 
             User::query()
                 ->whereKey($userIds)
@@ -30,14 +30,20 @@ class SyncCourseClassUsers
 
     private function ensureCourseEnrollment(CourseClass $courseClass, User $user): void
     {
+        $course = $courseClass->module?->course;
+
+        if ($course === null) {
+            return;
+        }
+
         $existingEnrollment = CourseEnrollment::withTrashed()
-            ->where('course_id', $courseClass->course_id)
+            ->where('course_id', $course->getKey())
             ->where('user_id', $user->getKey())
             ->orderByDesc('id')
             ->first();
 
         if ($existingEnrollment === null) {
-            CourseEnrollment::enroll($user, $courseClass->course);
+            CourseEnrollment::enroll($user, $course);
 
             return;
         }

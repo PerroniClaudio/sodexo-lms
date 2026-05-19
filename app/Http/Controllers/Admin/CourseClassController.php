@@ -13,9 +13,11 @@ use App\Http\Requests\StoreCourseClassUsersRequest;
 use App\Http\Requests\UpdateCourseClassRequest;
 use App\Models\Course;
 use App\Models\CourseClass;
+use App\Models\CourseClassSchedule;
 use App\Models\CourseClassTeacher;
 use App\Models\CourseClassUser;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -26,13 +28,21 @@ class CourseClassController extends Controller
     {
         $this->abortUnlessCourseSupportsClasses($course);
 
-        $classes = $course->classes()
+        $classes = CourseClass::query()
             ->with([
+                'module',
+                'schedules',
                 'userAssignments.user' => fn ($query) => $query->select(['id', 'name', 'surname', 'email', 'fiscal_code']),
                 'teacherAssignments.user' => fn ($query) => $query->select(['id', 'name', 'surname', 'email', 'fiscal_code']),
             ])
-            ->orderBy('starts_at')
+            ->whereHas('module', fn ($query) => $query->where('belongsTo', (string) $course->getKey()))
             ->get()
+            ->sortBy(fn (CourseClass $courseClass): array => [
+                $courseClass->module?->order ?? PHP_INT_MAX,
+                $courseClass->scheduledStartAt()?->timestamp ?? PHP_INT_MAX,
+                $courseClass->getKey(),
+            ])
+            ->values()
             ->map(fn (CourseClass $courseClass): array => $this->classPayload($course, $courseClass));
 
         return response()->json(['data' => $classes]);
@@ -40,11 +50,11 @@ class CourseClassController extends Controller
 
     public function store(StoreCourseClassRequest $request, Course $course): JsonResponse
     {
-        $courseClass = $course->classes()->create([
+        $courseClass = CourseClass::query()->create([
+            'module_id' => $request->integer('module_id'),
             'name' => $request->validated('name'),
-            'starts_at' => $request->startsAt(),
-            'ends_at' => $request->endsAt(),
         ]);
+        $this->syncSchedules($courseClass, $request->schedules()->all());
 
         return response()->json([
             'data' => $this->classPayload($course, $courseClass->fresh()),
@@ -57,10 +67,10 @@ class CourseClassController extends Controller
         $this->abortUnlessClassBelongsToCourse($course, $courseClass);
 
         $courseClass->update([
+            'module_id' => $request->integer('module_id'),
             'name' => $request->validated('name'),
-            'starts_at' => $request->startsAt(),
-            'ends_at' => $request->endsAt(),
         ]);
+        $this->syncSchedules($courseClass, $request->schedules()->all());
 
         return response()->json([
             'data' => $this->classPayload($course, $courseClass->fresh()),
@@ -246,7 +256,7 @@ class CourseClassController extends Controller
     private function abortUnlessClassBelongsToCourse(Course $course, CourseClass $courseClass): void
     {
         $this->abortUnlessCourseSupportsClasses($course);
-        abort_unless($courseClass->course_id === $course->getKey(), Response::HTTP_NOT_FOUND);
+        abort_unless((int) $courseClass->module?->belongsTo === (int) $course->getKey(), Response::HTTP_NOT_FOUND);
     }
 
     private function abortUnlessCourseSupportsClasses(Course $course): void
@@ -257,23 +267,38 @@ class CourseClassController extends Controller
     private function classPayload(Course $course, CourseClass $courseClass): array
     {
         $courseClass->loadMissing([
+            'module',
+            'schedules',
             'userAssignments' => fn ($query) => $query->select(['id', 'course_class_id', 'user_id']),
             'userAssignments.user' => fn ($query) => $query->select(['id', 'name', 'surname', 'email', 'fiscal_code']),
             'teacherAssignments' => fn ($query) => $query->select(['id', 'course_class_id', 'user_id']),
             'teacherAssignments.user' => fn ($query) => $query->select(['id', 'name', 'surname', 'email', 'fiscal_code']),
         ]);
 
+        $resolvedSchedule = $courseClass->resolvedSchedule();
+        $schedules = $courseClass->orderedSchedules();
+
         return [
             'id' => $courseClass->getKey(),
+            'module_id' => $courseClass->module?->getKey(),
+            'module_title' => $courseClass->module?->title,
             'name' => $courseClass->name,
-            'starts_at' => $courseClass->starts_at?->toAtomString(),
-            'starts_at_label' => $courseClass->starts_at?->format('d/m/Y H:i'),
-            'starts_at_date' => $courseClass->starts_at?->format('Y-m-d'),
-            'starts_at_time' => $courseClass->starts_at?->format('H:i'),
-            'ends_at' => $courseClass->ends_at?->toAtomString(),
-            'ends_at_label' => $courseClass->ends_at?->format('d/m/Y H:i'),
-            'ends_at_date' => $courseClass->ends_at?->format('Y-m-d'),
-            'ends_at_time' => $courseClass->ends_at?->format('H:i'),
+            'starts_at' => $resolvedSchedule?->starts_at?->toAtomString(),
+            'starts_at_label' => $resolvedSchedule?->starts_at?->format('d/m/Y H:i'),
+            'ends_at' => $resolvedSchedule?->ends_at?->toAtomString(),
+            'ends_at_label' => $resolvedSchedule?->ends_at?->format('d/m/Y H:i'),
+            'schedules_count' => $schedules->count(),
+            'schedules' => $schedules->map(fn (CourseClassSchedule $schedule): array => [
+                'id' => $schedule->getKey(),
+                'starts_at' => $schedule->starts_at->toAtomString(),
+                'starts_at_label' => $schedule->starts_at->format('d/m/Y H:i'),
+                'starts_at_date' => $schedule->starts_at->format('Y-m-d'),
+                'starts_at_time' => $schedule->starts_at->format('H:i'),
+                'ends_at' => $schedule->ends_at->toAtomString(),
+                'ends_at_label' => $schedule->ends_at->format('d/m/Y H:i'),
+                'ends_at_date' => $schedule->ends_at->format('Y-m-d'),
+                'ends_at_time' => $schedule->ends_at->format('H:i'),
+            ])->values(),
             'users_count' => $courseClass->userAssignments->count(),
             'teachers_count' => $courseClass->teacherAssignments->count(),
             'remaining_user_slots' => $courseClass->remainingUserSlots(),
@@ -300,6 +325,23 @@ class CourseClassController extends Controller
                 'teachers_destroy_many' => route('admin.courses.classes.teachers.destroy-many', [$course, $courseClass]),
             ],
         ];
+    }
+
+    /**
+     * @param  array<int, array{starts_at: CarbonImmutable, ends_at: CarbonImmutable}>  $schedules
+     */
+    private function syncSchedules(CourseClass $courseClass, array $schedules): void
+    {
+        $courseClass->schedules()->delete();
+
+        $courseClass->schedules()->createMany(
+            collect($schedules)
+                ->map(fn (array $schedule): array => [
+                    'starts_at' => $schedule['starts_at'],
+                    'ends_at' => $schedule['ends_at'],
+                ])
+                ->all()
+        );
     }
 
     private function userPayload(?User $user): array

@@ -140,6 +140,11 @@ class Module extends Model
         return $this->hasMany(ModuleProgress::class);
     }
 
+    public function classes(): HasMany
+    {
+        return $this->hasMany(CourseClass::class);
+    }
+
     /**
      * Get the live stream sessions for the module.
      */

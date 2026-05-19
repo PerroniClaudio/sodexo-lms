@@ -10,6 +10,10 @@ use App\Http\Requests\ReorderCourseModulesRequest;
 use App\Http\Requests\StoreModuleRequest;
 use App\Http\Requests\UpdateModuleRequest;
 use App\Models\Course;
+use App\Models\CourseClass;
+use App\Models\CourseClassSchedule;
+use App\Models\CourseClassTeacher;
+use App\Models\CourseClassUser;
 use App\Models\Module;
 use App\Models\ModuleTeacherEnrollment;
 use App\Models\ModuleTutorEnrollment;
@@ -147,6 +151,7 @@ class CourseModuleController extends Controller
             'moduleProgressStatusLabels' => $this->moduleProgressStatusLabels(),
             'appointmentControlledByClasses' => $course->supportsClasses()
                 && in_array($module->type, [Module::TYPE_LIVE, Module::TYPE_RESIDENTIAL], true),
+            'courseClassPayloads' => $this->courseClassPayloads($course, $module),
             'recentQuizSubmissions' => $module->type === 'learning_quiz'
                 ? $module->quizSubmissions()
                     ->with(['user', 'uploadedBy'])
@@ -179,6 +184,74 @@ class CourseModuleController extends Controller
             'moduleValidator' => $this->moduleValidator,
             'videos' => $videos,
         ]);
+    }
+
+    private function courseClassPayloads(Course $course, Module $module)
+    {
+        return CourseClass::query()
+            ->with([
+                'module',
+                'schedules',
+                'userAssignments.user',
+                'teacherAssignments.user',
+            ])
+            ->where('module_id', $module->getKey())
+            ->get()
+            ->sortBy(fn (CourseClass $courseClass): array => [
+                $courseClass->scheduledStartAt()?->timestamp ?? PHP_INT_MAX,
+                $courseClass->getKey(),
+            ])
+            ->values()
+            ->map(function (CourseClass $courseClass) use ($course): array {
+                $resolvedSchedule = $courseClass->resolvedSchedule();
+                $schedules = $courseClass->orderedSchedules();
+
+                return [
+                    'id' => $courseClass->getKey(),
+                    'module_id' => $courseClass->module?->getKey(),
+                    'module_title' => $courseClass->module?->title,
+                    'name' => $courseClass->name,
+                    'starts_at_label' => $resolvedSchedule?->starts_at?->format('d/m/Y H:i'),
+                    'ends_at_label' => $resolvedSchedule?->ends_at?->format('d/m/Y H:i'),
+                    'schedules_count' => $schedules->count(),
+                    'schedules' => $schedules->map(fn (CourseClassSchedule $schedule): array => [
+                        'id' => $schedule->getKey(),
+                        'starts_at_label' => $schedule->starts_at->format('d/m/Y H:i'),
+                        'starts_at_date' => $schedule->starts_at->format('Y-m-d'),
+                        'starts_at_time' => $schedule->starts_at->format('H:i'),
+                        'ends_at_label' => $schedule->ends_at->format('d/m/Y H:i'),
+                        'ends_at_date' => $schedule->ends_at->format('Y-m-d'),
+                        'ends_at_time' => $schedule->ends_at->format('H:i'),
+                    ])->values(),
+                    'users_count' => $courseClass->userAssignments->count(),
+                    'teachers_count' => $courseClass->teacherAssignments->count(),
+                    'remaining_user_slots' => $courseClass->remainingUserSlots(),
+                    'users' => $courseClass->userAssignments->map(fn (CourseClassUser $assignment): array => [
+                        'assignment_id' => $assignment->getKey(),
+                        'delete_url' => route('admin.courses.classes.users.destroy', [$course, $courseClass, $assignment]),
+                        'id' => $assignment->user?->getKey(),
+                        'full_name' => $assignment->user?->full_name,
+                        'email' => $assignment->user?->email,
+                        'fiscal_code' => $assignment->user?->fiscal_code,
+                    ])->values(),
+                    'teachers' => $courseClass->teacherAssignments->map(fn (CourseClassTeacher $assignment): array => [
+                        'assignment_id' => $assignment->getKey(),
+                        'delete_url' => route('admin.courses.classes.teachers.destroy', [$course, $courseClass, $assignment]),
+                        'id' => $assignment->user?->getKey(),
+                        'full_name' => $assignment->user?->full_name,
+                        'email' => $assignment->user?->email,
+                        'fiscal_code' => $assignment->user?->fiscal_code,
+                    ])->values(),
+                    'routes' => [
+                        'update' => route('admin.courses.classes.update', [$course, $courseClass]),
+                        'delete' => route('admin.courses.classes.destroy', [$course, $courseClass]),
+                        'users_store' => route('admin.courses.classes.users.store', [$course, $courseClass]),
+                        'users_destroy_many' => route('admin.courses.classes.users.destroy-many', [$course, $courseClass]),
+                        'teachers_store' => route('admin.courses.classes.teachers.store', [$course, $courseClass]),
+                        'teachers_destroy_many' => route('admin.courses.classes.teachers.destroy-many', [$course, $courseClass]),
+                    ],
+                ];
+            });
     }
 
     public function assignTeachers(AssignModuleTeachersRequest $request, Course $course, Module $module): RedirectResponse

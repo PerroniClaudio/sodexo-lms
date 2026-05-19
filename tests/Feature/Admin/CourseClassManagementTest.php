@@ -17,57 +17,81 @@ beforeEach(function () {
     actingAsRole('admin');
 });
 
-it('shows the classes section only for supported courses', function (string $type, bool $visible) {
-    $course = Course::factory()->create(['type' => $type]);
+it('shows the classes section only for supported scheduled modules', function (string $courseType, string $moduleType, bool $visible) {
+    $course = Course::factory()->create(['type' => $courseType]);
+    $module = Module::factory()->create([
+        'type' => $moduleType,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
 
-    $response = $this->get(route('admin.courses.edit', $course));
+    $response = $this->get(route('admin.courses.modules.edit', [$course, $module]));
 
     $response->assertOk();
 
     if ($visible) {
         $response->assertSeeText('Nuova classe');
+    } else {
+        $response->assertDontSeeText('Nuova classe');
     }
 })->with([
-    'res' => ['res', true],
-    'async' => ['async', true],
-    'fad' => ['fad', false],
-    'blended' => ['blended', false],
-    'fsc' => ['fsc', false],
+    'res live' => ['res', 'live', true],
+    'res residential' => ['res', 'res', true],
+    'async live' => ['async', 'live', true],
+    'fad live' => ['fad', 'live', false],
+    'res video' => ['res', 'video', false],
 ]);
 
 it('creates a course class with valid dates', function () {
     $course = Course::factory()->res()->create();
+    $module = Module::factory()->create(['type' => 'res', 'belongsTo' => (string) $course->getKey()]);
 
-    $this->postJson(route('admin.courses.classes.store', $course), [
-        'name' => 'Classe A',
-        'starts_at_date' => '2026-06-01',
-        'starts_at_time' => '09:00',
-        'ends_at_date' => '2026-06-01',
-        'ends_at_time' => '13:00',
-    ])->assertCreated();
+    $this->postJson(route('admin.courses.classes.store', $course), classPayload($module))->assertCreated();
 
-    expect(CourseClass::query()->where('course_id', $course->getKey())->where('name', 'Classe A')->exists())->toBeTrue();
+    expect(CourseClass::query()->where('module_id', $module->getKey())->where('name', 'Classe A')->exists())->toBeTrue();
+});
+
+it('creates a class with multiple schedules', function () {
+    $course = Course::factory()->res()->create();
+    $module = Module::factory()->create(['type' => 'live', 'belongsTo' => (string) $course->getKey()]);
+
+    $this->postJson(route('admin.courses.classes.store', $course), classPayload($module, [
+        'schedules' => [
+            [
+                'starts_at_date' => '2026-06-01',
+                'starts_at_time' => '09:00',
+                'ends_at_date' => '2026-06-01',
+                'ends_at_time' => '11:00',
+            ],
+            [
+                'starts_at_date' => '2026-06-02',
+                'starts_at_time' => '14:00',
+                'ends_at_date' => '2026-06-02',
+                'ends_at_time' => '16:00',
+            ],
+        ],
+    ]))->assertCreated();
+
+    $courseClass = CourseClass::query()->where('module_id', $module->getKey())->firstOrFail();
+
+    expect($courseClass->schedules()->count())->toBe(2);
 });
 
 it('rejects invalid class date ranges and unsupported courses', function () {
     $course = Course::factory()->res()->create();
     $unsupportedCourse = Course::factory()->create(['type' => 'fad']);
+    $module = Module::factory()->create(['type' => 'res', 'belongsTo' => (string) $course->getKey()]);
+    $unsupportedModule = Module::factory()->create(['type' => 'res', 'belongsTo' => (string) $unsupportedCourse->getKey()]);
 
-    $this->postJson(route('admin.courses.classes.store', $course), [
-        'name' => 'Classe A',
-        'starts_at_date' => '2026-06-01',
-        'starts_at_time' => '13:00',
-        'ends_at_date' => '2026-06-01',
-        'ends_at_time' => '09:00',
-    ])->assertUnprocessable();
+    $this->postJson(route('admin.courses.classes.store', $course), classPayload($module, [
+        'schedules' => [[
+            'starts_at_date' => '2026-06-01',
+            'starts_at_time' => '13:00',
+            'ends_at_date' => '2026-06-01',
+            'ends_at_time' => '09:00',
+        ]],
+    ]))->assertUnprocessable();
 
-    $this->postJson(route('admin.courses.classes.store', $unsupportedCourse), [
-        'name' => 'Classe A',
-        'starts_at_date' => '2026-06-01',
-        'starts_at_time' => '09:00',
-        'ends_at_date' => '2026-06-01',
-        'ends_at_time' => '13:00',
-    ])->assertForbidden();
+    $this->postJson(route('admin.courses.classes.store', $unsupportedCourse), classPayload($unsupportedModule))->assertForbidden();
 });
 
 it('assigns standard users and auto enrolls them into the course', function () {
@@ -169,11 +193,10 @@ it('searches class users with prefix matching and ignores too short terms', func
 
 it('assigns teachers and syncs them to live and res modules only', function () {
     $course = Course::factory()->res()->create();
-    $courseClass = CourseClass::factory()->forCourse($course)->create();
     $teacher = createClassTeacher();
     $liveModule = Module::factory()->create(['type' => 'live', 'belongsTo' => (string) $course->getKey()]);
-    $resModule = Module::factory()->create(['type' => 'res', 'belongsTo' => (string) $course->getKey()]);
     $videoModule = Module::factory()->create(['type' => 'video', 'belongsTo' => (string) $course->getKey()]);
+    $courseClass = CourseClass::factory()->forModule($liveModule)->create();
 
     $this->postJson(route('admin.courses.classes.teachers.store', [$course, $courseClass]), [
         'teacher_ids' => [$teacher->getKey()],
@@ -181,7 +204,6 @@ it('assigns teachers and syncs them to live and res modules only', function () {
 
     expect(CourseClassTeacher::query()->where('course_class_id', $courseClass->getKey())->where('user_id', $teacher->getKey())->exists())->toBeTrue()
         ->and(ModuleTeacherEnrollment::query()->where('module_id', $liveModule->getKey())->where('user_id', $teacher->getKey())->exists())->toBeTrue()
-        ->and(ModuleTeacherEnrollment::query()->where('module_id', $resModule->getKey())->where('user_id', $teacher->getKey())->exists())->toBeTrue()
         ->and(ModuleTeacherEnrollment::query()->where('module_id', $videoModule->getKey())->where('user_id', $teacher->getKey())->exists())->toBeFalse();
 });
 
@@ -264,4 +286,18 @@ function createClassTeacher(): User
     $user->assignRole('teacher');
 
     return $user;
+}
+
+function classPayload(Module $module, array $overrides = []): array
+{
+    return array_replace_recursive([
+        'module_id' => $module->getKey(),
+        'name' => 'Classe A',
+        'schedules' => [[
+            'starts_at_date' => '2026-06-01',
+            'starts_at_time' => '09:00',
+            'ends_at_date' => '2026-06-01',
+            'ends_at_time' => '13:00',
+        ]],
+    ], $overrides);
 }

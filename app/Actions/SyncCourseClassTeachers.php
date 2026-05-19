@@ -17,7 +17,7 @@ class SyncCourseClassTeachers
     public function handle(CourseClass $courseClass, array $teacherIds): void
     {
         DB::transaction(function () use ($courseClass, $teacherIds): void {
-            $courseClass->loadMissing('course');
+            $courseClass->loadMissing('module');
 
             User::query()
                 ->whereKey($teacherIds)
@@ -54,30 +54,30 @@ class SyncCourseClassTeachers
 
     private function ensureModuleAssignments(CourseClass $courseClass, User $teacher): void
     {
-        $courseClass->course
-            ->modules()
-            ->whereIn('type', [Module::TYPE_LIVE, Module::TYPE_RESIDENTIAL])
-            ->get()
-            ->each(function (Module $module) use ($teacher): void {
-                $assignment = ModuleTeacherEnrollment::withTrashed()
-                    ->where('module_id', $module->getKey())
-                    ->where('user_id', $teacher->getKey())
-                    ->first();
+        $module = $courseClass->module;
 
-                if ($assignment === null) {
-                    ModuleTeacherEnrollment::query()->create([
-                        'module_id' => $module->getKey(),
-                        'user_id' => $teacher->getKey(),
-                        'assigned_at' => now(),
-                    ]);
+        if (! $module instanceof Module || ! in_array($module->type, [Module::TYPE_LIVE, Module::TYPE_RESIDENTIAL], true)) {
+            return;
+        }
 
-                    return;
-                }
+        $assignment = ModuleTeacherEnrollment::withTrashed()
+            ->where('module_id', $module->getKey())
+            ->where('user_id', $teacher->getKey())
+            ->first();
 
-                if ($assignment->trashed()) {
-                    $assignment->restore();
-                    $assignment->forceFill(['assigned_at' => now()])->save();
-                }
-            });
+        if ($assignment === null) {
+            ModuleTeacherEnrollment::query()->create([
+                'module_id' => $module->getKey(),
+                'user_id' => $teacher->getKey(),
+                'assigned_at' => now(),
+            ]);
+
+            return;
+        }
+
+        if ($assignment->trashed()) {
+            $assignment->restore();
+            $assignment->forceFill(['assigned_at' => now()])->save();
+        }
     }
 }

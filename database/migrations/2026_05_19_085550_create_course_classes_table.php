@@ -17,15 +17,22 @@ return new class extends Migration
 
         Schema::create('course_classes', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('course_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('module_id')->constrained()->cascadeOnDelete();
             $table->string('name');
-            $table->timestamp('starts_at');
-            $table->timestamp('ends_at');
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(['course_id', 'starts_at']);
-            $table->index(['course_id', 'deleted_at']);
+            $table->index(['module_id', 'deleted_at']);
+        });
+
+        Schema::create('course_class_schedules', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('course_class_id')->constrained()->cascadeOnDelete();
+            $table->timestamp('starts_at');
+            $table->timestamp('ends_at');
+            $table->timestamps();
+
+            $table->index(['course_class_id', 'starts_at']);
         });
     }
 
@@ -34,6 +41,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('course_class_schedules');
         Schema::dropIfExists('course_classes');
     }
 };

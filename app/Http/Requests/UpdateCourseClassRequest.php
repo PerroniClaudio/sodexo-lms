@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Course;
+use App\Models\Module;
 
 class UpdateCourseClassRequest extends StoreCourseClassRequest
 {
@@ -10,9 +11,11 @@ class UpdateCourseClassRequest extends StoreCourseClassRequest
     {
         $course = $this->course();
         $courseClass = $this->route('courseClass');
+        $module = $courseClass?->module;
 
         return $course instanceof Course
             && $course->supportsClasses()
-            && $courseClass?->course_id === $course->getKey();
+            && $module instanceof Module
+            && (int) $module->belongsTo === (int) $course->getKey();
     }
 }

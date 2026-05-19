@@ -4,6 +4,8 @@ namespace Database\Factories;
 
 use App\Models\Course;
 use App\Models\CourseClass;
+use App\Models\CourseClassSchedule;
+use App\Models\Module;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -19,17 +21,41 @@ class CourseClassFactory extends Factory
     public function definition(): array
     {
         return [
-            'course_id' => Course::factory()->res(),
+            'module_id' => Module::factory()->state([
+                'type' => Module::TYPE_RESIDENTIAL,
+                'belongsTo' => Course::factory()->res(),
+            ]),
             'name' => fake()->words(3, true),
-            'starts_at' => now()->addWeek(),
-            'ends_at' => now()->addWeek()->addHours(2),
         ];
+    }
+
+    public function configure(): static
+    {
+        return $this->afterCreating(function (CourseClass $courseClass): void {
+            if ($courseClass->schedules()->exists()) {
+                return;
+            }
+
+            CourseClassSchedule::factory()
+                ->forCourseClass($courseClass)
+                ->create();
+        });
+    }
+
+    public function forModule(Module $module): static
+    {
+        return $this->state(fn (): array => [
+            'module_id' => $module->getKey(),
+        ]);
     }
 
     public function forCourse(Course $course): static
     {
-        return $this->state(fn (array $attributes): array => [
-            'course_id' => $course->getKey(),
+        return $this->state(fn (): array => [
+            'module_id' => Module::factory()->state([
+                'type' => Module::TYPE_RESIDENTIAL,
+                'belongsTo' => (string) $course->getKey(),
+            ]),
         ]);
     }
 }
