@@ -12,8 +12,433 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeDeleteModuleDialogs(courseEditPage);
     initializeModuleSorting(courseEditPage);
     initializeSatisfactionSurveyFields(courseEditPage);
+    initializeCourseClasses(courseEditPage);
     initializeEnrollmentsTable(courseEditPage);
 });
+
+function initializeCourseClasses(courseEditPage) {
+    const container = courseEditPage.querySelector('[data-course-classes]');
+
+    if (!container) {
+        return;
+    }
+
+    const indexUrl = container.dataset.classesIndexUrl;
+    const storeUrl = container.dataset.classesStoreUrl;
+    const searchUsersUrl = container.dataset.classesSearchUsersUrl;
+    const searchTeachersUrl = container.dataset.classesSearchTeachersUrl;
+    const initialScript = container.querySelector('[data-course-classes-initial]');
+    const tbody = container.querySelector('[data-course-classes-tbody]');
+    const emptyState = container.querySelector('[data-course-classes-empty]');
+    const tableContainer = container.querySelector('[data-course-classes-table-container]');
+    const tableLoader = container.querySelector('[data-course-classes-loader]');
+    const rowTemplate = container.querySelector('[data-course-class-row-template]');
+    const openClassModalButton = container.querySelector('[data-open-course-class-modal]');
+    const classModal = container.querySelector('[data-course-class-modal]');
+    const closeClassModalButton = container.querySelector('[data-close-course-class-modal]');
+    const classForm = container.querySelector('[data-course-class-form]');
+    const classModalTitle = container.querySelector('[data-course-class-modal-title]');
+    const classFormError = container.querySelector('[data-course-class-form-error]');
+    const peopleModal = container.querySelector('[data-course-class-people-modal]');
+    const closePeopleModalButton = container.querySelector('[data-close-course-class-people-modal]');
+    const peopleTitle = container.querySelector('[data-course-class-people-title]');
+    const peopleSubtitle = container.querySelector('[data-course-class-people-subtitle]');
+    const peopleCount = container.querySelector('[data-course-class-people-count]');
+    const peopleSearch = container.querySelector('[data-course-class-people-search]');
+    const peopleSearchButton = container.querySelector('[data-course-class-people-search-button]');
+    const peopleResults = container.querySelector('[data-course-class-people-results]');
+    const peopleConfirmButton = container.querySelector('[data-course-class-people-confirm]');
+    const peopleAssigned = container.querySelector('[data-course-class-people-assigned]');
+    const peopleConfirmRemovalButton = container.querySelector('[data-course-class-people-confirm-removal]');
+    const peopleError = container.querySelector('[data-course-class-people-error]');
+
+    if (!indexUrl || !storeUrl || !tbody || !emptyState || !tableContainer || !tableLoader || !rowTemplate || !openClassModalButton || !classModal || !closeClassModalButton || !classForm || !classModalTitle || !classFormError || !peopleModal || !closePeopleModalButton || !peopleTitle || !peopleSubtitle || !peopleCount || !peopleSearch || !peopleSearchButton || !peopleResults || !peopleConfirmButton || !peopleAssigned || !peopleConfirmRemovalButton || !peopleError) {
+        return;
+    }
+
+    const state = {
+        classes: initialScript ? JSON.parse(initialScript.textContent || '[]') : [],
+        editingClass: null,
+        peopleMode: null,
+        peopleClass: null,
+        peopleResultsData: [],
+        pendingPeople: [],
+        pendingRemovals: [],
+        peopleSearching: false,
+        peopleMutating: false,
+        reloadingClasses: false,
+    };
+
+    const showError = (element, message) => {
+        element.textContent = message || '';
+        element.classList.toggle('hidden', !message);
+    };
+    const escapeHtml = (value) => String(value || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+
+    const getClassById = (classId) => state.classes.find((courseClass) => Number(courseClass.id) === Number(classId));
+
+    const replaceClass = (updatedClass) => {
+        state.classes = state.classes.map((courseClass) => {
+            if (Number(courseClass.id) === Number(updatedClass.id)) {
+                return updatedClass;
+            }
+
+            return courseClass;
+        });
+
+        renderClasses();
+        state.peopleClass = getClassById(updatedClass.id) || updatedClass;
+    };
+
+    const updatePeopleActionButtons = () => {
+        const addCount = state.pendingPeople.length;
+        const removeCount = state.pendingRemovals.length;
+
+        peopleConfirmButton.disabled = state.peopleSearching || state.peopleMutating || addCount === 0;
+        peopleConfirmRemovalButton.disabled = state.peopleSearching || state.peopleMutating || removeCount === 0;
+        peopleConfirmButton.textContent = addCount > 0
+            ? `Conferma selezione (${addCount})`
+            : 'Conferma selezione';
+        peopleConfirmRemovalButton.textContent = removeCount > 0
+            ? `Conferma rimozione (${removeCount})`
+            : 'Conferma rimozione';
+    };
+
+    const isUserMode = () => state.peopleMode === 'users';
+
+    const getAssignedPeople = () => (isUserMode() ? (state.peopleClass?.users || []) : (state.peopleClass?.teachers || []));
+
+    const getPendingIds = () => new Set(state.pendingPeople.map((person) => Number(person.id)));
+
+    const getPendingRemovalIds = () => new Set(state.pendingRemovals.map((person) => Number(person.assignment_id)));
+
+    const getEffectiveAssignedCount = () => {
+        if (!isUserMode()) {
+            return getAssignedPeople().length - state.pendingRemovals.length;
+        }
+
+        return Number(state.peopleClass?.users_count || 0) + state.pendingPeople.length - state.pendingRemovals.length;
+    };
+
+    const syncPeopleLoadingState = () => {
+        const loading = state.peopleSearching || state.peopleMutating;
+
+        peopleSearch.disabled = loading;
+        peopleSearchButton.disabled = loading;
+        peopleResults.classList.toggle('pointer-events-none', loading);
+        peopleResults.classList.toggle('opacity-70', loading);
+        peopleAssigned.classList.toggle('pointer-events-none', loading);
+        peopleAssigned.classList.toggle('opacity-70', loading);
+        updatePeopleActionButtons();
+    };
+
+    const syncClassesLoadingState = () => {
+        tableContainer.classList.toggle('pointer-events-none', state.reloadingClasses);
+        tableContainer.classList.toggle('opacity-70', state.reloadingClasses);
+        tableLoader.classList.toggle('hidden', !state.reloadingClasses);
+        tableLoader.classList.toggle('flex', state.reloadingClasses);
+    };
+
+    const refreshClasses = async () => {
+        state.reloadingClasses = true;
+        syncClassesLoadingState();
+
+        try {
+            const response = await window.axios.get(indexUrl, { headers: { Accept: 'application/json' } });
+            state.classes = response.data.data || [];
+            renderClasses();
+        } finally {
+            state.reloadingClasses = false;
+            syncClassesLoadingState();
+        }
+    };
+
+    const renderClasses = () => {
+        tbody.innerHTML = '';
+        emptyState.classList.toggle('hidden', state.classes.length > 0);
+
+        state.classes.forEach((courseClass) => {
+            const row = rowTemplate.content.firstElementChild.cloneNode(true);
+            row.dataset.classId = courseClass.id;
+            row.querySelector('[data-class-name]').textContent = courseClass.name;
+            row.querySelector('[data-class-starts]').textContent = courseClass.starts_at_label || '-';
+            row.querySelector('[data-class-ends]').textContent = courseClass.ends_at_label || '-';
+            row.querySelector('[data-class-users]').textContent = `${courseClass.users_count}/30`;
+            row.querySelector('[data-class-teachers]').textContent = courseClass.teachers_count;
+            row.querySelector('[data-edit-class]').addEventListener('click', () => openClassForm(courseClass));
+            row.querySelector('[data-manage-class-users]').addEventListener('click', () => openPeopleModal(courseClass, 'users'));
+            row.querySelector('[data-manage-class-teachers]').addEventListener('click', () => openPeopleModal(courseClass, 'teachers'));
+            row.querySelector('[data-delete-class]').addEventListener('click', () => deleteClass(courseClass));
+            tbody.appendChild(row);
+        });
+    };
+
+    const openClassForm = (courseClass = null) => {
+        state.editingClass = courseClass;
+        classModalTitle.textContent = courseClass ? 'Modifica classe' : 'Nuova classe';
+        classForm.name.value = courseClass?.name || '';
+        classForm.starts_at_date.value = courseClass?.starts_at_date || '';
+        classForm.starts_at_time.value = courseClass?.starts_at_time || '';
+        classForm.ends_at_date.value = courseClass?.ends_at_date || '';
+        classForm.ends_at_time.value = courseClass?.ends_at_time || '';
+        showError(classFormError, '');
+        classModal.showModal();
+    };
+
+    const deleteClass = async (courseClass) => {
+        if (!window.confirm(`Eliminare la classe "${courseClass.name}"?`)) {
+            return;
+        }
+
+        await window.axios.delete(courseClass.routes.delete, { headers: { Accept: 'application/json' } });
+        await refreshClasses();
+    };
+
+    const submitClassForm = async (event) => {
+        event.preventDefault();
+        showError(classFormError, '');
+
+        const payload = Object.fromEntries(new FormData(classForm).entries());
+        const url = state.editingClass?.routes.update || storeUrl;
+
+        try {
+            if (state.editingClass) {
+                await window.axios.put(url, payload, { headers: { Accept: 'application/json' } });
+            } else {
+                await window.axios.post(url, payload, { headers: { Accept: 'application/json' } });
+            }
+
+            classModal.close();
+            await refreshClasses();
+        } catch (error) {
+            showError(classFormError, error.response?.data?.message || 'Errore durante il salvataggio della classe.');
+        }
+    };
+
+    const openPeopleModal = (courseClass, mode) => {
+        state.peopleClass = courseClass;
+        state.peopleMode = mode;
+        state.peopleResultsData = [];
+        state.pendingPeople = [];
+        state.pendingRemovals = [];
+        peopleSearch.value = '';
+        peopleResults.innerHTML = '';
+        showError(peopleError, '');
+        renderAssignedPeople();
+        peopleTitle.textContent = mode === 'users' ? `Utenti - ${courseClass.name}` : `Docenti - ${courseClass.name}`;
+        peopleSubtitle.textContent = mode === 'users'
+            ? 'Aggiungi utenti standard alla classe. Il limite massimo è 30 utenti.'
+            : 'Aggiungi docenti alla classe. Non è previsto un limite numerico.';
+        syncPeopleLoadingState();
+        peopleModal.showModal();
+    };
+
+    const renderAssignedPeople = () => {
+        const courseClass = state.peopleClass;
+        const mode = state.peopleMode;
+        const assigned = mode === 'users' ? (courseClass?.users || []) : (courseClass?.teachers || []);
+        peopleAssigned.innerHTML = '';
+        peopleCount.textContent = mode === 'users' ? `${assigned.length}/30` : assigned.length;
+
+        if (assigned.length === 0) {
+            peopleAssigned.innerHTML = '<tr><td class="text-sm text-base-content/60">Nessuna assegnazione presente.</td></tr>';
+            return;
+        }
+
+        assigned.forEach((person) => {
+            const isPendingRemoval = state.pendingRemovals.some((pendingPerson) => Number(pendingPerson.assignment_id) === Number(person.assignment_id));
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <div class="font-medium">${escapeHtml(person.full_name || '-')}</div>
+                    <div class="text-xs text-base-content/60">${escapeHtml(person.email || '')}</div>
+                </td>
+                <td class="text-right"><button type="button" class="btn btn-accent btn-sm" ${state.peopleMutating ? 'disabled' : ''}>${isPendingRemoval ? 'Da rimuovere' : 'Seleziona'}</button></td>
+            `;
+            row.querySelector('button').addEventListener('click', () => togglePendingRemoval(person));
+            peopleAssigned.appendChild(row);
+        });
+    };
+
+    const togglePendingPerson = (person) => {
+        const personId = Number(person.id);
+        const isPending = state.pendingPeople.some((pendingPerson) => Number(pendingPerson.id) === personId);
+
+        if (isPending) {
+            state.pendingPeople = state.pendingPeople.filter((pendingPerson) => Number(pendingPerson.id) !== personId);
+        } else {
+            state.pendingPeople = [...state.pendingPeople, person];
+        }
+
+        updatePeopleActionButtons();
+        renderPeopleResults(state.peopleResultsData);
+    };
+
+    const togglePendingRemoval = (person) => {
+        const assignmentId = Number(person.assignment_id);
+        const isPending = state.pendingRemovals.some((pendingPerson) => Number(pendingPerson.assignment_id) === assignmentId);
+
+        if (isPending) {
+            state.pendingRemovals = state.pendingRemovals.filter((pendingPerson) => Number(pendingPerson.assignment_id) !== assignmentId);
+        } else {
+            state.pendingRemovals = [...state.pendingRemovals, person];
+        }
+
+        renderAssignedPeople();
+        updatePeopleActionButtons();
+        renderPeopleResults(state.peopleResultsData);
+    };
+
+    const searchPeople = async () => {
+        const mode = state.peopleMode;
+        const url = mode === 'users' ? searchUsersUrl : searchTeachersUrl;
+
+        if (!url) {
+            return;
+        }
+
+        state.peopleSearching = true;
+        syncPeopleLoadingState();
+
+        try {
+            const response = await window.axios.get(url, {
+                params: { search: peopleSearch.value.trim() },
+                headers: { Accept: 'application/json' },
+            });
+
+            state.peopleResultsData = response.data.data || [];
+            renderPeopleResults(state.peopleResultsData);
+        } catch (error) {
+            state.peopleResultsData = [];
+            renderPeopleResults(state.peopleResultsData);
+            showError(peopleError, error.response?.data?.message || 'Errore durante la ricerca utenti.');
+        } finally {
+            state.peopleSearching = false;
+            syncPeopleLoadingState();
+        }
+    };
+
+    const renderPeopleResults = (people) => {
+        peopleResults.innerHTML = '';
+
+        if (people.length === 0) {
+            peopleResults.innerHTML = '<tr><td class="text-sm text-base-content/60">Nessun risultato.</td></tr>';
+            return;
+        }
+
+        const assignedIds = new Set(getAssignedPeople().map((person) => Number(person.id)));
+        const pendingIds = getPendingIds();
+        const pendingRemovalIds = getPendingRemovalIds();
+        const isAtCapacity = isUserMode() && getEffectiveAssignedCount() >= 30;
+
+        people.forEach((person) => {
+            const alreadyAssigned = assignedIds.has(Number(person.id)) && !pendingRemovalIds.has(Number(person.assignment_id));
+            const isPending = pendingIds.has(Number(person.id));
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <div class="font-medium">${escapeHtml(person.full_name || '-')}</div>
+                    <div class="text-xs text-base-content/60">${escapeHtml(person.email || '')}</div>
+                </td>
+                <td class="text-right"><button type="button" class="btn btn-primary btn-sm" ${alreadyAssigned || (!isPending && isAtCapacity) || state.peopleMutating ? 'disabled' : ''}>${isPending ? 'Selezionato' : 'Seleziona'}</button></td>
+            `;
+            row.querySelector('button').addEventListener('click', () => togglePendingPerson(person));
+            peopleResults.appendChild(row);
+        });
+    };
+
+    const confirmPendingPeople = async () => {
+        if (state.pendingPeople.length === 0) {
+            return;
+        }
+
+        showError(peopleError, '');
+        const mode = state.peopleMode;
+        const payload = mode === 'users'
+            ? { user_ids: state.pendingPeople.map((person) => Number(person.id)) }
+            : { teacher_ids: state.pendingPeople.map((person) => Number(person.id)) };
+        const url = mode === 'users' ? state.peopleClass.routes.users_store : state.peopleClass.routes.teachers_store;
+
+        try {
+            state.peopleMutating = true;
+            syncPeopleLoadingState();
+
+            const response = await window.axios.post(url, payload, { headers: { Accept: 'application/json' } });
+
+            replaceClass(response.data.data);
+            state.pendingPeople = [];
+            renderAssignedPeople();
+            updatePeopleActionButtons();
+            renderPeopleResults(state.peopleResultsData);
+            peopleModal.close();
+        } catch (error) {
+            showError(peopleError, error.response?.data?.message || 'Errore durante l\'assegnazione.');
+        } finally {
+            state.peopleMutating = false;
+            syncPeopleLoadingState();
+        }
+    };
+
+    const confirmPendingRemovals = async () => {
+        if (state.pendingRemovals.length === 0) {
+            return;
+        }
+
+        showError(peopleError, '');
+        const url = isUserMode() ? state.peopleClass.routes.users_destroy_many : state.peopleClass.routes.teachers_destroy_many;
+
+        try {
+            state.peopleMutating = true;
+            syncPeopleLoadingState();
+
+            const response = await window.axios.delete(url, {
+                data: { assignment_ids: state.pendingRemovals.map((person) => Number(person.assignment_id)) },
+                headers: { Accept: 'application/json' },
+            });
+
+            replaceClass(response.data.data);
+            state.pendingRemovals = [];
+            renderAssignedPeople();
+            updatePeopleActionButtons();
+            renderPeopleResults(state.peopleResultsData);
+            peopleModal.close();
+        } catch (error) {
+            showError(peopleError, error.response?.data?.message || 'Errore durante la rimozione.');
+        } finally {
+            state.peopleMutating = false;
+            syncPeopleLoadingState();
+        }
+    };
+
+    openClassModalButton.addEventListener('click', () => openClassForm());
+    closeClassModalButton.addEventListener('click', () => classModal.close());
+    closePeopleModalButton.addEventListener('click', () => peopleModal.close());
+    peopleModal.addEventListener('cancel', (event) => {
+        event.preventDefault();
+    });
+    peopleModal.addEventListener('click', (event) => {
+        if (event.target === peopleModal) {
+            event.preventDefault();
+        }
+    });
+    classForm.addEventListener('submit', submitClassForm);
+    peopleSearchButton.addEventListener('click', searchPeople);
+    peopleConfirmButton.addEventListener('click', confirmPendingPeople);
+    peopleConfirmRemovalButton.addEventListener('click', confirmPendingRemovals);
+    peopleSearch.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            searchPeople();
+        }
+    });
+
+    renderClasses();
+}
 
 function initializeCreateModuleDialog(courseEditPage) {
     const createModuleModal = courseEditPage.querySelector('#create-module-modal');
@@ -231,6 +656,8 @@ function initializeEnrollmentsTable(courseEditPage) {
     const tbody = container.querySelector('[data-enrollments-tbody]');
     const template = container.querySelector('[data-enrollment-row-template]');
     const emptyState = container.querySelector('[data-enrollments-empty]');
+    const tableContainer = container.querySelector('[data-enrollments-table-container]');
+    const tableLoader = container.querySelector('[data-enrollments-loader]');
     const searchInput = container.querySelector('[data-enrollments-search]');
     const searchButton = container.querySelector('[data-enrollments-search-button]');
     const showTrashedCheckbox = container.querySelector('[data-enrollments-show-trashed]');
@@ -250,7 +677,7 @@ function initializeEnrollmentsTable(courseEditPage) {
     const confirmEnrollmentMessage = container.querySelector('[data-confirm-enrollment-message]');
     const confirmEnrollmentSubmitButton = container.querySelector('[data-confirm-enrollment-submit]');
 
-    if (!apiUrl || !searchUsersApiUrl || !storeApiUrl || !tbody || !template || !emptyState || !searchInput || !searchButton || !showTrashedCheckbox || !paginationContainer || !summaryElement || !openCreateEnrollmentModalButton || !createEnrollmentModal || !closeCreateEnrollmentModalButton || !userSearchInput || !userSearchButton || !userResultsBody || !userResultsEmptyState || !userRowTemplate || !confirmEnrollmentModal || !confirmEnrollmentMessage || !confirmEnrollmentSubmitButton) {
+    if (!apiUrl || !searchUsersApiUrl || !storeApiUrl || !tbody || !template || !emptyState || !tableContainer || !tableLoader || !searchInput || !searchButton || !showTrashedCheckbox || !paginationContainer || !summaryElement || !openCreateEnrollmentModalButton || !createEnrollmentModal || !closeCreateEnrollmentModalButton || !userSearchInput || !userSearchButton || !userResultsBody || !userResultsEmptyState || !userRowTemplate || !confirmEnrollmentModal || !confirmEnrollmentMessage || !confirmEnrollmentSubmitButton) {
         return;
     }
 
@@ -309,6 +736,10 @@ function initializeEnrollmentsTable(courseEditPage) {
         state.loading = loading;
         container.classList.toggle('pointer-events-none', loading);
         container.classList.toggle('opacity-70', loading);
+        tableContainer.classList.toggle('pointer-events-none', loading);
+        tableContainer.classList.toggle('opacity-70', loading);
+        tableLoader.classList.toggle('hidden', !loading);
+        tableLoader.classList.toggle('flex', loading);
     };
 
     const cycleSortDirection = (currentDirection) => {

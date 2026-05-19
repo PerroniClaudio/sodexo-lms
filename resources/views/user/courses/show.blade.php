@@ -26,6 +26,14 @@
                             <li>
                                 <div class="timeline-start">
                                     <span class="font-semibold">{{ $module->title }}</span>
+                                    @if (in_array($module->type, ['live', 'res'], true) && $module->effective_starts_at !== null)
+                                        <span class="block text-xs text-base-content/60">
+                                            {{ $module->effective_starts_at->format('d/m/Y H:i') }}
+                                            @if ($module->effective_ends_at !== null)
+                                                {{ __('-') }} {{ $module->effective_ends_at->format('H:i') }}
+                                            @endif
+                                        </span>
+                                    @endif
                                 </div>
                                 <div class="timeline-middle">
                                     @if($module->pivot->status === 'completed')

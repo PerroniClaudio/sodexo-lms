@@ -88,6 +88,14 @@ class CourseController extends Controller
 
     public function edit(Course $course): View
     {
+        $courseClasses = $course->classes()
+            ->with([
+                'userAssignments.user',
+                'teacherAssignments.user',
+            ])
+            ->orderBy('starts_at')
+            ->get();
+
         return view('admin.course.edit', [
             'course' => $course,
             'courseStatusLabels' => Course::availableStatusLabels(),
@@ -100,6 +108,45 @@ class CourseController extends Controller
             'assignedTutors' => $course->getTutors(),
             'courseValidator' => $this->courseValidator,
             'activeSatisfactionSurveyTemplate' => SatisfactionSurveyTemplate::active(),
+            'supportsClasses' => $course->supportsClasses(),
+            'courseClasses' => $courseClasses,
+            'courseClassPayloads' => $courseClasses->map(fn ($courseClass): array => [
+                'id' => $courseClass->getKey(),
+                'name' => $courseClass->name,
+                'starts_at_label' => $courseClass->starts_at?->format('d/m/Y H:i'),
+                'starts_at_date' => $courseClass->starts_at?->format('Y-m-d'),
+                'starts_at_time' => $courseClass->starts_at?->format('H:i'),
+                'ends_at_label' => $courseClass->ends_at?->format('d/m/Y H:i'),
+                'ends_at_date' => $courseClass->ends_at?->format('Y-m-d'),
+                'ends_at_time' => $courseClass->ends_at?->format('H:i'),
+                'users_count' => $courseClass->userAssignments->count(),
+                'teachers_count' => $courseClass->teacherAssignments->count(),
+                'remaining_user_slots' => $courseClass->remainingUserSlots(),
+                'users' => $courseClass->userAssignments->map(fn ($assignment): array => [
+                    'assignment_id' => $assignment->getKey(),
+                    'delete_url' => route('admin.courses.classes.users.destroy', [$course, $courseClass, $assignment]),
+                    'id' => $assignment->user?->getKey(),
+                    'full_name' => $assignment->user?->full_name,
+                    'email' => $assignment->user?->email,
+                    'fiscal_code' => $assignment->user?->fiscal_code,
+                ])->values(),
+                'teachers' => $courseClass->teacherAssignments->map(fn ($assignment): array => [
+                    'assignment_id' => $assignment->getKey(),
+                    'delete_url' => route('admin.courses.classes.teachers.destroy', [$course, $courseClass, $assignment]),
+                    'id' => $assignment->user?->getKey(),
+                    'full_name' => $assignment->user?->full_name,
+                    'email' => $assignment->user?->email,
+                    'fiscal_code' => $assignment->user?->fiscal_code,
+                ])->values(),
+                'routes' => [
+                    'update' => route('admin.courses.classes.update', [$course, $courseClass]),
+                    'delete' => route('admin.courses.classes.destroy', [$course, $courseClass]),
+                    'users_store' => route('admin.courses.classes.users.store', [$course, $courseClass]),
+                    'users_destroy_many' => route('admin.courses.classes.users.destroy-many', [$course, $courseClass]),
+                    'teachers_store' => route('admin.courses.classes.teachers.store', [$course, $courseClass]),
+                    'teachers_destroy_many' => route('admin.courses.classes.teachers.destroy-many', [$course, $courseClass]),
+                ],
+            ])->values(),
         ]);
     }
 

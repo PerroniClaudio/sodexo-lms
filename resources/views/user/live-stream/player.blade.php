@@ -79,9 +79,9 @@
                                         <div>
                                             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">{{ __('Programmazione') }}</p>
                                             <p class="mt-2 text-sm font-medium">
-                                                {{ $module->appointment_start_time?->format('d/m/Y H:i') }}
-                                                @if ($module->appointment_end_time !== null)
-                                                    {{ __('-') }} {{ $module->appointment_end_time->format('H:i') }}
+                                                {{ ($scheduledStartAt ?? $module->appointment_start_time)?->format('d/m/Y H:i') }}
+                                                @if (($scheduledEndAt ?? $module->appointment_end_time) !== null)
+                                                    {{ __('-') }} {{ ($scheduledEndAt ?? $module->appointment_end_time)->format('H:i') }}
                                                 @endif
                                             </p>
                                         </div>

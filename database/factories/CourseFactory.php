@@ -22,4 +22,18 @@ class CourseFactory extends Factory
             'hasMany' => fake()->word(),
         ];
     }
+
+    public function res(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'type' => 'res',
+        ]);
+    }
+
+    public function async(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'type' => 'async',
+        ]);
+    }
 }

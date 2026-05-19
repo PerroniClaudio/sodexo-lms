@@ -145,6 +145,8 @@ class CourseModuleController extends Controller
                 ? $liveModuleAttendanceService->buildReport($module)
                 : collect(),
             'moduleProgressStatusLabels' => $this->moduleProgressStatusLabels(),
+            'appointmentControlledByClasses' => $course->supportsClasses()
+                && in_array($module->type, [Module::TYPE_LIVE, Module::TYPE_RESIDENTIAL], true),
             'recentQuizSubmissions' => $module->type === 'learning_quiz'
                 ? $module->quizSubmissions()
                     ->with(['user', 'uploadedBy'])
@@ -323,7 +325,10 @@ class CourseModuleController extends Controller
             // 'max_score' => $module->isQuiz() ? $validated['max_score'] : null, --- IGNORE ---
         ];
 
-        if (Module::requiresAppointmentDetails($module->type)) {
+        $appointmentControlledByClasses = $course->supportsClasses()
+            && in_array($module->type, [Module::TYPE_LIVE, Module::TYPE_RESIDENTIAL], true);
+
+        if (Module::requiresAppointmentDetails($module->type) && ! $appointmentControlledByClasses) {
             $appointmentDate = CarbonImmutable::createFromFormat('Y-m-d', $validated['appointment_date']);
 
             $moduleAttributes['appointment_date'] = $appointmentDate->startOfDay();

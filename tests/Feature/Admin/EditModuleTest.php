@@ -227,6 +227,67 @@ it('does not show the editable title field for quiz modules', function () {
     $response->assertDontSeeText('Tutor assegnati');
 });
 
+it('shows appointment fields as read only for class-enabled live and res modules', function (string $courseType, string $moduleType) {
+    $course = Course::factory()->create(['type' => $courseType]);
+    $module = Module::factory()->create([
+        'type' => $moduleType,
+        'belongsTo' => (string) $course->getKey(),
+        'appointment_date' => Carbon::parse('2026-06-01'),
+        'appointment_start_time' => Carbon::parse('2026-06-01 09:00:00'),
+        'appointment_end_time' => Carbon::parse('2026-06-01 11:00:00'),
+    ]);
+
+    $response = $this->get(route('admin.courses.modules.edit', [$course, $module]));
+
+    $response->assertOk()
+        ->assertSeeText('La data e l\'orario sono gestiti dalle Classi del corso.')
+        ->assertSee('name="appointment_date"', false)
+        ->assertSee('disabled', false);
+})->with([
+    'res live' => ['res', 'live'],
+    'async res' => ['async', 'res'],
+]);
+
+it('keeps appointment fields editable for live modules in courses without classes', function () {
+    $course = Course::factory()->create(['type' => 'fad']);
+    $module = Module::factory()->create([
+        'type' => 'live',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $response = $this->get(route('admin.courses.modules.edit', [$course, $module]));
+
+    $response->assertOk()
+        ->assertDontSeeText('La data e l\'orario sono gestiti dalle Classi del corso.');
+});
+
+it('does not require or update appointment fields for class-enabled scheduled modules', function () {
+    $course = Course::factory()->res()->create();
+    $module = Module::factory()->create([
+        'type' => 'live',
+        'title' => 'Live classe',
+        'description' => 'Descrizione iniziale',
+        'status' => 'draft',
+        'is_live_teacher' => true,
+        'belongsTo' => (string) $course->getKey(),
+        'appointment_date' => Carbon::parse('2026-06-01'),
+        'appointment_start_time' => Carbon::parse('2026-06-01 09:00:00'),
+        'appointment_end_time' => Carbon::parse('2026-06-01 11:00:00'),
+    ]);
+
+    $this->put(route('admin.courses.modules.update', [$course, $module]), [
+        'title' => 'Live classe aggiornata',
+        'description' => 'Nuova descrizione',
+        'status' => 'published',
+        'is_live_teacher' => '1',
+    ])->assertRedirect(route('admin.courses.edit', $course));
+
+    $module->refresh();
+
+    expect($module->title)->toBe('Live classe aggiornata')
+        ->and($module->appointment_start_time->format('Y-m-d H:i'))->toBe('2026-06-01 09:00');
+});
+
 it('resolves the dedicated edit view for video modules', function () {
     $course = Course::factory()->create();
     $assignedTeacher = User::query()->create([

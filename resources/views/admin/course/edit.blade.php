@@ -184,7 +184,6 @@
                                                 </a>
                                             @endif
                                         @else
-                                            <span>{{ __('La configurazione di domande e risposte Ã¨ riservata ai superadmin.') }}</span>
                                         @endrole
                                     </div>
                                 </div>
@@ -585,71 +584,77 @@
                         </div>
                     </div>
 
-                    <div class="overflow-x-auto rounded-box border border-base-300">
-                        <table class="table table-zebra w-full">
-                            <thead>
-                                <tr>
-                                    <th>
-                                        <button type="button" class="inline-flex items-center gap-2" data-sort-key="surname">
-                                            {{ __('Cognome') }}
-                                            <x-lucide-chevron-up class="h-4 w-4 hidden" data-sort-icon="asc" data-sort-indicator="surname" />
-                                            <x-lucide-chevron-down class="h-4 w-4 hidden" data-sort-icon="desc" data-sort-indicator="surname" />
-                                            <x-lucide-arrow-up-down class="h-4 w-4 text-base-content/50" data-sort-icon="none" data-sort-indicator="surname" />
-                                        </button>
-                                    </th>
-                                    <th>
-                                        <button type="button" class="inline-flex items-center gap-2" data-sort-key="name">
-                                            {{ __('Nome') }}
-                                            <x-lucide-chevron-up class="h-4 w-4 hidden" data-sort-icon="asc" data-sort-indicator="name" />
-                                            <x-lucide-chevron-down class="h-4 w-4 hidden" data-sort-icon="desc" data-sort-indicator="name" />
-                                            <x-lucide-arrow-up-down class="h-4 w-4 text-base-content/50" data-sort-icon="none" data-sort-indicator="name" />
-                                        </button>
-                                    </th>
-                                    <th>
-                                        <button type="button" class="inline-flex items-center gap-2" data-sort-key="fiscal_code">
-                                            {{ __('CF') }}
-                                            <x-lucide-chevron-up class="h-4 w-4 hidden" data-sort-icon="asc" data-sort-indicator="fiscal_code" />
-                                            <x-lucide-chevron-down class="h-4 w-4 hidden" data-sort-icon="desc" data-sort-indicator="fiscal_code" />
-                                            <x-lucide-arrow-up-down class="h-4 w-4 text-base-content/50" data-sort-icon="none" data-sort-indicator="fiscal_code" />
-                                        </button>
-                                    </th>
-                                    <th>
-                                        <button type="button" class="inline-flex items-center gap-2" data-sort-key="email">
-                                            {{ __('Email') }}
-                                            <x-lucide-chevron-up class="h-4 w-4 hidden" data-sort-icon="asc" data-sort-indicator="email" />
-                                            <x-lucide-chevron-down class="h-4 w-4 hidden" data-sort-icon="desc" data-sort-indicator="email" />
-                                            <x-lucide-arrow-up-down class="h-4 w-4 text-base-content/50" data-sort-icon="none" data-sort-indicator="email" />
-                                        </button>
-                                    </th>
-                                    <th>
-                                        <button type="button" class="inline-flex items-center gap-2" data-sort-key="status">
-                                            {{ __('Stato iscrizione') }}
-                                            <x-lucide-chevron-up class="h-4 w-4 hidden" data-sort-icon="asc" data-sort-indicator="status" />
-                                            <x-lucide-chevron-down class="h-4 w-4 hidden" data-sort-icon="desc" data-sort-indicator="status" />
-                                            <x-lucide-arrow-up-down class="h-4 w-4 text-base-content/50" data-sort-icon="none" data-sort-indicator="status" />
-                                        </button>
-                                    </th>
-                                    <th>
-                                        <button type="button" class="inline-flex items-center gap-2" data-sort-key="completion_percentage">
-                                            {{ __('Completamento') }}
-                                            <x-lucide-chevron-up class="h-4 w-4 hidden" data-sort-icon="asc" data-sort-indicator="completion_percentage" />
-                                            <x-lucide-chevron-down class="h-4 w-4 hidden" data-sort-icon="desc" data-sort-indicator="completion_percentage" />
-                                            <x-lucide-arrow-up-down class="h-4 w-4 text-base-content/50" data-sort-icon="none" data-sort-indicator="completion_percentage" />
-                                        </button>
-                                    </th>
-                                    <th>
-                                        <button type="button" class="inline-flex items-center gap-2" data-sort-key="assigned_at">
-                                            {{ __('Assegnato il') }}
-                                            <x-lucide-chevron-up class="h-4 w-4 hidden" data-sort-icon="asc" data-sort-indicator="assigned_at" />
-                                            <x-lucide-chevron-down class="h-4 w-4 hidden" data-sort-icon="desc" data-sort-indicator="assigned_at" />
-                                            <x-lucide-arrow-up-down class="h-4 w-4 text-base-content/50" data-sort-icon="none" data-sort-indicator="assigned_at" />
-                                        </button>
-                                    </th>
-                                    <th class="sticky right-0 z-20 bg-base-100 shadow-[-8px_0_12px_-10px_rgba(15,23,42,0.35)]">{{ __('Azioni') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody data-enrollments-tbody></tbody>
-                        </table>
+                    <div class="relative" data-enrollments-table-container>
+                        <div class="pointer-events-none absolute inset-0 z-10 hidden items-center justify-center bg-base-100/70" data-enrollments-loader>
+                            <span class="loading loading-spinner loading-md"></span>
+                        </div>
+
+                        <div class="overflow-x-auto rounded-box border border-base-300">
+                            <table class="table table-zebra w-full">
+                                <thead>
+                                    <tr>
+                                        <th>
+                                            <button type="button" class="inline-flex items-center gap-2" data-sort-key="surname">
+                                                {{ __('Cognome') }}
+                                                <x-lucide-chevron-up class="h-4 w-4 hidden" data-sort-icon="asc" data-sort-indicator="surname" />
+                                                <x-lucide-chevron-down class="h-4 w-4 hidden" data-sort-icon="desc" data-sort-indicator="surname" />
+                                                <x-lucide-arrow-up-down class="h-4 w-4 text-base-content/50" data-sort-icon="none" data-sort-indicator="surname" />
+                                            </button>
+                                        </th>
+                                        <th>
+                                            <button type="button" class="inline-flex items-center gap-2" data-sort-key="name">
+                                                {{ __('Nome') }}
+                                                <x-lucide-chevron-up class="h-4 w-4 hidden" data-sort-icon="asc" data-sort-indicator="name" />
+                                                <x-lucide-chevron-down class="h-4 w-4 hidden" data-sort-icon="desc" data-sort-indicator="name" />
+                                                <x-lucide-arrow-up-down class="h-4 w-4 text-base-content/50" data-sort-icon="none" data-sort-indicator="name" />
+                                            </button>
+                                        </th>
+                                        <th>
+                                            <button type="button" class="inline-flex items-center gap-2" data-sort-key="fiscal_code">
+                                                {{ __('CF') }}
+                                                <x-lucide-chevron-up class="h-4 w-4 hidden" data-sort-icon="asc" data-sort-indicator="fiscal_code" />
+                                                <x-lucide-chevron-down class="h-4 w-4 hidden" data-sort-icon="desc" data-sort-indicator="fiscal_code" />
+                                                <x-lucide-arrow-up-down class="h-4 w-4 text-base-content/50" data-sort-icon="none" data-sort-indicator="fiscal_code" />
+                                            </button>
+                                        </th>
+                                        <th>
+                                            <button type="button" class="inline-flex items-center gap-2" data-sort-key="email">
+                                                {{ __('Email') }}
+                                                <x-lucide-chevron-up class="h-4 w-4 hidden" data-sort-icon="asc" data-sort-indicator="email" />
+                                                <x-lucide-chevron-down class="h-4 w-4 hidden" data-sort-icon="desc" data-sort-indicator="email" />
+                                                <x-lucide-arrow-up-down class="h-4 w-4 text-base-content/50" data-sort-icon="none" data-sort-indicator="email" />
+                                            </button>
+                                        </th>
+                                        <th>
+                                            <button type="button" class="inline-flex items-center gap-2" data-sort-key="status">
+                                                {{ __('Stato iscrizione') }}
+                                                <x-lucide-chevron-up class="h-4 w-4 hidden" data-sort-icon="asc" data-sort-indicator="status" />
+                                                <x-lucide-chevron-down class="h-4 w-4 hidden" data-sort-icon="desc" data-sort-indicator="status" />
+                                                <x-lucide-arrow-up-down class="h-4 w-4 text-base-content/50" data-sort-icon="none" data-sort-indicator="status" />
+                                            </button>
+                                        </th>
+                                        <th>
+                                            <button type="button" class="inline-flex items-center gap-2" data-sort-key="completion_percentage">
+                                                {{ __('Completamento') }}
+                                                <x-lucide-chevron-up class="h-4 w-4 hidden" data-sort-icon="asc" data-sort-indicator="completion_percentage" />
+                                                <x-lucide-chevron-down class="h-4 w-4 hidden" data-sort-icon="desc" data-sort-indicator="completion_percentage" />
+                                                <x-lucide-arrow-up-down class="h-4 w-4 text-base-content/50" data-sort-icon="none" data-sort-indicator="completion_percentage" />
+                                            </button>
+                                        </th>
+                                        <th>
+                                            <button type="button" class="inline-flex items-center gap-2" data-sort-key="assigned_at">
+                                                {{ __('Assegnato il') }}
+                                                <x-lucide-chevron-up class="h-4 w-4 hidden" data-sort-icon="asc" data-sort-indicator="assigned_at" />
+                                                <x-lucide-chevron-down class="h-4 w-4 hidden" data-sort-icon="desc" data-sort-indicator="assigned_at" />
+                                                <x-lucide-arrow-up-down class="h-4 w-4 text-base-content/50" data-sort-icon="none" data-sort-indicator="assigned_at" />
+                                            </button>
+                                        </th>
+                                        <th class="sticky right-0 z-20 bg-base-100 shadow-[-8px_0_12px_-10px_rgba(15,23,42,0.35)]">{{ __('Azioni') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody data-enrollments-tbody></tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-center text-sm text-base-content/70 hidden" data-enrollments-empty>
@@ -776,6 +781,187 @@
                     </dialog>
                 </div>
             </div>
+
+            @if ($supportsClasses)
+                <div
+                    class="card border border-base-300 bg-base-100 shadow-sm"
+                    data-course-classes
+                    data-classes-index-url="{{ route('admin.courses.classes.index', $course) }}"
+                    data-classes-store-url="{{ route('admin.courses.classes.store', $course) }}"
+                    data-classes-search-users-url="{{ route('admin.courses.classes.search-users', $course) }}"
+                    data-classes-search-teachers-url="{{ route('admin.courses.classes.search-teachers', $course) }}"
+                >
+                    <script type="application/json" data-course-classes-initial>@json($courseClassPayloads)</script>
+
+                    <div class="card-body gap-6">
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                                <h2 class="card-title">{{ __('Classi') }}</h2>
+                                <p class="text-sm text-base-content/70">
+                                    {{ __('Gestisci gruppi di utenti e docenti per gli appuntamenti del corso.') }}
+                                </p>
+                            </div>
+
+                            <button type="button" class="btn btn-primary" data-open-course-class-modal>
+                                <span>{{ __('Nuova classe') }}</span>
+                                <x-lucide-plus class="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <div class="relative" data-course-classes-table-container>
+                            <div class="pointer-events-none absolute inset-0 z-10 hidden items-center justify-center bg-base-100/70" data-course-classes-loader>
+                                <span class="loading loading-spinner loading-md"></span>
+                            </div>
+
+                            <div class="overflow-x-auto rounded-box border border-base-300">
+                                <table class="table table-zebra w-full">
+                                    <thead>
+                                        <tr>
+                                            <th>{{ __('Nome') }}</th>
+                                            <th>{{ __('Inizio') }}</th>
+                                            <th>{{ __('Fine') }}</th>
+                                            <th>{{ __('Utenti') }}</th>
+                                            <th>{{ __('Docenti') }}</th>
+                                            <th class="text-right">{{ __('Azioni') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody data-course-classes-tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-center text-sm text-base-content/70 hidden" data-course-classes-empty>
+                            {{ __('Nessuna classe presente per questo corso.') }}
+                        </div>
+                    </div>
+
+                    <dialog class="modal" data-course-class-modal>
+                        <div class="modal-box max-w-2xl">
+                            <h3 class="text-lg font-semibold" data-course-class-modal-title>{{ __('Nuova classe') }}</h3>
+                            <form class="mt-6 space-y-6" data-course-class-form>
+                                <div class="form-control flex flex-col gap-2">
+                                    <label class="label p-0" for="course-class-name">
+                                        <span class="label-text font-medium">{{ __('Nome classe') }}</span>
+                                    </label>
+                                    <input id="course-class-name" type="text" class="input input-bordered w-full" name="name" required>
+                                </div>
+
+                                <div class="grid gap-4 md:grid-cols-2">
+                                    <div class="form-control flex flex-col gap-2">
+                                        <label class="label p-0" for="course-class-starts-date">
+                                            <span class="label-text font-medium">{{ __('Data inizio') }}</span>
+                                        </label>
+                                        <input id="course-class-starts-date" type="date" class="input input-bordered w-full" name="starts_at_date" required>
+                                    </div>
+                                    <div class="form-control flex flex-col gap-2">
+                                        <label class="label p-0" for="course-class-starts-time">
+                                            <span class="label-text font-medium">{{ __('Ora inizio') }}</span>
+                                        </label>
+                                        <input id="course-class-starts-time" type="time" class="input input-bordered w-full" name="starts_at_time" required>
+                                    </div>
+                                    <div class="form-control flex flex-col gap-2">
+                                        <label class="label p-0" for="course-class-ends-date">
+                                            <span class="label-text font-medium">{{ __('Data fine') }}</span>
+                                        </label>
+                                        <input id="course-class-ends-date" type="date" class="input input-bordered w-full" name="ends_at_date" required>
+                                    </div>
+                                    <div class="form-control flex flex-col gap-2">
+                                        <label class="label p-0" for="course-class-ends-time">
+                                            <span class="label-text font-medium">{{ __('Ora fine') }}</span>
+                                        </label>
+                                        <input id="course-class-ends-time" type="time" class="input input-bordered w-full" name="ends_at_time" required>
+                                    </div>
+                                </div>
+
+                                <p class="text-sm text-error hidden" data-course-class-form-error></p>
+
+                                <div class="modal-action mt-0">
+                                    <button type="button" class="btn btn-ghost" data-close-course-class-modal>{{ __('Annulla') }}</button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <span>{{ __('Salva') }}</span>
+                                        <x-lucide-save class="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        <form method="dialog" class="modal-backdrop">
+                            <button type="submit">{{ __('Close') }}</button>
+                        </form>
+                    </dialog>
+
+                    <dialog class="modal" data-course-class-people-modal>
+                        <div class="modal-box max-w-4xl">
+                            <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                <div>
+                                    <h3 class="text-lg font-semibold" data-course-class-people-title></h3>
+                                    <p class="text-sm text-base-content/70" data-course-class-people-subtitle></p>
+                                </div>
+                                <span class="badge badge-outline" data-course-class-people-count></span>
+                            </div>
+
+                            <div class="mt-6 grid gap-6 lg:grid-cols-2">
+                                <div class="space-y-4">
+                                    <div class="flex gap-2">
+                                        <label class="input input-bordered flex flex-1 items-center gap-2">
+                                            <x-lucide-search class="h-4 w-4 text-base-content/60" />
+                                            <input type="search" class="grow" data-course-class-people-search placeholder="{{ __('Cerca nome, cognome, CF, email') }}">
+                                        </label>
+                                        <button type="button" class="btn btn-primary" data-course-class-people-search-button>{{ __('Cerca') }}</button>
+                                    </div>
+                                    <div class="rounded-box border border-base-300">
+                                        <table class="table table-zebra w-full">
+                                            <tbody data-course-class-people-results></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-4">
+                                    <h4 class="font-semibold">{{ __('Assegnati') }}</h4>
+                                    <div class="rounded-box border border-base-300">
+                                        <table class="table table-zebra w-full">
+                                            <tbody data-course-class-people-assigned></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p class="mt-4 text-sm text-error hidden" data-course-class-people-error></p>
+
+                            <div class="modal-action">
+                                <button type="button" class="btn btn-primary" data-course-class-people-confirm disabled>
+                                    {{ __('Conferma selezione') }}
+                                </button>
+                                <button type="button" class="btn btn-accent" data-course-class-people-confirm-removal disabled>
+                                    {{ __('Conferma rimozione') }}
+                                </button>
+                                <button type="button" class="btn btn-ghost" data-close-course-class-people-modal>{{ __('Chiudi') }}</button>
+                            </div>
+                        </div>
+                    </dialog>
+
+                    <template data-course-class-row-template>
+                        <tr>
+                            <td class="font-medium" data-class-name></td>
+                            <td data-class-starts></td>
+                            <td data-class-ends></td>
+                            <td><span class="badge badge-primary badge-outline" data-class-users></span></td>
+                            <td><span class="badge badge-secondary badge-outline" data-class-teachers></span></td>
+                            <td>
+                                <div class="flex justify-end gap-2">
+                                    <button type="button" class="btn btn-ghost btn-sm" data-edit-class>
+                                        <x-lucide-pencil class="h-4 w-4" />
+                                    </button>
+                                    <button type="button" class="btn btn-outline btn-sm" data-manage-class-users>{{ __('Utenti') }}</button>
+                                    <button type="button" class="btn btn-outline btn-sm" data-manage-class-teachers>{{ __('Docenti') }}</button>
+                                    <button type="button" class="btn btn-accent btn-sm" data-delete-class>
+                                        <x-lucide-trash-2 class="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                </div>
+            @endif
 
         </div>
     </div>

@@ -13,8 +13,11 @@ use App\Models\LiveStreamSession;
 use App\Models\Module;
 use App\Models\ModuleTeacherEnrollment;
 use App\Models\ModuleTutorEnrollment;
+use App\Models\User;
+use App\Services\CourseClassScheduleResolver;
 use App\Services\MuxLiveService;
 use App\Services\TwilioVideoService;
+use Carbon\CarbonInterface;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -46,13 +49,15 @@ class LiveStreamController extends Controller
         $this->abortUnlessLiveModule($module);
         $module->loadMissing('course', 'activeLiveStreamSession');
         $this->ensureUserEnrollment($request, $module);
+        $scheduledStartAt = $this->scheduledStartFor($request, $module, LiveStreamParticipant::ROLE_USER);
+        $scheduledEndAt = $this->scheduledEndFor($request, $module, LiveStreamParticipant::ROLE_USER);
 
-        if ($this->moduleStartsInFuture($module)) {
-            return $this->renderWaitingView($module);
+        if ($this->moduleStartsInFuture($module, $scheduledStartAt)) {
+            return $this->renderWaitingView($module, scheduledStartAt: $scheduledStartAt, scheduledEndAt: $scheduledEndAt);
         }
 
-        if ($this->moduleHasEnded($module)) {
-            return $this->renderWaitingView($module, __('La diretta è terminata.'), 'ended');
+        if ($this->moduleHasEnded($module, $scheduledEndAt)) {
+            return $this->renderWaitingView($module, __('La diretta è terminata.'), 'ended', $scheduledStartAt, $scheduledEndAt);
         }
 
         if ($module->usesRegiaLive() && ! $this->moduleIsJoinable($module)) {
@@ -64,9 +69,11 @@ class LiveStreamController extends Controller
 
             return $this->renderWaitingView(
                 $module,
-                $this->moduleIsWithinScheduledWindow($module)
+                $this->moduleIsWithinScheduledWindow($module, $scheduledStartAt, $scheduledEndAt)
                     ? __('La live non è ancora attiva. Aggiorna la pagina quando la regia avvia la trasmissione.')
                     : __('La diretta comincia all\'orario stabilito.'),
+                scheduledStartAt: $scheduledStartAt,
+                scheduledEndAt: $scheduledEndAt,
             );
         }
 
@@ -77,7 +84,12 @@ class LiveStreamController extends Controller
                 return $this->renderWaitingView($module, __('La diretta è terminata.'), 'ended');
             }
 
-            return $this->renderWaitingView($module, __('Il docente non ha ancora avviato la diretta.'));
+            return $this->renderWaitingView(
+                $module,
+                __('Il docente non ha ancora avviato la diretta.'),
+                scheduledStartAt: $scheduledStartAt,
+                scheduledEndAt: $scheduledEndAt,
+            );
         }
 
         return $this->renderPlayerView('user.live-stream.player', $module, LiveStreamParticipant::ROLE_USER);
@@ -1251,11 +1263,20 @@ class LiveStreamController extends Controller
     private function renderPlayerView(string $view, Module $module, string $role): View
     {
         $module->loadMissing('course');
+        $request = request();
+        $scheduledStartAt = $request instanceof Request
+            ? $this->scheduledStartFor($request, $module, $role)
+            : $module->appointment_start_time;
+        $scheduledEndAt = $request instanceof Request
+            ? $this->scheduledEndFor($request, $module, $role)
+            : $module->appointment_end_time;
 
         return view($view, [
             'module' => $module,
             'course' => $module->course,
             'liveStreamConfig' => $this->buildViewConfig($module, $role),
+            'scheduledStartAt' => $scheduledStartAt,
+            'scheduledEndAt' => $scheduledEndAt,
         ]);
     }
 
@@ -1354,8 +1375,13 @@ class LiveStreamController extends Controller
         ];
     }
 
-    private function renderWaitingView(Module $module, ?string $message = null, string $state = 'waiting'): View
-    {
+    private function renderWaitingView(
+        Module $module,
+        ?string $message = null,
+        string $state = 'waiting',
+        ?CarbonInterface $scheduledStartAt = null,
+        ?CarbonInterface $scheduledEndAt = null,
+    ): View {
         $module->loadMissing('course');
 
         return view('user.live-stream.waiting', [
@@ -1363,6 +1389,8 @@ class LiveStreamController extends Controller
             'course' => $module->course,
             'waitingState' => $state,
             'waitingMessage' => $message,
+            'scheduledStartAt' => $scheduledStartAt ?? $module->appointment_start_time,
+            'scheduledEndAt' => $scheduledEndAt ?? $module->appointment_end_time,
         ]);
     }
 
@@ -1426,23 +1454,57 @@ class LiveStreamController extends Controller
         abort_unless($module->type === 'live', Response::HTTP_NOT_FOUND);
     }
 
-    private function moduleStartsInFuture(Module $module): bool
+    private function moduleStartsInFuture(Module $module, ?CarbonInterface $scheduledStartAt = null): bool
     {
-        return $module->appointment_start_time !== null && now()->lt($module->appointment_start_time);
+        $scheduledStartAt ??= $module->appointment_start_time;
+
+        return $scheduledStartAt !== null && now()->lt($scheduledStartAt);
     }
 
-    private function moduleIsWithinScheduledWindow(Module $module): bool
+    private function moduleIsWithinScheduledWindow(Module $module, ?CarbonInterface $scheduledStartAt = null, ?CarbonInterface $scheduledEndAt = null): bool
     {
-        if ($this->moduleStartsInFuture($module) || $this->moduleHasEnded($module)) {
+        if ($this->moduleStartsInFuture($module, $scheduledStartAt) || $this->moduleHasEnded($module, $scheduledEndAt)) {
             return false;
         }
 
         return true;
     }
 
-    private function moduleHasEnded(Module $module): bool
+    private function moduleHasEnded(Module $module, ?CarbonInterface $scheduledEndAt = null): bool
     {
-        return $module->appointment_end_time !== null && now()->gte($module->appointment_end_time);
+        $scheduledEndAt ??= $module->appointment_end_time;
+
+        return $scheduledEndAt !== null && now()->gte($scheduledEndAt);
+    }
+
+    private function scheduledStartFor(Request $request, Module $module, string $role): ?CarbonInterface
+    {
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            return $module->appointment_start_time;
+        }
+
+        if ($role === LiveStreamParticipant::ROLE_TUTOR || $role === LiveStreamParticipant::ROLE_ADMIN) {
+            return $module->appointment_start_time;
+        }
+
+        return app(CourseClassScheduleResolver::class)->effectiveStartsAt($module, $user);
+    }
+
+    private function scheduledEndFor(Request $request, Module $module, string $role): ?CarbonInterface
+    {
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            return $module->appointment_end_time;
+        }
+
+        if ($role === LiveStreamParticipant::ROLE_TUTOR || $role === LiveStreamParticipant::ROLE_ADMIN) {
+            return $module->appointment_end_time;
+        }
+
+        return app(CourseClassScheduleResolver::class)->effectiveEndsAt($module, $user);
     }
 
     private function moduleIsJoinable(Module $module, ?LiveStreamSession $session = null): bool

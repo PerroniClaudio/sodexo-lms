@@ -1,3 +1,14 @@
+@php
+    $appointmentControlledByClasses = $appointmentControlledByClasses ?? false;
+@endphp
+
+@if ($appointmentControlledByClasses)
+    <div class="alert alert-info">
+        <x-lucide-info class="h-4 w-4" />
+        <span>{{ __('La data e l\'orario sono gestiti dalle Classi del corso.') }}</span>
+    </div>
+@endif
+
 <div class="grid gap-6 md:grid-cols-3">
     <div class="form-control flex flex-col gap-2">
         <label for="appointment_date" class="label p-0">
@@ -9,7 +20,8 @@
             type="date"
             value="{{ old('appointment_date', $module->appointment_date?->format('Y-m-d')) }}"
             class="input input-bordered w-full @error('appointment_date') input-error @enderror"
-            required
+            @disabled($appointmentControlledByClasses)
+            @required(! $appointmentControlledByClasses)
         >
         @error('appointment_date')
             <p class="text-sm text-error">{{ $message }}</p>
@@ -26,7 +38,8 @@
             type="time"
             value="{{ old('appointment_start_time', $module->appointment_start_time?->format('H:i')) }}"
             class="input input-bordered w-full @error('appointment_start_time') input-error @enderror"
-            required
+            @disabled($appointmentControlledByClasses)
+            @required(! $appointmentControlledByClasses)
         >
         @error('appointment_start_time')
             <p class="text-sm text-error">{{ $message }}</p>
@@ -43,7 +56,8 @@
             type="time"
             value="{{ old('appointment_end_time', $module->appointment_end_time?->format('H:i')) }}"
             class="input input-bordered w-full @error('appointment_end_time') input-error @enderror"
-            required
+            @disabled($appointmentControlledByClasses)
+            @required(! $appointmentControlledByClasses)
         >
         @error('appointment_end_time')
             <p class="text-sm text-error">{{ $message }}</p>

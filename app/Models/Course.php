@@ -127,6 +127,24 @@ class Course extends Model
         return $this->hasMany(CourseEnrollment::class);
     }
 
+    public function classes(): HasMany
+    {
+        return $this->hasMany(CourseClass::class);
+    }
+
+    public function supportsClasses(): bool
+    {
+        return in_array($this->type, ['res', 'async'], true);
+    }
+
+    public function scheduledModulesControlledByClasses(): HasMany
+    {
+        return $this->modules()->whereIn('type', [
+            Module::TYPE_LIVE,
+            Module::TYPE_RESIDENTIAL,
+        ]);
+    }
+
     /**
      * Get the SCORM packages for the course.
      */

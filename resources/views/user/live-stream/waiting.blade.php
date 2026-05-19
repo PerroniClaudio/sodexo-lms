@@ -12,7 +12,7 @@
                     </h1>
 
                     <p class="mt-3 text-base-content/70">
-                        {{ $waitingMessage ?: __('La diretta comincia all\'orario stabilito. Potrai accedere alla live a partire da :datetime.', ['datetime' => $module->appointment_start_time?->format('d/m/Y H:i')]) }}
+                        {{ $waitingMessage ?: __('La diretta comincia all\'orario stabilito. Potrai accedere alla live a partire da :datetime.', ['datetime' => $scheduledStartAt?->format('d/m/Y H:i')]) }}
                     </p>
                 </div>
 
@@ -30,9 +30,9 @@
                         {{ __('Orario live') }}
                     </p>
                     <p class="mt-2 text-base font-medium text-base-content">
-                        {{ $module->appointment_start_time?->format('d/m/Y H:i') ?? __('Non programmata') }}
-                        @if ($module->appointment_end_time !== null)
-                            {{ __('-') }} {{ $module->appointment_end_time->format('H:i') }}
+                        {{ $scheduledStartAt?->format('d/m/Y H:i') ?? __('Non programmata') }}
+                        @if ($scheduledEndAt !== null)
+                            {{ __('-') }} {{ $scheduledEndAt->format('H:i') }}
                         @endif
                     </p>
                 </div>

@@ -28,7 +28,8 @@ class UpdateModuleRequest extends FormRequest
     {
         $module = $this->module();
         $requiresAppointmentDetails = $module !== null
-            && Module::requiresAppointmentDetails($module->type);
+            && Module::requiresAppointmentDetails($module->type)
+            && ! $this->appointmentControlledByClasses($module);
         $requiresQuizScores = $module?->isLearningQuiz() ?? false;
         $isLearningQuiz = $module?->isLearningQuiz() ?? false;
 
@@ -93,6 +94,14 @@ class UpdateModuleRequest extends FormRequest
     protected function module(): ?Module
     {
         return $this->module ??= $this->route('module');
+    }
+
+    protected function appointmentControlledByClasses(Module $module): bool
+    {
+        $module->loadMissing('course');
+
+        return $module->course?->supportsClasses() === true
+            && in_array($module->type, [Module::TYPE_LIVE, Module::TYPE_RESIDENTIAL], true);
     }
 
     /**

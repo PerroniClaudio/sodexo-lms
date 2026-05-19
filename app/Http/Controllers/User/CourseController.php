@@ -8,6 +8,7 @@ use App\Models\Course;
 use App\Models\Module;
 use App\Models\ModuleQuizSubmission;
 use App\Models\User;
+use App\Services\CourseClassScheduleResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Auth;
@@ -118,11 +119,14 @@ class CourseController extends Controller
 
         foreach ($modules as $module) {
             $progress = $module->progressRecords->first();
+            $scheduleResolver = app(CourseClassScheduleResolver::class);
 
             $module->pivot = (object) [
                 'status' => $progress?->status ?? 'locked',
                 'quiz_attempts' => $progress?->quiz_attempts ?? 0,
             ];
+            $module->effective_starts_at = $scheduleResolver->effectiveStartsAt($module, $user);
+            $module->effective_ends_at = $scheduleResolver->effectiveEndsAt($module, $user);
         }
 
         return view('user.courses.show', compact('course', 'enrollment', 'modules'));

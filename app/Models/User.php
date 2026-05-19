@@ -143,6 +143,16 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(ModuleTutorEnrollment::class);
     }
 
+    public function courseClassAssignments(): HasMany
+    {
+        return $this->hasMany(CourseClassUser::class);
+    }
+
+    public function teachingCourseClassAssignments(): HasMany
+    {
+        return $this->hasMany(CourseClassTeacher::class);
+    }
+
     /**
      * Get the courses assigned to the user.
      */

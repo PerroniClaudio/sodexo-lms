@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\CourseClassController;
 use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\CourseEnrollmentController;
 use App\Http\Controllers\Admin\CourseModuleController;
@@ -77,6 +78,18 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::get('/courses/{course}/edit', [CourseController::class, 'edit'])->name('courses.edit');
         Route::put('/courses/{course}', [CourseController::class, 'update'])->name('courses.update');
         Route::delete('/courses/{course}', [CourseController::class, 'destroy'])->name('courses.destroy');
+        Route::get('/courses/{course}/classes', [CourseClassController::class, 'index'])->name('courses.classes.index');
+        Route::post('/courses/{course}/classes', [CourseClassController::class, 'store'])->name('courses.classes.store');
+        Route::put('/courses/{course}/classes/{courseClass}', [CourseClassController::class, 'update'])->name('courses.classes.update');
+        Route::delete('/courses/{course}/classes/{courseClass}', [CourseClassController::class, 'destroy'])->name('courses.classes.destroy');
+        Route::get('/courses/{course}/classes/search-users', [CourseClassController::class, 'searchUsers'])->name('courses.classes.search-users');
+        Route::get('/courses/{course}/classes/search-teachers', [CourseClassController::class, 'searchTeachers'])->name('courses.classes.search-teachers');
+        Route::post('/courses/{course}/classes/{courseClass}/users', [CourseClassController::class, 'storeUsers'])->name('courses.classes.users.store');
+        Route::delete('/courses/{course}/classes/{courseClass}/users', [CourseClassController::class, 'destroyUsers'])->name('courses.classes.users.destroy-many');
+        Route::delete('/courses/{course}/classes/{courseClass}/users/{assignment}', [CourseClassController::class, 'destroyUser'])->name('courses.classes.users.destroy');
+        Route::post('/courses/{course}/classes/{courseClass}/teachers', [CourseClassController::class, 'storeTeachers'])->name('courses.classes.teachers.store');
+        Route::delete('/courses/{course}/classes/{courseClass}/teachers', [CourseClassController::class, 'destroyTeachers'])->name('courses.classes.teachers.destroy-many');
+        Route::delete('/courses/{course}/classes/{courseClass}/teachers/{assignment}', [CourseClassController::class, 'destroyTeacher'])->name('courses.classes.teachers.destroy');
         Route::post('/courses/{course}/modules', [CourseModuleController::class, 'store'])->name('courses.modules.store');
         Route::patch('/courses/{course}/modules/reorder', [CourseModuleController::class, 'reorder'])->name('courses.modules.reorder');
         Route::get('/courses/{course}/modules/{module}/edit', [CourseModuleController::class, 'edit'])->name('courses.modules.edit');
