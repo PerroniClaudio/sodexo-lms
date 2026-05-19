@@ -1,3 +1,5 @@
+import { setButtonLoading } from './ui/loading-state';
+
 // Aggiorna la visibilità dei badge validità quiz
 async function updateQuizValidityBadge() {
     try {
@@ -253,7 +255,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const form = e.target;
         const url = form.action;
         const formData = new FormData(form);
+        const submitButton = form.querySelector('button[type="submit"]');
+
         try {
+            setButtonLoading(submitButton, true, { loadingText: 'Salvataggio...' });
             const res = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -275,6 +280,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         } catch (err) {
             window.showFlash('error', 'Errore di rete');
+        } finally {
+            setButtonLoading(submitButton, false);
         }
     });
     // Intercetta update domanda
@@ -360,14 +367,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const qid = document.getElementById('add-answer-question-id').value;
         const text = document.getElementById('answer-text-modal').value;
         if (!text) return;
-            const quizList = document.getElementById('quiz-questions-list');
-            const baseUrl = quizList.dataset.baseUrl;
-            const courseId = quizList.dataset.courseId;
-            const moduleId = quizList.dataset.moduleId;
-            const url = `${baseUrl}/${encodeURIComponent(courseId)}/modules/${encodeURIComponent(moduleId)}/quiz/questions/${encodeURIComponent(qid)}/answers`;
+        const quizList = document.getElementById('quiz-questions-list');
+        const baseUrl = quizList.dataset.baseUrl;
+        const courseId = quizList.dataset.courseId;
+        const moduleId = quizList.dataset.moduleId;
+        const url = `${baseUrl}/${encodeURIComponent(courseId)}/modules/${encodeURIComponent(moduleId)}/quiz/questions/${encodeURIComponent(qid)}/answers`;
         const formData = new FormData();
         formData.append('text', text);
+        const submitButton = e.target.querySelector('button[type="submit"]');
+
         try {
+            setButtonLoading(submitButton, true, { loadingText: 'Salvataggio...' });
             const res = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -388,6 +398,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         } catch (err) {
             window.showFlash('error', 'Errore di rete');
+        } finally {
+            setButtonLoading(submitButton, false);
         }
     });
 

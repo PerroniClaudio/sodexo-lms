@@ -1,3 +1,5 @@
+import { toggleAsyncTableLoading } from './ui/loading-state';
+
 // Stato tabella video modulo
 const wrapper = document.querySelector('[data-module-id]');
 let moduleVideoState = {
@@ -10,8 +12,14 @@ let moduleVideoState = {
 };
 
 function fetchModuleVideos() {
-        // Aggiorna preview video selezionato
-        fetchSelectedVideo(moduleVideoState.assignedVideoId);
+    const tableContainer = document.getElementById('module-video-table-container');
+    const tableLoader = document.getElementById('module-video-table-loader');
+
+    toggleAsyncTableLoading({ container: tableContainer, loader: tableLoader }, true);
+
+    // Aggiorna preview video selezionato
+    fetchSelectedVideo(moduleVideoState.assignedVideoId);
+
     const params = new URLSearchParams({
         page: moduleVideoState.page,
         search: moduleVideoState.search,
@@ -20,7 +28,10 @@ function fetchModuleVideos() {
     });
     fetch(`/admin/api/videos?${params}`)
         .then(r => r.json())
-        .then(data => renderModuleVideoTable(data));
+        .then(data => renderModuleVideoTable(data) )
+        .finally(() => {
+            toggleAsyncTableLoading({ container: tableContainer, loader: tableLoader }, false);
+        });
 }
 
 function renderModuleVideoTable(data) {

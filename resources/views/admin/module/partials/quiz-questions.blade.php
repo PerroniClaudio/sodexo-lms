@@ -33,7 +33,7 @@
                     </div>
                     <div class="flex gap-2 justify-end">
                         <button type="button" class="btn btn-ghost" onclick="document.getElementById('add-question-modal').close()">{{ __('Cancel') }}</button>
-                        <button type="submit" class="btn btn-primary">{{ __('Save question') }}</button>
+                        <button type="submit" class="btn btn-primary" data-loading-text="{{ __('Salvataggio...') }}">{{ __('Save question') }}</button>
                     </div>
                 </form>
             </div>
@@ -65,7 +65,7 @@
                     </div>
                     <div class="flex gap-2 justify-end">
                         <button type="button" class="btn btn-ghost" onclick="document.getElementById('add-answer-modal').close()">{{ __('Cancel') }}</button>
-                        <button type="submit" class="btn btn-primary">{{ __('Save answer') }}</button>
+                        <button type="submit" class="btn btn-primary" data-loading-text="{{ __('Salvataggio...') }}">{{ __('Save answer') }}</button>
                     </div>
                 </form>
             </div>

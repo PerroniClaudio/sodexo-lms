@@ -309,7 +309,7 @@
                                                 @csrf
                                                 @method('DELETE')
 
-                                                <button type="submit" class="btn btn-accent">
+                                                <button type="submit" class="btn btn-accent" data-modal-submit-loading data-loading-text="{{ __('Eliminazione...') }}">
                                                     <span>{{ __('Confirm deletion') }}</span>
                                                     <x-lucide-trash-2 class="h-4 w-4" />
                                                 </button>
@@ -389,7 +389,7 @@
                                     >
                                         {{ __('Cancel') }}
                                     </button>
-                                    <button type="submit" class="btn btn-primary">
+                                    <button type="submit" class="btn btn-primary" data-modal-submit-loading data-loading-text="{{ __('Salvataggio...') }}">
                                         <span>{{ __('Confirm') }}</span>
                                         <x-lucide-check class="h-4 w-4" />
                                     </button>
@@ -421,7 +421,7 @@
                                     @csrf
                                     @method('DELETE')
 
-                                    <button type="submit" class="btn btn-accent">
+                                    <button type="submit" class="btn btn-accent" data-modal-submit-loading data-loading-text="{{ __('Eliminazione...') }}">
                                         <span>{{ __('Confirm deletion') }}</span>
                                         <x-lucide-trash-2 class="h-4 w-4" />
                                     </button>
@@ -769,7 +769,7 @@
                                 <form method="dialog">
                                     <button type="submit" class="btn btn-ghost">{{ __('Annulla') }}</button>
                                 </form>
-                                <button type="button" class="btn btn-primary" data-confirm-enrollment-submit>
+                                <button type="button" class="btn btn-primary" data-confirm-enrollment-submit data-loading-text="{{ __('Salvataggio...') }}">
                                     {{ __('Conferma') }}
                                 </button>
                             </div>
@@ -877,7 +877,7 @@
 
                                 <div class="modal-action mt-0">
                                     <button type="button" class="btn btn-ghost" data-close-course-class-modal>{{ __('Annulla') }}</button>
-                                    <button type="submit" class="btn btn-primary">
+                                    <button type="submit" class="btn btn-primary" data-loading-text="{{ __('Salvataggio...') }}">
                                         <span>{{ __('Salva') }}</span>
                                         <x-lucide-save class="h-4 w-4" />
                                     </button>
@@ -928,10 +928,10 @@
                             <p class="mt-4 text-sm text-error hidden" data-course-class-people-error></p>
 
                             <div class="modal-action">
-                                <button type="button" class="btn btn-primary" data-course-class-people-confirm disabled>
+                                <button type="button" class="btn btn-primary" data-course-class-people-confirm data-loading-text="{{ __('Salvataggio...') }}" disabled>
                                     {{ __('Conferma selezione') }}
                                 </button>
-                                <button type="button" class="btn btn-accent" data-course-class-people-confirm-removal disabled>
+                                <button type="button" class="btn btn-accent" data-course-class-people-confirm-removal data-loading-text="{{ __('Salvataggio...') }}" disabled>
                                     {{ __('Conferma rimozione') }}
                                 </button>
                                 <button type="button" class="btn btn-ghost" data-close-course-class-people-modal>{{ __('Chiudi') }}</button>

@@ -1,3 +1,5 @@
+import { toggleAsyncTableLoading } from '../ui/loading-state';
+
 document.addEventListener('DOMContentLoaded', () => {
     const container = document.querySelector('[data-staff-enrollments-table]');
 
@@ -13,6 +15,8 @@ function initializeStaffEnrollmentsTable(container) {
     const tbody = container.querySelector('[data-enrollments-tbody]');
     const template = container.querySelector('[data-enrollment-row-template]');
     const emptyState = container.querySelector('[data-enrollments-empty]');
+    const tableContainer = container.querySelector('[data-enrollments-table-container]');
+    const tableLoader = container.querySelector('[data-enrollments-loader]');
     const searchInput = container.querySelector('[data-enrollments-search]');
     const searchButton = container.querySelector('[data-enrollments-search-button]');
     const showTrashedCheckbox = container.querySelector('[data-enrollments-show-trashed]');
@@ -21,7 +25,7 @@ function initializeStaffEnrollmentsTable(container) {
     const sortButtons = Array.from(container.querySelectorAll('[data-sort-key]'));
     const sortIndicators = Array.from(new Set(Array.from(container.querySelectorAll('[data-sort-indicator]')).map((indicator) => indicator.dataset.sortIndicator)));
 
-    if (!apiUrl || !tbody || !template || !emptyState || !searchInput || !searchButton || !showTrashedCheckbox || !paginationContainer || !summaryElement) {
+    if (!apiUrl || !tbody || !template || !emptyState || !tableContainer || !tableLoader || !searchInput || !searchButton || !showTrashedCheckbox || !paginationContainer || !summaryElement) {
         return;
     }
 
@@ -75,8 +79,7 @@ function initializeStaffEnrollmentsTable(container) {
 
     const setLoadingState = (loading) => {
         state.loading = loading;
-        container.classList.toggle('pointer-events-none', loading);
-        container.classList.toggle('opacity-70', loading);
+        toggleAsyncTableLoading({ scope: container, container: tableContainer, loader: tableLoader }, loading);
     };
 
     const cycleSortDirection = (currentDirection) => {

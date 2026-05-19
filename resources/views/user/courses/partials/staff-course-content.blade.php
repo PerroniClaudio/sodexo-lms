@@ -152,10 +152,15 @@
                 </div>
             </div>
 
-            <div class="overflow-x-auto rounded-box border border-base-300">
-                <table class="table table-zebra w-full">
-                    <thead>
-                        <tr>
+            <div class="relative" data-enrollments-table-container>
+                <div class="pointer-events-none absolute inset-0 z-10 hidden items-center justify-center bg-base-100/70" data-enrollments-loader>
+                    <span class="loading loading-spinner loading-md"></span>
+                </div>
+
+                <div class="overflow-x-auto rounded-box border border-base-300">
+                    <table class="table table-zebra w-full">
+                        <thead>
+                            <tr>
                             <th>
                                 <button type="button" class="inline-flex items-center gap-2" data-sort-key="surname">
                                     {{ __('Cognome') }}
@@ -212,10 +217,11 @@
                                     <x-lucide-arrow-up-down class="h-4 w-4 text-base-content/50" data-sort-icon="none" data-sort-indicator="assigned_at" />
                                 </button>
                             </th>
-                        </tr>
-                    </thead>
-                    <tbody data-enrollments-tbody></tbody>
-                </table>
+                            </tr>
+                        </thead>
+                        <tbody data-enrollments-tbody></tbody>
+                    </table>
+                </div>
             </div>
 
             <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-center text-sm text-base-content/70 hidden" data-enrollments-empty>

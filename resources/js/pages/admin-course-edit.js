@@ -1,3 +1,5 @@
+import { setButtonLoading, toggleAsyncTableLoading } from '../ui/loading-state';
+
 const typesWithoutManualTitle = new Set(['learning_quiz', 'satisfaction_quiz']);
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -138,10 +140,7 @@ function initializeCourseClasses(courseEditPage) {
     };
 
     const syncClassesLoadingState = () => {
-        tableContainer.classList.toggle('pointer-events-none', state.reloadingClasses);
-        tableContainer.classList.toggle('opacity-70', state.reloadingClasses);
-        tableLoader.classList.toggle('hidden', !state.reloadingClasses);
-        tableLoader.classList.toggle('flex', state.reloadingClasses);
+        toggleAsyncTableLoading({ container: tableContainer, loader: tableLoader }, state.reloadingClasses);
     };
 
     const refreshClasses = async () => {
@@ -205,8 +204,11 @@ function initializeCourseClasses(courseEditPage) {
 
         const payload = Object.fromEntries(new FormData(classForm).entries());
         const url = state.editingClass?.routes.update || storeUrl;
+        const submitButton = classForm.querySelector('button[type="submit"]');
 
         try {
+            setButtonLoading(submitButton, true, { loadingText: 'Salvataggio...' });
+
             if (state.editingClass) {
                 await window.axios.put(url, payload, { headers: { Accept: 'application/json' } });
             } else {
@@ -217,6 +219,8 @@ function initializeCourseClasses(courseEditPage) {
             await refreshClasses();
         } catch (error) {
             showError(classFormError, error.response?.data?.message || 'Errore durante il salvataggio della classe.');
+        } finally {
+            setButtonLoading(submitButton, false);
         }
     };
 
@@ -367,6 +371,7 @@ function initializeCourseClasses(courseEditPage) {
         try {
             state.peopleMutating = true;
             syncPeopleLoadingState();
+            setButtonLoading(peopleConfirmButton, true, { loadingText: 'Salvataggio...' });
 
             const response = await window.axios.post(url, payload, { headers: { Accept: 'application/json' } });
 
@@ -380,6 +385,7 @@ function initializeCourseClasses(courseEditPage) {
             showError(peopleError, error.response?.data?.message || 'Errore durante l\'assegnazione.');
         } finally {
             state.peopleMutating = false;
+            setButtonLoading(peopleConfirmButton, false);
             syncPeopleLoadingState();
         }
     };
@@ -395,6 +401,7 @@ function initializeCourseClasses(courseEditPage) {
         try {
             state.peopleMutating = true;
             syncPeopleLoadingState();
+            setButtonLoading(peopleConfirmRemovalButton, true, { loadingText: 'Salvataggio...' });
 
             const response = await window.axios.delete(url, {
                 data: { assignment_ids: state.pendingRemovals.map((person) => Number(person.assignment_id)) },
@@ -411,6 +418,7 @@ function initializeCourseClasses(courseEditPage) {
             showError(peopleError, error.response?.data?.message || 'Errore durante la rimozione.');
         } finally {
             state.peopleMutating = false;
+            setButtonLoading(peopleConfirmRemovalButton, false);
             syncPeopleLoadingState();
         }
     };
@@ -734,12 +742,7 @@ function initializeEnrollmentsTable(courseEditPage) {
 
     const setLoadingState = (loading) => {
         state.loading = loading;
-        container.classList.toggle('pointer-events-none', loading);
-        container.classList.toggle('opacity-70', loading);
-        tableContainer.classList.toggle('pointer-events-none', loading);
-        tableContainer.classList.toggle('opacity-70', loading);
-        tableLoader.classList.toggle('hidden', !loading);
-        tableLoader.classList.toggle('flex', loading);
+        toggleAsyncTableLoading({ scope: container, container: tableContainer, loader: tableLoader }, loading);
     };
 
     const cycleSortDirection = (currentDirection) => {
@@ -1043,12 +1046,12 @@ function initializeEnrollmentsTable(courseEditPage) {
             return;
         }
 
-        confirmEnrollmentSubmitButton.disabled = true;
+        setButtonLoading(confirmEnrollmentSubmitButton, true, { loadingText: 'Salvataggio...' });
 
         try {
             if (state.confirmAction === 'restore') {
                 if (!state.restoreUrl) {
-                    confirmEnrollmentSubmitButton.disabled = false;
+                    setButtonLoading(confirmEnrollmentSubmitButton, false);
 
                     return;
                 }
@@ -1083,7 +1086,7 @@ function initializeEnrollmentsTable(courseEditPage) {
                 window.alert(message);
             }
         } finally {
-            confirmEnrollmentSubmitButton.disabled = false;
+            setButtonLoading(confirmEnrollmentSubmitButton, false);
         }
     });
 

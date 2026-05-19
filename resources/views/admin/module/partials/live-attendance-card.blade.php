@@ -134,7 +134,7 @@
                     </label>
 
                     <div class="flex flex-col gap-2 lg:items-end">
-                        <button type="submit" class="btn btn-primary w-full lg:w-auto">
+                        <button type="submit" class="btn btn-primary w-full lg:w-auto" data-modal-submit-loading data-loading-text="{{ __('Salvataggio...') }}">
                             <x-lucide-check class="h-4 w-4" />
                             <span>{{ __('Conferma presenti') }}</span>
                         </button>

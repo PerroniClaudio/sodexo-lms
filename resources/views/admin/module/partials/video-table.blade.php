@@ -78,22 +78,28 @@
                 </div>
             </div>
         </template>
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-base-300 text-sm">
-                <thead>
-                    <tr class="bg-base-200">
+        <div class="relative" id="module-video-table-container">
+            <div class="pointer-events-none absolute inset-0 z-10 hidden items-center justify-center bg-base-100/70" id="module-video-table-loader">
+                <span class="loading loading-spinner loading-md"></span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-base-300 text-sm">
+                    <thead>
+                        <tr class="bg-base-200">
                         <th class="px-4 py-2 cursor-pointer" data-sort="title">{{ __('Titolo') }}</th>
                         <th class="px-4 py-2 cursor-pointer" data-sort="modules_count">{{ __('Utilizzato da moduli') }}</th>
                         <th class="px-4 py-2">{{ __('Anteprima') }}</th>
                         <th class="px-4 py-2 cursor-pointer" data-sort="mux_video_status">{{ __('Stato') }}</th>
                         <th class="px-4 py-2 cursor-pointer" data-sort="status">{{ __('Attivo') }}</th>
                         <th class="px-4 py-2">{{ __('Azioni') }}</th>
-                    </tr>
-                </thead>
-                <tbody id="module-video-table-body">
-                    <!-- Popolato via JS -->
-                </tbody>
-            </table>
+                        </tr>
+                    </thead>
+                    <tbody id="module-video-table-body">
+                        <!-- Popolato via JS -->
+                    </tbody>
+                </table>
+            </div>
         </div>
         <div class="flex justify-between items-center mt-2">
             <button id="module-video-prev-page" class="btn btn-sm" disabled>{{ __('Precedente') }}</button>

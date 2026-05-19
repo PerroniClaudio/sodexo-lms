@@ -72,7 +72,7 @@
                                     @csrf
                                     @method('DELETE')
 
-                                    <button type="submit" class="btn btn-error">
+                                    <button type="submit" class="btn btn-error" data-modal-submit-loading data-loading-text="{{ __('Rimozione...') }}">
                                         {{ __('Conferma rimozione') }}
                                     </button>
                                 </form>
@@ -143,7 +143,7 @@
                         >
                             {{ __('Cancel') }}
                         </button>
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary" data-modal-submit-loading data-loading-text="{{ __('Salvataggio...') }}">
                             <x-lucide-check class="h-4 w-4" />
                             <span>{{ __('Conferma') }}</span>
                         </button>
