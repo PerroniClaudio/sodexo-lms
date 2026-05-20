@@ -103,6 +103,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Job Title relazione
+     * QUESTA SAREBBE LA MANSIONE
      */
     public function jobTitle(): BelongsTo
     {

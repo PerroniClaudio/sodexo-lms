@@ -3,8 +3,9 @@
 namespace App\Observers;
 
 use App\Enums\UserStatus;
-use App\Models\JobUnit;
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class UserObserver
@@ -16,20 +17,20 @@ class UserObserver
     {
         // Genera password randomica se non presente
         if (empty($user->password)) {
-            $user->password = \Illuminate\Support\Facades\Hash::make(\Illuminate\Support\Str::random(12));
+            $user->password = Hash::make(Str::random(12));
         }
 
         // Valida campi job obbligatori per utenti normali (non admin/test)
         $this->validateJobFields($user);
     }
-    
+
     /**
      * Handle the User "created" event.
      */
     public function created(User $user): void
     {
         // Invia mail di verifica se non già verificato
-        if (!$user->hasVerifiedEmail()) {
+        if (! $user->hasVerifiedEmail()) {
             $user->sendEmailVerificationNotification();
         }
     }
