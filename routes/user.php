@@ -84,6 +84,9 @@ Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
 
         // Corsi utente
         Route::get('courses', [CourseController::class, 'index'])->name('courses.index');
+        Route::get('completed-courses', [CourseController::class, 'completed'])->name('completed-courses.index');
+        Route::get('completed-courses/{courseEnrollment}/certificate', [CourseController::class, 'downloadCertificate'])
+            ->name('completed-courses.certificate.download');
         Route::get('courses/{course}', [CourseController::class, 'show'])->name('courses.show');
     });
 });
