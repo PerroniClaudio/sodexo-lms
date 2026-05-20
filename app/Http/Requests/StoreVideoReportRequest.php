@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Course;
 use App\Models\VideoReportRequest;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -17,6 +18,7 @@ class StoreVideoReportRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'report_type' => ['required', Rule::in(VideoReportRequest::REPORT_TYPES)],
             'scope_type' => ['required', Rule::in(VideoReportRequest::SCOPES)],
             'course_id' => [
                 Rule::requiredIf(fn (): bool => $this->input('scope_type') === VideoReportRequest::SCOPE_COURSE),
@@ -49,6 +51,21 @@ class StoreVideoReportRequest extends FormRequest
                 }
 
                 if ($this->input('scope_type') !== VideoReportRequest::SCOPE_JOB_DIMENSION) {
+                    $courseId = $this->integer('course_id');
+
+                    if ($courseId <= 0) {
+                        return;
+                    }
+
+                    $isExportableCourse = Course::query()
+                        ->exportableForAuditTrail()
+                        ->whereKey($courseId)
+                        ->exists();
+
+                    if (! $isExportableCourse) {
+                        $validator->errors()->add('course_id', __('Puoi esportare audit trail solo per corsi FAD o FAD Asincrona.'));
+                    }
+
                     return;
                 }
 

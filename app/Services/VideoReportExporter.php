@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Course;
 use App\Models\Module;
 use App\Models\VideoReportRequest;
 use Carbon\CarbonInterface;
@@ -293,6 +294,7 @@ class VideoReportExporter
             ->leftJoin('job_titles', 'job_titles.id', '=', 'users.job_title_id')
             ->leftJoin('job_roles', 'job_roles.id', '=', 'users.job_role_id')
             ->leftJoin('job_units', 'job_units.id', '=', 'users.job_unit_id')
+            ->whereIn('courses.type', Course::AUDIT_TRAIL_TYPES)
             ->where('modules.type', Module::TYPE_VIDEO)
             ->whereBetween('video_tracking_events.occurred_at', [$dateFrom, $dateTo]);
 

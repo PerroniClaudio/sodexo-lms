@@ -146,6 +146,7 @@ function seedVideoReportFixture(?JobSector $jobSector = null, string $courseTitl
 
     $course = Course::factory()->create([
         'title' => $courseTitle,
+        'type' => 'fad',
         'status' => 'draft',
     ]);
 
@@ -233,6 +234,7 @@ function seedVideoReportFixture(?JobSector $jobSector = null, string $courseTitl
     $videoReportRequest = VideoReportRequest::query()->create([
         'requested_by' => auth()->id(),
         'status' => VideoReportRequest::STATUS_PENDING,
+        'report_type' => VideoReportRequest::REPORT_TYPE_VIDEO,
         'scope_type' => VideoReportRequest::SCOPE_COURSE,
         'course_id' => $course->getKey(),
         'date_from' => '2026-05-01',

@@ -13,10 +13,17 @@ uses(RefreshDatabase::class);
 it('allows admins to access video reports index', function () {
     actingAsRole('admin');
 
+    Course::factory()->create(['title' => 'Corso FAD', 'type' => 'fad']);
+    Course::factory()->create(['title' => 'Corso Async', 'type' => 'async']);
+    Course::factory()->create(['title' => 'Corso RES', 'type' => 'res']);
+
     $this->get(route('admin.video-reports.index'))
         ->assertOk()
-        ->assertSeeText('Report video')
-        ->assertSeeText('Richiedi report');
+        ->assertSeeText('Audit trail')
+        ->assertSeeText('Richiedi export')
+        ->assertSeeText('Corso FAD')
+        ->assertSeeText('Corso Async')
+        ->assertDontSeeText('Corso RES');
 });
 
 it('does not allow regular users to access video reports', function () {
@@ -31,9 +38,10 @@ it('creates a queued video report request filtered by course', function () {
     Queue::fake();
     actingAsRole('admin');
 
-    $course = Course::factory()->create(['title' => 'Corso video']);
+    $course = Course::factory()->create(['title' => 'Corso video', 'type' => 'fad']);
 
     $this->post(route('admin.video-reports.store'), [
+        'report_type' => VideoReportRequest::REPORT_TYPE_VIDEO,
         'scope_type' => VideoReportRequest::SCOPE_COURSE,
         'course_id' => $course->getKey(),
         'date_from' => '2026-05-01',
@@ -45,6 +53,7 @@ it('creates a queued video report request filtered by course', function () {
     $videoReportRequest = VideoReportRequest::query()->sole();
 
     expect($videoReportRequest->scope_type)->toBe(VideoReportRequest::SCOPE_COURSE)
+        ->and($videoReportRequest->report_type)->toBe(VideoReportRequest::REPORT_TYPE_VIDEO)
         ->and($videoReportRequest->course_id)->toBe($course->getKey())
         ->and($videoReportRequest->job_dimension)->toBeNull()
         ->and($videoReportRequest->status)->toBe(VideoReportRequest::STATUS_PENDING);
@@ -61,6 +70,7 @@ it('creates a queued video report request filtered by job dimension', function (
     $jobSector = JobSector::factory()->create(['name' => 'Clinica']);
 
     $this->post(route('admin.video-reports.store'), [
+        'report_type' => VideoReportRequest::REPORT_TYPE_VIDEO,
         'scope_type' => VideoReportRequest::SCOPE_JOB_DIMENSION,
         'job_dimension' => VideoReportRequest::JOB_DIMENSION_SECTOR,
         'job_dimension_id' => $jobSector->getKey(),
@@ -72,9 +82,36 @@ it('creates a queued video report request filtered by job dimension', function (
     $videoReportRequest = VideoReportRequest::query()->sole();
 
     expect($videoReportRequest->scope_type)->toBe(VideoReportRequest::SCOPE_JOB_DIMENSION)
+        ->and($videoReportRequest->report_type)->toBe(VideoReportRequest::REPORT_TYPE_VIDEO)
         ->and($videoReportRequest->course_id)->toBeNull()
         ->and($videoReportRequest->job_dimension)->toBe(VideoReportRequest::JOB_DIMENSION_SECTOR)
         ->and($videoReportRequest->job_dimension_id)->toBe($jobSector->getKey());
+});
+
+it('creates a queued live audit trail request filtered by course', function () {
+    Queue::fake();
+    actingAsRole('admin');
+
+    $course = Course::factory()->create(['title' => 'Corso live', 'type' => 'async']);
+
+    $this->post(route('admin.video-reports.store'), [
+        'report_type' => VideoReportRequest::REPORT_TYPE_LIVE,
+        'scope_type' => VideoReportRequest::SCOPE_COURSE,
+        'course_id' => $course->getKey(),
+        'date_from' => '2026-05-01',
+        'date_to' => '2026-05-20',
+    ])
+        ->assertRedirect(route('admin.video-reports.index'))
+        ->assertSessionHas('status', 'Richiesta report accodata con successo.');
+
+    $videoReportRequest = VideoReportRequest::query()->sole();
+
+    expect($videoReportRequest->report_type)->toBe(VideoReportRequest::REPORT_TYPE_LIVE)
+        ->and($videoReportRequest->course_id)->toBe($course->getKey());
+
+    Queue::assertPushed(GenerateVideoReport::class, function (GenerateVideoReport $job) use ($videoReportRequest): bool {
+        return $job->videoReportRequest->is($videoReportRequest);
+    });
 });
 
 it('validates scope specific fields and date ordering', function () {
@@ -82,6 +119,7 @@ it('validates scope specific fields and date ordering', function () {
 
     $this->from(route('admin.video-reports.index'))
         ->post(route('admin.video-reports.store'), [
+            'report_type' => VideoReportRequest::REPORT_TYPE_VIDEO,
             'scope_type' => VideoReportRequest::SCOPE_JOB_DIMENSION,
             'date_from' => '2026-05-20',
             'date_to' => '2026-05-01',
@@ -90,14 +128,35 @@ it('validates scope specific fields and date ordering', function () {
         ->assertSessionHasErrors(['job_dimension', 'job_dimension_id', 'date_to']);
 });
 
+it('rejects non exportable course types when creating an audit trail request', function () {
+    Queue::fake();
+    actingAsRole('admin');
+
+    $course = Course::factory()->create(['type' => 'res']);
+
+    $this->from(route('admin.video-reports.index'))
+        ->post(route('admin.video-reports.store'), [
+            'report_type' => VideoReportRequest::REPORT_TYPE_VIDEO,
+            'scope_type' => VideoReportRequest::SCOPE_COURSE,
+            'course_id' => $course->getKey(),
+            'date_from' => '2026-05-01',
+            'date_to' => '2026-05-20',
+        ])
+        ->assertRedirect(route('admin.video-reports.index'))
+        ->assertSessionHasErrors(['course_id']);
+
+    Queue::assertNothingPushed();
+});
+
 it('returns status payload for polling', function () {
     actingAsRole('admin');
 
     $videoReportRequest = VideoReportRequest::query()->create([
         'requested_by' => auth()->id(),
         'status' => VideoReportRequest::STATUS_PROCESSING,
+        'report_type' => VideoReportRequest::REPORT_TYPE_VIDEO,
         'scope_type' => VideoReportRequest::SCOPE_COURSE,
-        'course_id' => Course::factory()->create()->getKey(),
+        'course_id' => Course::factory()->create(['type' => 'fad'])->getKey(),
         'date_from' => '2026-05-01',
         'date_to' => '2026-05-20',
         'output_disk' => 's3',
@@ -121,8 +180,9 @@ it('allows admins to download completed video report files', function () {
     $videoReportRequest = VideoReportRequest::query()->create([
         'requested_by' => auth()->id(),
         'status' => VideoReportRequest::STATUS_COMPLETED,
+        'report_type' => VideoReportRequest::REPORT_TYPE_VIDEO,
         'scope_type' => VideoReportRequest::SCOPE_COURSE,
-        'course_id' => Course::factory()->create()->getKey(),
+        'course_id' => Course::factory()->create(['type' => 'fad'])->getKey(),
         'date_from' => '2026-05-01',
         'date_to' => '2026-05-20',
         'output_disk' => 's3',
@@ -145,8 +205,9 @@ it('returns not found when completed video report file is missing', function () 
     $videoReportRequest = VideoReportRequest::query()->create([
         'requested_by' => auth()->id(),
         'status' => VideoReportRequest::STATUS_COMPLETED,
+        'report_type' => VideoReportRequest::REPORT_TYPE_VIDEO,
         'scope_type' => VideoReportRequest::SCOPE_COURSE,
-        'course_id' => Course::factory()->create()->getKey(),
+        'course_id' => Course::factory()->create(['type' => 'fad'])->getKey(),
         'date_from' => '2026-05-01',
         'date_to' => '2026-05-20',
         'output_disk' => 's3',

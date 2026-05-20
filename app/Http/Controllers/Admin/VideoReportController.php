@@ -29,8 +29,12 @@ class VideoReportController extends Controller
                 ->with(['course', 'requester'])
                 ->latest()
                 ->paginate(20),
-            'courses' => Course::query()->orderBy('title')->get(['id', 'title']),
+            'courses' => Course::query()
+                ->exportableForAuditTrail()
+                ->orderBy('title')
+                ->get(['id', 'title']),
             'jobDimensionOptions' => VideoReportRequest::jobDimensionOptions(),
+            'reportTypeOptions' => VideoReportRequest::reportTypeOptions(),
             'jobDimensionValues' => [
                 VideoReportRequest::JOB_DIMENSION_SECTOR => JobSector::query()->orderBy('name')->get(['id', 'name']),
                 VideoReportRequest::JOB_DIMENSION_CATEGORY => JobCategory::query()->orderBy('name')->get(['id', 'name']),
@@ -50,6 +54,7 @@ class VideoReportController extends Controller
             'requested_by' => Auth::id(),
             'status' => VideoReportRequest::STATUS_PENDING,
             'scope_type' => $validated['scope_type'],
+            'report_type' => $validated['report_type'],
             'course_id' => $validated['scope_type'] === VideoReportRequest::SCOPE_COURSE
                 ? (int) $validated['course_id']
                 : null,

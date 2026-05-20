@@ -7,6 +7,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class VideoReportRequest extends Model
 {
+    public const REPORT_TYPE_VIDEO = 'video';
+
+    public const REPORT_TYPE_LIVE = 'live';
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_PROCESSING = 'processing';
@@ -43,10 +47,16 @@ class VideoReportRequest extends Model
         self::SCOPE_JOB_DIMENSION,
     ];
 
+    public const REPORT_TYPES = [
+        self::REPORT_TYPE_VIDEO,
+        self::REPORT_TYPE_LIVE,
+    ];
+
     protected $fillable = [
         'requested_by',
         'status',
         'scope_type',
+        'report_type',
         'course_id',
         'job_dimension',
         'job_dimension_id',
@@ -61,6 +71,7 @@ class VideoReportRequest extends Model
 
     protected $attributes = [
         'status' => self::STATUS_PENDING,
+        'report_type' => self::REPORT_TYPE_VIDEO,
         'output_disk' => 's3',
     ];
 
@@ -108,6 +119,18 @@ class VideoReportRequest extends Model
                 'label' => __('Unità lavorativa'),
                 'model' => JobUnit::class,
                 'user_column' => 'job_unit_id',
+            ],
+        ];
+    }
+
+    public static function reportTypeOptions(): array
+    {
+        return [
+            self::REPORT_TYPE_VIDEO => [
+                'label' => __('Video'),
+            ],
+            self::REPORT_TYPE_LIVE => [
+                'label' => __('Live'),
             ],
         ];
     }
@@ -181,5 +204,10 @@ class VideoReportRequest extends Model
             'dimension' => $label,
             'id' => $this->job_dimension_id,
         ]);
+    }
+
+    public function reportTypeLabel(): string
+    {
+        return static::reportTypeOptions()[$this->report_type]['label'] ?? (string) $this->report_type;
     }
 }

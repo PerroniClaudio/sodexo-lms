@@ -4,11 +4,11 @@
         data-video-reports-page
         data-has-errors="{{ $errors->any() ? 'true' : 'false' }}"
     >
-        <x-page-header :title="__('Report video')">
+        <x-page-header :title="__('Audit trail')">
             <x-slot:actions>
                 <button type="button" class="btn btn-primary" data-open-video-report-modal>
                     <x-lucide-download class="h-4 w-4" />
-                    <span>{{ __('Richiedi report') }}</span>
+                    <span>{{ __('Richiedi export') }}</span>
                 </button>
             </x-slot:actions>
         </x-page-header>
@@ -33,6 +33,7 @@
                         <thead>
                             <tr>
                                 <th>{{ __('ID') }}</th>
+                                <th>{{ __('Tipo') }}</th>
                                 <th>{{ __('Filtro') }}</th>
                                 <th>{{ __('Intervallo') }}</th>
                                 <th>{{ __('Richiesto da') }}</th>
@@ -49,6 +50,9 @@
                                     data-status-url="{{ route('admin.video-reports.show', $videoReportRequest) }}"
                                 >
                                     <td>#{{ $videoReportRequest->id }}</td>
+                                    <td>
+                                        <span class="badge badge-outline">{{ $videoReportRequest->reportTypeLabel() }}</span>
+                                    </td>
                                     <td>
                                         <div class="space-y-1">
                                             <p class="font-medium">{{ $videoReportRequest->scopeSummary() }}</p>
@@ -88,7 +92,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="py-8 text-center text-base-content/70">
+                                    <td colspan="8" class="py-8 text-center text-base-content/70">
                                         {{ __('Nessuna richiesta report presente.') }}
                                     </td>
                                 </tr>
@@ -112,14 +116,35 @@
                 </form>
 
                 <div class="space-y-2">
-                    <h2 class="text-xl font-semibold">{{ __('Richiedi report video') }}</h2>
+                    <h2 class="text-xl font-semibold">{{ __('Richiedi audit trail') }}</h2>
                     <p class="text-sm text-base-content/70">
-                        {{ __('Esporta avanzamenti e audit trail video in un file Excel a 2 fogli.') }}
+                        {{ __('Scegli se esportare l’audit trail video o live per corsi FAD e FAD Asincrona.') }}
                     </p>
                 </div>
 
                 <form method="POST" action="{{ route('admin.video-reports.store') }}" class="mt-6 space-y-6">
                     @csrf
+
+                    <fieldset class="rounded-box border border-base-300 p-4">
+                        <legend class="px-2 text-sm font-semibold">{{ __('Tipo audit trail') }}</legend>
+                        <div class="grid gap-4 md:grid-cols-2">
+                            @foreach ($reportTypeOptions as $key => $option)
+                                <label class="label cursor-pointer justify-start gap-3 rounded-box border border-base-300 p-4">
+                                    <input
+                                        type="radio"
+                                        name="report_type"
+                                        value="{{ $key }}"
+                                        class="radio"
+                                        @checked(old('report_type', \App\Models\VideoReportRequest::REPORT_TYPE_VIDEO) === $key)
+                                    >
+                                    <span class="label-text">{{ $option['label'] }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                        @error('report_type')
+                            <p class="mt-2 text-sm text-error">{{ $message }}</p>
+                        @enderror
+                    </fieldset>
 
                     <fieldset class="rounded-box border border-base-300 p-4">
                         <legend class="px-2 text-sm font-semibold">{{ __('Perimetro report') }}</legend>
@@ -154,6 +179,7 @@
                             <label for="course_id" class="label p-0">
                                 <span class="label-text font-medium">{{ __('Corso') }}</span>
                             </label>
+                            <p class="mt-2 text-xs text-base-content/60">{{ __('Sono selezionabili solo corsi FAD e FAD Asincrona.') }}</p>
                             <select id="course_id" name="course_id" class="select select-bordered mt-2 w-full @error('course_id') select-error @enderror">
                                 <option value="">{{ __('Seleziona corso') }}</option>
                                 @foreach ($courses as $course)
@@ -225,7 +251,7 @@
                         <button type="button" class="btn btn-ghost" data-close-video-report-modal>{{ __('Annulla') }}</button>
                         <button type="submit" class="btn btn-primary" data-modal-submit-loading>
                             <x-lucide-download class="h-4 w-4" />
-                            <span>{{ __('Accoda report') }}</span>
+                            <span>{{ __('Accoda export') }}</span>
                         </button>
                     </div>
                 </form>

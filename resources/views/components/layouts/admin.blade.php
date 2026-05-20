@@ -100,7 +100,7 @@
                                     'menu-active' => request()->routeIs('admin.video-reports.*'),
                                 ])
                             >
-                                {{ __('Report video') }}
+                                {{ __('Audit trail') }}
                             </a>
                         </li>
                     @endrole

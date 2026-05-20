@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\VideoReportRequest;
+use App\Services\LiveAuditTrailExporter;
 use App\Services\VideoReportExporter;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -27,8 +28,10 @@ class GenerateVideoReport implements ShouldQueue
         $this->videoReportRequest = $videoReportRequest;
     }
 
-    public function handle(VideoReportExporter $videoReportExporter): void
-    {
+    public function handle(
+        VideoReportExporter $videoReportExporter,
+        LiveAuditTrailExporter $liveAuditTrailExporter,
+    ): void {
         $videoReportRequest = $this->videoReportRequest->fresh(['course']);
 
         if ($videoReportRequest === null || $videoReportRequest->status === VideoReportRequest::STATUS_COMPLETED) {
@@ -43,7 +46,11 @@ class GenerateVideoReport implements ShouldQueue
         ])->save();
 
         try {
-            $outputPath = $videoReportExporter->store($videoReportRequest);
+            $outputPath = match ($videoReportRequest->report_type) {
+                VideoReportRequest::REPORT_TYPE_VIDEO => $videoReportExporter->store($videoReportRequest),
+                VideoReportRequest::REPORT_TYPE_LIVE => $liveAuditTrailExporter->store($videoReportRequest),
+                default => throw new RuntimeException('Unsupported audit trail report type.'),
+            };
 
             $videoReportRequest->forceFill([
                 'status' => VideoReportRequest::STATUS_COMPLETED,
