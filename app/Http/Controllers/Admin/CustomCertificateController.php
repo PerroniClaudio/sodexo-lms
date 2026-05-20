@@ -14,7 +14,6 @@ use App\Models\DocumentConversionJob;
 use App\Models\User;
 use App\Services\Certificates\CertificateVariableResolver;
 use App\Services\Certificates\DocxTemplateRenderer;
-use App\Services\CloudRunJobClient;
 use Illuminate\Http\File;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -226,10 +225,7 @@ class CustomCertificateController extends Controller
 
     public function previewDownload(
         PreviewCustomCertificateRequest $request,
-        CustomCertificate $customCertificate,
-        CertificateVariableResolver $certificateVariableResolver,
-        DocxTemplateRenderer $docxTemplateRenderer,
-        CloudRunJobClient $cloudRunJobClient
+        CustomCertificate $customCertificate
     ): RedirectResponse {
         $validated = $request->validated();
 
@@ -240,9 +236,9 @@ class CustomCertificateController extends Controller
             ->where('user_id', $user->getKey())
             ->first();
 
-        $temporaryPath = $docxTemplateRenderer->renderToTemporaryPath(
+        $temporaryPath = app(DocxTemplateRenderer::class)->renderToTemporaryPath(
             $customCertificate,
-            $certificateVariableResolver->resolve($course, $user, $enrollment)
+            app(CertificateVariableResolver::class)->resolve($course, $user, $enrollment)
         );
 
         try {
@@ -276,8 +272,6 @@ class CustomCertificateController extends Controller
                 'output_disk' => self::STORAGE_DISK,
                 'output_path' => (string) str($inputPath)->replaceEnd('.docx', '.pdf'),
             ]);
-
-            $cloudRunJobClient->runDocumentConversionJob($conversionJob);
 
             return redirect()
                 ->route('admin.certificates.preview-job', [$customCertificate, $conversionJob]);

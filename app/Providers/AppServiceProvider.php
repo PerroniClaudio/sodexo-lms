@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Models\Course;
+use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\User;
+use App\Observers\CourseEnrollmentObserver;
 use App\Observers\CourseObserver;
 use App\Observers\ModuleObserver;
 use App\Observers\UserObserver;
@@ -28,5 +30,6 @@ class AppServiceProvider extends ServiceProvider
         User::observe(UserObserver::class);
         Module::observe(ModuleObserver::class);
         Course::observe(CourseObserver::class);
+        CourseEnrollment::observe(CourseEnrollmentObserver::class);
     }
 }
