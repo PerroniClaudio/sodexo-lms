@@ -92,6 +92,17 @@
                                 {{ __('Libreria Video') }}
                             </a>
                         </li>
+                        <li class="w-full">
+                            <a
+                                href="{{ route('admin.video-reports.index') }}"
+                                @class([
+                                    'w-full',
+                                    'menu-active' => request()->routeIs('admin.video-reports.*'),
+                                ])
+                            >
+                                {{ __('Audit trail') }}
+                            </a>
+                        </li>
                     @endrole
 
                     @role('superadmin')

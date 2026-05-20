@@ -15,6 +15,7 @@ use App\Models\ModuleTeacherEnrollment;
 use App\Models\ModuleTutorEnrollment;
 use App\Models\User;
 use App\Services\CourseClassScheduleResolver;
+use App\Services\LiveStreamAuditTrailService;
 use App\Services\MuxLiveService;
 use App\Services\TwilioVideoService;
 use Carbon\CarbonInterface;
@@ -43,6 +44,8 @@ class LiveStreamController extends Controller
     private const LIVE_STREAM_BACKGROUND_DIRECTORY = 'images/live-stream-backgrounds';
 
     private const LIVE_STREAM_BACKGROUND_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'svg'];
+
+    public function __construct(private LiveStreamAuditTrailService $liveStreamAuditTrailService) {}
 
     public function userPlayer(Request $request, Module $module): View
     {
@@ -791,6 +794,8 @@ class LiveStreamController extends Controller
             ],
         );
 
+        $this->liveStreamAuditTrailService->recordHandRaiseRequested($session, $handRaise, $participant);
+
         return response()->json([
             'message' => __('Mano alzata inviata.'),
             'hand_raise' => $this->serializeHandRaise($handRaise),
@@ -955,6 +960,8 @@ class LiveStreamController extends Controller
                 'left_at' => null,
             ],
         );
+
+        $this->liveStreamAuditTrailService->recordParticipantJoined($session, $participant);
 
         Log::info('Live stream participant joined.', [
             'module_id' => $module->getKey(),
@@ -1192,6 +1199,14 @@ class LiveStreamController extends Controller
                 'mux' => $this->serializeMux($module, $latestSession),
             ];
         }
+
+        $session->load([
+            'participants.user',
+            'handRaises.user',
+            'polls.responses',
+        ]);
+
+        $this->markStaleParticipantsAsDisconnected($session);
 
         $session->load([
             'participants.user',
@@ -1619,6 +1634,27 @@ class LiveStreamController extends Controller
         return $participant->last_seen_at->lt(now()->subSeconds(self::PARTICIPANT_STALE_SECONDS));
     }
 
+    private function markStaleParticipantsAsDisconnected(LiveStreamSession $session): void
+    {
+        $disconnectedAt = now();
+
+        $session->participants
+            ->filter(function (LiveStreamParticipant $participant): bool {
+                return $participant->left_at === null
+                    && $participant->last_seen_at !== null
+                    && $participant->last_seen_at->lt(now()->subSeconds(self::PARTICIPANT_STALE_SECONDS));
+            })
+            ->each(function (LiveStreamParticipant $participant) use ($session, $disconnectedAt): void {
+                $participant->update(['left_at' => $disconnectedAt]);
+
+                $freshParticipant = $participant->fresh();
+
+                if ($freshParticipant instanceof LiveStreamParticipant) {
+                    $this->liveStreamAuditTrailService->recordParticipantDisconnected($session, $freshParticipant, 'stale_timeout');
+                }
+            });
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -1891,9 +1927,9 @@ class LiveStreamController extends Controller
             'ended_at' => $endedAt,
         ]);
 
-        $module->update([
+        $module->forceFill([
             'appointment_end_time' => $endedAt,
-        ]);
+        ])->saveQuietly();
 
         $session->polls()
             ->where('status', LiveStreamPoll::STATUS_OPEN)
@@ -1902,11 +1938,23 @@ class LiveStreamController extends Controller
                 'closed_at' => $endedAt,
             ]);
 
+        $activeParticipants = $session->participants()
+            ->whereNull('left_at')
+            ->get();
+
         $session->participants()
             ->whereNull('left_at')
             ->update([
                 'left_at' => $endedAt,
             ]);
+
+        $activeParticipants->each(function (LiveStreamParticipant $participant) use ($session): void {
+            $freshParticipant = $participant->fresh();
+
+            if ($freshParticipant instanceof LiveStreamParticipant) {
+                $this->liveStreamAuditTrailService->recordParticipantDisconnected($session, $freshParticipant, 'session_ended');
+            }
+        });
     }
 
     /**

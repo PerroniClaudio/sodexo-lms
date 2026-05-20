@@ -15,6 +15,11 @@ class Course extends Model
 {
     use HasFactory, SoftDeletes;
 
+    public const AUDIT_TRAIL_TYPES = [
+        'fad',
+        'async',
+    ];
+
     public const TYPES = [
         'fad',
         'res',
@@ -130,6 +135,11 @@ class Course extends Model
     public function supportsClasses(): bool
     {
         return in_array($this->type, ['res', 'async'], true);
+    }
+
+    public function scopeExportableForAuditTrail(Builder $query): Builder
+    {
+        return $query->whereIn('type', self::AUDIT_TRAIL_TYPES);
     }
 
     public function scheduledModulesControlledByClasses(): HasMany

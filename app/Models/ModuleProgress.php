@@ -7,6 +7,7 @@ use DomainException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 
 class ModuleProgress extends Model
@@ -90,6 +91,11 @@ class ModuleProgress extends Model
         return $this->belongsTo(Module::class);
     }
 
+    public function videoTrackingEvents(): HasMany
+    {
+        return $this->hasMany(VideoTrackingEvent::class, 'module_progress_id');
+    }
+
     public function start(): void
     {
         $this->assertTrackableCurrentModule();
@@ -109,19 +115,36 @@ class ModuleProgress extends Model
 
     public function recordVideoProgress(int $currentSecond, int $additionalTimeSpentSeconds = 0): void
     {
+        $currentSecond = max(0, $currentSecond);
+
+        $this->syncVideoTrackingState(
+            $currentSecond,
+            max($this->video_max_second ?? 0, $currentSecond),
+            $additionalTimeSpentSeconds,
+        );
+    }
+
+    public function syncVideoTrackingState(int $currentSecond, int $maxSecond, int $additionalTimeSpentSeconds = 0): void
+    {
         $this->loadMissing(['module', 'courseEnrollment']);
 
         if (! $this->module->isVideo()) {
             throw new DomainException('Video progress can only be recorded for video modules.');
         }
 
+        $currentSecond = max(0, $currentSecond);
+        $maxSecond = max($currentSecond, $maxSecond);
+        $additionalTimeSpentSeconds = max(0, $additionalTimeSpentSeconds);
+
         // Se il video è già completato, aggiorna solo tracking senza modificare status
         if ($this->status === self::STATUS_COMPLETED) {
             $this->forceFill([
                 'last_accessed_at' => now(),
                 'time_spent_seconds' => max(0, $this->time_spent_seconds + $additionalTimeSpentSeconds),
-                'video_current_second' => max(0, $currentSecond),
+                'video_current_second' => $currentSecond,
+                'video_max_second' => max($this->video_max_second ?? 0, $maxSecond),
             ])->save();
+
             return;
         }
 
@@ -138,8 +161,8 @@ class ModuleProgress extends Model
             'started_at' => $this->started_at ?? now(),
             'last_accessed_at' => now(),
             'time_spent_seconds' => max(0, $this->time_spent_seconds + $additionalTimeSpentSeconds),
-            'video_current_second' => max(0, $currentSecond),
-            'video_max_second' => max($this->video_max_second ?? 0, $currentSecond),
+            'video_current_second' => $currentSecond,
+            'video_max_second' => max($this->video_max_second ?? 0, $maxSecond),
         ])->save();
 
         $this->courseEnrollment->markAsInProgress();

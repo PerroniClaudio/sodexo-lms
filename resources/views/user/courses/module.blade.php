@@ -6,6 +6,8 @@
         data-module-title="{{ $module->title }}"
         data-passing-score="{{ $module->passing_score ?? '' }}"
         data-signed-playback-url="{{ route('user.courses.modules.video.signed-playback', [$course, $module]) }}"
+        data-video-tracking-url="{{ route('user.courses.modules.video.tracking', [$course, $module]) }}"
+        data-video-events-url="{{ route('user.courses.modules.video.events', [$course, $module]) }}"
         data-video-progress-url="{{ route('user.courses.modules.video.progress', [$course, $module]) }}"
         data-video-complete-url="{{ route('user.courses.modules.video.complete', [$course, $module]) }}"
         data-scorm-packages-url="{{ route('user.courses.modules.scorm.packages.index', [$course, $module]) }}"

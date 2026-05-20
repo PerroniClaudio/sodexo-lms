@@ -9,6 +9,7 @@ use Illuminate\Console\Command;
 class SyncMuxVideosStatus extends Command
 {
     protected $signature = 'videos:sync-mux-status';
+
     protected $description = 'Sincronizza lo stato dei video con Mux per quelli non ancora terminati';
 
     public function handle(MuxService $muxService)
@@ -23,7 +24,7 @@ class SyncMuxVideosStatus extends Command
             $muxUploadData = $muxService->getUploadData($video->mux_upload_id);
             $assetId = $muxUploadData['asset_id'] ?? null;
             $playbackId = $muxUploadData['playback_id'] ?? null;
-            if (!$assetId) {
+            if (! $assetId) {
                 $this->warn("[DEBUG] Nessun asset_id trovato per upload_id: {$video->mux_upload_id}");
             } else {
                 $this->info("[DEBUG] Trovato asset_id: $assetId per upload_id: {$video->mux_upload_id}");
@@ -45,14 +46,22 @@ class SyncMuxVideosStatus extends Command
         $count = 0;
         foreach ($videos as $video) {
             $muxStatus = $muxService->getAssetStatus($video->mux_asset_id);
-            if ($muxStatus && $muxStatus !== $video->mux_video_status) {
+            $durationRaw = $muxService->getAssetDuration($video->mux_asset_id);
+            $durationSeconds = is_numeric($durationRaw) ? (int) round((float) $durationRaw) : null;
+
+            if (
+                $muxStatus
+                && ($muxStatus !== $video->mux_video_status || $durationSeconds !== $video->duration_seconds)
+            ) {
                 $video->mux_video_status = $muxStatus;
+                $video->duration_seconds = $durationSeconds;
                 $video->save();
                 $count++;
             }
         }
 
         $this->info("Aggiornati $count video. AssetId aggiornati: $updatedAssetId");
+
         return 0;
     }
 }

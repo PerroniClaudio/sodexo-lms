@@ -4,6 +4,7 @@ use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\JobUnit;
 use App\Models\LiveStreamAttendanceMinute;
+use App\Models\LiveStreamAuditEvent;
 use App\Models\LiveStreamDocument;
 use App\Models\LiveStreamHandRaise;
 use App\Models\LiveStreamMessage;
@@ -21,6 +22,8 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Mockery;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
@@ -59,6 +62,27 @@ function assignTutorToModule($user, Module $module): void
         'user_id' => $user->getKey(),
         'module_id' => $module->getKey(),
     ]);
+}
+
+function createLiveTestUser(string $role = 'user'): User
+{
+    Role::findOrCreate($role, 'web');
+
+    $user = User::query()->create([
+        'email' => fake()->unique()->safeEmail(),
+        'password' => bcrypt('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'name' => fake()->firstName(),
+        'surname' => fake()->lastName(),
+        'fiscal_code' => fake()->unique()->regexify('[A-Z0-9]{16}'),
+        'is_foreigner_or_immigrant' => false,
+    ]);
+
+    $user->assignRole($role);
+
+    return $user;
 }
 
 test('teacher can start a live session only once for the same module', function () {
@@ -156,7 +180,7 @@ test('teacher end session overwrites module appointment end time', function () {
     $module = createLiveModuleWithCourse()->forceFill([
         'appointment_end_time' => now()->addHours(4),
     ]);
-    $module->save();
+    $module->saveQuietly();
 
     assignTeacherToModule($teacher, $module);
 
@@ -166,6 +190,18 @@ test('teacher end session overwrites module appointment end time', function () {
         'status' => LiveStreamSession::STATUS_LIVE,
         'twilio_room_sid' => 'RMteacherroom',
         'twilio_room_name' => 'teacher-room',
+    ]);
+
+    $student = createLiveTestUser();
+    enrollUserForModule($student, $module);
+
+    LiveStreamParticipant::factory()->create([
+        'live_stream_session_id' => $session->getKey(),
+        'user_id' => $student->getKey(),
+        'app_role' => LiveStreamParticipant::ROLE_USER,
+        'joined_at' => now()->subMinutes(10),
+        'last_seen_at' => now(),
+        'left_at' => null,
     ]);
 
     $service = Mockery::mock(TwilioVideoService::class);
@@ -185,6 +221,13 @@ test('teacher end session overwrites module appointment end time', function () {
     expect($session->fresh()->status)->toBe(LiveStreamSession::STATUS_ENDED);
     expect($session->fresh()->ended_at?->equalTo($endedAt))->toBeTrue();
     expect($module->fresh()->appointment_end_time?->equalTo($endedAt))->toBeTrue();
+    expect(
+        LiveStreamAuditEvent::query()
+            ->where('event_type', LiveStreamAuditEvent::TYPE_PARTICIPANT_DISCONNECTED)
+            ->where('live_stream_session_id', $session->getKey())
+            ->where('user_id', $student->getKey())
+            ->exists()
+    )->toBeTrue();
 
     Carbon::setTestNow();
 });
@@ -256,15 +299,14 @@ test('user join requires an enrollment in the live course', function () {
 
 test('enrolled user can join while tutor joins as hidden observer', function () {
     $module = createLiveModuleWithCourse();
+    $sessionTeacher = createLiveTestUser('teacher');
     $session = LiveStreamSession::factory()->create([
         'module_id' => $module->getKey(),
+        'teacher_user_id' => $sessionTeacher->getKey(),
         'status' => LiveStreamSession::STATUS_LIVE,
     ]);
 
-    $this->seed(RoleAndPermissionSeeder::class);
-
-    $user = User::factory()->create();
-    $user->assignRole('user');
+    $user = createLiveTestUser();
     enrollUserForModule($user, $module);
 
     $service = Mockery::mock(TwilioVideoService::class);
@@ -283,9 +325,15 @@ test('enrolled user can join while tutor joins as hidden observer', function () 
     expect($userParticipant)->not->toBeNull();
     expect($userParticipant->is_hidden)->toBeFalse();
     expect($userParticipant->audio_enabled)->toBeFalse();
+    expect(
+        LiveStreamAuditEvent::query()
+            ->where('event_type', LiveStreamAuditEvent::TYPE_PARTICIPANT_JOINED)
+            ->where('live_stream_session_id', $session->getKey())
+            ->where('user_id', $user->getKey())
+            ->exists()
+    )->toBeTrue();
 
-    $tutor = User::factory()->create();
-    $tutor->assignRole('tutor');
+    $tutor = createLiveTestUser('tutor');
     assignTutorToModule($tutor, $module);
 
     $service = Mockery::mock(TwilioVideoService::class);
@@ -302,6 +350,13 @@ test('enrolled user can join while tutor joins as hidden observer', function () 
     expect($tutorParticipant)->not->toBeNull();
     expect($tutorParticipant->is_hidden)->toBeTrue();
     expect($tutorParticipant->video_enabled)->toBeFalse();
+    expect(
+        LiveStreamAuditEvent::query()
+            ->where('event_type', LiveStreamAuditEvent::TYPE_PARTICIPANT_JOINED)
+            ->where('live_stream_session_id', $session->getKey())
+            ->where('user_id', $tutor->getKey())
+            ->exists()
+    )->toBeTrue();
 });
 
 test('enrolled user can read live stream background options', function () {
@@ -349,20 +404,25 @@ test('teacher state excludes hidden and stale participants', function () {
         'status' => LiveStreamSession::STATUS_LIVE,
     ]);
 
+    $freshStudentUser = createLiveTestUser();
     $freshStudent = LiveStreamParticipant::factory()->create([
         'live_stream_session_id' => $session->getKey(),
+        'user_id' => $freshStudentUser->getKey(),
         'app_role' => LiveStreamParticipant::ROLE_USER,
         'last_seen_at' => now(),
     ]);
 
-    LiveStreamParticipant::factory()->create([
+    $staleStudentUser = createLiveTestUser();
+    $staleStudent = LiveStreamParticipant::factory()->create([
         'live_stream_session_id' => $session->getKey(),
+        'user_id' => $staleStudentUser->getKey(),
         'app_role' => LiveStreamParticipant::ROLE_USER,
         'last_seen_at' => now()->subMinute(),
     ]);
 
     LiveStreamParticipant::factory()->create([
         'live_stream_session_id' => $session->getKey(),
+        'user_id' => createLiveTestUser('tutor')->getKey(),
         'app_role' => LiveStreamParticipant::ROLE_TUTOR,
         'is_hidden' => true,
         'last_seen_at' => now(),
@@ -386,6 +446,14 @@ test('teacher state excludes hidden and stale participants', function () {
     expect($response['participants'])->toHaveCount(1);
     expect($response['participants'][0]['id'])->toBe($freshStudent->getKey());
     expect($response['teacher']['user_id'])->toBe($teacher->getKey());
+    expect($staleStudent->fresh()->left_at)->not->toBeNull();
+    expect(
+        LiveStreamAuditEvent::query()
+            ->where('event_type', LiveStreamAuditEvent::TYPE_PARTICIPANT_DISCONNECTED)
+            ->where('live_stream_session_id', $session->getKey())
+            ->where('user_id', $staleStudent->user_id)
+            ->exists()
+    )->toBeTrue();
 });
 
 test('teacher can upload a pdf and state returns the shared live materials', function () {
@@ -442,19 +510,17 @@ test('enrolled user can download a shared live pdf', function () {
 
 test('hand raise is resolved when teacher grants microphone access', function () {
     $module = createLiveModuleWithCourse();
+    $sessionTeacher = createLiveTestUser('teacher');
     $session = LiveStreamSession::factory()->create([
         'module_id' => $module->getKey(),
+        'teacher_user_id' => $sessionTeacher->getKey(),
         'status' => LiveStreamSession::STATUS_LIVE,
     ]);
 
-    $this->seed(RoleAndPermissionSeeder::class);
-
-    $teacher = User::factory()->create();
-    $teacher->assignRole('teacher');
+    $teacher = createLiveTestUser('teacher');
     assignTeacherToModule($teacher, $module);
 
-    $student = User::factory()->create();
-    $student->assignRole('user');
+    $student = createLiveTestUser();
     enrollUserForModule($student, $module);
 
     $participant = LiveStreamParticipant::factory()->create([
@@ -468,6 +534,14 @@ test('hand raise is resolved when teacher grants microphone access', function ()
         ->postJson(route('user.live-stream.hand-raises.store', $module))
         ->assertSuccessful()
         ->assertJsonPath('hand_raise.status', LiveStreamHandRaise::STATUS_PENDING);
+
+    expect(
+        LiveStreamAuditEvent::query()
+            ->where('event_type', LiveStreamAuditEvent::TYPE_HAND_RAISE_REQUESTED)
+            ->where('live_stream_session_id', $session->getKey())
+            ->where('user_id', $student->getKey())
+            ->exists()
+    )->toBeTrue();
 
     $this->actingAs($teacher)
         ->patchJson(route('teacher.live-stream.participants.speaker', [$module, $participant]), [

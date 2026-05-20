@@ -5,8 +5,8 @@ use App\Http\Controllers\ScormPlayerController;
 use App\Http\Controllers\ScormRuntimeController;
 use App\Http\Controllers\User\CourseController;
 use App\Http\Controllers\User\QuizModuleController;
-use App\Http\Controllers\User\ScormModulePackageController;
 use App\Http\Controllers\User\SatisfactionSurveyController;
+use App\Http\Controllers\User\ScormModulePackageController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\User\VideoModuleController;
 use Illuminate\Support\Facades\Route;
@@ -46,6 +46,8 @@ Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
 
             // Modulo video: signed playback URL
             Route::get('/courses/{course}/modules/{module}/video/signed-playback', [VideoModuleController::class, 'signedPlayback'])->name('courses.modules.video.signed-playback');
+            Route::get('/courses/{course}/modules/{module}/video/tracking', [VideoModuleController::class, 'trackingState'])->name('courses.modules.video.tracking');
+            Route::post('/courses/{course}/modules/{module}/video/events', [VideoModuleController::class, 'trackingEvent'])->name('courses.modules.video.events');
             // Modulo video: registra avanzamento
             Route::post('/courses/{course}/modules/{module}/video/progress', [VideoModuleController::class, 'progress'])->name('courses.modules.video.progress');
             // Modulo video: segna completato
