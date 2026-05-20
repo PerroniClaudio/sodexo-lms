@@ -8,6 +8,8 @@ use App\Models\ModuleQuizAnswer;
 use App\Models\ModuleQuizQuestion;
 use App\Models\ModuleQuizSubmission;
 use App\Models\User;
+use App\Models\Video;
+use App\Models\VideoTrackingEvent;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -33,6 +35,13 @@ function enrollUserInCourseWithModule(string $moduleType = 'video', array $modul
     test()->actingAs($user);
 
     $course = Course::factory()->create();
+    $video = null;
+
+    if ($moduleType === 'video' && ! array_key_exists('video_id', $moduleAttributes)) {
+        $video = Video::factory()->create();
+        $moduleAttributes['video_id'] = $video->getKey();
+    }
+
     $module = Module::factory()->create(array_merge([
         'type' => $moduleType,
         'order' => 1,
@@ -41,7 +50,7 @@ function enrollUserInCourseWithModule(string $moduleType = 'video', array $modul
 
     $enrollment = CourseEnrollment::enroll($user, $course);
 
-    return [$user, $course, $module, $enrollment];
+    return [$user, $course, $module, $enrollment, $video];
 }
 
 test('module player page is accessible for enrolled user on current module', function () {
@@ -102,22 +111,148 @@ test('video progress endpoint updates module progress', function () {
     )->toBe(30);
 });
 
-test('video complete endpoint marks module as completed', function () {
-    [, $course, $module, $enrollment] = enrollUserInCourseWithModule('video');
+test('video tracking state returns resume, max allowed and duration', function () {
+    [, $course, $module, $enrollment, $video] = enrollUserInCourseWithModule('video');
 
     $progress = $enrollment->moduleProgresses()->where('module_id', $module->getKey())->firstOrFail();
-    $progress->recordVideoProgress(0);
+    $progress->syncVideoTrackingState(42, 57, 30);
+    $video?->update(['duration_seconds' => 120]);
 
-    $this->postJson(
-        route('user.courses.modules.video.complete', [$course, $module])
-    )->assertOk()
-        ->assertJson(['success' => true]);
+    $this->getJson(route('user.courses.modules.video.tracking', [$course, $module]))
+        ->assertOk()
+        ->assertJson([
+            'resume_second' => 42,
+            'max_allowed_second' => 57,
+            'duration_seconds' => 120,
+            'completion_threshold_percent' => 95,
+            'is_completed' => false,
+        ]);
+});
+
+test('video tracking event updates progress and time spent', function () {
+    [, $course, $module, $enrollment] = enrollUserInCourseWithModule('video');
+
+    $this->postJson(route('user.courses.modules.video.events', [$course, $module]), [
+        'session_uuid' => (string) Str::uuid(),
+        'event_uuid' => (string) Str::uuid(),
+        'event_type' => VideoTrackingEvent::TYPE_HEARTBEAT,
+        'occurred_at' => now()->toIso8601String(),
+        'position_second' => 30,
+        'max_second_client' => 30,
+        'delta_watched_seconds' => 30,
+    ])->assertOk()
+        ->assertJson([
+            'resume_second' => 30,
+            'max_allowed_second' => 30,
+            'was_blocked' => false,
+        ]);
 
     expect(
         $enrollment->moduleProgresses()
             ->where('module_id', $module->getKey())
-            ->value('status')
-    )->toBe(ModuleProgress::STATUS_COMPLETED);
+            ->value('video_current_second')
+    )->toBe(30);
+
+    expect(
+        $enrollment->moduleProgresses()
+            ->where('module_id', $module->getKey())
+            ->value('video_max_second')
+    )->toBe(30);
+
+    expect(
+        $enrollment->moduleProgresses()
+            ->where('module_id', $module->getKey())
+            ->value('time_spent_seconds')
+    )->toBe(30);
+});
+
+test('video tracking blocks seek beyond unlocked point', function () {
+    [, $course, $module, $enrollment] = enrollUserInCourseWithModule('video');
+
+    $progress = $enrollment->moduleProgresses()->where('module_id', $module->getKey())->firstOrFail();
+    $progress->syncVideoTrackingState(20, 20, 20);
+
+    $this->postJson(route('user.courses.modules.video.events', [$course, $module]), [
+        'session_uuid' => (string) Str::uuid(),
+        'event_uuid' => (string) Str::uuid(),
+        'event_type' => VideoTrackingEvent::TYPE_SEEK,
+        'occurred_at' => now()->toIso8601String(),
+        'position_second' => 80,
+        'from_second' => 20,
+        'to_second' => 80,
+        'max_second_client' => 80,
+    ])->assertOk()
+        ->assertJson([
+            'was_blocked' => true,
+            'rewind_to_second' => 20,
+            'max_allowed_second' => 20,
+        ]);
+
+    expect($progress->fresh()->video_current_second)->toBe(20);
+    expect($progress->fresh()->video_max_second)->toBe(20);
+});
+
+test('video complete endpoint does not complete below threshold', function () {
+    [, $course, $module, $enrollment, $video] = enrollUserInCourseWithModule('video');
+
+    $video?->update(['duration_seconds' => 100]);
+
+    $progress = $enrollment->moduleProgresses()->where('module_id', $module->getKey())->firstOrFail();
+    $progress->syncVideoTrackingState(80, 80, 80);
+
+    $this->postJson(route('user.courses.modules.video.complete', [$course, $module]), [
+        'current_second' => 80,
+    ])->assertOk()
+        ->assertJson([
+            'success' => false,
+            'is_completed' => false,
+        ]);
+
+    expect($progress->fresh()->status)->toBe(ModuleProgress::STATUS_IN_PROGRESS);
+});
+
+test('video complete endpoint marks module completed only after ended at threshold', function () {
+    [, $course, $module, $enrollment, $video] = enrollUserInCourseWithModule('video');
+
+    $video?->update(['duration_seconds' => 100]);
+
+    $progress = $enrollment->moduleProgresses()->where('module_id', $module->getKey())->firstOrFail();
+    $progress->syncVideoTrackingState(95, 95, 95);
+
+    $this->postJson(route('user.courses.modules.video.complete', [$course, $module]), [
+        'current_second' => 100,
+    ])->assertOk()
+        ->assertJson([
+            'success' => true,
+            'is_completed' => true,
+        ]);
+
+    expect($progress->fresh()->status)->toBe(ModuleProgress::STATUS_COMPLETED);
+});
+
+test('duplicate video tracking event does not double count watched time', function () {
+    [, $course, $module, $enrollment] = enrollUserInCourseWithModule('video');
+
+    $payload = [
+        'session_uuid' => (string) Str::uuid(),
+        'event_uuid' => (string) Str::uuid(),
+        'event_type' => VideoTrackingEvent::TYPE_HEARTBEAT,
+        'occurred_at' => now()->toIso8601String(),
+        'position_second' => 15,
+        'max_second_client' => 15,
+        'delta_watched_seconds' => 15,
+    ];
+
+    $this->postJson(route('user.courses.modules.video.events', [$course, $module]), $payload)
+        ->assertOk()
+        ->assertJson(['duplicate' => false]);
+
+    $this->postJson(route('user.courses.modules.video.events', [$course, $module]), $payload)
+        ->assertOk()
+        ->assertJson(['duplicate' => true]);
+
+    expect($progress = $enrollment->moduleProgresses()->where('module_id', $module->getKey())->firstOrFail()->fresh()->time_spent_seconds)
+        ->toBe(15);
 });
 
 test('quiz show endpoint returns questions without correct answers', function () {

@@ -36,12 +36,16 @@ class WebhookController extends Controller
             $assetId = $data['id'] ?? null;
             $playbackIds = $data['playback_ids'] ?? [];
             $playbackId = collect($playbackIds)->firstWhere('policy', 'signed')['id'] ?? null;
+            $durationSeconds = isset($data['duration']) && is_numeric($data['duration'])
+                ? (int) round((float) $data['duration'])
+                : null;
             if ($assetId && $playbackId) {
                 $video = Video::where('mux_asset_id', $assetId)->first();
                 if ($video) {
                     $video->update([
                         'mux_playback_id' => $playbackId,
                         'mux_video_status' => 'ready',
+                        'duration_seconds' => $durationSeconds,
                     ]);
                 }
             }

@@ -22,6 +22,7 @@ class VideoController extends Controller
         $baseUrl = "https://image.mux.com/{$video->mux_playback_id}/thumbnail.jpg";
         // Se la policy è signed, serve firmare anche la thumbnail
         $signedUrl = $muxService->getSignedThumbnailUrl($video->mux_playback_id);
+
         return redirect($signedUrl);
     }
 
@@ -30,16 +31,18 @@ class VideoController extends Controller
      */
     public function signedPlaybackApi(Video $video, MuxService $muxService)
     {
-        if (!$video->mux_playback_id || $video->mux_video_status !== 'ready') {
+        if (! $video->mux_playback_id || $video->mux_video_status !== 'ready') {
             return response()->json(['url' => null], 404);
         }
         $playbackId = $video->mux_playback_id;
         $token = $muxService->generateJwtToken($playbackId, time() + 3600, 'v'); // aud = 'v' per video playback
+
         return response()->json([
             'playback_id' => $playbackId,
             'token' => $token,
         ]);
     }
+
     public function index(Request $request)
     {
         $query = Video::withCount('modules');
@@ -48,7 +51,7 @@ class VideoController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%$search%")
-                  ->orWhere('mux_video_status', 'like', "%$search%");
+                    ->orWhere('mux_video_status', 'like', "%$search%");
             });
         }
 
@@ -61,10 +64,10 @@ class VideoController extends Controller
         $sortable = ['title', 'mux_video_status', 'modules_count', 'status'];
         $sort = $request->input('sort', 'created_at');
         $direction = $request->input('direction', 'desc');
-        if (!in_array($sort, $sortable)) {
+        if (! in_array($sort, $sortable)) {
             $sort = 'created_at';
         }
-        if (!in_array($direction, ['asc', 'desc'])) {
+        if (! in_array($direction, ['asc', 'desc'])) {
             $direction = 'desc';
         }
         $query->orderBy($sort, $direction);
@@ -103,10 +106,10 @@ class VideoController extends Controller
         $sortable = ['title', 'mux_video_status', 'modules_count', 'status'];
         $sort = $request->input('sort', 'created_at');
         $direction = $request->input('direction', 'desc');
-        if (!in_array($sort, $sortable)) {
+        if (! in_array($sort, $sortable)) {
             $sort = 'created_at';
         }
-        if (!in_array($direction, ['asc', 'desc'])) {
+        if (! in_array($direction, ['asc', 'desc'])) {
             $direction = 'desc';
         }
         $query->orderBy($sort, $direction);
@@ -132,13 +135,20 @@ class VideoController extends Controller
      */
     public function getInfoApi(Video $video)
     {
-        // Recupera durata da Mux tramite il service
-        $duration = null;
-        if ($video->mux_asset_id) {
-            $muxService = app(\App\Services\MuxService::class);
+        $duration = $video->duration_seconds;
+
+        if ($duration === null && $video->mux_asset_id) {
+            $muxService = app(MuxService::class);
             $durationRaw = $muxService->getAssetDuration($video->mux_asset_id);
             $duration = is_numeric($durationRaw) ? (int) round($durationRaw) : null;
+
+            if ($duration !== null) {
+                $video->forceFill([
+                    'duration_seconds' => $duration,
+                ])->save();
+            }
         }
+
         return response()->json([
             'id' => $video->id,
             'title' => $video->title,
@@ -227,7 +237,7 @@ class VideoController extends Controller
     {
         // Usa Cache come lock per evitare dispatch multipli
         $lockKey = 'sync-mux-videos-dispatch-lock';
-        
+
         if (Cache::has($lockKey)) {
             return response()->json([
                 'success' => false,
@@ -240,17 +250,17 @@ class VideoController extends Controller
 
         try {
             SyncMuxVideosStatusJob::dispatch();
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Job di sincronizzazione aggiunto alla coda',
             ]);
         } catch (\Exception $e) {
             Cache::forget($lockKey);
-            
+
             return response()->json([
                 'success' => false,
-                'message' => 'Errore: ' . $e->getMessage(),
+                'message' => 'Errore: '.$e->getMessage(),
             ], 500);
         }
     }

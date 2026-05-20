@@ -33,6 +33,8 @@ export function getModuleData(root) {
         passingScore: parseInt(root.dataset.passingScore ?? '0', 10),
         csrfToken: root.dataset.csrf,
         signedPlaybackUrl: root.dataset.signedPlaybackUrl,
+        videoTrackingUrl: root.dataset.videoTrackingUrl,
+        videoEventsUrl: root.dataset.videoEventsUrl,
         videoProgressUrl: root.dataset.videoProgressUrl,
         videoCompleteUrl: root.dataset.videoCompleteUrl,
         scormPackagesUrl: root.dataset.scormPackagesUrl,

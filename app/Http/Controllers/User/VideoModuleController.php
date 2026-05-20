@@ -3,22 +3,25 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreVideoTrackingEventRequest;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Services\MuxService;
+use App\Services\VideoTrackingService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class VideoModuleController extends Controller
 {
     /**
      * Return a signed playback URL for the current user's video module.
      */
-    public function signedPlayback(Request $request, Course $course, Module $module, MuxService $muxService): JsonResponse
+    public function signedPlayback(Request $request, Course $course, Module $module, MuxService $muxService, VideoTrackingService $videoTrackingService): JsonResponse
     {
         abort_unless((string) $module->belongsTo === (string) $course->getKey(), 404);
         abort_unless($module->isVideo(), 404);
@@ -34,17 +37,64 @@ class VideoModuleController extends Controller
         $progress = $this->resolveProgress($enrollment, $module);
         abort_unless($progress !== null, 404);
 
+        if ($video->duration_seconds === null && $video->mux_asset_id !== null) {
+            $durationRaw = $muxService->getAssetDuration($video->mux_asset_id);
+
+            if (is_numeric($durationRaw)) {
+                $video->forceFill([
+                    'duration_seconds' => (int) round((float) $durationRaw),
+                ])->save();
+                $video->refresh();
+            }
+        }
+
+        $state = $videoTrackingService->state($progress);
+
         return response()->json([
             'playback_id' => $video->mux_playback_id,
             'token' => $token,
-            'video_current_second' => $progress->video_current_second ?? 0,
+            ...$state,
         ]);
+    }
+
+    public function trackingState(Course $course, Module $module, VideoTrackingService $videoTrackingService): JsonResponse
+    {
+        abort_unless((string) $module->belongsTo === (string) $course->getKey(), 404);
+        abort_unless($module->isVideo(), 404);
+
+        $enrollment = $this->resolveEnrollment($course);
+        abort_unless($enrollment !== null, 403);
+        $progress = $this->resolveProgress($enrollment, $module);
+        abort_unless($progress !== null, 404);
+
+        return response()->json($videoTrackingService->state($progress));
+    }
+
+    public function trackingEvent(
+        StoreVideoTrackingEventRequest $request,
+        Course $course,
+        Module $module,
+        VideoTrackingService $videoTrackingService,
+    ): JsonResponse {
+        abort_unless((string) $module->belongsTo === (string) $course->getKey(), 404);
+        abort_unless($module->isVideo(), 404);
+
+        $enrollment = $this->resolveEnrollment($course);
+        abort_unless($enrollment !== null, 403);
+        $progress = $this->resolveProgress($enrollment, $module);
+        abort_unless($progress !== null, 404);
+
+        try {
+            return response()->json($videoTrackingService->recordEvent($progress, $request->validated()));
+        } catch (DomainException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
     }
 
     /**
      * Record video progress for the current module.
      */
-    public function progress(Request $request, Course $course, Module $module): JsonResponse
+    public function progress(Request $request, Course $course, Module $module, VideoTrackingService $videoTrackingService): JsonResponse
     {
         abort_unless((string) $module->belongsTo === (string) $course->getKey(), 404);
         abort_unless($module->isVideo(), 404);
@@ -60,21 +110,32 @@ class VideoModuleController extends Controller
         abort_unless($progress !== null, 404);
 
         try {
-            $progress->recordVideoProgress(
-                $validated['current_second'],
-                $validated['time_spent_seconds'] ?? 0,
-            );
+            $result = $videoTrackingService->recordEvent($progress, [
+                'session_uuid' => (string) Str::uuid(),
+                'event_uuid' => (string) Str::uuid(),
+                'event_type' => 'heartbeat',
+                'occurred_at' => now()->toIso8601String(),
+                'position_second' => $validated['current_second'],
+                'max_second_client' => $validated['current_second'],
+                'delta_watched_seconds' => $validated['time_spent_seconds'] ?? 0,
+                'player_ended' => false,
+            ]);
         } catch (DomainException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         }
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'resume_second' => $result['resume_second'],
+            'max_allowed_second' => $result['max_allowed_second'],
+            'is_completed' => $result['is_completed'],
+        ]);
     }
 
     /**
      * Mark the video module as completed.
      */
-    public function complete(Request $request, Course $course, Module $module): JsonResponse
+    public function complete(Request $request, Course $course, Module $module, VideoTrackingService $videoTrackingService): JsonResponse
     {
         abort_unless((string) $module->belongsTo === (string) $course->getKey(), 404);
         abort_unless($module->isVideo(), 404);
@@ -83,14 +144,28 @@ class VideoModuleController extends Controller
         abort_unless($enrollment !== null, 403);
         $progress = $this->resolveProgress($enrollment, $module);
         abort_unless($progress !== null, 404);
-        
+
         try {
-            $progress->markCompleted();
+            $result = $videoTrackingService->recordEvent($progress, [
+                'session_uuid' => (string) Str::uuid(),
+                'event_uuid' => (string) Str::uuid(),
+                'event_type' => 'ended',
+                'occurred_at' => now()->toIso8601String(),
+                'position_second' => (int) $request->integer('current_second', $progress->video_current_second ?? 0),
+                'max_second_client' => (int) $request->integer('current_second', $progress->video_max_second ?? 0),
+                'delta_watched_seconds' => 0,
+                'player_ended' => true,
+            ]);
         } catch (DomainException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         }
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => $result['is_completed'],
+            'is_completed' => $result['is_completed'],
+            'resume_second' => $result['resume_second'],
+            'max_allowed_second' => $result['max_allowed_second'],
+        ]);
     }
 
     private function resolveEnrollment(Course $course): ?CourseEnrollment
@@ -101,7 +176,7 @@ class VideoModuleController extends Controller
             ->first();
     }
 
-    private function resolveProgress(CourseEnrollment $enrollment, Module $module): ModuleProgress
+    private function resolveProgress(CourseEnrollment $enrollment, Module $module): ?ModuleProgress
     {
         return ModuleProgress::query()
             ->where('course_user_id', $enrollment->getKey())
