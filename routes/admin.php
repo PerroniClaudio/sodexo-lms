@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\SatisfactionSurveyController;
 use App\Http\Controllers\Admin\ScormPackageController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VideoController;
+use App\Http\Controllers\Admin\VideoReportController;
 use App\Http\Controllers\LiveStreamController;
 use App\Models\Course;
 use App\Models\Module;
@@ -106,6 +107,10 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::delete('/courses/{course}/modules/{module}/scorm/{scormPackage}', [ScormPackageController::class, 'destroy'])->name('courses.modules.scorm.destroy');
         });
         Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
+        Route::get('/video-reports', [VideoReportController::class, 'index'])->name('video-reports.index');
+        Route::post('/video-reports', [VideoReportController::class, 'store'])->name('video-reports.store');
+        Route::get('/video-reports/{videoReportRequest}', [VideoReportController::class, 'show'])->name('video-reports.show');
+        Route::get('/video-reports/{videoReportRequest}/download', [VideoReportController::class, 'download'])->name('video-reports.download');
         Route::resource('users', UserController::class)->except(['show']);
         Route::post('users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
 
