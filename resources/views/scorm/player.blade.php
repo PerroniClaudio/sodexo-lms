@@ -16,6 +16,10 @@
                     </div>
 
                     <div class="grid gap-2 text-sm text-base-content/70">
+                        <a href="{{ route('user.courses.modules.player', [$course, $module]) }}" class="btn btn-ghost">
+                            <x-lucide-arrow-left class="h-4 w-4" />
+                            <span>{{ __('Torna al modulo') }}</span>
+                        </a>
                         <p><span class="font-medium text-base-content">{{ __('Version') }}:</span> {{ strtoupper($package->version ?? 'n/a') }}</p>
                         <p><span class="font-medium text-base-content">{{ __('SCO') }}:</span> {{ $launchSco['sco_identifier'] }}</p>
                         <p><span class="font-medium text-base-content">{{ __('Entry point') }}:</span> {{ $launchSco['entry_point'] }}</p>
