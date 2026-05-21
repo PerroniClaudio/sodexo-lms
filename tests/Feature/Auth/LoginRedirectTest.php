@@ -3,6 +3,7 @@
 use App\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 
 uses(RefreshDatabase::class);
 
@@ -11,9 +12,16 @@ beforeEach(function () {
 });
 
 test('admin users are redirected to dashboard after login', function () {
-    $user = User::factory()->create([
+    $user = User::query()->create([
         'email' => 'admin@example.com',
-        'password' => 'password',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'name' => 'Admin',
+        'surname' => 'User',
+        'fiscal_code' => 'DMNUSR80A01H501Z',
+        'is_foreigner_or_immigrant' => false,
     ]);
     $user->assignRole('admin');
 
@@ -26,10 +34,17 @@ test('admin users are redirected to dashboard after login', function () {
     $this->assertAuthenticatedAs($user);
 });
 
-test('non admin users are redirected to reserved area after login', function () {
-    $user = User::factory()->create([
+test('users are redirected to courses area after login', function () {
+    $user = User::query()->create([
         'email' => 'user@example.com',
-        'password' => 'password',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'name' => 'Mario',
+        'surname' => 'Rossi',
+        'fiscal_code' => 'RSSMRA80A01H501Z',
+        'is_foreigner_or_immigrant' => false,
     ]);
     $user->assignRole('user');
 
@@ -38,12 +53,53 @@ test('non admin users are redirected to reserved area after login', function () 
         'password' => 'password',
     ]);
 
-    $response->assertRedirect(route('reserved-area'));
+    $response->assertRedirect(route('user.courses.index'));
     $this->assertAuthenticatedAs($user);
 });
 
+test('successful login stores access log entry', function () {
+    $user = User::query()->create([
+        'email' => 'access-log@example.com',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'name' => 'Access',
+        'surname' => 'Logger',
+        'fiscal_code' => 'LGRCSS80A01H501Z',
+        'is_foreigner_or_immigrant' => false,
+    ]);
+    $user->assignRole('user');
+
+    $response = $this
+        ->withHeaders(['User-Agent' => 'Pest Test Agent'])
+        ->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])
+        ->post('/login', [
+            'email' => 'access-log@example.com',
+            'password' => 'password',
+        ]);
+
+    $response->assertRedirect(route('user.courses.index'));
+
+    $this->assertDatabaseHas('users_access_log', [
+        'user_id' => $user->id,
+        'ip_address' => '203.0.113.10',
+        'user_agent' => 'Pest Test Agent',
+    ]);
+});
+
 test('authenticated admin users visiting login are redirected to dashboard', function () {
-    $user = User::factory()->create();
+    $user = User::query()->create([
+        'email' => 'superadmin@example.com',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'name' => 'Super',
+        'surname' => 'Admin',
+        'fiscal_code' => 'SPRDMN80A01H501Z',
+        'is_foreigner_or_immigrant' => false,
+    ]);
     $user->assignRole('superadmin');
 
     $response = $this->actingAs($user)->get('/login');
@@ -52,7 +108,17 @@ test('authenticated admin users visiting login are redirected to dashboard', fun
 });
 
 test('authenticated non admin users visiting login are redirected to reserved area', function () {
-    $user = User::factory()->create();
+    $user = User::query()->create([
+        'email' => 'tutor@example.com',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'name' => 'Tutor',
+        'surname' => 'User',
+        'fiscal_code' => 'TTRUSR80A01H501Z',
+        'is_foreigner_or_immigrant' => false,
+    ]);
     $user->assignRole('tutor');
 
     $response = $this->actingAs($user)->get('/login');

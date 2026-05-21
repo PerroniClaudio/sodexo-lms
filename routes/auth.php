@@ -1,8 +1,16 @@
 <?php
 
 use App\Http\Controllers\Auth\EmailVerificationController;
+use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\OnboardingController;
 use Illuminate\Support\Facades\Route;
+
+Route::post('/login', [LoginController::class, 'store'])
+    ->middleware(array_filter([
+        'guest:'.config('fortify.guard'),
+        config('fortify.limiters.login') ? 'throttle:'.config('fortify.limiters.login') : null,
+    ]))
+    ->name('login.store');
 
 // Email verification + password setup (combined)
 Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'show'])
