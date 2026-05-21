@@ -2,8 +2,9 @@
 
 namespace App\Observers;
 
-use App\Jobs\GenerateCourseCertificate;
 use App\Models\CourseEnrollment;
+use App\Services\Certificates\CourseCertificateGenerator;
+use Illuminate\Support\Facades\DB;
 
 class CourseEnrollmentObserver
 {
@@ -27,6 +28,16 @@ class CourseEnrollmentObserver
             return;
         }
 
-        GenerateCourseCertificate::dispatch($courseEnrollment)->afterCommit();
+        $courseEnrollmentId = (int) $courseEnrollment->getKey();
+
+        DB::afterCommit(function () use ($courseEnrollmentId): void {
+            $enrollment = CourseEnrollment::query()->find($courseEnrollmentId);
+
+            if ($enrollment === null) {
+                return;
+            }
+
+            app(CourseCertificateGenerator::class)->generateForEnrollment($enrollment);
+        });
     }
 }

@@ -16,28 +16,31 @@ class StartPendingDocumentConversionJobs extends Command
 {
     public function handle(CloudRunJobClient $cloudRunJobClient): int
     {
-        $startedJobs = 0;
-
-        DocumentConversionJob::query()
+        $documentConversionJob = DocumentConversionJob::query()
             ->where('status', DocumentConversionJobStatus::PENDING)
             ->orderBy('id')
-            ->get()
-            ->each(function (DocumentConversionJob $documentConversionJob) use ($cloudRunJobClient, &$startedJobs): void {
-                try {
-                    $cloudRunJobClient->runDocumentConversionJob($documentConversionJob);
-                    $startedJobs++;
-                } catch (Throwable $throwable) {
-                    $documentConversionJob->forceFill([
-                        'status' => DocumentConversionJobStatus::FAILED,
-                        'failed_at' => now(),
-                        'error_message' => $throwable->getMessage(),
-                    ])->save();
+            ->first();
 
-                    report($throwable);
-                }
-            });
+        if ($documentConversionJob === null) {
+            $this->info('No pending document conversion jobs found.');
 
-        $this->info(sprintf('Started %d pending document conversion job(s).', $startedJobs));
+            return self::SUCCESS;
+        }
+
+        try {
+            $cloudRunJobClient->runDocumentConversionJob($documentConversionJob);
+        } catch (Throwable $throwable) {
+            report($throwable);
+
+            $this->error($throwable->getMessage());
+
+            return self::FAILURE;
+        }
+
+        $this->info(sprintf(
+            'Started Cloud Run document conversion worker for pending job queue from job #%d.',
+            $documentConversionJob->getKey()
+        ));
 
         return self::SUCCESS;
     }

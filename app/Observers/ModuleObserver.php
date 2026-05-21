@@ -4,12 +4,14 @@ namespace App\Observers;
 
 use App\Models\Module;
 use App\Services\ModuleValidation\ModuleValidatorService;
+use App\Services\SyncCourseModuleProgresses;
 use RuntimeException;
 
 class ModuleObserver
 {
     public function __construct(
-        private readonly ModuleValidatorService $validator
+        private readonly ModuleValidatorService $validator,
+        private readonly SyncCourseModuleProgresses $syncCourseModuleProgresses,
     ) {}
 
     /**
@@ -51,6 +53,20 @@ class ModuleObserver
         // Check if status is being changed from published to something else
         if ($module->isDirty('status') && $module->getOriginal('status') === 'published') {
             $this->validateUnpublishing($module);
+        }
+    }
+
+    public function created(Module $module): void
+    {
+        if ($module->course !== null) {
+            $this->syncCourseModuleProgresses->handle($module->course);
+        }
+    }
+
+    public function deleted(Module $module): void
+    {
+        if ($module->course !== null) {
+            $this->syncCourseModuleProgresses->handle($module->course);
         }
     }
 

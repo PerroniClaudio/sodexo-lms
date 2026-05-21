@@ -11,6 +11,7 @@ use App\Models\ModuleQuizSubmission;
 use App\Models\User;
 use App\Services\Certificates\UserCourseCertificateLocator;
 use App\Services\CourseClassScheduleResolver;
+use App\Services\SyncCourseModuleProgresses;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Auth;
@@ -19,7 +20,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CourseController extends Controller
 {
-    public function __construct(private readonly AbandonLearningQuizAttempt $abandonLearningQuizAttempt) {}
+    public function __construct(
+        private readonly AbandonLearningQuizAttempt $abandonLearningQuizAttempt,
+        private readonly SyncCourseModuleProgresses $syncCourseModuleProgresses,
+    ) {}
 
     public function index(): View
     {
@@ -96,6 +100,16 @@ class CourseController extends Controller
         $progress = $enrollment->moduleProgresses()
             ->where('module_id', $module->getKey())
             ->first();
+
+        if ($progress === null) {
+            $this->syncCourseModuleProgresses->handle($course);
+
+            $progress = $enrollment->fresh()
+                ?->moduleProgresses()
+                ->where('module_id', $module->getKey())
+                ->first();
+        }
+
         abort_unless($progress !== null, 404);
 
         abort_if($progress->status === 'locked', 403);
