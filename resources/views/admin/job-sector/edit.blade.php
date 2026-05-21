@@ -32,7 +32,7 @@
                     @csrf
                     @method('PUT')
 
-                    <div class="grid gap-6 md:grid-cols-2">
+                    <div class="grid gap-6 md:grid-cols-1">
                         <div class="form-control flex flex-col gap-2">
                             <label for="name" class="label p-0">
                                 <span class="label-text font-medium">{{ __('Nome') }}</span>
@@ -46,22 +46,6 @@
                                 required
                             >
                             @error('name')
-                                <p class="text-sm text-error">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div class="form-control flex flex-col gap-2">
-                            <label for="code" class="label p-0">
-                                <span class="label-text font-medium">{{ __('Codice') }}</span>
-                            </label>
-                            <input
-                                id="code"
-                                name="code"
-                                type="text"
-                                value="{{ old('code', $sector->code) }}"
-                                class="input input-bordered w-full @error('code') input-error @enderror"
-                            >
-                            @error('code')
                                 <p class="text-sm text-error">{{ $message }}</p>
                             @enderror
                         </div>
@@ -94,5 +78,208 @@
                 </form>
             </div>
         </div>
+
+        {{-- Codici ATECO associati --}}
+        <div class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="card-title">{{ __('Codici ATECO') }}</h2>
+                        <p class="text-sm text-base-content/70">
+                            {{ __('Associa codici ATECO per calcolare il rischio del settore') }}
+                        </p>
+                    </div>
+                    <div id="sectorRiskBadge">
+                        @php
+                            $sectorRisk = $sector->getRiskLevel();
+                        @endphp
+                        @if($sectorRisk)
+                            <span class="badge {{ $sectorRisk->badgeColor() }} badge-lg">
+                                {{ __('Rischio') }}: {{ $sectorRisk->label() }}
+                            </span>
+                        @else
+                            <span class="badge badge-ghost badge-lg">
+                                {{ __('Rischio') }}: {{ __('N/D') }}
+                            </span>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Form per aggiungere nuovo codice ATECO --}}
+                <form method="POST" action="{{ route('admin.job-sectors.ateco.attach', $sector) }}" class="flex flex-col gap-4 rounded-lg border border-base-300 bg-base-50 p-4" id="atecoForm">
+                    @csrf
+                    <h3 class="font-medium">{{ __('Aggiungi codice ATECO') }}</h3>
+                    
+                    <div class="alert alert-info">
+                        <x-lucide-info class="h-5 w-5" />
+                        <span>{{ __('La selezione di un codice include automaticamente tutti i codici sottostanti nella gerarchia (es: selezionare una Sezione include tutte le relative Divisioni, Gruppi, ecc.)') }}</span>
+                    </div>
+                    
+                    <div class="form-control flex flex-col gap-2">
+                        <label for="nace_ateco_code" class="label p-0">
+                            <span class="label-text font-medium">{{ __('Codice ATECO') }}</span>
+                        </label>
+                        <select
+                            id="nace_ateco_code"
+                            name="nace_ateco_code"
+                            class="select select-bordered w-full @error('nace_ateco_code') select-error @enderror"
+                            required
+                        >
+                            <option value="">{{ __('Seleziona un codice') }}</option>
+                            @foreach($allAtecoCodes as $hierarchy => $codes)
+                                <optgroup label="{{ \App\Enums\HierarchyLevel::from($hierarchy)->label() }}">
+                                    @foreach($codes as $code)
+                                        <option value="{{ $code->code }}" data-hierarchy="{{ $code->hierarchy }}">{{ $code->code }} - {{ $code->title_it }}</option>
+                                    @endforeach
+                                </optgroup>
+                            @endforeach
+                        </select>
+                        @error('nace_ateco_code')
+                            <p class="text-sm text-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <input type="hidden" id="inclusion_type" name="inclusion_type" value="">
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <x-lucide-plus class="h-4 w-4" />
+                            <span>{{ __('Aggiungi codice') }}</span>
+                        </button>
+                    </div>
+                </form>
+
+                @php
+                    $naceAtecoCodes = $sector->naceAtecoCodes;
+                @endphp
+
+                @if($naceAtecoCodes->isNotEmpty())
+                    <div class="overflow-x-auto">
+                        <table class="table table-zebra">
+                            <thead>
+                                <tr>
+                                    <th>{{ __('Codice') }}</th>
+                                    <th>{{ __('Descrizione') }}</th>
+                                    <th>{{ __('Tipo Inclusione') }}</th>
+                                    <th>{{ __('Rischio') }}</th>
+                                    <th>{{ __('Azioni') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($naceAtecoCodes as $code)
+                                    <tr>
+                                        <td>
+                                            <code class="bg-base-200 px-2 py-1 rounded">{{ $code->code }}</code>
+                                        </td>
+                                        <td>{{ $code->title_it }}</td>
+                                        <td>
+                                            @php
+                                                $inclusionType = \App\Enums\InclusionType::from($code->pivot->inclusion_type);
+                                            @endphp
+                                            <span class="badge badge-outline">{{ $inclusionType->label() }}</span>
+                                        </td>
+                                        <td>
+                                            @if($code->risk)
+                                                <span class="badge {{ $code->risk->badgeColor() }}">
+                                                    {{ $code->risk->label() }}
+                                                </span>
+                                            @else
+                                                <span class="text-base-content/50">{{ __('N/D') }}</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <form method="POST" action="{{ route('admin.job-sectors.ateco.detach', [$sector, $code->code]) }}" class="inline">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button
+                                                    type="submit"
+                                                    class="btn btn-error btn-sm"
+                                                    onclick="return confirm('{{ __('Sei sicuro di voler rimuovere questo codice?') }}')"
+                                                >
+                                                    <x-lucide-trash-2 class="h-4 w-4" />
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="alert">
+                        <x-lucide-info class="h-5 w-5" />
+                        <span>{{ __('Nessun codice ATECO associato') }}</span>
+                    </div>
+                @endif
+            </div>
+        </div>
     </div>
+
+    <script>
+        // Mappatura tra hierarchy e inclusion_type
+        const hierarchyToInclusionType = {
+            1: 'section',
+            2: 'division',
+            3: 'group',
+            4: 'class',
+            5: 'category',
+            6: 'full_code'
+        };
+
+        // Imposta automaticamente il tipo di inclusione in base al codice selezionato
+        document.getElementById('nace_ateco_code').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const hierarchy = selectedOption.getAttribute('data-hierarchy');
+            const inclusionTypeInput = document.getElementById('inclusion_type');
+            
+            if (hierarchy && hierarchyToInclusionType[hierarchy]) {
+                inclusionTypeInput.value = hierarchyToInclusionType[hierarchy];
+            } else {
+                inclusionTypeInput.value = '';
+            }
+        });
+
+        // Funzione per aggiornare il badge del rischio del settore via AJAX
+        function updateSectorRiskBadge() {
+            const sectorId = {{ $sector->id }};
+            const badgeContainer = document.getElementById('sectorRiskBadge');
+            const riskUrl = '{{ route('admin.job-sectors.risk', ['job_sector' => $sector->id]) }}';
+            
+            fetch(riskUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.risk) {
+                        badgeContainer.innerHTML = `<span class="badge ${data.badgeColor} badge-lg">{{ __('Rischio') }}: ${data.label}</span>`;
+                    } else {
+                        badgeContainer.innerHTML = `<span class="badge badge-ghost badge-lg">{{ __('Rischio') }}: {{ __('N/D') }}</span>`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Errore nel caricamento del rischio:', error);
+                });
+        }
+
+        // Intercetta il submit del form e aggiorna il badge dopo il redirect
+        document.getElementById('atecoForm').addEventListener('submit', function() {
+            // Aspetta un momento per permettere al server di processare
+            setTimeout(() => {
+                updateSectorRiskBadge();
+            }, 1000);
+        });
+
+        // Aggiungi listener ai form di eliminazione per aggiornare il badge
+        document.querySelectorAll('form[action*="ateco"]').forEach(form => {
+            if (form.querySelector('button[type="submit"]')) {
+                form.addEventListener('submit', function(e) {
+                    // Solo per i form DELETE (rimozione)
+                    if (this.querySelector('input[name="_method"][value="DELETE"]')) {
+                        // Aspetta un momento per permettere al server di processare
+                        setTimeout(() => {
+                            updateSectorRiskBadge();
+                        }, 1000);
+                    }
+                });
+            }
+        });
+    </script>
 </x-layouts.admin>

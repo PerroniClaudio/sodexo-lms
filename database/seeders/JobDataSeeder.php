@@ -2,12 +2,14 @@
 
 namespace Database\Seeders;
 
+use App\Enums\InclusionType;
 use App\Models\JobCategory;
 use App\Models\JobLevel;
 use App\Models\JobRole;
 use App\Models\JobSector;
 use App\Models\JobTitle;
 use App\Models\JobUnit;
+use App\Models\NaceAteco;
 use App\Models\Province;
 use App\Models\WorldCity;
 use App\Models\WorldCountry;
@@ -22,10 +24,10 @@ class JobDataSeeder extends Seeder
     {
         // Job Categories
         $categories = [
-            ['name' => 'Dirigente', 'code' => 'DIR'],
-            ['name' => 'Quadro', 'code' => 'QUA'],
-            ['name' => 'Impiegato', 'code' => 'IMP'],
-            ['name' => 'Operaio', 'code' => 'OPE'],
+            ['name' => 'Dirigente', 'description' => 'Personale dirigenziale'],
+            ['name' => 'Quadro', 'description' => 'Quadri aziendali'],
+            ['name' => 'Impiegato', 'description' => 'Personale impiegatizio'],
+            ['name' => 'Operaio', 'description' => 'Personale operaio'],
         ];
 
         foreach ($categories as $category) {
@@ -34,13 +36,13 @@ class JobDataSeeder extends Seeder
 
         // Job Levels
         $levels = [
-            ['name' => '1° Livello', 'code' => 'L1'],
-            ['name' => '2° Livello', 'code' => 'L2'],
-            ['name' => '3° Livello', 'code' => 'L3'],
-            ['name' => '4° Livello', 'code' => 'L4'],
-            ['name' => '5° Livello', 'code' => 'L5'],
-            ['name' => 'B1', 'code' => 'B1'],
-            ['name' => 'B2', 'code' => 'B2'],
+            ['name' => '1° Livello', 'description' => 'Primo livello di inquadramento'],
+            ['name' => '2° Livello', 'description' => 'Secondo livello di inquadramento'],
+            ['name' => '3° Livello', 'description' => 'Terzo livello di inquadramento'],
+            ['name' => '4° Livello', 'description' => 'Quarto livello di inquadramento'],
+            ['name' => '5° Livello', 'description' => 'Quinto livello di inquadramento'],
+            ['name' => 'B1', 'description' => 'Livello B1'],
+            ['name' => 'B2', 'description' => 'Livello B2'],
         ];
 
         foreach ($levels as $level) {
@@ -49,12 +51,12 @@ class JobDataSeeder extends Seeder
 
         // Job Titles (Mansioni)
         $titles = [
-            ['name' => 'Cuoco', 'code' => 'CUO'],
-            ['name' => 'Magazziniere', 'code' => 'MAG'],
-            ['name' => 'Addetto alla Sicurezza', 'code' => 'SIC'],
-            ['name' => 'Operatore di Produzione', 'code' => 'OPP'],
-            ['name' => 'Responsabile Qualità', 'code' => 'RQU'],
-            ['name' => 'Addetto alle Pulizie', 'code' => 'PUL'],
+            ['name' => 'Cuoco', 'description' => 'Responsabile della preparazione dei pasti'],
+            ['name' => 'Magazziniere', 'description' => 'Gestione magazzino e scorte'],
+            ['name' => 'Addetto alla Sicurezza', 'description' => 'Responsabile sicurezza sul lavoro'],
+            ['name' => 'Operatore di Produzione', 'description' => 'Operatore linea produttiva'],
+            ['name' => 'Responsabile Qualità', 'description' => 'Controllo qualità prodotti'],
+            ['name' => 'Addetto alle Pulizie', 'description' => 'Pulizia e sanificazione ambienti'],
         ];
 
         foreach ($titles as $title) {
@@ -63,11 +65,11 @@ class JobDataSeeder extends Seeder
 
         // Job Roles
         $roles = [
-            ['name' => 'Lavoratore', 'code' => 'LAV'],
-            ['name' => 'Preposto', 'code' => 'PRE'],
-            ['name' => 'Dirigente', 'code' => 'DIR'],
-            ['name' => 'RSPP', 'code' => 'RSPP'],
-            ['name' => 'RLS', 'code' => 'RLS'],
+            ['name' => 'Lavoratore', 'description' => 'Lavoratore dipendente'],
+            ['name' => 'Preposto', 'description' => 'Preposto alla sicurezza'],
+            ['name' => 'Dirigente', 'description' => 'Dirigente aziendale'],
+            ['name' => 'RSPP', 'description' => 'Responsabile Servizio Prevenzione e Protezione'],
+            ['name' => 'RLS', 'description' => 'Rappresentante Lavoratori per la Sicurezza'],
         ];
 
         foreach ($roles as $role) {
@@ -75,17 +77,26 @@ class JobDataSeeder extends Seeder
         }
 
         // Job Sectors
-        $sectors = [
-            ['name' => 'Ristorazione', 'code' => 'RIS'],
-            ['name' => 'Meccanica', 'code' => 'MEC'],
-            ['name' => 'Edilizia', 'code' => 'EDI'],
-            ['name' => 'Sanità', 'code' => 'SAN'],
-            ['name' => 'Logistica', 'code' => 'LOG'],
-            ['name' => 'Pulizie e Servizi', 'code' => 'PUL'],
-        ];
+        // Crea un settore per ogni sezione NACE/ATECO (lettere A-U)
+        $sections = NaceAteco::where('hierarchy', 1)->orderBy('code')->get();
 
-        foreach ($sectors as $sector) {
-            JobSector::create($sector);
+        if ($sections->isEmpty()) {
+            $this->command->warn('Nessuna sezione NACE/ATECO trovata. I settori non saranno creati.');
+        } else {
+            foreach ($sections as $section) {
+                // Crea il settore usando il titolo italiano della sezione
+                $sector = JobSector::create([
+                    'name' => $section->title_it,
+                    'description' => $section->title_en,
+                ]);
+
+                // Associa il settore alla sezione ATECO con tipo inclusione SECTION
+                $sector->naceAtecoCodes()->attach($section->code, [
+                    'inclusion_type' => InclusionType::SECTION->value,
+                ]);
+
+                $this->command->info("✓ Creato settore '{$sector->name}' collegato alla sezione {$section->code}");
+            }
         }
 
         // Job Units (Unità Lavorative)

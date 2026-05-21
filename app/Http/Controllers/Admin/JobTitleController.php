@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreJobTitleRequest;
 use App\Http\Requests\UpdateJobTitleRequest;
+use App\Models\JobSector;
 use App\Models\JobTitle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ class JobTitleController extends Controller
 {
     public function index(Request $request): View
     {
-        $allowedSorts = ['id', 'name', 'code', 'status'];
+        $allowedSorts = ['id', 'name', 'status'];
         $requestedSort = $request->string('sort')->toString();
         $hasValidSort = in_array($requestedSort, $allowedSorts, true);
         $sort = $hasValidSort ? $requestedSort : 'id';
@@ -33,8 +34,7 @@ class JobTitleController extends Controller
                     $query->where(function ($query) use ($search) {
                         $query
                             ->where('id', 'like', "%{$search}%")
-                            ->orWhere('name', 'like', "%{$search}%")
-                            ->orWhere('code', 'like', "%{$search}%");
+                            ->orWhere('name', 'like', "%{$search}%");
                     });
                 })
                 ->when($sort === 'status', function ($query) use ($direction) {
@@ -72,8 +72,14 @@ class JobTitleController extends Controller
 
     public function edit(JobTitle $jobTitle): View
     {
+        $jobTitle->load('jobSectors');
+
+        // Get all sectors for the dropdown
+        $allSectors = JobSector::orderBy('name')->get();
+
         return view('admin.job-title.edit', [
             'title' => $jobTitle,
+            'allSectors' => $allSectors,
         ]);
     }
 
@@ -103,5 +109,61 @@ class JobTitleController extends Controller
         return redirect()
             ->route('admin.job-titles.index')
             ->with('status', __('Mansione ripristinata con successo.'));
+    }
+
+    /**
+     * Attach a sector to the job title with a specific risk level
+     */
+    public function attachSector(Request $request, JobTitle $jobTitle): RedirectResponse
+    {
+        $validated = $request->validate([
+            'job_sector_id' => ['required', 'exists:job_sectors,id'],
+            'title_risk_level' => ['required', 'in:low,medium,high'],
+        ]);
+
+        // Check if already attached
+        if ($jobTitle->jobSectors()->where('job_sector_id', $validated['job_sector_id'])->exists()) {
+            return redirect()
+                ->route('admin.job-titles.edit', $jobTitle)
+                ->with('error', __('Questo settore è già associato a questa mansione.'));
+        }
+
+        $jobTitle->jobSectors()->attach($validated['job_sector_id'], [
+            'title_risk_level' => $validated['title_risk_level'],
+        ]);
+
+        return redirect()
+            ->route('admin.job-titles.edit', $jobTitle)
+            ->with('status', __('Settore associato con successo.'));
+    }
+
+    /**
+     * Detach a sector from the job title
+     */
+    public function detachSector(JobTitle $jobTitle, JobSector $jobSector): RedirectResponse
+    {
+        $jobTitle->jobSectors()->detach($jobSector->id);
+
+        return redirect()
+            ->route('admin.job-titles.edit', $jobTitle)
+            ->with('status', __('Settore rimosso con successo.'));
+    }
+
+    /**
+     * Update the risk level for a sector association
+     */
+    public function updateSectorRisk(Request $request, JobTitle $jobTitle, JobSector $jobSector): RedirectResponse
+    {
+        $validated = $request->validate([
+            'title_risk_level' => ['required', 'in:low,medium,high'],
+        ]);
+
+        $jobTitle->jobSectors()->updateExistingPivot($jobSector->id, [
+            'title_risk_level' => $validated['title_risk_level'],
+        ]);
+
+        return redirect()
+            ->route('admin.job-titles.edit', $jobTitle)
+            ->with('status', __('Rischio aggiornato con successo.'));
     }
 }

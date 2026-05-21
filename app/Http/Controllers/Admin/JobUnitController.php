@@ -66,13 +66,13 @@ class JobUnitController extends Controller
                         'region' => ['table' => 'world_divisions', 'foreign_key' => 'region_id'],
                         'country' => ['table' => 'world_countries', 'foreign_key' => 'country_id'],
                     ];
-                    
+
                     $relation = $relationMap[$sort];
                     $query->leftJoin($relation['table'], "job_units.{$relation['foreign_key']}", '=', "{$relation['table']}.id")
                         ->orderBy("{$relation['table']}.name", $direction)
                         ->select('job_units.*');
                 })
-                ->when(!in_array($sort, ['city', 'region', 'country', 'status']), function ($query) use ($sort, $direction) {
+                ->when(! in_array($sort, ['city', 'region', 'country', 'status']), function ($query) use ($sort, $direction) {
                     $query->orderBy($sort, $direction);
                 })
                 ->paginate(10)
@@ -102,7 +102,7 @@ class JobUnitController extends Controller
     public function edit(JobUnit $jobUnit): View
     {
         $jobUnit->load(['country', 'region', 'province', 'city']);
-        
+
         return view('admin.job-unit.edit', [
             'unit' => $jobUnit,
         ]);

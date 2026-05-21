@@ -5,7 +5,8 @@ namespace App\Services;
 use GuzzleHttp\Client;
 
 class MuxService
-{    protected $client;
+{
+    protected $client;
 
     protected $tokenId;
 
@@ -40,6 +41,7 @@ class MuxService
         }
         $this->signingPrivateKey = $key;
     }
+
     /**
      * Genera un signed URL per la thumbnail Mux
      */
@@ -48,8 +50,10 @@ class MuxService
         $baseUrl = "https://image.mux.com/{$playbackId}/thumbnail.jpg";
         $expiration = time() + $expiresInSeconds;
         $token = $this->generateJwtToken($playbackId, $expiration, 't'); // aud = 't' per thumbnail
+
         return $baseUrl.'?token='.$token;
     }
+
     /**
      * Recupera asset_id e playback_id da upload_id Mux
      * Restituisce array: ['asset_id' => ..., 'playback_id' => ...]
@@ -66,10 +70,11 @@ class MuxService
                 $assetResponse = $this->client->get("assets/{$assetId}");
                 $assetData = json_decode($assetResponse->getBody()->getContents(), true);
                 $playbacks = $assetData['data']['playback_ids'] ?? [];
-                if (!empty($playbacks)) {
+                if (! empty($playbacks)) {
                     $playbackId = $playbacks[0]['id'] ?? null;
                 }
             }
+
             return [
                 'asset_id' => $assetId,
                 'playback_id' => $playbackId,
@@ -78,6 +83,7 @@ class MuxService
             return [];
         }
     }
+
     /**
      * Recupera l'asset_id associato a un upload_id Mux
      */
@@ -86,6 +92,7 @@ class MuxService
         try {
             $response = $this->client->get("uploads/{$uploadId}");
             $data = json_decode($response->getBody()->getContents(), true);
+
             return $data['data']['asset_id'] ?? null;
         } catch (\Exception $e) {
             return null;
@@ -149,7 +156,7 @@ class MuxService
         $signature = '';
         openssl_sign($signingInput, $signature, $this->signingPrivateKey, 'sha256');
         $segments[] = $this->base64UrlEncode($signature);
-        
+
         $jwt = implode('.', $segments);
         // Debug log
         \Log::debug('[MUX JWT]', [
@@ -159,7 +166,8 @@ class MuxService
             'jwt' => $jwt,
             'key_snippet' => is_string($this->signingPrivateKey) ? substr($this->signingPrivateKey, 0, 40) : null,
         ]);
-            return $jwt;
+
+        return $jwt;
 
         return implode('.', $segments);
     }
@@ -168,6 +176,7 @@ class MuxService
     {
         return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
     }
+
     /**
      * Recupera lo stato di un asset Mux dato l'asset_id
      */
@@ -176,6 +185,7 @@ class MuxService
         try {
             $response = $this->client->get("assets/{$assetId}");
             $data = json_decode($response->getBody()->getContents(), true);
+
             return $data['data']['status'] ?? null;
         } catch (\Exception $e) {
             return null;
@@ -190,6 +200,7 @@ class MuxService
         try {
             $response = $this->client->get("assets/{$assetId}");
             $data = json_decode($response->getBody()->getContents(), true);
+
             return $data['data']['duration'] ?? null;
         } catch (\Exception $e) {
             return null;

@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateJobRoleRequest extends FormRequest
 {
@@ -16,7 +15,6 @@ class UpdateJobRoleRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'code' => ['nullable', 'string', 'max:50', Rule::unique('job_roles', 'code')->ignore($this->route('job_role'))],
             'description' => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -25,7 +23,6 @@ class UpdateJobRoleRequest extends FormRequest
     {
         return [
             'name' => __('Nome'),
-            'code' => __('Codice'),
             'description' => __('Descrizione'),
         ];
     }

@@ -403,5 +403,19 @@
     "Completato il": "Completato il",
     "Punteggio": "Punteggio",
     "Errore": "Errore",
-    "Output provider": "Output provider"
+    "Output provider": "Output provider",
+    "Codici NACE/ATECO": "Codici NACE/ATECO",
+    "Cerca per codice o titolo": "Cerca per codice o titolo",
+    "Reset": "Reset",
+    "Trovati :count risultati su :total codici totali": "Trovati :count risultati su :total codici totali",
+    "Totale: :count codici": "Totale: :count codici",
+    "Gerarchia NACE/ATECO": "Gerarchia NACE/ATECO",
+    "Codice ATECO (finale)": "Codice ATECO (finale)",
+    "Livello intermedio": "Livello intermedio",
+    "Nessun codice trovato.": "Nessun codice trovato.",
+    "sottolivelli": "sottolivelli",
+    "ATECO": "ATECO",
+    "Liv.": "Liv.",
+    "Codice e Titolo": "Codice e Titolo",
+    "Rischio": "Rischio"
 }

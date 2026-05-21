@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             WorldDataSeeder::class,        // Dati geografici globali (paesi, regioni, province, città)
+            NaceAtecoSeeder::class,         // Codici NACE/ATECO con livelli di rischio
             JobDataSeeder::class,           // Dati mansioni (categorie, livelli, ruoli, settori, titoli, unità)
             RoleAndPermissionSeeder::class, // Ruoli e permessi utenti
             CourseSeeder::class,            // Corsi di esempio

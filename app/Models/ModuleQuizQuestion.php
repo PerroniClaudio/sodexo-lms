@@ -19,7 +19,7 @@ class ModuleQuizQuestion extends Model
     ];
 
     protected $hidden = ['correct_answer_id'];
-    
+
     public function module(): BelongsTo
     {
         return $this->belongsTo(Module::class);

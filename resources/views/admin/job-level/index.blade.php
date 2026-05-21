@@ -3,7 +3,6 @@
         $columns = [
             ['key' => 'id', 'label' => __('ID'), 'sortable' => true],
             ['key' => 'name', 'label' => __('Nome'), 'sortable' => true],
-            ['key' => 'code', 'label' => __('Codice'), 'sortable' => true],
             ['key' => 'status', 'label' => __('Stato'), 'sortable' => true],
             ['key' => 'actions', 'label' => __('Azioni'), 'sortable' => false],
         ];
@@ -69,7 +68,6 @@
                 <tr class="hover:bg-base-200">
                     <td>{{ $level->id }}</td>
                     <td>{{ $level->name }}</td>
-                    <td>{{ $level->code }}</td>
                     <td>
                         @if($level->trashed())
                             <span class="badge badge-outline badge-error">{{ __('Eliminato') }}</span>

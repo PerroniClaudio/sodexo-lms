@@ -8,7 +8,6 @@ use App\Models\Course;
 use App\Models\Module;
 use App\Models\ModuleQuizAnswer;
 use App\Models\ModuleQuizQuestion;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Spatie\LaravelPdf\Facades\Pdf;
@@ -24,8 +23,10 @@ class ModuleQuizController extends Controller
         // Aggiungi isValid a ciascuna domanda (senza controllo method_exists)
         $questions = $questions->map(function ($q) {
             $q->isValid = $q->isValid();
+
             return $q;
         });
+
         return response()->json([
             'success' => true,
             'questions' => $questions,
@@ -93,7 +94,6 @@ class ModuleQuizController extends Controller
         return "{$courseSlug}-{$moduleSlug}-answer-sheet.pdf";
     }
 
-
     /**
      * API: aggiungi domanda quiz (risposta JSON)
      */
@@ -129,6 +129,7 @@ class ModuleQuizController extends Controller
         ]);
         $question->update($data);
         $module->updateQuizMaxScore();
+
         return response()->json([
             'success' => true,
             'message' => __('Domanda aggiornata.'),
@@ -145,6 +146,7 @@ class ModuleQuizController extends Controller
 
         $question->delete();
         $module->updateQuizMaxScore();
+
         return response()->json([
             'success' => true,
             'message' => __('Domanda eliminata.'),
@@ -163,6 +165,7 @@ class ModuleQuizController extends Controller
         ]);
         $answer = $question->answers()->create($data);
         $module->updateQuizMaxScore();
+
         return response()->json([
             'success' => true,
             'message' => __('Risposta aggiunta con successo.'),
@@ -182,6 +185,7 @@ class ModuleQuizController extends Controller
         ]);
         $answer->update($data);
         $module->updateQuizMaxScore();
+
         return response()->json([
             'success' => true,
             'message' => __('Risposta aggiornata.'),
@@ -198,6 +202,7 @@ class ModuleQuizController extends Controller
 
         $answer->delete();
         $module->updateQuizMaxScore();
+
         return response()->json([
             'success' => true,
             'message' => __('Risposta eliminata.'),
@@ -214,6 +219,7 @@ class ModuleQuizController extends Controller
         $question->correct_answer_id = $question->correct_answer_id === $answer->id ? null : $answer->id;
         $question->save();
         $module->updateQuizMaxScore();
+
         return response()->json([
             'success' => true,
             'message' => __('Risposta corretta aggiornata.'),

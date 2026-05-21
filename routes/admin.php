@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\JobUnitController;
 use App\Http\Controllers\Admin\ModuleQuizController;
 use App\Http\Controllers\Admin\ModuleQuizDocumentUploadController;
 use App\Http\Controllers\Admin\ModuleQuizSubmissionController;
+use App\Http\Controllers\Admin\NaceAtecoController;
 use App\Http\Controllers\Admin\RegiaController;
 use App\Http\Controllers\Admin\SatisfactionSurveyController;
 use App\Http\Controllers\Admin\ScormPackageController;
@@ -136,6 +137,9 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::resource('job-sectors', JobSectorController::class)->except(['show']);
             Route::resource('job-units', JobUnitController::class)->except(['show']);
 
+            // NACE/ATECO codes
+            Route::get('nace-ateco', [NaceAtecoController::class, 'index'])->name('nace-ateco.index');
+
             // Restore routes for soft deleted items
             Route::post('job-categories/{id}/restore', [JobCategoryController::class, 'restore'])->name('job-categories.restore');
             Route::post('job-levels/{id}/restore', [JobLevelController::class, 'restore'])->name('job-levels.restore');
@@ -143,6 +147,16 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::post('job-roles/{id}/restore', [JobRoleController::class, 'restore'])->name('job-roles.restore');
             Route::post('job-sectors/{id}/restore', [JobSectorController::class, 'restore'])->name('job-sectors.restore');
             Route::post('job-units/{id}/restore', [JobUnitController::class, 'restore'])->name('job-units.restore');
+
+            // Job Title - Sector associations
+            Route::post('job-titles/{job_title}/sectors', [JobTitleController::class, 'attachSector'])->name('job-titles.sectors.attach');
+            Route::delete('job-titles/{job_title}/sectors/{job_sector}', [JobTitleController::class, 'detachSector'])->name('job-titles.sectors.detach');
+            Route::put('job-titles/{job_title}/sectors/{job_sector}', [JobTitleController::class, 'updateSectorRisk'])->name('job-titles.sectors.update');
+
+            // Job Sector - ATECO associations
+            Route::post('job-sectors/{job_sector}/ateco', [JobSectorController::class, 'attachAtecoCode'])->name('job-sectors.ateco.attach');
+            Route::delete('job-sectors/{job_sector}/ateco/{ateco_code}', [JobSectorController::class, 'detachAtecoCode'])->name('job-sectors.ateco.detach');
+            Route::get('job-sectors/{job_sector}/risk', [JobSectorController::class, 'getRiskLevel'])->name('job-sectors.risk');
         });
 
         // Quiz Domande e Risposte

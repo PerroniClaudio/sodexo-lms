@@ -15,7 +15,6 @@ class StoreJobRoleRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'code' => ['nullable', 'string', 'max:50', 'unique:job_roles,code'],
             'description' => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -24,7 +23,6 @@ class StoreJobRoleRequest extends FormRequest
     {
         return [
             'name' => __('Nome'),
-            'code' => __('Codice'),
             'description' => __('Descrizione'),
         ];
     }

@@ -14,7 +14,7 @@ class JobLevelController extends Controller
 {
     public function index(Request $request): View
     {
-        $allowedSorts = ['id', 'name', 'code', 'status'];
+        $allowedSorts = ['id', 'name', 'status'];
         $requestedSort = $request->string('sort')->toString();
         $hasValidSort = in_array($requestedSort, $allowedSorts, true);
         $sort = $hasValidSort ? $requestedSort : 'id';
@@ -33,8 +33,7 @@ class JobLevelController extends Controller
                     $query->where(function ($query) use ($search) {
                         $query
                             ->where('id', 'like', "%{$search}%")
-                            ->orWhere('name', 'like', "%{$search}%")
-                            ->orWhere('code', 'like', "%{$search}%");
+                            ->orWhere('name', 'like', "%{$search}%");
                     });
                 })
                 ->when($sort === 'status', function ($query) use ($direction) {

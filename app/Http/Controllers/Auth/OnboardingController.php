@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Province;
+use App\Models\WorldCity;
+use App\Models\WorldCountry;
+use App\Models\WorldDivision;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -46,18 +50,18 @@ class OnboardingController extends Controller
         $province = null;
         $city = null;
 
-        if (!empty($validated['country'])) {
-            $country = \App\Models\WorldCountry::where('code', $validated['country'])->first();
+        if (! empty($validated['country'])) {
+            $country = WorldCountry::where('code', $validated['country'])->first();
         }
-        if (!empty($validated['region'])) {
-            $region = \App\Models\WorldDivision::where('name', $validated['region'])->first();
+        if (! empty($validated['region'])) {
+            $region = WorldDivision::where('name', $validated['region'])->first();
         }
-        if (!empty($validated['province'])) {
-            $province = \App\Models\Province::where('code', $validated['province'])
+        if (! empty($validated['province'])) {
+            $province = Province::where('code', $validated['province'])
                 ->orWhere('name', $validated['province'])->first();
         }
-        if (!empty($validated['city'])) {
-            $city = \App\Models\WorldCity::where('name', $validated['city'])->first();
+        if (! empty($validated['city'])) {
+            $city = WorldCity::where('name', $validated['city'])->first();
         }
 
         $user->update([
@@ -76,6 +80,7 @@ class OnboardingController extends Controller
         if ($user->hasRole('admin') || $user->hasRole('superadmin')) {
             return redirect()->route('admin.courses.index')->with('status', __('Profilo completato con successo!'));
         }
+
         // fallback: home o altra pagina neutra
         return redirect('/')->with('status', __('Profilo completato con successo!'));
     }

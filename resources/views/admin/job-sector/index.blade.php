@@ -3,7 +3,7 @@
         $columns = [
             ['key' => 'id', 'label' => __('ID'), 'sortable' => true],
             ['key' => 'name', 'label' => __('Nome'), 'sortable' => true],
-            ['key' => 'code', 'label' => __('Codice'), 'sortable' => true],
+            ['key' => 'risk', 'label' => __('Rischio'), 'sortable' => false],
             ['key' => 'status', 'label' => __('Stato'), 'sortable' => true],
             ['key' => 'actions', 'label' => __('Azioni'), 'sortable' => false],
         ];
@@ -69,7 +69,14 @@
                 <tr class="hover:bg-base-200">
                     <td>{{ $sector->id }}</td>
                     <td>{{ $sector->name }}</td>
-                    <td>{{ $sector->code }}</td>
+                    <td>
+                        @php
+                            $risk = $sector->getRiskLevel();
+                        @endphp
+                        <span class="badge {{ $risk->badgeColor() }}">
+                            {{ $risk->label() }}
+                        </span>
+                    </td>
                     <td>
                         @if($sector->trashed())
                             <span class="badge badge-outline badge-error">{{ __('Eliminato') }}</span>

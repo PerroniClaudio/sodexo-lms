@@ -4,7 +4,6 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateJobCategoryRequest extends FormRequest
 {
@@ -25,7 +24,6 @@ class UpdateJobCategoryRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'code' => ['nullable', 'string', 'max:50', Rule::unique('job_categories', 'code')->ignore($this->route('job_category'))],
             'description' => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -39,7 +37,6 @@ class UpdateJobCategoryRequest extends FormRequest
     {
         return [
             'name' => __('Nome'),
-            'code' => __('Codice'),
             'description' => __('Descrizione'),
         ];
     }

@@ -114,6 +114,14 @@
                                 <ul>
                                     <li>
                                         <a
+                                            href="{{ route('admin.job-sectors.index') }}"
+                                            @class(['menu-active' => request()->routeIs('admin.job-sectors.*')])
+                                        >
+                                            {{ __('Settori') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
                                             href="{{ route('admin.job-categories.index') }}"
                                             @class(['menu-active' => request()->routeIs('admin.job-categories.*')])
                                         >
@@ -130,6 +138,14 @@
                                     </li>
                                     <li>
                                         <a
+                                            href="{{ route('admin.job-titles.index') }}"
+                                            @class(['menu-active' => request()->routeIs('admin.job-titles.*')])
+                                        >
+                                            {{ __('Mansioni') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
                                             href="{{ route('admin.job-roles.index') }}"
                                             @class(['menu-active' => request()->routeIs('admin.job-roles.*')])
                                         >
@@ -138,18 +154,18 @@
                                     </li>
                                     <li>
                                         <a
-                                            href="{{ route('admin.job-sectors.index') }}"
-                                            @class(['menu-active' => request()->routeIs('admin.job-sectors.*')])
-                                        >
-                                            {{ __('Settori') }}
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a
                                             href="{{ route('admin.job-units.index') }}"
                                             @class(['menu-active' => request()->routeIs('admin.job-units.*')])
                                         >
                                             {{ __('Unità Lavorative') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.nace-ateco.index') }}"
+                                            @class(['menu-active' => request()->routeIs('admin.nace-ateco.*')])
+                                        >
+                                            {{ __('ATECO') }}
                                         </a>
                                     </li>
                                 </ul>

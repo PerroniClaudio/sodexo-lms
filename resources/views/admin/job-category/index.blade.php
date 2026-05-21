@@ -3,7 +3,6 @@
         $columns = [
             ['key' => 'id', 'label' => __('ID'), 'sortable' => true],
             ['key' => 'name', 'label' => __('Nome'), 'sortable' => true],
-            ['key' => 'code', 'label' => __('Codice'), 'sortable' => true],
             ['key' => 'status', 'label' => __('Stato'), 'sortable' => true],
             ['key' => 'actions', 'label' => __('Azioni'), 'sortable' => false],
         ];
@@ -69,7 +68,6 @@
                 <tr class="hover:bg-base-200">
                     <td>{{ $category->id }}</td>
                     <td>{{ $category->name }}</td>
-                    <td>{{ $category->code }}</td>
                     <td>
                         @if($category->trashed())
                             <span class="badge badge-outline badge-error">{{ __('Eliminato') }}</span>

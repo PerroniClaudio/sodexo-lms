@@ -95,7 +95,7 @@ class EmailVerificationController extends Controller
         ]);
 
         $user = User::where('email', $request->email)->first();
-        if ($user && (!$user->hasVerifiedEmail() || !$user->password)) {
+        if ($user && (! $user->hasVerifiedEmail() || ! $user->password)) {
             // Invia solo se necessario
             $user->sendEmailVerificationNotification();
         }

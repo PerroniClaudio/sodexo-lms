@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['name', 'code', 'description'])]
+#[Fillable(['name', 'description'])]
 class JobLevel extends Model
 {
     use HasFactory, SoftDeletes;

@@ -58,6 +58,6 @@ class UserController extends Controller
         $user->update($data);
 
         // Reindirizzamento in base al ruolo
-        return redirect()->route($userRole . '.profile.edit')->with('status', __('Profilo aggiornato con successo!'));
+        return redirect()->route($userRole.'.profile.edit')->with('status', __('Profilo aggiornato con successo!'));
     }
 }

@@ -42,7 +42,8 @@ class GeographicController extends Controller
 
     /**
      * Get regions/divisions for a specific country
-     * @param string|int $countryCodeOrId Country code (e.g. 'it') or country ID
+     *
+     * @param  string|int  $countryCodeOrId  Country code (e.g. 'it') or country ID
      */
     public function regions(Request $request, $countryCodeOrId)
     {
