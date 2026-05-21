@@ -20,14 +20,10 @@ class CertificateEligibilityService
         $satisfactionModule = $enrollment->course->modules
             ->first(fn (Module $module): bool => $module->type === 'satisfaction_quiz');
 
-        if ($satisfactionModule === null) {
-            return false;
-        }
-
-        $satisfactionProgress = $enrollment->moduleProgresses
-            ->first(fn (ModuleProgress $progress): bool => (int) $progress->module_id === (int) $satisfactionModule->getKey());
-
-        if ($satisfactionProgress?->status !== ModuleProgress::STATUS_COMPLETED) {
+        if (
+            $enrollment->course->requiresSatisfactionSurveyForCertificate()
+            && ! $this->hasCompletedSatisfactionSurvey($enrollment, $satisfactionModule)
+        ) {
             return false;
         }
 
@@ -54,5 +50,17 @@ class CertificateEligibilityService
         return $learningQuizProgresses
             ->every(fn (ModuleProgress $progress): bool => $progress->status === ModuleProgress::STATUS_COMPLETED
                 && $progress->passed_at !== null);
+    }
+
+    private function hasCompletedSatisfactionSurvey(CourseEnrollment $enrollment, ?Module $satisfactionModule): bool
+    {
+        if ($satisfactionModule === null) {
+            return false;
+        }
+
+        $satisfactionProgress = $enrollment->moduleProgresses
+            ->first(fn (ModuleProgress $progress): bool => (int) $progress->module_id === (int) $satisfactionModule->getKey());
+
+        return $satisfactionProgress?->status === ModuleProgress::STATUS_COMPLETED;
     }
 }

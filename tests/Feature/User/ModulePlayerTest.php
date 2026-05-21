@@ -83,6 +83,35 @@ test('module player page returns 403 if module is not the current module', funct
         ->assertForbidden();
 });
 
+test('module player page repairs missing progress records before rendering quiz module', function () {
+    [$user, $course, $videoModule, $enrollment] = enrollUserInCourseWithModule('video');
+
+    $quizModule = Module::factory()->create([
+        'type' => 'learning_quiz',
+        'order' => 2,
+        'passing_score' => 7,
+        'max_score' => 10,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $videoProgress = $enrollment->moduleProgresses()->where('module_id', $videoModule->getKey())->firstOrFail();
+    $videoProgress->markCompleted();
+
+    $enrollment->refresh();
+    $enrollment->moduleProgresses()->where('module_id', $quizModule->getKey())->delete();
+
+    $this->actingAs($user)
+        ->get(route('user.courses.modules.player', [$course, $quizModule]))
+        ->assertOk();
+
+    expect(
+        $enrollment->fresh()
+            ->moduleProgresses()
+            ->where('module_id', $quizModule->getKey())
+            ->value('status')
+    )->toBe(ModuleProgress::STATUS_AVAILABLE);
+});
+
 test('module player page requires authentication', function () {
     $course = Course::factory()->create();
     $module = Module::factory()->create([

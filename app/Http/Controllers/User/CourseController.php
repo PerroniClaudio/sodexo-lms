@@ -5,18 +5,25 @@ namespace App\Http\Controllers\User;
 use App\Actions\AbandonLearningQuizAttempt;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
+use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleQuizSubmission;
 use App\Models\User;
+use App\Services\Certificates\UserCourseCertificateLocator;
 use App\Services\CourseClassScheduleResolver;
+use App\Services\SyncCourseModuleProgresses;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CourseController extends Controller
 {
-    public function __construct(private readonly AbandonLearningQuizAttempt $abandonLearningQuizAttempt) {}
+    public function __construct(
+        private readonly AbandonLearningQuizAttempt $abandonLearningQuizAttempt,
+        private readonly SyncCourseModuleProgresses $syncCourseModuleProgresses,
+    ) {}
 
     public function index(): View
     {
@@ -40,6 +47,45 @@ class CourseController extends Controller
         };
     }
 
+    public function completed(UserCourseCertificateLocator $userCourseCertificateLocator): View
+    {
+        $user = $this->authUser();
+
+        $completedEnrollments = $user->courseEnrollments()
+            ->with('course')
+            ->where('status', CourseEnrollment::STATUS_COMPLETED)
+            ->orderByDesc('completed_at')
+            ->get()
+            ->map(function (CourseEnrollment $enrollment) use ($userCourseCertificateLocator): array {
+                return [
+                    'enrollment' => $enrollment,
+                    'certificate' => $userCourseCertificateLocator->locate($enrollment),
+                ];
+            });
+
+        return view('user.courses.completed', [
+            'completedEnrollments' => $completedEnrollments,
+        ]);
+    }
+
+    public function downloadCertificate(
+        CourseEnrollment $courseEnrollment,
+        UserCourseCertificateLocator $userCourseCertificateLocator
+    ): StreamedResponse {
+        $user = $this->authUser();
+
+        abort_unless((int) $courseEnrollment->user_id === (int) $user->getKey(), 404);
+        abort_unless($courseEnrollment->status === CourseEnrollment::STATUS_COMPLETED, 404);
+
+        $courseEnrollment->loadMissing('course', 'user');
+
+        $certificate = $userCourseCertificateLocator->locate($courseEnrollment);
+
+        abort_unless($certificate !== null, 404);
+
+        return $certificate['disk']->download($certificate['path'], $certificate['download_name']);
+    }
+
     public function showModule(Course $course, Module $module): View
     {
         $user = $this->authUser();
@@ -54,6 +100,16 @@ class CourseController extends Controller
         $progress = $enrollment->moduleProgresses()
             ->where('module_id', $module->getKey())
             ->first();
+
+        if ($progress === null) {
+            $this->syncCourseModuleProgresses->handle($course);
+
+            $progress = $enrollment->fresh()
+                ?->moduleProgresses()
+                ->where('module_id', $module->getKey())
+                ->first();
+        }
+
         abort_unless($progress !== null, 404);
 
         abort_if($progress->status === 'locked', 403);

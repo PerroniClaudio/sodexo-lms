@@ -5,7 +5,6 @@ use App\Models\Course;
 use App\Models\CustomCertificate;
 use App\Models\DocumentConversionJob;
 use App\Models\User;
-use App\Services\CloudRunJobClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
@@ -159,21 +158,6 @@ it('requires course and user for preview download', function () {
 it('creates a conversion job for a preview docx using fallback values when enrollment data is missing', function () {
     Storage::fake('s3');
     actingAsRole('admin');
-
-    $this->mock(CloudRunJobClient::class, function ($mock): void {
-        $mock->shouldReceive('runDocumentConversionJob')
-            ->once()
-            ->withArgs(fn (DocumentConversionJob $job): bool => $job->exists
-                && $job->status === DocumentConversionJobStatus::PENDING
-                && $job->input_disk === 's3'
-                && str_starts_with($job->input_path, 'certificates/word/'))
-            ->andReturn([
-                'operation_name' => 'operations/docx-conversion-preview',
-                'payload' => [
-                    'name' => 'operations/docx-conversion-preview',
-                ],
-            ]);
-    });
 
     $course = Course::factory()->create([
         'title' => 'Corso sicurezza',

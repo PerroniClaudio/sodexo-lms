@@ -6,6 +6,7 @@ use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -163,4 +164,43 @@ it('completes the enrollment on the final module and preserves history on soft d
 
     expect($enrollment->fresh()->deleted_at)->not->toBeNull();
     expect($enrollment->moduleProgresses()->count())->toBe(1);
+});
+
+it('creates module progress records for existing enrollments when a new module is added', function () {
+    $user = User::forceCreate([
+        'name' => 'Module',
+        'surname' => 'Progress',
+        'email' => fake()->unique()->safeEmail(),
+        'password' => bcrypt('password'),
+        'fiscal_code' => strtoupper(Str::random(16)),
+        'email_verified_at' => now(),
+        'profile_completed_at' => now(),
+        'account_state' => 'active',
+        'is_foreigner_or_immigrant' => false,
+    ]);
+    $course = Course::factory()->create();
+    $firstModule = Module::factory()->create([
+        'type' => 'video',
+        'order' => 1,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $enrollment = CourseEnrollment::enroll($user, $course);
+    $firstProgress = $enrollment->moduleProgresses()->where('module_id', $firstModule->getKey())->firstOrFail();
+    $firstProgress->markCompleted();
+
+    $secondModule = Module::factory()->create([
+        'type' => 'learning_quiz',
+        'order' => 2,
+        'passing_score' => 7,
+        'max_score' => 10,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $enrollment->refresh();
+
+    expect($enrollment->moduleProgresses()->count())->toBe(2);
+    expect($enrollment->moduleProgresses()->where('module_id', $secondModule->getKey())->value('status'))
+        ->toBe(ModuleProgress::STATUS_AVAILABLE);
+    expect($enrollment->current_module_id)->toBe($secondModule->getKey());
 });

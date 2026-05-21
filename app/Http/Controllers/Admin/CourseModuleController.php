@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Models\Video;
 use App\Services\LiveModuleAttendanceService;
 use App\Services\ModuleValidation\ModuleValidatorService;
+use App\Services\SyncCourseModuleProgresses;
 use App\Services\SyncCourseSatisfactionSurvey;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -34,6 +35,7 @@ class CourseModuleController extends Controller
 {
     public function __construct(
         private readonly ModuleValidatorService $moduleValidator,
+        private readonly SyncCourseModuleProgresses $syncCourseModuleProgresses,
         private readonly SyncCourseSatisfactionSurvey $syncCourseSatisfactionSurvey,
     ) {}
 
@@ -490,6 +492,7 @@ class CourseModuleController extends Controller
         });
 
         $this->normalizeSatisfactionModuleOrder($course);
+        $this->syncCourseModuleProgresses->handle($course);
 
         return response()->json([
             'message' => __('Module order updated successfully.'),

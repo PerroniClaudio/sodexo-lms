@@ -30,6 +30,15 @@
                         </a>
                     </li>
                     <li class="w-full">
+                        <a href="{{ route('user.completed-courses.index') }}" @class([
+                            'w-full',
+                            'menu-active' => request()->routeIs('user.completed-courses.*'),
+                        ])>
+                            <x-lucide-file-text class="mr-2 inline-block h-5 w-5" />
+                            {{ __('Corsi completati') }}
+                        </a>
+                    </li>
+                    <li class="w-full">
                         <a href="{{ route($authUserRole . '.profile.edit') }}" @class([
                             'w-full',
                             'menu-active' => request()->routeIs($authUserRole . '.profile.*'),
