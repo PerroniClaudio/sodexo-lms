@@ -7,6 +7,7 @@ use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -31,7 +32,12 @@ it('shows completed courses in user sidebar page with certificate download butto
     ]);
 
     Storage::disk('s3')->put(
-        'certificates/word/'.$completedCourse->getKey().'_'.$user->fiscal_code.'_'.now()->format('Ymd').'.pdf',
+        completedCertificatePath($completedEnrollment, $user->fiscal_code, 'participation'),
+        'pdf-content'
+    );
+
+    Storage::disk('s3')->put(
+        completedCertificatePath($completedEnrollment, $user->fiscal_code, 'completion'),
         'pdf-content'
     );
 
@@ -50,12 +56,14 @@ it('shows completed courses in user sidebar page with certificate download butto
     $response->assertOk();
     $response->assertSeeText('Corsi completati');
     $response->assertSeeText('Corso Sicurezza');
-    $response->assertSeeText('Scarica attestato');
+    $response->assertSeeText('Scarica attestato partecipazione');
+    $response->assertSeeText('Scarica attestato superamento');
     $response->assertDontSeeText('Corso In Corso');
-    $response->assertSee(route('user.completed-courses.certificate.download', $completedEnrollment), false);
+    $response->assertSee(route('user.completed-courses.certificate.download', ['courseEnrollment' => $completedEnrollment, 'type' => 'participation']), false);
+    $response->assertSee(route('user.completed-courses.certificate.download', ['courseEnrollment' => $completedEnrollment, 'type' => 'completion']), false);
 });
 
-it('downloads certificate for completed course owned by authenticated user', function () {
+it('downloads participation certificate for completed course owned by authenticated user', function () {
     $user = completedCoursesTestUser();
     $user->assignRole('user');
 
@@ -71,14 +79,40 @@ it('downloads certificate for completed course owned by authenticated user', fun
     ]);
 
     Storage::disk('s3')->put(
-        'certificates/word/'.$course->getKey().'_'.$user->fiscal_code.'_'.now()->format('Ymd').'.pdf',
+        completedCertificatePath($enrollment, $user->fiscal_code, 'participation'),
         'pdf-content'
     );
 
     $this->actingAs($user)
-        ->get(route('user.completed-courses.certificate.download', $enrollment))
+        ->get(route('user.completed-courses.certificate.download', ['courseEnrollment' => $enrollment, 'type' => 'participation']))
         ->assertOk()
-        ->assertDownload('attestato-corso-'.$course->getKey().'-'.now()->format('Ymd').'.pdf');
+        ->assertDownload('attestato-partecipazione-corso-'.$course->getKey().'-'.now()->format('Ymd').'.pdf');
+});
+
+it('downloads completion certificate for completed course owned by authenticated user', function () {
+    $user = completedCoursesTestUser();
+    $user->assignRole('user');
+
+    $course = Course::factory()->create([
+        'title' => 'Corso Privacy',
+    ]);
+
+    $enrollment = CourseEnrollment::factory()->create([
+        'user_id' => $user->getKey(),
+        'course_id' => $course->getKey(),
+        'status' => CourseEnrollment::STATUS_COMPLETED,
+        'completed_at' => now(),
+    ]);
+
+    Storage::disk('s3')->put(
+        completedCertificatePath($enrollment, $user->fiscal_code, 'completion'),
+        'pdf-content'
+    );
+
+    $this->actingAs($user)
+        ->get(route('user.completed-courses.certificate.download', ['courseEnrollment' => $enrollment, 'type' => 'completion']))
+        ->assertOk()
+        ->assertDownload('attestato-superamento-corso-'.$course->getKey().'-'.now()->format('Ymd').'.pdf');
 });
 
 it('does not allow downloading another users certificate', function () {
@@ -98,12 +132,12 @@ it('does not allow downloading another users certificate', function () {
     ]);
 
     Storage::disk('s3')->put(
-        'certificates/word/'.$course->getKey().'_'.$otherUser->fiscal_code.'_'.now()->format('Ymd').'.pdf',
+        completedCertificatePath($otherEnrollment, $otherUser->fiscal_code, 'participation'),
         'pdf-content'
     );
 
     $this->actingAs($user)
-        ->get(route('user.completed-courses.certificate.download', $otherEnrollment))
+        ->get(route('user.completed-courses.certificate.download', ['courseEnrollment' => $otherEnrollment, 'type' => 'participation']))
         ->assertNotFound();
 });
 
@@ -120,4 +154,15 @@ function completedCoursesTestUser(string $email = 'user@example.com', string $fi
         'account_state' => 'active',
         'is_foreigner_or_immigrant' => false,
     ]);
+}
+
+function completedCertificatePath(CourseEnrollment $enrollment, string $fiscalCode, string $type): string
+{
+    return sprintf(
+        'certificates/word/%s_%s_%s_%s.pdf',
+        $enrollment->course_id,
+        Str::upper(Str::of($fiscalCode)->replaceMatches('/[^A-Za-z0-9]/', '')->value()),
+        $enrollment->completed_at?->format('Ymd'),
+        $type
+    );
 }

@@ -6,6 +6,7 @@ use App\Models\CourseEnrollment;
 use App\Models\CustomCertificate;
 use App\Models\DocumentConversionJob;
 use App\Models\Module;
+use App\Models\ModuleProgress;
 use App\Models\User;
 use App\Services\Certificates\CourseCertificateGenerator;
 use App\Services\CloudRunJobClient;
@@ -79,16 +80,53 @@ XML,
         'course_ids' => [$enrollment->course_id],
     ]);
 
-    $job = app(CourseCertificateGenerator::class)->generateForEnrollment($enrollment);
+    $job = app(CourseCertificateGenerator::class)->generateForEnrollment($enrollment)->sole();
 
     expect($job)->not->toBeNull()
-        ->and($job?->status)->toBe(DocumentConversionJobStatus::PENDING)
-        ->and($job?->input_disk)->toBe('s3')
-        ->and($job?->output_disk)->toBe('s3')
-        ->and($job?->input_path)->toBe('certificates/word/'.$enrollment->course_id.'_'.Str::upper($enrollment->user->fiscal_code).'_'.$enrollment->completed_at?->format('Ymd').'.docx')
-        ->and($job?->output_path)->toBe('certificates/word/'.$enrollment->course_id.'_'.Str::upper($enrollment->user->fiscal_code).'_'.$enrollment->completed_at?->format('Ymd').'.pdf');
+        ->and($job->status)->toBe(DocumentConversionJobStatus::PENDING)
+        ->and($job->input_disk)->toBe('s3')
+        ->and($job->output_disk)->toBe('s3')
+        ->and($job->input_path)->toBe('certificates/word/'.$enrollment->course_id.'_'.Str::upper($enrollment->user->fiscal_code).'_'.$enrollment->completed_at?->format('Ymd').'_participation.docx')
+        ->and($job->output_path)->toBe('certificates/word/'.$enrollment->course_id.'_'.Str::upper($enrollment->user->fiscal_code).'_'.$enrollment->completed_at?->format('Ymd').'_participation.pdf');
 
     Storage::disk('s3')->assertExists($job->input_path);
+});
+
+it('creates only participation certificate when satisfaction survey is completed but learning quiz is not passed', function () {
+    Storage::fake('s3');
+
+    $enrollment = createCompletedEnrollmentWithLearningOutcome(false);
+    createGenericCertificateTemplate(CustomCertificate::TYPE_PARTICIPATION);
+    createGenericCertificateTemplate(CustomCertificate::TYPE_COMPLETION);
+
+    $jobs = app(CourseCertificateGenerator::class)->generateForEnrollment($enrollment);
+
+    expect($jobs)->toHaveCount(1);
+
+    $job = $jobs->sole();
+
+    expect($job->input_path)->toEndWith('_participation.docx')
+        ->and($job->output_path)->toEndWith('_participation.pdf');
+});
+
+it('creates participation and completion certificates when learning quiz is passed and satisfaction survey is completed', function () {
+    Storage::fake('s3');
+
+    $enrollment = createCompletedEnrollmentWithLearningOutcome(true);
+    createGenericCertificateTemplate(CustomCertificate::TYPE_PARTICIPATION);
+    createGenericCertificateTemplate(CustomCertificate::TYPE_COMPLETION);
+
+    $jobs = app(CourseCertificateGenerator::class)->generateForEnrollment($enrollment);
+
+    expect($jobs)->toHaveCount(2)
+        ->and($jobs->pluck('input_path')->all())->toBe([
+            'certificates/word/'.$enrollment->course_id.'_'.Str::upper($enrollment->user->fiscal_code).'_'.$enrollment->completed_at?->format('Ymd').'_participation.docx',
+            'certificates/word/'.$enrollment->course_id.'_'.Str::upper($enrollment->user->fiscal_code).'_'.$enrollment->completed_at?->format('Ymd').'_completion.docx',
+        ])
+        ->and($jobs->pluck('output_path')->all())->toBe([
+            'certificates/word/'.$enrollment->course_id.'_'.Str::upper($enrollment->user->fiscal_code).'_'.$enrollment->completed_at?->format('Ymd').'_participation.pdf',
+            'certificates/word/'.$enrollment->course_id.'_'.Str::upper($enrollment->user->fiscal_code).'_'.$enrollment->completed_at?->format('Ymd').'_completion.pdf',
+        ]);
 });
 
 it('starts cloud run only once when pending document conversion jobs exist', function () {
@@ -178,7 +216,78 @@ function createCertificateEnrollment(bool $requiresSatisfactionSurvey): array
     return [$enrollment, $videoProgress, $surveyProgress];
 }
 
+function createCompletedEnrollmentWithLearningOutcome(bool $passedLearningQuiz): CourseEnrollment
+{
+    $user = User::forceCreate([
+        'name' => 'Test',
+        'surname' => 'Certificate',
+        'email' => fake()->unique()->safeEmail(),
+        'password' => Hash::make('password'),
+        'fiscal_code' => strtoupper(Str::random(16)),
+        'email_verified_at' => now(),
+        'profile_completed_at' => now(),
+        'account_state' => 'active',
+        'is_foreigner_or_immigrant' => false,
+    ]);
+
+    $course = Course::factory()->create([
+        'has_satisfaction_survey' => true,
+        'satisfaction_survey_required_for_certificate' => true,
+    ]);
+
+    $learningModule = Module::factory()->create([
+        'type' => Module::TYPE_LEARNING_QUIZ,
+        'passing_score' => 7,
+        'max_score' => 10,
+        'order' => 1,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $surveyModule = Module::factory()->create([
+        'type' => Module::TYPE_SATISFACTION_QUIZ,
+        'title' => Module::defaultTitleForType(Module::TYPE_SATISFACTION_QUIZ),
+        'order' => 2,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $enrollment = CourseEnrollment::enroll($user, $course);
+
+    $enrollment->moduleProgresses()->where('module_id', $learningModule->getKey())->firstOrFail()
+        ->forceFill([
+            'status' => $passedLearningQuiz ? ModuleProgress::STATUS_COMPLETED : ModuleProgress::STATUS_FAILED,
+            'started_at' => now(),
+            'completed_at' => $passedLearningQuiz ? now() : null,
+            'last_accessed_at' => now(),
+            'quiz_attempts' => 1,
+            'quiz_score' => $passedLearningQuiz ? 10 : 4,
+            'quiz_total_score' => 10,
+            'passed_at' => $passedLearningQuiz ? now() : null,
+        ])->save();
+
+    $enrollment->moduleProgresses()->where('module_id', $surveyModule->getKey())->firstOrFail()
+        ->forceFill([
+            'status' => ModuleProgress::STATUS_COMPLETED,
+            'started_at' => now(),
+            'completed_at' => now(),
+            'last_accessed_at' => now(),
+        ])->save();
+
+    $enrollment->forceFill([
+        'current_module_id' => $surveyModule->getKey(),
+        'status' => CourseEnrollment::STATUS_COMPLETED,
+        'completed_at' => now(),
+        'completion_percentage' => 100,
+    ])->save();
+
+    return $enrollment->fresh(['course.modules', 'moduleProgresses', 'user']);
+}
+
 function createGenericParticipationCertificateTemplate(): void
+{
+    createGenericCertificateTemplate(CustomCertificate::TYPE_PARTICIPATION);
+}
+
+function createGenericCertificateTemplate(string $type): void
 {
     $templateUpload = docxUpload([
         'word/document.xml' => <<<'XML'
@@ -193,10 +302,10 @@ function createGenericParticipationCertificateTemplate(): void
 XML,
     ]);
 
-    $storedPath = $templateUpload->store('custom-certificates/participation', 's3');
+    $storedPath = $templateUpload->store('custom-certificates/'.$type, 's3');
 
     CustomCertificate::factory()->create([
-        'type' => CustomCertificate::TYPE_PARTICIPATION,
+        'type' => $type,
         'storage_disk' => 's3',
         'template_path' => $storedPath,
         'original_filename' => 'template.docx',
