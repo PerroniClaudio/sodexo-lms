@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\RiskLevel;
+use App\Services\RiskCalculationService;
 use App\Enums\OnboardingStep;
 use App\Enums\UserStatus;
 use Database\Factories\UserFactory;
@@ -457,5 +459,30 @@ class User extends Authenticatable implements MustVerifyEmail
     public function getJobProvinceAttribute(): ?string
     {
         return $this->jobUnit?->province?->code ?? null;
+    }
+
+    /**
+     * Get the effective risk level for a worker in this sector with a specific job title
+     */
+    public function getEffectiveWorkerRisk(): RiskLevel
+    {
+        if(! $this->hasRole('user') || ! $this->jobSector || ! $this->jobTitle) {
+            throw new \LogicException('Cannot calculate risk level for user without "user" role, job sector or job title');
+        }
+
+        return app(RiskCalculationService::class)
+            ->getEffectiveWorkerRisk($this->jobSector?->id, $this->jobTitle?->id);
+    }
+
+    public function getRequirementsForEffectiveRisk(): array
+    {
+        $effectiveRisk = $this->getEffectiveWorkerRisk();
+
+        if (! $effectiveRisk) {
+            return [];
+        }
+
+        return app(RiskCalculationService::class)
+            ->getRequirementsForRiskLevel($effectiveRisk);
     }
 }
