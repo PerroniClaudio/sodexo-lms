@@ -107,7 +107,8 @@
 
                     @role('superadmin')
                         <li>
-                            <details @if(request()->routeIs('admin.job-*')) open @endif>
+                            {{-- <details @if(request()->routeIs('admin.job-*')) open @endif> --}}
+                            <details @if(request()->routeIs('admin.job-*') or request()->routeIs('admin.nace-ateco.index') or request()->routeIs('admin.risk-based-requirements.*')) open @endif>
                                 <summary @class(['menu-active' => request()->routeIs('admin.job-*')])>
                                     {{ __('Configurazione Lavori') }}
                                 </summary>
@@ -166,6 +167,14 @@
                                             @class(['menu-active' => request()->routeIs('admin.nace-ateco.*')])
                                         >
                                             {{ __('ATECO') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.risk-based-requirements.index') }}"
+                                            @class(['menu-active' => request()->routeIs('admin.risk-based-requirements.*')])
+                                        >
+                                            {{ __('Requisiti (Rischio)') }}
                                         </a>
                                     </li>
                                 </ul>

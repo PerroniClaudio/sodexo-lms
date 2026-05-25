@@ -1,0 +1,161 @@
+<x-layouts.admin>
+    @php
+        $validityParts = $requirement->getValidityParts();
+    @endphp
+
+    <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+        <x-page-header :title="__('Modifica requisito')">
+            <x-slot:actions>
+                <a href="{{ route('admin.risk-based-requirements.index') }}" class="btn btn-ghost">
+                    <x-lucide-arrow-left class="h-4 w-4" />
+                    <span>{{ __('Torna alla lista') }}</span>
+                </a>
+            </x-slot:actions>
+        </x-page-header>
+
+        <div class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-6">
+                <form method="POST" action="{{ route('admin.risk-based-requirements.update', $requirement) }}" class="flex flex-col gap-6">
+                    @csrf
+                    @method('PUT')
+
+                    <div class="grid gap-6 md:grid-cols-1">
+                        <div class="form-control flex flex-col gap-2">
+                            <label for="name" class="label p-0">
+                                <span class="label-text font-medium">{{ __('Nome') }} <span class="text-error">*</span></span>
+                            </label>
+                            <input
+                                id="name"
+                                name="name"
+                                type="text"
+                                value="{{ old('name', $requirement->name) }}"
+                                class="input input-bordered w-full @error('name') input-error @enderror"
+                                required
+                            >
+                            @error('name')
+                                <p class="text-sm text-error">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <div class="form-control flex flex-col gap-2">
+                        <label for="description" class="label p-0">
+                            <span class="label-text font-medium">{{ __('Descrizione') }}</span>
+                        </label>
+                        <textarea
+                            id="description"
+                            name="description"
+                            rows="4"
+                            class="textarea textarea-bordered w-full @error('description') textarea-error @enderror"
+                        >{{ old('description', $requirement->description) }}</textarea>
+                        @error('description')
+                            <p class="text-sm text-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div class="form-control flex flex-col gap-2">
+                        <label class="label p-0">
+                            <span class="label-text font-medium">{{ __('Livelli di rischio') }} <span class="text-error">*</span></span>
+                        </label>
+                        <div class="flex flex-col gap-2">
+                            @foreach($riskLevels as $level)
+                                <label class="label cursor-pointer justify-start gap-3">
+                                    <input
+                                        type="checkbox"
+                                        name="risk_levels[]"
+                                        value="{{ $level->value }}"
+                                        class="checkbox"
+                                        @checked(in_array($level->value, old('risk_levels', $requirement->risk_levels->pluck('value')->toArray())))
+                                    >
+                                    <span class="badge {{ $level->badgeColor() }}">{{ $level->label() }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                        @error('risk_levels')
+                            <p class="text-sm text-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div class="form-control flex flex-col gap-2">
+                        <label class="label cursor-pointer justify-start gap-3">
+                            <input
+                                type="checkbox"
+                                name="is_limited_validity"
+                                id="is_limited_validity"
+                                value="1"
+                                class="checkbox"
+                                @checked(old('is_limited_validity', $requirement->is_limited_validity))
+                                onchange="toggleValidityFields()"
+                            >
+                            <span class="label-text font-medium">{{ __('Validità limitata') }}</span>
+                        </label>
+                        @error('is_limited_validity')
+                            <p class="text-sm text-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div id="validity-fields" class="grid gap-4 md:grid-cols-2" style="display: {{ old('is_limited_validity', $requirement->is_limited_validity) ? 'grid' : 'none' }}">
+                        <div class="form-control flex flex-col gap-2">
+                            <label for="validity_years" class="label p-0">
+                                <span class="label-text font-medium">{{ __('Anni') }}</span>
+                            </label>
+                            <input
+                                id="validity_years"
+                                name="validity_years"
+                                type="number"
+                                min="0"
+                                value="{{ old('validity_years', $validityParts['years']) }}"
+                                class="input input-bordered w-full @error('validity_years') input-error @enderror"
+                            >
+                            @error('validity_years')
+                                <p class="text-sm text-error">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="form-control flex flex-col gap-2">
+                            <label for="validity_months_part" class="label p-0">
+                                <span class="label-text font-medium">{{ __('Mesi') }}</span>
+                            </label>
+                            <input
+                                id="validity_months_part"
+                                name="validity_months_part"
+                                type="number"
+                                min="0"
+                                max="11"
+                                value="{{ old('validity_months_part', $validityParts['months']) }}"
+                                class="input input-bordered w-full @error('validity_months_part') input-error @enderror"
+                            >
+                            @error('validity_months_part')
+                                <p class="text-sm text-error">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
+                    @error('validity_months')
+                        <p class="text-sm text-error">{{ $message }}</p>
+                    @enderror
+
+                    <div class="flex justify-end gap-3">
+                        <a href="{{ route('admin.risk-based-requirements.index') }}" class="btn btn-ghost">
+                            {{ __('Cancel') }}
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <span>{{ __('Salva modifiche') }}</span>
+                            <x-lucide-save class="h-4 w-4" />
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    @push('scripts')
+    <script>
+        function toggleValidityFields() {
+            const checkbox = document.getElementById('is_limited_validity');
+            const fields = document.getElementById('validity-fields');
+            fields.style.display = checkbox.checked ? 'grid' : 'none';
+        }
+    </script>
+    @endpush
+</x-layouts.admin>

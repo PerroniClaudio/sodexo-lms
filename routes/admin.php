@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\ModuleQuizDocumentUploadController;
 use App\Http\Controllers\Admin\ModuleQuizSubmissionController;
 use App\Http\Controllers\Admin\NaceAtecoController;
 use App\Http\Controllers\Admin\RegiaController;
+use App\Http\Controllers\Admin\RiskBasedRequirementController;
 use App\Http\Controllers\Admin\SatisfactionSurveyController;
 use App\Http\Controllers\Admin\ScormPackageController;
 use App\Http\Controllers\Admin\UserController;
@@ -139,6 +140,10 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
 
             // NACE/ATECO codes
             Route::get('nace-ateco', [NaceAtecoController::class, 'index'])->name('nace-ateco.index');
+
+            // Risk-based requirements
+            Route::resource('risk-based-requirements', RiskBasedRequirementController::class)->except(['show']);
+            Route::post('risk-based-requirements/{id}/restore', [RiskBasedRequirementController::class, 'restore'])->name('risk-based-requirements.restore');
 
             // Restore routes for soft deleted items
             Route::post('job-categories/{id}/restore', [JobCategoryController::class, 'restore'])->name('job-categories.restore');
