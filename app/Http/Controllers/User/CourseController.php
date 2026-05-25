@@ -14,6 +14,7 @@ use App\Services\CourseClassScheduleResolver;
 use App\Services\SyncCourseModuleProgresses;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -59,7 +60,7 @@ class CourseController extends Controller
             ->map(function (CourseEnrollment $enrollment) use ($userCourseCertificateLocator): array {
                 return [
                     'enrollment' => $enrollment,
-                    'certificate' => $userCourseCertificateLocator->locate($enrollment),
+                    'certificates' => $userCourseCertificateLocator->locateAll($enrollment),
                 ];
             });
 
@@ -69,6 +70,7 @@ class CourseController extends Controller
     }
 
     public function downloadCertificate(
+        Request $request,
         CourseEnrollment $courseEnrollment,
         UserCourseCertificateLocator $userCourseCertificateLocator
     ): StreamedResponse {
@@ -79,7 +81,10 @@ class CourseController extends Controller
 
         $courseEnrollment->loadMissing('course', 'user');
 
-        $certificate = $userCourseCertificateLocator->locate($courseEnrollment);
+        $certificate = $userCourseCertificateLocator->locate(
+            $courseEnrollment,
+            $request->string('type')->toString() ?: null
+        );
 
         abort_unless($certificate !== null, 404);
 

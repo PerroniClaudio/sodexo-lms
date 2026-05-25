@@ -7,6 +7,7 @@ use App\Models\CourseEnrollment;
 use App\Models\CustomCertificate;
 use App\Models\DocumentConversionJob;
 use Illuminate\Http\File;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -22,72 +23,71 @@ class CourseCertificateGenerator
         private readonly DocxTemplateRenderer $docxTemplateRenderer,
     ) {}
 
-    public function generateForEnrollment(CourseEnrollment $enrollment): ?DocumentConversionJob
+    /**
+     * @return Collection<int, DocumentConversionJob>
+     */
+    public function generateForEnrollment(CourseEnrollment $enrollment): Collection
     {
         $enrollment = $enrollment->fresh(['course.modules', 'moduleProgresses', 'user']);
 
         if ($enrollment === null || $enrollment->status !== CourseEnrollment::STATUS_COMPLETED) {
-            return null;
+            return collect();
         }
 
-        $certificateType = $this->resolveCertificateType($enrollment);
+        $variables = $this->certificateVariableResolver->resolve($enrollment->course, $enrollment->user, $enrollment);
 
-        if ($certificateType === null) {
-            return null;
-        }
+        return collect(CustomCertificate::availableTypes())
+            ->map(function (string $type) use ($enrollment, $variables): ?DocumentConversionJob {
+                if (! $this->certificateEligibilityService->isEligible($enrollment, $type)) {
+                    return null;
+                }
 
-        $certificate = $this->customCertificateResolver->resolve($certificateType, $enrollment->course);
+                $certificate = $this->customCertificateResolver->resolve($type, $enrollment->course);
 
-        if ($certificate === null) {
-            return null;
-        }
+                if ($certificate === null) {
+                    return null;
+                }
 
-        $temporaryPath = $this->docxTemplateRenderer->renderToTemporaryPath(
-            $certificate,
-            $this->certificateVariableResolver->resolve($enrollment->course, $enrollment->user, $enrollment)
-        );
+                return $this->createConversionJob($enrollment, $certificate, $variables);
+            })
+            ->filter()
+            ->values();
+    }
+
+    /**
+     * @param  array<string, string>  $variables
+     */
+    private function createConversionJob(
+        CourseEnrollment $enrollment,
+        CustomCertificate $certificate,
+        array $variables
+    ): DocumentConversionJob {
+        $temporaryPath = $this->docxTemplateRenderer->renderToTemporaryPath($certificate, $variables);
 
         try {
             $inputPath = Storage::disk(self::STORAGE_DISK)->putFileAs(
                 'certificates/word',
                 new File($temporaryPath),
-                $this->outputFileName($enrollment)
+                $this->outputFileName($enrollment, $certificate->type)
             );
 
             if ($inputPath === false) {
                 throw new RuntimeException('Unable to store the generated certificate on S3.');
             }
 
-            $conversionJob = DocumentConversionJob::query()->create([
+            return DocumentConversionJob::query()->create([
                 'status' => DocumentConversionJobStatus::PENDING,
                 'input_disk' => self::STORAGE_DISK,
                 'input_path' => $inputPath,
                 'output_disk' => self::STORAGE_DISK,
                 'output_path' => (string) str($inputPath)->replaceEnd('.docx', '.pdf'),
             ]);
-
-            return $conversionJob;
         } finally {
             @unlink($temporaryPath);
         }
     }
 
-    private function resolveCertificateType(CourseEnrollment $enrollment): ?string
-    {
-        foreach ([CustomCertificate::TYPE_COMPLETION, CustomCertificate::TYPE_PARTICIPATION] as $type) {
-            if (! $this->certificateEligibilityService->isEligible($enrollment, $type)) {
-                continue;
-            }
-
-            if ($this->customCertificateResolver->resolve($type, $enrollment->course) !== null) {
-                return $type;
-            }
-        }
-
-        return null;
-    }
-
-    private function outputFileName(CourseEnrollment $enrollment): string
+    private function outputFileName(CourseEnrollment $enrollment, string $type): string
     {
         $userFiscalCode = Str::upper(
             Str::of($enrollment->user->fiscal_code ?? 'unknown')
@@ -96,10 +96,11 @@ class CourseCertificateGenerator
         );
 
         return sprintf(
-            '%s_%s_%s.docx',
+            '%s_%s_%s_%s.docx',
             $enrollment->course->getKey(),
             $userFiscalCode,
-            $enrollment->completed_at?->format('Ymd') ?? now()->format('Ymd')
+            $enrollment->completed_at?->format('Ymd') ?? now()->format('Ymd'),
+            $type
         );
     }
 }

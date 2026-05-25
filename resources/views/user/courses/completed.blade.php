@@ -21,19 +21,23 @@
                             <tbody>
                                 @foreach ($completedEnrollments as $item)
                                     @php($enrollment = $item['enrollment'])
-                                    @php($certificate = $item['certificate'])
+                                    @php($certificates = $item['certificates'])
 
                                     <tr>
                                         <td class="font-semibold">{{ $enrollment->course->title }}</td>
                                         <td>{{ $enrollment->completed_at?->format('d/m/Y') ?? '-' }}</td>
                                         <td class="text-right">
-                                            @if ($certificate !== null)
-                                                <a
-                                                    href="{{ route('user.completed-courses.certificate.download', $enrollment) }}"
-                                                    class="btn btn-sm btn-primary"
-                                                >
-                                                    {{ __('Scarica attestato') }}
-                                                </a>
+                                            @if ($certificates !== [])
+                                                <div class="flex justify-end gap-2">
+                                                    @foreach ($certificates as $type => $certificate)
+                                                        <a
+                                                            href="{{ route('user.completed-courses.certificate.download', ['courseEnrollment' => $enrollment, 'type' => $type]) }}"
+                                                            class="btn btn-sm {{ $type === \App\Models\CustomCertificate::TYPE_COMPLETION ? 'btn-secondary' : 'btn-primary' }}"
+                                                        >
+                                                            {{ __('Scarica attestato :type', ['type' => \Illuminate\Support\Str::lower($certificate['label'])]) }}
+                                                        </a>
+                                                    @endforeach
+                                                </div>
                                             @else
                                                 <span class="text-sm text-base-content/60">{{ __('Attestato non disponibile') }}</span>
                                             @endif
