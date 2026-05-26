@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\JobRoleController;
 use App\Http\Controllers\Admin\JobSectorController;
 use App\Http\Controllers\Admin\JobTitleController;
 use App\Http\Controllers\Admin\JobUnitController;
+use App\Http\Controllers\Admin\LiveStreamLogController;
 use App\Http\Controllers\Admin\ModuleQuizController;
 use App\Http\Controllers\Admin\ModuleQuizDocumentUploadController;
 use App\Http\Controllers\Admin\ModuleQuizSubmissionController;
@@ -123,6 +124,12 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
                 ->name('document-conversion-jobs.retry');
             Route::get('/document-conversion-jobs/{documentConversionJob}/download', [DocumentConversionJobDebugController::class, 'download'])
                 ->name('document-conversion-jobs.download');
+            Route::get('/live-stream-logs', [LiveStreamLogController::class, 'index'])
+                ->name('live-stream-logs.index');
+            Route::get('/live-stream-logs/{liveStreamLog}', [LiveStreamLogController::class, 'show'])
+                ->name('live-stream-logs.show');
+            Route::get('/live-stream-logs/{liveStreamLog}/download', [LiveStreamLogController::class, 'download'])
+                ->name('live-stream-logs.download');
             Route::get('/satisfaction-survey', [SatisfactionSurveyController::class, 'edit'])
                 ->name('satisfaction-survey.edit');
             Route::put('/satisfaction-survey', [SatisfactionSurveyController::class, 'update'])

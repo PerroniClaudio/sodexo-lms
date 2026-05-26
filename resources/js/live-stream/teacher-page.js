@@ -5,13 +5,19 @@ import {
     resolveParticipantSpeakingState,
 } from './participant-utils.mjs';
 import {
+    attachTrackToElement,
+    buildTwilioConnectOptions,
     createPlaceholderCard,
+    createTwilioRoomObserver,
     createPreviewController,
     deterministicShuffle,
+    detachTrackFromElement,
     filterAudioOutputDevices,
     formatAudioOutputDeviceLabel,
+    getLiveStreamCameraCaptureProfile,
     getLiveStreamConfig,
     getLiveStreamIconButtonContent,
+    getLiveStreamScreenShareCaptureProfile,
     getParticipantInitialsBadgeClassNames,
     getParticipantAudioStatusMarkup,
     getLiveStreamRoot,
@@ -61,8 +67,20 @@ export function initTeacherPage() {
         presenceHandle: null,
         screenShareTrack: null,
         screenShareAudioTrack: null,
+        screenShareCaptureProfile: 'default',
+        cameraCaptureProfile: 'teacher',
         selectedAudioOutputId: 'default',
         audioOutputDevices: [],
+        roomObserver: null,
+        participantVideoCards: new Map(),
+        localVideoFallbackApplied: false,
+        screenShareFallbackApplied: false,
+        localVideoDegradationHandled: false,
+        activeSessionId: null,
+        localParticipantIdentity: null,
+        twilioLogEntries: [],
+        roomObservedAt: null,
+        logUploadCompleted: false,
     };
 
     const startButton = root.querySelector('[data-live-stream-start-button]');
@@ -100,6 +118,7 @@ export function initTeacherPage() {
         onAudioStateChange: syncMicToggleButton,
         backgroundsRoute: config.routes.backgrounds,
         videoTrackName: LIVE_STREAM_CAMERA_TRACK_NAME,
+        videoConstraints: getLiveStreamCameraCaptureProfile('teacher'),
     });
 
     renderChatMessages(root, []);
@@ -349,22 +368,22 @@ export function initTeacherPage() {
 
             const joinResponse = await window.axios.post(config.routes.join);
             const joinPayload = joinResponse.data;
+            state.activeSessionId = joinPayload.session_id ?? null;
+            state.localParticipantIdentity = joinPayload.participant_identity ?? null;
+            state.twilioLogEntries = [];
+            state.roomObservedAt = new Date().toISOString();
+            state.logUploadCompleted = false;
             const localTracks = config.capabilities?.hiddenParticipant ? [] : previewController.getLocalTracks();
-            const connectOptions = {
-                name: joinPayload.twilio_room_name,
-                dominantSpeaker: true,
-            };
-
-            if (localTracks.length > 0) {
-                connectOptions.tracks = localTracks;
-            } else {
-                connectOptions.audio = config.capabilities?.hiddenParticipant ? false : true;
-                connectOptions.video = config.capabilities?.hiddenParticipant
+            const connectOptions = buildTwilioConnectOptions({
+                roomName: joinPayload.twilio_room_name,
+                tracks: localTracks,
+                audio: config.capabilities?.hiddenParticipant ? false : true,
+                video: config.capabilities?.hiddenParticipant
                     ? false
                     : {
                         name: LIVE_STREAM_CAMERA_TRACK_NAME,
-                    };
-            }
+                    },
+            });
 
             ensureRemoteAudioContext();
 
@@ -379,12 +398,11 @@ export function initTeacherPage() {
                     throw error;
                 }
 
-                state.room = await TwilioVideo.connect(joinPayload.twilio_token, {
-                    name: joinPayload.twilio_room_name,
+                state.room = await TwilioVideo.connect(joinPayload.twilio_token, buildTwilioConnectOptions({
+                    roomName: joinPayload.twilio_room_name,
                     audio: true,
                     video: false,
-                    dominantSpeaker: true,
-                });
+                }));
 
                 if (deviceStatus instanceof HTMLElement) {
                     deviceStatus.textContent = 'Videocamera non disponibile. La diretta partirà con il solo microfono.';
@@ -423,6 +441,10 @@ export function initTeacherPage() {
         endButton.disabled = true;
 
         try {
+            appendTwilioLogEntry('teacherEndSessionRequested', {
+                reason: 'manual',
+            });
+            await uploadTeacherSessionLog();
             await window.axios.post(config.routes.endSession);
             teardownRoom();
             await fetchState();
@@ -721,6 +743,22 @@ export function initTeacherPage() {
             return;
         }
 
+        state.roomObserver?.stop();
+        state.roomObserver = createTwilioRoomObserver(state.room, {
+            role: config.role,
+            getParticipantCount: () => state.latestState?.participants?.length ?? 0,
+            getScreenShareState: () => state.screenShareTrack !== null,
+            getBackgroundMode: () => previewController.getBackgroundMode(),
+            getCaptureFallbackState: () => ({
+                cameraProfile: state.cameraCaptureProfile,
+                localVideoFallbackApplied: state.localVideoFallbackApplied,
+                screenShareProfile: state.screenShareCaptureProfile,
+                screenShareFallbackApplied: state.screenShareFallbackApplied,
+            }),
+            onEvent: appendTwilioLogEntry,
+            onLocalVideoDegradation: handleLocalVideoDegradation,
+        });
+
         state.room.participants.forEach((participant) => {
             subscribeToParticipant(participant);
         });
@@ -997,9 +1035,9 @@ export function initTeacherPage() {
             return;
         }
 
-        grid.replaceChildren();
-
         if (participants.length === 0) {
+            grid.replaceChildren();
+            clearParticipantVideoCards();
             grid.appendChild(
                 createPlaceholderCard('In attesa di partecipanti', '', {
                     className: 'min-h-[16rem] md:col-span-2 xl:col-span-3',
@@ -1013,44 +1051,106 @@ export function initTeacherPage() {
         }
 
         const selection = selectTeacherParticipants(participants);
+        const activeKeys = new Set();
 
         selection.forEach((participant) => {
+            activeKeys.add(participant.twilio_identity);
             const highlighted = isParticipantSpeaking(participant.twilio_identity);
             const track = getRemoteVideoTrack(participant.twilio_identity);
+            const card = getOrCreateParticipantVideoCard(participant.twilio_identity);
 
             if (!track) {
-                grid.appendChild(
-                    createPlaceholderCard(participant.name, 'Discente', {
-                        initials: participant.initials,
-                        highlighted,
-                        className: 'min-h-[16rem]',
-                    }),
-                );
+                renderParticipantVideoPlaceholder(card, participant, highlighted);
+                grid.appendChild(card.wrapper);
 
                 return;
             }
 
-            const wrapper = document.createElement('div');
-            wrapper.className = 'overflow-hidden rounded-box border border-base-300 bg-neutral';
+            renderParticipantVideoTrack(card, participant, track, highlighted);
+            grid.appendChild(card.wrapper);
+        });
 
-            if (highlighted) {
-                wrapper.classList.add('border-success', 'ring-2', 'ring-success/50');
+        [...state.participantVideoCards.keys()].forEach((key) => {
+            if (activeKeys.has(key)) {
+                return;
             }
 
+            const card = state.participantVideoCards.get(key);
+            card?.wrapper.remove();
+            state.participantVideoCards.delete(key);
+        });
+    }
+
+    function getOrCreateParticipantVideoCard(key) {
+        const existingCard = state.participantVideoCards.get(key);
+
+        if (existingCard) {
+            return existingCard;
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'overflow-hidden rounded-box border border-base-300 bg-neutral';
+
+        const content = document.createElement('div');
+        const footer = document.createElement('div');
+        footer.className = 'border-t border-base-300 bg-base-100 px-3 py-2 text-sm font-medium text-base-content';
+
+        wrapper.append(content, footer);
+
+        const card = {
+            wrapper,
+            content,
+            footer,
+            videoElement: null,
+        };
+
+        state.participantVideoCards.set(key, card);
+
+        return card;
+    }
+
+    function renderParticipantVideoPlaceholder(card, participant, highlighted) {
+        card.wrapper.classList.toggle('border-success', highlighted);
+        card.wrapper.classList.toggle('ring-2', highlighted);
+        card.wrapper.classList.toggle('ring-success/50', highlighted);
+        card.footer.textContent = participant.name;
+        if (card.videoElement instanceof HTMLVideoElement) {
+            detachTrackFromElement(card.videoElement);
+        }
+        card.videoElement = null;
+        card.content.replaceChildren(createPlaceholderCard(participant.name, 'Discente', {
+            initials: participant.initials,
+            highlighted,
+            className: 'min-h-[16rem] rounded-none border-0 shadow-none',
+        }));
+    }
+
+    function renderParticipantVideoTrack(card, participant, track, highlighted) {
+        card.wrapper.classList.toggle('border-success', highlighted);
+        card.wrapper.classList.toggle('ring-2', highlighted);
+        card.wrapper.classList.toggle('ring-success/50', highlighted);
+        card.footer.textContent = participant.name;
+
+        if (!(card.videoElement instanceof HTMLVideoElement)) {
             const videoElement = document.createElement('video');
             videoElement.className = 'aspect-video w-full bg-neutral object-cover';
             videoElement.autoplay = true;
             videoElement.playsInline = true;
-            track.attach(videoElement);
+            card.videoElement = videoElement;
+            card.content.replaceChildren(videoElement);
+        }
 
-            wrapper.appendChild(videoElement);
-            wrapper.insertAdjacentHTML(
-                'beforeend',
-                `<div class="border-t border-base-300 bg-base-100 px-3 py-2 text-sm font-medium text-base-content">${participant.name}</div>`,
-            );
+        attachTrackToElement(track, card.videoElement, `${participant.twilio_identity}:${track.sid}`);
+    }
 
-            grid.appendChild(wrapper);
+    function clearParticipantVideoCards() {
+        state.participantVideoCards.forEach((card) => {
+            if (card.videoElement instanceof HTMLVideoElement) {
+                detachTrackFromElement(card.videoElement);
+            }
+            card.wrapper.remove();
         });
+        state.participantVideoCards.clear();
     }
 
     function renderMuxPlayer() {
@@ -1469,7 +1569,7 @@ export function initTeacherPage() {
 
         try {
             const displayStream = await navigator.mediaDevices.getDisplayMedia({
-                video: true,
+                video: getLiveStreamScreenShareCaptureProfile(state.screenShareCaptureProfile),
                 audio: true,
             });
 
@@ -1494,6 +1594,8 @@ export function initTeacherPage() {
             }
 
             state.screenShareTrack = localScreenTrack;
+            state.screenShareCaptureProfile = 'default';
+            state.screenShareFallbackApplied = false;
             await state.room.localParticipant.publishTrack(localScreenTrack, {
                 priority: 'high',
             });
@@ -1541,6 +1643,8 @@ export function initTeacherPage() {
 
             state.screenShareTrack = null;
             state.screenShareAudioTrack = null;
+            state.screenShareCaptureProfile = 'default';
+            state.screenShareFallbackApplied = false;
 
             if (error instanceof DOMException && error.name === 'NotAllowedError') {
                 setScreenShareStatus('Condivisione schermo annullata o non autorizzata.');
@@ -1600,6 +1704,8 @@ export function initTeacherPage() {
 
         state.screenShareTrack = null;
         state.screenShareAudioTrack = null;
+        state.screenShareCaptureProfile = 'default';
+        state.screenShareFallbackApplied = false;
 
         setScreenShareStatus(
             options.endedByBrowser
@@ -1659,6 +1765,108 @@ export function initTeacherPage() {
         }
     }
 
+    async function handleLocalVideoDegradation(signal) {
+        if (!state.room || state.localVideoDegradationHandled) {
+            return;
+        }
+
+        state.localVideoDegradationHandled = true;
+
+        try {
+            if (previewController.getBackgroundMode() !== 'none') {
+                await previewController.disableBackgroundForPerformance('Sfondo virtuale disattivato per proteggere fluidita e frame rate.');
+            }
+
+            if (
+                (signal.lowCameraFrameRate || signal.lowCameraDimensions)
+                && state.cameraCaptureProfile !== 'teacherFallback'
+                && previewController.hasVideoTrack()
+            ) {
+                await previewController.setVideoConstraints(getLiveStreamCameraCaptureProfile('teacherFallback'));
+                state.cameraCaptureProfile = 'teacherFallback';
+                state.localVideoFallbackApplied = true;
+            }
+
+            if (
+                signal.lowScreenFrameRate
+                && state.screenShareTrack?.mediaStreamTrack
+                && state.screenShareCaptureProfile !== 'fallback'
+            ) {
+                await state.screenShareTrack.mediaStreamTrack.applyConstraints(
+                    getLiveStreamScreenShareCaptureProfile('fallback'),
+                );
+                state.screenShareCaptureProfile = 'fallback';
+                state.screenShareFallbackApplied = true;
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            window.setTimeout(() => {
+                state.localVideoDegradationHandled = false;
+            }, 15_000);
+        }
+    }
+
+    function appendTwilioLogEntry(type, payload = {}) {
+        state.twilioLogEntries.push({
+            type,
+            at: new Date().toISOString(),
+            ...payload,
+        });
+    }
+
+    function buildTeacherSessionLogPayload() {
+        const now = new Date().toISOString();
+
+        return {
+            schema_version: 1,
+            exported_at: now,
+            started_at: state.roomObservedAt ?? now,
+            ended_at: now,
+            role: config.role,
+            module_id: config.moduleId ?? null,
+            session_id: state.activeSessionId,
+            room_name: state.room?.name ?? state.latestState?.session?.twilio_room_name ?? null,
+            participant_identity: state.localParticipantIdentity ?? state.room?.localParticipant.identity ?? null,
+            session_context: {
+                screenShareUsed: state.twilioLogEntries.some((entry) => entry.screenShareActive === true) || state.screenShareFallbackApplied,
+                backgroundMode: previewController.getBackgroundMode(),
+                cameraProfile: state.cameraCaptureProfile,
+                localVideoFallbackApplied: state.localVideoFallbackApplied,
+                screenShareProfile: state.screenShareCaptureProfile,
+                screenShareFallbackApplied: state.screenShareFallbackApplied,
+            },
+            events: state.twilioLogEntries,
+        };
+    }
+
+    async function uploadTeacherSessionLog() {
+        if (state.logUploadCompleted || !config.routes.uploadSessionLog || state.twilioLogEntries.length === 0) {
+            return;
+        }
+
+        const payload = buildTeacherSessionLogPayload();
+        const fileName = `live-stream-session-${state.activeSessionId ?? 'unknown'}-${Date.now()}.json`;
+        const file = new File(
+            [JSON.stringify(payload, null, 2)],
+            fileName,
+            { type: 'application/json' },
+        );
+        const formData = new FormData();
+        formData.append('log_file', file);
+
+        try {
+            await window.axios.post(config.routes.uploadSessionLog, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+            state.logUploadCompleted = true;
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
     async function sendPresence() {
         if (!state.room) {
             return;
@@ -1686,6 +1894,9 @@ export function initTeacherPage() {
             state.presenceHandle = null;
         }
 
+        state.roomObserver?.stop();
+        state.roomObserver = null;
+
         stopScreenShare();
 
         if (state.room) {
@@ -1696,12 +1907,22 @@ export function initTeacherPage() {
 
         state.audioNodes.forEach((node) => node.remove());
         state.audioNodes.clear();
+        clearParticipantVideoCards();
         state.remoteAudioAnalysers.forEach((_, trackSid) => {
             stopAudioAnalysis(trackSid);
         });
         state.speakingParticipantIdentities.clear();
         state.lastSpeakingIdentity = null;
         state.dominantSpeakerIdentity = null;
+        state.cameraCaptureProfile = 'teacher';
+        state.localVideoFallbackApplied = false;
+        state.screenShareFallbackApplied = false;
+        state.localVideoDegradationHandled = false;
+        state.activeSessionId = null;
+        state.localParticipantIdentity = null;
+        state.twilioLogEntries = [];
+        state.roomObservedAt = null;
+        state.logUploadCompleted = false;
 
         if (state.remoteAudioContext) {
             void state.remoteAudioContext.close().catch(() => {});

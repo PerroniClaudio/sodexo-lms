@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreLiveStreamSessionLogRequest;
 use App\Models\CourseEnrollment;
 use App\Models\LiveStreamAttendanceMinute;
 use App\Models\LiveStreamDocument;
@@ -10,6 +11,7 @@ use App\Models\LiveStreamMessage;
 use App\Models\LiveStreamParticipant;
 use App\Models\LiveStreamPoll;
 use App\Models\LiveStreamSession;
+use App\Models\LiveStreamSessionLog;
 use App\Models\Module;
 use App\Models\ModuleTeacherEnrollment;
 use App\Models\ModuleTutorEnrollment;
@@ -38,6 +40,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class LiveStreamController extends Controller
 {
     private const DOCUMENT_DISK = 'local';
+
+    private const LIVE_STREAM_LOG_DISK = 's3';
 
     private const PARTICIPANT_STALE_SECONDS = 25;
 
@@ -305,6 +309,95 @@ class LiveStreamController extends Controller
 
         return response()->json([
             'message' => __('Diretta terminata.'),
+        ]);
+    }
+
+    public function storeTeacherSessionLog(StoreLiveStreamSessionLogRequest $request, Module $module): JsonResponse
+    {
+        $this->abortUnlessLiveModule($module);
+        $this->ensureTeacherEnrollment($request, $module);
+
+        $session = $module->activeLiveStreamSession()->first();
+
+        if ($session === null) {
+            return response()->json([
+                'message' => __('Nessuna diretta attiva disponibile per il log.'),
+            ], Response::HTTP_CONFLICT);
+        }
+
+        $uploadedFile = $request->file('log_file');
+        abort_unless($uploadedFile !== null, Response::HTTP_UNPROCESSABLE_ENTITY);
+
+        $payload = json_decode((string) file_get_contents($uploadedFile->getRealPath()), true);
+
+        if (! is_array($payload) || ! is_array($payload['events'] ?? null)) {
+            return response()->json([
+                'message' => __('Il file di log non contiene un payload JSON valido.'),
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $eventCollection = collect($payload['events'])
+            ->filter(fn ($entry): bool => is_array($entry))
+            ->values();
+
+        $statsSnapshotCount = $eventCollection
+            ->where('type', 'statsSnapshot')
+            ->count();
+        $maxParticipantCount = (int) $eventCollection
+            ->pluck('participantCount')
+            ->filter(fn ($value): bool => is_numeric($value))
+            ->max();
+        $eventTypeCounts = $eventCollection
+            ->pluck('type')
+            ->filter()
+            ->countBy()
+            ->sortKeys()
+            ->all();
+        $startedAt = data_get($payload, 'started_at');
+        $endedAt = data_get($payload, 'ended_at');
+        $exportedAt = data_get($payload, 'exported_at') ?? now()->toIso8601String();
+        $directory = sprintf(
+            'live-stream-logs/module-%s/session-%s',
+            $module->getKey(),
+            $session->getKey(),
+        );
+        $fileName = sprintf(
+            'teacher-log-session-%s-%s.json',
+            $session->getKey(),
+            Str::uuid(),
+        );
+        $path = $uploadedFile->storeAs($directory, $fileName, self::LIVE_STREAM_LOG_DISK);
+
+        $log = LiveStreamSessionLog::query()->create([
+            'live_stream_session_id' => $session->getKey(),
+            'module_id' => $module->getKey(),
+            'teacher_user_id' => $session->teacher_user_id ?? $request->user()->getKey(),
+            'source_role' => LiveStreamParticipant::ROLE_TEACHER,
+            'disk' => self::LIVE_STREAM_LOG_DISK,
+            'path' => $path,
+            'original_name' => $uploadedFile->getClientOriginalName(),
+            'mime_type' => $uploadedFile->getMimeType() ?: 'application/json',
+            'size_bytes' => $uploadedFile->getSize() ?: 0,
+            'twilio_room_name' => data_get($payload, 'room_name', $session->twilio_room_name),
+            'participant_identity' => data_get($payload, 'participant_identity'),
+            'event_count' => $eventCollection->count(),
+            'stats_snapshot_count' => $statsSnapshotCount,
+            'max_participant_count' => $maxParticipantCount,
+            'started_at' => $startedAt ? Carbon::parse($startedAt) : $session->started_at,
+            'ended_at' => $endedAt ? Carbon::parse($endedAt) : now(),
+            'exported_at' => Carbon::parse($exportedAt),
+            'summary' => [
+                'schema_version' => data_get($payload, 'schema_version', 1),
+                'session_context' => data_get($payload, 'session_context', []),
+                'event_type_counts' => $eventTypeCounts,
+                'first_event_at' => $eventCollection->first()['at'] ?? null,
+                'last_event_at' => $eventCollection->last()['at'] ?? null,
+            ],
+        ]);
+
+        return response()->json([
+            'message' => __('Log della live esportato correttamente.'),
+            'log_id' => $log->getKey(),
         ]);
     }
 
@@ -1364,6 +1457,9 @@ class LiveStreamController extends Controller
                 'endSession' => $isAdminRole
                     ? route('admin.regia.session.end', $module)
                     : ($isTeacherRole && ! $isRegiaMode ? route('teacher.live-stream.session.end', $module) : null),
+                'uploadSessionLog' => $isTeacherRole && ! $isRegiaMode
+                    ? route('teacher.live-stream.logs.store', $module)
+                    : null,
                 'handRaise' => $isUserRole
                     ? route('user.live-stream.hand-raises.store', $module)
                     : null,

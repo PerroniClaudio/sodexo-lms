@@ -161,6 +161,11 @@ class Module extends Model
         return $this->hasMany(LiveStreamDocument::class);
     }
 
+    public function liveStreamLogs(): HasMany
+    {
+        return $this->hasMany(LiveStreamSessionLog::class);
+    }
+
     public function scormPackages(): HasMany
     {
         return $this->hasMany(ScormPackage::class);

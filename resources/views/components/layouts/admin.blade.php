@@ -190,6 +190,14 @@
                         </li>
                         <li>
                             <a
+                                href="{{ route('admin.live-stream-logs.index') }}"
+                                @class(['menu-active' => request()->routeIs('admin.live-stream-logs.*')])
+                            >
+                                {{ __('Log live stream') }}
+                            </a>
+                        </li>
+                        <li>
+                            <a
                                 href="{{ route('admin.satisfaction-survey.edit') }}"
                                 @class(['menu-active' => request()->routeIs('admin.satisfaction-survey.*')])
                             >

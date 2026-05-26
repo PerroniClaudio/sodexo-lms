@@ -7,9 +7,13 @@ import {
     shouldShowLiveJoinPrompt,
 } from './participant-utils.mjs';
 import {
+    attachTrackToElement,
+    buildTwilioConnectOptions,
     createPlaceholderCard,
+    createTwilioRoomObserver,
     createPreviewController,
     deterministicShuffle,
+    detachTrackFromElement,
     getLiveStreamConfig,
     getLiveStreamFullscreenToggleLabel,
     getLiveStreamIconButtonContent,
@@ -49,6 +53,9 @@ export function initViewerPage() {
         activePollId: null,
         activePollSelection: null,
         joinPromptShownForLive: false,
+        roomObserver: null,
+        mainStageBinding: null,
+        stripBindings: new Map(),
     };
 
     const previewController = createPreviewController(root, {
@@ -250,8 +257,8 @@ export function initViewerPage() {
             }
 
             try {
-                state.room = await TwilioVideo.connect(joinPayload.twilio_token, {
-                    name: joinPayload.twilio_room_name,
+                state.room = await TwilioVideo.connect(joinPayload.twilio_token, buildTwilioConnectOptions({
+                    roomName: joinPayload.twilio_room_name,
                     audio: localTracks.length > 0 ? false : config.role !== 'tutor',
                     video: localTracks.length > 0
                         ? false
@@ -261,19 +268,17 @@ export function initViewerPage() {
                             }
                             : false,
                     tracks: localTracks,
-                    dominantSpeaker: true,
-                });
+                }));
             } catch (error) {
                 if (config.role === 'tutor' || !shouldRetryLiveStreamConnectWithoutCamera(error)) {
                     throw error;
                 }
 
-                state.room = await TwilioVideo.connect(joinPayload.twilio_token, {
-                    name: joinPayload.twilio_room_name,
+                state.room = await TwilioVideo.connect(joinPayload.twilio_token, buildTwilioConnectOptions({
+                    roomName: joinPayload.twilio_room_name,
                     audio: true,
                     video: false,
-                    dominantSpeaker: true,
-                });
+                }));
 
                 if (deviceStatus instanceof HTMLElement) {
                     deviceStatus.textContent = 'Videocamera non disponibile. Sei entrato nella diretta con il solo microfono.';
@@ -510,6 +515,15 @@ export function initViewerPage() {
             return;
         }
 
+        state.roomObserver?.stop();
+        state.roomObserver = createTwilioRoomObserver(state.room, {
+            role: config.role,
+            getParticipantCount: () => state.latestState?.participants?.length ?? 0,
+            getScreenShareState: () => false,
+            getBackgroundMode: () => previewController.getBackgroundMode(),
+            getCaptureFallbackState: () => null,
+        });
+
         state.room.participants.forEach((participant) => {
             subscribeToParticipant(participant);
         });
@@ -683,6 +697,7 @@ export function initViewerPage() {
         }
 
         if (config.streamMode === 'mux_regia') {
+            clearMainStageBinding();
             renderMuxStage(mainStage, state.latestState?.mux ?? config.mux, {
                 title: 'Segnale video non disponibile',
                 message: 'Il video comparira qui quando la regia avvia la trasmissione.',
@@ -693,6 +708,7 @@ export function initViewerPage() {
         }
 
         if (!teacher) {
+            clearMainStageBinding();
             mainStage.replaceChildren();
             delete mainStage.dataset.liveStreamTrackSignature;
             mainStage.appendChild(
@@ -712,6 +728,7 @@ export function initViewerPage() {
         const trackSignature = getRemoteVideoTrackSignature(teacher.twilio_identity, publication);
 
         if (!track) {
+            clearMainStageBinding();
             mainStage.replaceChildren();
             delete mainStage.dataset.liveStreamTrackSignature;
             mainStage.appendChild(
@@ -725,35 +742,38 @@ export function initViewerPage() {
             return;
         }
 
-        if (mainStage.dataset.liveStreamTrackSignature === trackSignature) {
-            return;
+        if (!state.mainStageBinding) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'relative h-full w-full overflow-hidden rounded-[1.75rem] bg-black';
+
+            const videoElement = document.createElement('video');
+            videoElement.autoplay = true;
+            videoElement.playsInline = true;
+
+            const badgeElement = document.createElement('div');
+            badgeElement.className = 'absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white';
+            badgeElement.textContent = 'Schermo condiviso';
+
+            const labelElement = document.createElement('div');
+            labelElement.className = 'absolute inset-x-0 bottom-0 bg-linear-to-t from-black/70 to-transparent px-4 py-3 text-sm font-semibold text-white';
+
+            wrapper.append(videoElement, badgeElement, labelElement);
+            state.mainStageBinding = {
+                wrapper,
+                videoElement,
+                badgeElement,
+                labelElement,
+                signature: null,
+            };
+            mainStage.replaceChildren(wrapper);
         }
 
-        mainStage.replaceChildren();
         mainStage.dataset.liveStreamTrackSignature = trackSignature;
-
-        const wrapper = document.createElement('div');
-        wrapper.className = 'relative h-full w-full overflow-hidden rounded-[1.75rem] bg-black';
-
-        const videoElement = document.createElement('video');
-        videoElement.className = `h-full w-full ${isScreenShareActive ? 'object-contain' : 'object-cover'}`;
-        videoElement.autoplay = true;
-        videoElement.playsInline = true;
-        track.attach(videoElement);
-
-        wrapper.appendChild(videoElement);
-        if (isScreenShareActive) {
-            wrapper.insertAdjacentHTML(
-                'beforeend',
-                '<div class="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">Schermo condiviso</div>',
-            );
-        }
-        wrapper.insertAdjacentHTML(
-            'beforeend',
-            `<div class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/70 to-transparent px-4 py-3 text-sm font-semibold text-white">${teacher.name}</div>`,
-        );
-
-        mainStage.appendChild(wrapper);
+        state.mainStageBinding.signature = trackSignature;
+        state.mainStageBinding.videoElement.className = `h-full w-full ${isScreenShareActive ? 'object-contain' : 'object-cover'}`;
+        state.mainStageBinding.badgeElement.classList.toggle('hidden', !isScreenShareActive);
+        state.mainStageBinding.labelElement.textContent = teacher.name;
+        attachTrackToElement(track, state.mainStageBinding.videoElement, trackSignature);
     }
 
     function renderStudentStrip() {
@@ -764,52 +784,119 @@ export function initViewerPage() {
             return;
         }
 
-        strip.replaceChildren();
-
         const selected = config.streamMode === 'mux_regia'
             ? (payload?.viewer_roster ?? []).filter((participant) => participant.user_id !== currentUserId()).slice(0, 5)
             : deterministicShuffle(
                 (payload?.participants ?? []).filter((participant) => participant.user_id !== currentUserId()),
                 Math.floor(Date.now() / 60000),
             ).slice(0, 5);
+        const activeKeys = new Set();
 
         selected.forEach((participant) => {
+            activeKeys.add(participant.twilio_identity);
             const highlighted = state.dominantSpeakerIdentity === participant.twilio_identity;
             const track = getRemoteVideoTrack(participant.twilio_identity);
+            const card = getOrCreateStripCard(participant.twilio_identity);
 
             if (!track) {
-                strip.appendChild(
-                    createPlaceholderCard(participant.name, participant.app_role === 'teacher' ? 'Docente' : 'Discente', {
-                        initials: participant.initials,
-                        highlighted,
-                        className: 'bg-base-100 text-base-content shadow-none',
-                    }),
-                );
+                renderStripPlaceholder(card, participant, highlighted);
+                strip.appendChild(card.wrapper);
 
                 return;
             }
 
-            const wrapper = document.createElement('div');
-            wrapper.className = 'overflow-hidden rounded-box border border-base-300 bg-base-100 shadow-sm';
+            renderStripTrack(card, participant, track, highlighted);
+            strip.appendChild(card.wrapper);
+        });
 
-            if (highlighted) {
-                wrapper.classList.add('border-success', 'ring-2', 'ring-success/40');
+        [...state.stripBindings.keys()].forEach((key) => {
+            if (activeKeys.has(key)) {
+                return;
             }
 
+            const card = state.stripBindings.get(key);
+            if (card?.videoElement instanceof HTMLVideoElement) {
+                detachTrackFromElement(card.videoElement);
+            }
+            card?.wrapper.remove();
+            state.stripBindings.delete(key);
+        });
+    }
+
+    function clearMainStageBinding() {
+        if (state.mainStageBinding?.videoElement instanceof HTMLVideoElement) {
+            detachTrackFromElement(state.mainStageBinding.videoElement);
+        }
+
+        state.mainStageBinding = null;
+    }
+
+    function getOrCreateStripCard(key) {
+        const existingCard = state.stripBindings.get(key);
+
+        if (existingCard) {
+            return existingCard;
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'overflow-hidden rounded-box border border-base-300 bg-base-100 shadow-sm';
+
+        const content = document.createElement('div');
+        const footer = document.createElement('div');
+        footer.className = 'border-t border-base-300 bg-base-100 px-3 py-2 text-sm font-medium text-base-content';
+
+        wrapper.append(content, footer);
+
+        const card = {
+            wrapper,
+            content,
+            footer,
+            videoElement: null,
+        };
+
+        state.stripBindings.set(key, card);
+
+        return card;
+    }
+
+    function renderStripPlaceholder(card, participant, highlighted) {
+        card.wrapper.classList.toggle('border-success', highlighted);
+        card.wrapper.classList.toggle('ring-2', highlighted);
+        card.wrapper.classList.toggle('ring-success/40', highlighted);
+        card.footer.textContent = participant.name;
+
+        if (card.videoElement instanceof HTMLVideoElement) {
+            detachTrackFromElement(card.videoElement);
+        }
+
+        card.videoElement = null;
+        card.content.replaceChildren(createPlaceholderCard(
+            participant.name,
+            participant.app_role === 'teacher' ? 'Docente' : 'Discente',
+            {
+                initials: participant.initials,
+                highlighted,
+                className: 'bg-base-100 text-base-content shadow-none rounded-none border-0',
+            },
+        ));
+    }
+
+    function renderStripTrack(card, participant, track, highlighted) {
+        card.wrapper.classList.toggle('border-success', highlighted);
+        card.wrapper.classList.toggle('ring-2', highlighted);
+        card.wrapper.classList.toggle('ring-success/40', highlighted);
+        card.footer.textContent = participant.name;
+
+        if (!(card.videoElement instanceof HTMLVideoElement)) {
             const videoElement = document.createElement('video');
             videoElement.className = 'aspect-video w-full bg-black object-cover';
             videoElement.autoplay = true;
             videoElement.playsInline = true;
-            track.attach(videoElement);
+            card.videoElement = videoElement;
+            card.content.replaceChildren(videoElement);
+        }
 
-            wrapper.appendChild(videoElement);
-            wrapper.insertAdjacentHTML(
-                'beforeend',
-                `<div class="border-t border-base-300 bg-base-100 px-3 py-2 text-sm font-medium text-base-content">${participant.name}</div>`,
-            );
-
-            strip.appendChild(wrapper);
-        });
+        attachTrackToElement(track, card.videoElement, `${participant.twilio_identity}:${track.sid}`);
     }
 
     function renderParticipantList() {
@@ -950,6 +1037,9 @@ export function initViewerPage() {
             state.presenceHandle = null;
         }
 
+        state.roomObserver?.stop();
+        state.roomObserver = null;
+
         if (state.room) {
             const activeRoom = state.room;
             state.room = null;
@@ -958,6 +1048,14 @@ export function initViewerPage() {
 
         state.audioNodes.forEach((node) => node.remove());
         state.audioNodes.clear();
+        clearMainStageBinding();
+        state.stripBindings.forEach((card) => {
+            if (card.videoElement instanceof HTMLVideoElement) {
+                detachTrackFromElement(card.videoElement);
+            }
+            card.wrapper.remove();
+        });
+        state.stripBindings.clear();
         state.joined = false;
     }
 }

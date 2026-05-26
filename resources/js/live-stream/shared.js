@@ -14,6 +14,47 @@ const LIVE_STREAM_VIDEO_PROCESSOR_ADD_OPTIONS = Object.freeze({
 
 const LIVE_STREAM_VIDEO_PROCESSOR_ASSETS_PATH = '/twilio-video-processors-assets/';
 let videoProcessorsModulePromise = null;
+const LIVE_STREAM_STATS_POLL_INTERVAL_MS = 10_000;
+const LIVE_STREAM_LOCAL_VIDEO_FPS_THRESHOLD = 18;
+const LIVE_STREAM_LOCAL_SCREEN_SHARE_FPS_THRESHOLD = 12;
+const LIVE_STREAM_LOCAL_VIDEO_DIMENSION_FALLBACK_THRESHOLD = 640;
+const LIVE_STREAM_DEFAULT_NETWORK_QUALITY = Object.freeze({
+    local: 2,
+    remote: 1,
+});
+const LIVE_STREAM_CAMERA_CAPTURE_PROFILES = Object.freeze({
+    teacher: Object.freeze({
+        width: 1280,
+        height: 720,
+        frameRate: 24,
+    }),
+    teacherFallback: Object.freeze({
+        width: 640,
+        height: 480,
+        frameRate: 24,
+    }),
+    participant: LIVE_STREAM_VIDEO_CONSTRAINTS,
+});
+const LIVE_STREAM_SCREEN_SHARE_CAPTURE_PROFILES = Object.freeze({
+    default: Object.freeze({
+        width: {
+            ideal: 1920,
+        },
+        height: {
+            ideal: 1080,
+        },
+        frameRate: 15,
+    }),
+    fallback: Object.freeze({
+        width: {
+            ideal: 1280,
+        },
+        height: {
+            ideal: 720,
+        },
+        frameRate: 15,
+    }),
+});
 
 const LIVE_STREAM_ICON_NODES = {
     hand: Hand,
@@ -30,6 +71,362 @@ const LIVE_STREAM_ICON_NODES = {
 
 export function getLiveStreamRoot() {
     return document.querySelector('[data-live-stream-root]');
+}
+
+export function getLiveStreamCameraCaptureProfile(profile = 'participant') {
+    return LIVE_STREAM_CAMERA_CAPTURE_PROFILES[profile] ?? LIVE_STREAM_CAMERA_CAPTURE_PROFILES.participant;
+}
+
+export function getLiveStreamScreenShareCaptureProfile(profile = 'default') {
+    return LIVE_STREAM_SCREEN_SHARE_CAPTURE_PROFILES[profile] ?? LIVE_STREAM_SCREEN_SHARE_CAPTURE_PROFILES.default;
+}
+
+export function isMobileBrowser(browser = globalThis) {
+    const navigatorObject = browser?.navigator;
+
+    if (!navigatorObject) {
+        return false;
+    }
+
+    if (typeof navigatorObject.userAgentData?.mobile === 'boolean') {
+        return navigatorObject.userAgentData.mobile;
+    }
+
+    const userAgent = navigatorObject.userAgent ?? '';
+
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent);
+}
+
+export function buildTwilioConnectOptions({
+    roomName,
+    tracks = [],
+    audio = true,
+    video = true,
+    browser = globalThis,
+} = {}) {
+    const options = {
+        name: roomName,
+        dominantSpeaker: true,
+        preferredVideoCodecs: 'auto',
+        bandwidthProfile: {
+            video: {
+                mode: 'collaboration',
+                trackSwitchOffMode: 'predicted',
+                clientTrackSwitchOffControl: 'auto',
+                contentPreferencesMode: 'auto',
+                maxSubscriptionBitrate: isMobileBrowser(browser) ? 2_500_000 : 0,
+            },
+        },
+        networkQuality: LIVE_STREAM_DEFAULT_NETWORK_QUALITY,
+    };
+
+    if (tracks.length > 0) {
+        options.tracks = tracks;
+
+        return options;
+    }
+
+    options.audio = audio;
+    options.video = video;
+
+    return options;
+}
+
+export function attachTrackToElement(track, element, signature = null) {
+    if (!(element instanceof HTMLMediaElement) || !track) {
+        return false;
+    }
+
+    const nextSignature = signature ?? track.sid ?? track.name ?? track.id ?? null;
+
+    if (element.dataset.liveStreamTrackSignature === nextSignature) {
+        return false;
+    }
+
+    const previousTrack = element.__liveStreamAttachedTrack ?? null;
+
+    if (previousTrack && previousTrack !== track && typeof previousTrack.detach === 'function') {
+        previousTrack.detach(element);
+    }
+
+    track.attach(element);
+    element.dataset.liveStreamTrackSignature = nextSignature ?? '';
+    element.__liveStreamAttachedTrack = track;
+
+    return true;
+}
+
+export function detachTrackFromElement(element) {
+    if (!(element instanceof HTMLMediaElement)) {
+        return;
+    }
+
+    const currentTrack = element.__liveStreamAttachedTrack ?? null;
+
+    if (currentTrack && typeof currentTrack.detach === 'function') {
+        currentTrack.detach(element);
+    }
+
+    delete element.__liveStreamAttachedTrack;
+    delete element.dataset.liveStreamTrackSignature;
+}
+
+function getTrackStatDimensions(trackStats = {}) {
+    const width = Number(trackStats.dimensions?.width ?? trackStats.captureDimensions?.width ?? trackStats.frameWidth);
+    const height = Number(trackStats.dimensions?.height ?? trackStats.captureDimensions?.height ?? trackStats.frameHeight);
+
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+        return null;
+    }
+
+    return { width, height };
+}
+
+function summarizeTrackStat(trackStats = {}) {
+    const dimensions = getTrackStatDimensions(trackStats);
+
+    return {
+        trackSid: trackStats.trackSid ?? null,
+        trackName: trackStats.trackName ?? null,
+        dimensions,
+        frameRate: Number(trackStats.frameRate ?? trackStats.captureFrameRate ?? 0) || 0,
+        bytesSent: Number(trackStats.bytesSent ?? 0) || 0,
+        bytesReceived: Number(trackStats.bytesReceived ?? 0) || 0,
+        jitter: Number(trackStats.jitter ?? 0) || 0,
+        rtt: Number(trackStats.roundTripTime ?? 0) || 0,
+        packetsLost: Number(trackStats.packetsLost ?? 0) || 0,
+    };
+}
+
+function summarizeStatsReport(report) {
+    return {
+        participantSid: report.participantSid ?? null,
+        localVideo: (report.localVideoTrackStats ?? []).map(summarizeTrackStat),
+        remoteVideo: (report.remoteVideoTrackStats ?? []).map(summarizeTrackStat),
+        localAudio: (report.localAudioTrackStats ?? []).map(summarizeTrackStat),
+        remoteAudio: (report.remoteAudioTrackStats ?? []).map(summarizeTrackStat),
+    };
+}
+
+function logTwilioObserverEvent(type, payload) {
+    console.info('[live-stream][twilio]', {
+        type,
+        at: new Date().toISOString(),
+        ...payload,
+    });
+}
+
+export function createTwilioRoomObserver(room, options = {}) {
+    if (!room) {
+        return {
+            stop() {},
+        };
+    }
+
+    const publicationListeners = new Map();
+    let stopped = false;
+    let statsIntervalId = null;
+
+    const emit = (type, payload = {}) => {
+        const basePayload = {
+            role: options.role ?? null,
+            browser: globalThis.navigator?.userAgent ?? null,
+            participantCount: typeof options.getParticipantCount === 'function' ? options.getParticipantCount() : null,
+            screenShareActive: typeof options.getScreenShareState === 'function' ? options.getScreenShareState() : null,
+            backgroundMode: typeof options.getBackgroundMode === 'function' ? options.getBackgroundMode() : null,
+            captureFallback: typeof options.getCaptureFallbackState === 'function' ? options.getCaptureFallbackState() : null,
+        };
+        const finalPayload = {
+            ...basePayload,
+            ...payload,
+        };
+
+        logTwilioObserverEvent(type, finalPayload);
+
+        if (typeof options.onEvent === 'function') {
+            options.onEvent(type, finalPayload);
+        }
+    };
+
+    const watchVideoTrack = (track, participant, publication) => {
+        if (!track || track.kind !== 'video' || publicationListeners.has(track.sid)) {
+            return;
+        }
+
+        const switchedOffHandler = () => {
+            emit('trackSwitchedOff', {
+                participantIdentity: participant.identity,
+                trackSid: track.sid,
+                trackName: publication?.trackName ?? track.name ?? null,
+            });
+        };
+        const switchedOnHandler = () => {
+            emit('trackSwitchedOn', {
+                participantIdentity: participant.identity,
+                trackSid: track.sid,
+                trackName: publication?.trackName ?? track.name ?? null,
+            });
+        };
+
+        track.on('switchedOff', switchedOffHandler);
+        track.on('switchedOn', switchedOnHandler);
+        publicationListeners.set(track.sid, {
+            track,
+            switchedOffHandler,
+            switchedOnHandler,
+        });
+    };
+
+    const unwatchVideoTrack = (track) => {
+        if (!track) {
+            return;
+        }
+
+        const listeners = publicationListeners.get(track.sid);
+
+        if (!listeners) {
+            return;
+        }
+
+        listeners.track.off('switchedOff', listeners.switchedOffHandler);
+        listeners.track.off('switchedOn', listeners.switchedOnHandler);
+        publicationListeners.delete(track.sid);
+    };
+
+    const attachParticipantObservers = (participant, isLocalParticipant = false) => {
+        participant.on('networkQualityLevelChanged', () => {
+            emit('networkQualityLevelChanged', {
+                participantIdentity: participant.identity,
+                isLocalParticipant,
+                networkQualityLevel: participant.networkQualityLevel ?? null,
+                networkQualityStats: participant.networkQualityStats ?? null,
+            });
+        });
+
+        participant.tracks.forEach((publication) => {
+            publication.on('subscriptionFailed', (error) => {
+                emit('trackSubscriptionFailed', {
+                    participantIdentity: participant.identity,
+                    trackSid: publication.trackSid ?? null,
+                    trackName: publication.trackName ?? null,
+                    errorName: error?.name ?? null,
+                    errorMessage: error?.message ?? null,
+                });
+            });
+
+            if (publication.isSubscribed && publication.track?.kind === 'video') {
+                watchVideoTrack(publication.track, participant, publication);
+            }
+
+            publication.on('subscribed', (track) => {
+                if (track.kind === 'video') {
+                    watchVideoTrack(track, participant, publication);
+                }
+            });
+
+            publication.on('unsubscribed', (track) => {
+                if (track.kind === 'video') {
+                    unwatchVideoTrack(track);
+                }
+            });
+        });
+    };
+
+    room.participants.forEach((participant) => {
+        attachParticipantObservers(participant);
+    });
+
+    room.on('participantConnected', (participant) => {
+        attachParticipantObservers(participant);
+    });
+
+    room.on('participantDisconnected', (participant) => {
+        participant.videoTracks.forEach((publication) => {
+            if (publication.track) {
+                unwatchVideoTrack(publication.track);
+            }
+        });
+    });
+
+    attachParticipantObservers(room.localParticipant, true);
+
+    room.on('dominantSpeakerChanged', (participant) => {
+        emit('dominantSpeakerChanged', {
+            participantIdentity: participant?.identity ?? null,
+        });
+    });
+
+    room.on('reconnecting', (error) => {
+        emit('reconnecting', {
+            errorCode: error?.code ?? null,
+            errorMessage: error?.message ?? null,
+        });
+    });
+
+    room.on('reconnected', () => {
+        emit('reconnected');
+    });
+
+    statsIntervalId = window.setInterval(async () => {
+        if (stopped) {
+            return;
+        }
+
+        try {
+            const statsReports = await room.getStats();
+            const summaries = [...statsReports].map(summarizeStatsReport);
+
+            emit('statsSnapshot', {
+                reports: summaries,
+            });
+
+            if (typeof options.onStats === 'function') {
+                options.onStats(summaries);
+            }
+
+            const localVideoTracks = summaries.flatMap((summary) => summary.localVideo);
+            const cameraTrack = localVideoTracks.find((track) => track.trackName !== null && !track.trackName.includes('screen'));
+            const screenTrack = localVideoTracks.find((track) => track.trackName !== null && track.trackName.includes('screen'));
+            const lowCameraFrameRate = cameraTrack && cameraTrack.frameRate > 0 && cameraTrack.frameRate < LIVE_STREAM_LOCAL_VIDEO_FPS_THRESHOLD;
+            const lowCameraDimensions = cameraTrack?.dimensions?.width && cameraTrack.dimensions.width <= LIVE_STREAM_LOCAL_VIDEO_DIMENSION_FALLBACK_THRESHOLD;
+            const lowScreenFrameRate = screenTrack && screenTrack.frameRate > 0 && screenTrack.frameRate < LIVE_STREAM_LOCAL_SCREEN_SHARE_FPS_THRESHOLD;
+
+            if (typeof options.onLocalVideoDegradation === 'function' && (lowCameraFrameRate || lowCameraDimensions || lowScreenFrameRate)) {
+                options.onLocalVideoDegradation({
+                    cameraTrack,
+                    screenTrack,
+                    lowCameraFrameRate: Boolean(lowCameraFrameRate),
+                    lowCameraDimensions: Boolean(lowCameraDimensions),
+                    lowScreenFrameRate: Boolean(lowScreenFrameRate),
+                });
+            }
+        } catch (error) {
+            emit('statsSnapshotFailed', {
+                errorName: error?.name ?? null,
+                errorMessage: error?.message ?? null,
+            });
+        }
+    }, options.statsIntervalMs ?? LIVE_STREAM_STATS_POLL_INTERVAL_MS);
+
+    return {
+        stop() {
+            if (stopped) {
+                return;
+            }
+
+            stopped = true;
+
+            if (statsIntervalId !== null) {
+                window.clearInterval(statsIntervalId);
+            }
+
+            publicationListeners.forEach((listeners) => {
+                listeners.track.off('switchedOff', listeners.switchedOffHandler);
+                listeners.track.off('switchedOn', listeners.switchedOnHandler);
+            });
+            publicationListeners.clear();
+        },
+    };
 }
 
 export function getLiveStreamConfig(root) {
@@ -497,6 +894,7 @@ export function createPreviewController(root, options = {}) {
     let microphoneDevices = [];
     let selectedCameraDeviceId = 'default';
     let selectedMicrophoneDeviceId = 'default';
+    let currentVideoConstraints = options.videoConstraints ?? LIVE_STREAM_VIDEO_CONSTRAINTS;
 
     async function loadVideoProcessorsModule() {
         if (!videoProcessorsModulePromise) {
@@ -1028,13 +1426,26 @@ export function createPreviewController(root, options = {}) {
         const deviceConstraint = getSelectedDeviceConstraint(selectedCameraDeviceId);
 
         if (deviceConstraint === true) {
-            return LIVE_STREAM_VIDEO_CONSTRAINTS;
+            return currentVideoConstraints;
         }
 
         return {
-            ...LIVE_STREAM_VIDEO_CONSTRAINTS,
+            ...currentVideoConstraints,
             ...deviceConstraint,
         };
+    }
+
+    async function restartVideoTrackWithConstraints(nextConstraints) {
+        currentVideoConstraints = nextConstraints ?? currentVideoConstraints;
+
+        if (!localVideoTrack) {
+            return false;
+        }
+
+        await localVideoTrack.restart(getVideoConstraints());
+        await attachPreviewVideoTrack();
+
+        return true;
     }
 
     function createLocalTracks(stream) {
@@ -1470,6 +1881,39 @@ export function createPreviewController(root, options = {}) {
         },
         getLocalTracks() {
             return getLocalTracks();
+        },
+        getBackgroundMode() {
+            return currentBackgroundMode;
+        },
+        getVideoConstraints() {
+            return currentVideoConstraints;
+        },
+        async setVideoConstraints(nextConstraints) {
+            currentVideoConstraints = nextConstraints ?? currentVideoConstraints;
+
+            if (!mediaStream) {
+                return false;
+            }
+
+            if (!localVideoTrack) {
+                await restartPreview();
+
+                return true;
+            }
+
+            await restartVideoTrackWithConstraints(currentVideoConstraints);
+
+            return true;
+        },
+        async disableBackgroundForPerformance(message = 'Sfondo virtuale disattivato per proteggere fluidita e frame rate.') {
+            if (currentBackgroundMode === 'none') {
+                return false;
+            }
+
+            setBackgroundWarning(message);
+            await applyBackgroundMode('none');
+
+            return true;
         },
         destroy() {
             resetPreview();

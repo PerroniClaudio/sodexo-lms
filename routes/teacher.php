@@ -16,6 +16,7 @@ Route::middleware(['auth', 'role:teacher|superadmin'])->group(function () {
         Route::get('/live-stream/{module}/player', [LiveStreamController::class, 'teacherPlayer'])->name('live-stream.player');
         Route::post('/live-stream/{module}/session/start', [LiveStreamController::class, 'startSession'])->name('live-stream.session.start');
         Route::post('/live-stream/{module}/session/end', [LiveStreamController::class, 'endSession'])->name('live-stream.session.end');
+        Route::post('/live-stream/{module}/logs', [LiveStreamController::class, 'storeTeacherSessionLog'])->name('live-stream.logs.store');
         Route::post('/live-stream/{module}/join', [LiveStreamController::class, 'teacherJoin'])->name('live-stream.join');
         Route::get('/live-stream/{module}/state', [LiveStreamController::class, 'teacherState'])->name('live-stream.state');
         Route::get('/live-stream/{module}/backgrounds', [LiveStreamController::class, 'teacherBackgrounds'])->name('live-stream.backgrounds');
