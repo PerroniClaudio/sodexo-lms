@@ -853,24 +853,37 @@ export function isBackgroundProcessorBenchmarkSlow(frameIntervals, options = {})
 }
 
 export function createPreviewController(root, options = {}) {
-    const requestButton = root.querySelector('[data-live-stream-preview-request]');
-    const panelElement = root.querySelector('[data-live-stream-preview-panel]');
-    const previewContentElement = root.querySelector('[data-live-stream-preview-content]');
-    const videoElement = root.querySelector('[data-live-stream-preview]');
-    const meterElement = root.querySelector('[data-live-stream-mic-meter]');
-    const micLabelElement = root.querySelector('[data-live-stream-mic-label]');
-    const statusElement = root.querySelector('[data-live-stream-device-status]');
-    const emptyStateElement = root.querySelector('[data-live-stream-preview-empty]');
-    const backgroundButton = root.querySelector('[data-live-stream-background-button]');
-    const backgroundButtonLabel = root.querySelector('[data-live-stream-background-button-label]');
-    const backgroundModal = root.querySelector('[data-live-stream-background-modal]');
-    const backgroundWarningElement = root.querySelector('[data-live-stream-background-warning]');
-    const backgroundOptionButtons = [...root.querySelectorAll('[data-live-stream-background-option]')];
-    const backgroundImageOptionsContainer = root.querySelector('[data-live-stream-background-image-options]');
-    const backgroundImageOptionsEmpty = root.querySelector('[data-live-stream-background-image-options-empty]');
-    const backgroundUploadInput = root.querySelector('[data-live-stream-background-upload-input]');
-    const cameraDeviceList = root.querySelector('[data-live-stream-camera-device-list]');
-    const microphoneDeviceList = root.querySelector('[data-live-stream-microphone-device-list]');
+    const previewScope = options.scope instanceof HTMLElement ? options.scope : root;
+    const selectElement = (selector, fallbackToRoot = false) => {
+        const scopedMatch = previewScope.querySelector(selector);
+
+        if (scopedMatch) {
+            return scopedMatch;
+        }
+
+        return fallbackToRoot ? root.querySelector(selector) : null;
+    };
+    const requestButton = selectElement('[data-live-stream-preview-request]');
+    const panelElement = selectElement('[data-live-stream-preview-panel]');
+    const previewContentElement = selectElement('[data-live-stream-preview-content]');
+    const videoElement = selectElement('[data-live-stream-preview]');
+    const meterElement = selectElement('[data-live-stream-mic-meter]');
+    const micLabelElement = selectElement('[data-live-stream-mic-label]');
+    const statusElement = selectElement('[data-live-stream-device-status]');
+    const emptyStateElement = selectElement('[data-live-stream-preview-empty]');
+    const backgroundButton = selectElement('[data-live-stream-background-button]');
+    const backgroundButtonLabel = selectElement('[data-live-stream-background-button-label]');
+    const backgroundModal = selectElement('[data-live-stream-background-modal]', true);
+    const backgroundWarningElement = selectElement('[data-live-stream-background-warning]');
+    const backgroundOptionButtons = [...(backgroundModal?.querySelectorAll('[data-live-stream-background-option]') ?? [])];
+    const backgroundImageOptionsContainer = selectElement('[data-live-stream-background-image-options]', true);
+    const backgroundImageOptionsEmpty = selectElement('[data-live-stream-background-image-options-empty]', true);
+    const backgroundUploadInput = selectElement('[data-live-stream-background-upload-input]', true);
+    const cameraDeviceList = selectElement('[data-live-stream-camera-device-list]');
+    const microphoneDeviceList = selectElement('[data-live-stream-microphone-device-list]');
+    const microphonePlaybackButton = selectElement('[data-live-stream-microphone-playback-button]');
+    const microphonePlaybackStatus = selectElement('[data-live-stream-microphone-playback-status]');
+    const microphonePlaybackAudio = selectElement('[data-live-stream-microphone-playback-audio]');
 
     let mediaStream = null;
     let audioContext = null;
@@ -895,6 +908,21 @@ export function createPreviewController(root, options = {}) {
     let selectedCameraDeviceId = 'default';
     let selectedMicrophoneDeviceId = 'default';
     let currentVideoConstraints = options.videoConstraints ?? LIVE_STREAM_VIDEO_CONSTRAINTS;
+    let microphonePlaybackActive = false;
+    let microphonePlaybackStream = null;
+
+    function notifyPreviewStateChange() {
+        if (typeof options.onStateChange === 'function') {
+            options.onStateChange({
+                hasAudioTrack: localAudioTrack !== null,
+                hasVideoTrack: localVideoTrack !== null,
+                audioEnabled: localAudioTrack?.isEnabled ?? false,
+                selectedCameraDeviceId,
+                selectedMicrophoneDeviceId,
+                backgroundMode: currentBackgroundMode,
+            });
+        }
+    }
 
     async function loadVideoProcessorsModule() {
         if (!videoProcessorsModulePromise) {
@@ -915,6 +943,8 @@ export function createPreviewController(root, options = {}) {
                 audioEnabled: localAudioTrack?.isEnabled ?? false,
             });
         }
+
+        notifyPreviewStateChange();
     }
 
     function updateRequestButton() {
@@ -949,6 +979,24 @@ export function createPreviewController(root, options = {}) {
 
         statusElement.textContent = message;
         statusElement.classList.toggle('hidden', message === '');
+    }
+
+    function setMicrophonePlaybackStatus(message = '') {
+        if (!(microphonePlaybackStatus instanceof HTMLElement)) {
+            return;
+        }
+
+        microphonePlaybackStatus.textContent = message;
+        microphonePlaybackStatus.classList.toggle('hidden', message === '');
+    }
+
+    function syncMicrophonePlaybackButton() {
+        if (!(microphonePlaybackButton instanceof HTMLButtonElement)) {
+            return;
+        }
+
+        microphonePlaybackButton.disabled = localAudioTrack === null;
+        microphonePlaybackButton.textContent = microphonePlaybackActive ? 'Ferma test audio' : 'Testa il microfono';
     }
 
     function updateBackgroundButtonVisibility() {
@@ -1107,6 +1155,8 @@ export function createPreviewController(root, options = {}) {
         if (mediaStream) {
             await restartPreview();
         }
+
+        notifyPreviewStateChange();
     }
 
     async function selectMicrophoneDevice(deviceId) {
@@ -1120,6 +1170,8 @@ export function createPreviewController(root, options = {}) {
         if (mediaStream) {
             await restartPreview();
         }
+
+        notifyPreviewStateChange();
     }
 
     if (cameraDeviceList instanceof HTMLSelectElement) {
@@ -1346,12 +1398,17 @@ export function createPreviewController(root, options = {}) {
             statusElement.textContent = 'Consenti l’accesso a videocamera e microfono per visualizzare l’anteprima. Puoi continuare anche senza videocamera.';
         }
 
+        stopMicrophonePlayback();
+        setMicrophonePlaybackStatus('');
+        syncMicrophonePlaybackButton();
+
         notifyAudioStateChange();
         updateRequestButton();
         updatePreviewContentVisibility();
         updateBackgroundButtonVisibility();
         updateBackgroundButtonLabel();
         updateBackgroundOptionButtons();
+        notifyPreviewStateChange();
     }
 
     async function restartPreview() {
@@ -1689,6 +1746,7 @@ export function createPreviewController(root, options = {}) {
             } finally {
                 applyBackgroundPromise = null;
                 updateBackgroundButtonVisibility();
+                notifyPreviewStateChange();
             }
         })();
 
@@ -1706,6 +1764,8 @@ export function createPreviewController(root, options = {}) {
             updateBackgroundButtonVisibility();
             updateBackgroundButtonLabel();
             updateBackgroundOptionButtons();
+            syncMicrophonePlaybackButton();
+            notifyPreviewStateChange();
             return;
         }
 
@@ -1753,6 +1813,8 @@ export function createPreviewController(root, options = {}) {
             updateBackgroundButtonVisibility();
             updateBackgroundButtonLabel();
             updateBackgroundOptionButtons();
+            syncMicrophonePlaybackButton();
+            notifyPreviewStateChange();
 
             if (videoAvailable) {
                 void ensureBackgroundProcessorsSupported();
@@ -1769,7 +1831,68 @@ export function createPreviewController(root, options = {}) {
             updateRequestButton();
             updatePreviewContentVisibility();
             updateBackgroundButtonVisibility();
+            syncMicrophonePlaybackButton();
             await refreshInputDevices();
+            notifyPreviewStateChange();
+        }
+    }
+
+    function stopMicrophonePlayback() {
+        if (microphonePlaybackAudio instanceof HTMLAudioElement) {
+            microphonePlaybackAudio.pause();
+            microphonePlaybackAudio.srcObject = null;
+            microphonePlaybackAudio.removeAttribute('src');
+            microphonePlaybackAudio.load();
+        }
+
+        microphonePlaybackStream?.getTracks().forEach((track) => {
+            track.stop();
+        });
+        microphonePlaybackStream = null;
+        microphonePlaybackActive = false;
+        syncMicrophonePlaybackButton();
+    }
+
+    async function playMicrophoneSample() {
+        if (!(microphonePlaybackButton instanceof HTMLButtonElement) || localAudioTrack === null) {
+            return false;
+        }
+
+        if (microphonePlaybackActive) {
+            stopMicrophonePlayback();
+            setMicrophonePlaybackStatus('Test audio interrotto.');
+
+            return true;
+        }
+
+        const mediaStreamTrack = localAudioTrack.mediaStreamTrack;
+
+        if (!mediaStreamTrack || !(microphonePlaybackAudio instanceof HTMLAudioElement)) {
+            setMicrophonePlaybackStatus('Test audio non supportato da questo browser.');
+            return false;
+        }
+
+        microphonePlaybackStream?.getTracks().forEach((track) => {
+            track.stop();
+        });
+        microphonePlaybackStream = new MediaStream([mediaStreamTrack.clone()]);
+        microphonePlaybackActive = true;
+        syncMicrophonePlaybackButton();
+        setMicrophonePlaybackStatus('Parla ora: ascolterai il microfono in tempo reale finché il test resta attivo.');
+
+        try {
+            microphonePlaybackAudio.pause();
+            microphonePlaybackAudio.srcObject = microphonePlaybackStream;
+            await microphonePlaybackAudio.play();
+            setMicrophonePlaybackStatus('Test audio attivo. Usa il pulsante per interrompere l’ascolto.');
+
+            return true;
+        } catch (error) {
+            console.error(error);
+            stopMicrophonePlayback();
+            setMicrophonePlaybackStatus('Impossibile avviare il test audio. Riprova.');
+
+            return false;
         }
     }
 
@@ -1828,6 +1951,12 @@ export function createPreviewController(root, options = {}) {
         });
     }
 
+    if (microphonePlaybackButton instanceof HTMLButtonElement) {
+        microphonePlaybackButton.addEventListener('click', async () => {
+            await playMicrophoneSample();
+        });
+    }
+
     backgroundOptionButtons.forEach((button) => {
         if (!(button instanceof HTMLButtonElement)) {
             return;
@@ -1846,6 +1975,7 @@ export function createPreviewController(root, options = {}) {
     updateBackgroundButtonLabel();
     updateBackgroundOptionButtons();
     renderInputDevices();
+    syncMicrophonePlaybackButton();
 
     if (navigator.mediaDevices?.addEventListener) {
         navigator.mediaDevices.addEventListener('devicechange', () => {
@@ -1885,6 +2015,12 @@ export function createPreviewController(root, options = {}) {
         getBackgroundMode() {
             return currentBackgroundMode;
         },
+        getSelectedCameraDeviceId() {
+            return selectedCameraDeviceId;
+        },
+        getSelectedMicrophoneDeviceId() {
+            return selectedMicrophoneDeviceId;
+        },
         getVideoConstraints() {
             return currentVideoConstraints;
         },
@@ -1914,6 +2050,9 @@ export function createPreviewController(root, options = {}) {
             await applyBackgroundMode('none');
 
             return true;
+        },
+        async playMicrophoneSample() {
+            return playMicrophoneSample();
         },
         destroy() {
             resetPreview();

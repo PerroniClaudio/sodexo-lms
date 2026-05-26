@@ -21,6 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
+use Spatie\Permission\Models\Role;
 
 /**
  * Controller solo per gestione utenti da backend (Blade, no API)
@@ -118,7 +119,7 @@ class UserController extends Controller
     public function store(UserRequest $request): RedirectResponse
     {
         $data = $this->userGeographyMapper->toHomeIds($request->validated());
-        $accountType = $data['account_type'] ?? 'user';
+        $accountType = $this->resolveAccountType($data['account_type'] ?? 'user');
         unset($data['account_type']);
 
         // Normalizza i campi opzionali a null se stringa vuota
@@ -165,7 +166,7 @@ class UserController extends Controller
     public function update(UserRequest $request, User $user): RedirectResponse
     {
         $data = $this->userGeographyMapper->toHomeIds($request->validated());
-        $accountType = $data['account_type'] ?? $user->getRoleNames()->first() ?? 'user';
+        $accountType = $this->resolveAccountType($data['account_type'] ?? $user->getRoleNames()->first() ?? 'user');
         unset($data['account_type']);
 
         // Normalizza i campi opzionali a null se stringa vuota
@@ -258,5 +259,23 @@ class UserController extends Controller
 
         // Se tutte le verifiche passano o non sono verificabili, ritorna true
         return true;
+    }
+
+    private function resolveAccountType(string $accountType): string
+    {
+        if (! in_array($accountType, ['teacher', 'docente'], true)) {
+            return $accountType;
+        }
+
+        $availableTeacherRoles = Role::query()
+            ->whereIn('name', ['teacher', 'docente'])
+            ->where('guard_name', config('auth.defaults.guard'))
+            ->pluck('name');
+
+        if ($availableTeacherRoles->contains($accountType)) {
+            return $accountType;
+        }
+
+        return $availableTeacherRoles->first() ?? $accountType;
     }
 }

@@ -41,7 +41,7 @@ class CourseClassScheduleResolver
 
     private function resolveClass(Module $module, User $user): ?CourseClass
     {
-        if ($user->hasRole('teacher')) {
+        if ($user->hasAnyRole(['teacher', 'docente'])) {
             return $this->forTeacher($module, $user);
         }
 

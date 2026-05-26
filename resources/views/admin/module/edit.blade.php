@@ -48,11 +48,6 @@
             </div>
         </div>
 
-        @if ($module->supportsStaffAssignments())
-            @include('admin.module.partials.live-teachers-card')
-            @include('admin.module.partials.live-tutors-card')
-        @endif
-
         @if ($appointmentControlledByClasses)
             @include('admin.module.partials.classes-card')
         @endif

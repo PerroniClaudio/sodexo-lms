@@ -64,6 +64,16 @@ class StoreCourseClassTeachersRequest extends FormRequest
                 if ($invalidTeacherExists) {
                     $validator->errors()->add('teacher_ids', __('Puoi assegnare alla classe solo utenti docente.'));
                 }
+
+                $assignableTeacherIds = $this->course()?->getTeachersQuery()
+                    ->whereKey($teacherIds)
+                    ->pluck('users.id')
+                    ->map(fn (mixed $teacherId): int => (int) $teacherId)
+                    ->all();
+
+                if (count($assignableTeacherIds) !== count($teacherIds)) {
+                    $validator->errors()->add('teacher_ids', __('Puoi assegnare alla classe solo docenti già assegnati al corso.'));
+                }
             },
         ];
     }

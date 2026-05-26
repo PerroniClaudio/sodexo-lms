@@ -58,34 +58,39 @@ export function initViewerPage() {
         stripBindings: new Map(),
     };
 
-    const previewController = createPreviewController(root, {
-        backgroundsRoute: config.routes.backgrounds,
-        videoTrackName: LIVE_STREAM_CAMERA_TRACK_NAME,
-    });
     const joinButton = root.querySelector('[data-live-stream-join-button]');
     const joinPromptModal = root.querySelector('[data-live-stream-join-prompt-modal]');
     const joinPromptButton = root.querySelector('[data-live-stream-join-prompt-button]');
-    const joinPromptDevicesButton = root.querySelector('[data-live-stream-join-prompt-devices]');
-    const joinPromptDevicesPanel = root.querySelector('[data-live-stream-join-prompt-devices-panel]');
+    const previewController = createPreviewController(root, {
+        scope: joinPromptModal instanceof HTMLElement ? joinPromptModal : undefined,
+        backgroundsRoute: config.routes.backgrounds,
+        videoTrackName: LIVE_STREAM_CAMERA_TRACK_NAME,
+    });
+    const onboardingBackButton = root.querySelector('[data-live-stream-onboarding-back]');
+    const onboardingNextButton = root.querySelector('[data-live-stream-onboarding-next]');
+    const onboardingIndicators = [...root.querySelectorAll('[data-live-stream-onboarding-indicator]')];
+    const onboardingSteps = [...root.querySelectorAll('[data-live-stream-onboarding-step]')];
     const handRaiseButton = root.querySelector('[data-live-stream-hand-raise-button]');
     const chatForm = root.querySelector('[data-live-stream-chat-form]');
     const chatInput = root.querySelector('[data-live-stream-chat-input]');
     const chatSubmitButton = root.querySelector('[data-live-stream-chat-submit]');
     const fullscreenToggleButton = root.querySelector('[data-live-stream-fullscreen-toggle]');
     const fullscreenToggleLabel = root.querySelector('[data-live-stream-fullscreen-label]');
-        const pollModal = root.querySelector('[data-live-stream-poll-modal]');
-        const pollForm = root.querySelector('[data-live-stream-poll-form]');
-        const pollQuestion = root.querySelector('[data-live-stream-poll-question]');
-        const pollOptions = root.querySelector('[data-live-stream-poll-options]');
-        const pollSubmitButton = root.querySelector('[data-live-stream-poll-submit]');
-        const pollError = root.querySelector('[data-live-stream-poll-error]');
+    const pollModal = root.querySelector('[data-live-stream-poll-modal]');
+    const pollForm = root.querySelector('[data-live-stream-poll-form]');
+    const pollQuestion = root.querySelector('[data-live-stream-poll-question]');
+    const pollOptions = root.querySelector('[data-live-stream-poll-options]');
+    const pollSubmitButton = root.querySelector('[data-live-stream-poll-submit]');
+    const pollError = root.querySelector('[data-live-stream-poll-error]');
     const deviceStatus = root.querySelector('[data-live-stream-device-status]');
+    let onboardingStep = 0;
 
     renderChatMessages(root, []);
 
     if (joinButton instanceof HTMLButtonElement) {
         joinButton.addEventListener('click', async () => {
-            await joinRoom();
+            openJoinPrompt();
+            await previewController.open();
         });
     }
 
@@ -95,16 +100,15 @@ export function initViewerPage() {
         });
     }
 
-    if (joinPromptDevicesButton instanceof HTMLButtonElement) {
-        joinPromptDevicesButton.addEventListener('click', async () => {
-            if (joinPromptDevicesPanel instanceof HTMLElement) {
-                const isExpanded = !joinPromptDevicesPanel.classList.contains('hidden');
+    if (onboardingBackButton instanceof HTMLButtonElement) {
+        onboardingBackButton.addEventListener('click', () => {
+            setOnboardingStep(onboardingStep - 1);
+        });
+    }
 
-                joinPromptDevicesPanel.classList.toggle('hidden', isExpanded);
-                joinPromptDevicesButton.setAttribute('aria-expanded', isExpanded ? 'false' : 'true');
-            }
-
-            await previewController.open();
+    if (onboardingNextButton instanceof HTMLButtonElement) {
+        onboardingNextButton.addEventListener('click', () => {
+            setOnboardingStep(onboardingStep + 1);
         });
     }
 
@@ -145,6 +149,9 @@ export function initViewerPage() {
     });
 
     startPolling();
+    setOnboardingStep(0);
+    openJoinPrompt();
+    void previewController.open();
 
     window.addEventListener('beforeunload', () => {
         previewController.destroy();
@@ -183,6 +190,39 @@ export function initViewerPage() {
         }
     }
 
+    function setOnboardingStep(nextStep) {
+        const maxStep = Math.max(onboardingSteps.length - 1, 0);
+        onboardingStep = Math.min(Math.max(nextStep, 0), maxStep);
+
+        onboardingSteps.forEach((stepElement, index) => {
+            stepElement.classList.toggle('hidden', index !== onboardingStep);
+        });
+
+        onboardingIndicators.forEach((indicator, index) => {
+            const isActive = index === onboardingStep;
+            const isCompleted = index < onboardingStep;
+
+            indicator.classList.toggle('border-primary', isActive || isCompleted);
+            indicator.classList.toggle('bg-primary', isActive);
+            indicator.classList.toggle('text-primary-content', isActive);
+            indicator.classList.toggle('bg-base-100', !isActive);
+            indicator.classList.toggle('text-base-content/70', !isActive && !isCompleted);
+            indicator.classList.toggle('text-base-content', isCompleted && !isActive);
+        });
+
+        if (onboardingBackButton instanceof HTMLButtonElement) {
+            onboardingBackButton.disabled = onboardingStep === 0;
+        }
+
+        if (onboardingNextButton instanceof HTMLButtonElement) {
+            onboardingNextButton.classList.toggle('hidden', onboardingStep === maxStep);
+        }
+
+        if (joinPromptButton instanceof HTMLButtonElement) {
+            joinPromptButton.classList.toggle('hidden', onboardingStep !== maxStep);
+        }
+    }
+
     function updateViewState() {
         const payload = state.latestState;
 
@@ -191,17 +231,15 @@ export function initViewerPage() {
         }
 
         if (joinButton instanceof HTMLButtonElement) {
-            joinButton.disabled = payload.status !== 'live' || state.joined;
-            joinButton.textContent = state.joined ? 'Collegato' : 'Entra nella diretta';
-        }
-
-        if (payload.status !== 'live') {
-            state.joinPromptShownForLive = false;
-            closeJoinPrompt();
+            joinButton.disabled = state.joined;
+            joinButton.textContent = state.joined ? 'Collegato' : 'Apri setup';
         }
 
         if (state.joined) {
             closeJoinPrompt();
+        } else if (payload.status !== 'live') {
+            state.joinPromptShownForLive = false;
+            openJoinPrompt();
         }
 
         if (shouldShowLiveJoinPrompt(payload.status, state.joined, state.joinPromptShownForLive)) {
@@ -209,6 +247,7 @@ export function initViewerPage() {
             openJoinPrompt();
         }
 
+        setJoinPromptButtonLoading(false);
         updateTeacherFullscreenButtonState();
         updateHandRaiseState();
         updateChatComposerState();
@@ -303,7 +342,7 @@ export function initViewerPage() {
             await fetchState();
         } catch (error) {
             joinButton.disabled = false;
-            joinButton.textContent = 'Entra nella diretta';
+            joinButton.textContent = 'Apri setup';
             setJoinPromptButtonLoading(false);
             console.error(error);
         }
@@ -314,6 +353,9 @@ export function initViewerPage() {
             if (!joinPromptModal.open) {
                 joinPromptModal.showModal();
             }
+
+            setOnboardingStep(0);
+            void previewController.open();
 
             return;
         }
@@ -341,8 +383,14 @@ export function initViewerPage() {
             return;
         }
 
-        joinPromptButton.disabled = isLoading || state.joined;
-        joinPromptButton.textContent = isLoading ? 'Connessione...' : 'Entra nella diretta';
+        const liveAvailable = state.latestState?.status === 'live';
+
+        joinPromptButton.disabled = isLoading || state.joined || !liveAvailable;
+        joinPromptButton.textContent = isLoading
+            ? 'Connessione...'
+            : liveAvailable
+                ? 'Entra nella diretta'
+                : 'In attesa della live';
     }
 
     async function sendChatMessage() {

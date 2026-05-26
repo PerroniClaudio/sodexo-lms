@@ -15,10 +15,15 @@ class UserRequest extends FormRequest
 
     public function rules(): array
     {
-        $accountTypes = ['user', 'admin', 'teacher', 'tutor'];
+        $authenticatedUser = $this->user();
+        $accountTypes = ['user', 'admin', 'teacher', 'docente', 'tutor'];
         $routeUser = $this->route('user');
 
-        if ($routeUser instanceof User && $routeUser->hasRole('superadmin')) {
+        if ($routeUser instanceof User && ! $authenticatedUser?->hasRole('superadmin')) {
+            $accountTypes = [$routeUser->getRoleNames()->first() ?? 'user'];
+        }
+
+        if ($authenticatedUser?->hasRole('superadmin') && $routeUser instanceof User && $routeUser->hasRole('superadmin')) {
             $accountTypes[] = 'superadmin';
         }
 

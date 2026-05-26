@@ -2,8 +2,10 @@
 
 namespace App\Actions;
 
+use App\Models\Course;
 use App\Models\CourseClass;
 use App\Models\CourseClassTeacher;
+use App\Models\CourseTeacherEnrollment;
 use App\Models\Module;
 use App\Models\ModuleTeacherEnrollment;
 use App\Models\User;
@@ -24,6 +26,7 @@ class SyncCourseClassTeachers
                 ->get()
                 ->each(function (User $teacher) use ($courseClass): void {
                     $this->ensureClassAssignment($courseClass, $teacher);
+                    $this->ensureCourseAssignment($courseClass, $teacher);
                     $this->ensureModuleAssignments($courseClass, $teacher);
                 });
         });
@@ -39,6 +42,35 @@ class SyncCourseClassTeachers
         if ($assignment === null) {
             CourseClassTeacher::query()->create([
                 'course_class_id' => $courseClass->getKey(),
+                'user_id' => $teacher->getKey(),
+                'assigned_at' => now(),
+            ]);
+
+            return;
+        }
+
+        if ($assignment->trashed()) {
+            $assignment->restore();
+            $assignment->forceFill(['assigned_at' => now()])->save();
+        }
+    }
+
+    private function ensureCourseAssignment(CourseClass $courseClass, User $teacher): void
+    {
+        $course = $courseClass->module?->course;
+
+        if (! $course instanceof Course) {
+            return;
+        }
+
+        $assignment = CourseTeacherEnrollment::withTrashed()
+            ->where('course_id', $course->getKey())
+            ->where('user_id', $teacher->getKey())
+            ->first();
+
+        if ($assignment === null) {
+            CourseTeacherEnrollment::query()->create([
+                'course_id' => $course->getKey(),
                 'user_id' => $teacher->getKey(),
                 'assigned_at' => now(),
             ]);

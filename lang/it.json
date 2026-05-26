@@ -298,6 +298,7 @@
     "profile.options.account.superadmin": "Superadmin",
     "profile.options.account.admin": "Admin",
     "profile.options.account.teacher": "Docente",
+    "profile.options.account.docente": "Docente",
     "profile.options.account.tutor": "Tutor",
     "profile.options.unspecified": "Non specificato",
     "profile.options.no": "No",

@@ -5,6 +5,7 @@ use App\Models\CourseClass;
 use App\Models\CourseClassTeacher;
 use App\Models\CourseClassUser;
 use App\Models\CourseEnrollment;
+use App\Models\CourseTeacherEnrollment;
 use App\Models\Module;
 use App\Models\ModuleTeacherEnrollment;
 use App\Models\User;
@@ -197,14 +198,50 @@ it('assigns teachers and syncs them to live and res modules only', function () {
     $liveModule = Module::factory()->create(['type' => 'live', 'belongsTo' => (string) $course->getKey()]);
     $videoModule = Module::factory()->create(['type' => 'video', 'belongsTo' => (string) $course->getKey()]);
     $courseClass = CourseClass::factory()->forModule($liveModule)->create();
+    CourseEnrollment::enroll($teacher, $course);
+    CourseTeacherEnrollment::factory()->create([
+        'course_id' => $course->getKey(),
+        'user_id' => $teacher->getKey(),
+    ]);
 
     $this->postJson(route('admin.courses.classes.teachers.store', [$course, $courseClass]), [
         'teacher_ids' => [$teacher->getKey()],
     ])->assertCreated();
 
     expect(CourseClassTeacher::query()->where('course_class_id', $courseClass->getKey())->where('user_id', $teacher->getKey())->exists())->toBeTrue()
+        ->and(CourseTeacherEnrollment::query()->where('course_id', $course->getKey())->where('user_id', $teacher->getKey())->exists())->toBeTrue()
         ->and(ModuleTeacherEnrollment::query()->where('module_id', $liveModule->getKey())->where('user_id', $teacher->getKey())->exists())->toBeTrue()
         ->and(ModuleTeacherEnrollment::query()->where('module_id', $videoModule->getKey())->where('user_id', $teacher->getKey())->exists())->toBeFalse();
+});
+
+it('searches class teachers among teachers assigned to the course', function () {
+    $course = Course::factory()->res()->create();
+    $teacher = createClassTeacher();
+    $teacher->forceFill([
+        'name' => 'Giulia',
+        'surname' => 'Rossi',
+        'email' => 'giulia.rossi@example.test',
+        'fiscal_code' => 'RSSGLI80A01H501Z',
+    ])->save();
+
+    $otherTeacher = createClassTeacher();
+    $otherTeacher->forceFill([
+        'name' => 'Luca',
+        'surname' => 'Bianchi',
+        'email' => 'luca.bianchi@example.test',
+        'fiscal_code' => 'BNCLCU80A01H501Z',
+    ])->save();
+
+    CourseEnrollment::enroll($teacher, $course);
+    CourseTeacherEnrollment::factory()->create([
+        'course_id' => $course->getKey(),
+        'user_id' => $teacher->getKey(),
+    ]);
+
+    $this->getJson(route('admin.courses.classes.search-teachers', ['course' => $course, 'search' => 'Gi']))
+        ->assertOk()
+        ->assertJsonPath('data.0.id', $teacher->getKey())
+        ->assertJsonMissing(['id' => $otherTeacher->getKey()]);
 });
 
 it('rejects assigning non teachers as class teachers', function () {
@@ -215,6 +252,19 @@ it('rejects assigning non teachers as class teachers', function () {
     $this->postJson(route('admin.courses.classes.teachers.store', [$course, $courseClass]), [
         'teacher_ids' => [$user->getKey()],
     ])->assertUnprocessable();
+});
+
+it('rejects assigning teachers who are not assigned to the course', function () {
+    $course = Course::factory()->res()->create();
+    $courseClass = CourseClass::factory()->forCourse($course)->create();
+    $teacher = createClassTeacher();
+
+    CourseEnrollment::enroll($teacher, $course);
+
+    $this->postJson(route('admin.courses.classes.teachers.store', [$course, $courseClass]), [
+        'teacher_ids' => [$teacher->getKey()],
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors(['teacher_ids']);
 });
 
 it('soft deletes classes and class assignments without deleting course enrollments or module assignments', function () {

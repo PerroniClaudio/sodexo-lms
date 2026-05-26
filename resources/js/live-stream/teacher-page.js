@@ -39,6 +39,15 @@ const SPEECH_ACTIVATE_RMS_THRESHOLD = 0.05;
 const SPEECH_RELEASE_RMS_THRESHOLD = 0.02;
 const SPEECH_HOLD_MS = 300;
 
+function buildIngressControlButtonMarkup(icon, title) {
+    return `
+        <span class="shrink-0 rounded-full bg-base-200 p-2.5 text-base-content">
+            ${getLiveStreamIconButtonContent(icon, title)}
+        </span>
+        <span class="min-w-0 text-left text-sm font-semibold leading-tight">${title}</span>
+    `;
+}
+
 export function initTeacherPage() {
     const root = getLiveStreamRoot();
 
@@ -56,6 +65,7 @@ export function initTeacherPage() {
         config,
         room: null,
         joined: false,
+        onboardingCompleted: false,
         regiaModalOpen: false,
         latestState: null,
         audioNodes: new Map(),
@@ -108,6 +118,15 @@ export function initTeacherPage() {
     const pollSubmitButton = root.querySelector('[data-live-stream-poll-submit]');
     const pollFeedback = root.querySelector('[data-live-stream-poll-feedback]');
     const deviceStatus = root.querySelector('[data-live-stream-device-status]');
+    const onboardingOpenButton = root.querySelector('[data-live-stream-onboarding-open]');
+    const onboardingModal = root.querySelector('[data-live-stream-onboarding-modal]');
+    const onboardingCloseButton = root.querySelector('[data-live-stream-onboarding-close]');
+    const onboardingBackdropButton = root.querySelector('[data-live-stream-onboarding-backdrop]');
+    const onboardingBackButton = root.querySelector('[data-live-stream-onboarding-back]');
+    const onboardingNextButton = root.querySelector('[data-live-stream-onboarding-next]');
+    const onboardingIndicators = [...root.querySelectorAll('[data-live-stream-onboarding-indicator]')];
+    const onboardingSteps = [...root.querySelectorAll('[data-live-stream-onboarding-step]')];
+    const onboardingPreviewScope = root.querySelector('[data-live-stream-onboarding-preview-scope]');
     const muxStage = root.querySelector('[data-live-stream-mux-stage]');
     const regiaModal = root.querySelector('[data-live-stream-regia-modal]');
     const regiaModalCloseButton = root.querySelector('[data-live-stream-regia-modal-close]');
@@ -115,17 +134,63 @@ export function initTeacherPage() {
     const regiaIngestUrl = root.querySelector('[data-live-stream-regia-ingest-url]');
     const regiaPlaybackId = root.querySelector('[data-live-stream-regia-playback-id]');
     const previewController = createPreviewController(root, {
+        scope: onboardingPreviewScope instanceof HTMLElement ? onboardingPreviewScope : undefined,
         onAudioStateChange: syncMicToggleButton,
         backgroundsRoute: config.routes.backgrounds,
         videoTrackName: LIVE_STREAM_CAMERA_TRACK_NAME,
         videoConstraints: getLiveStreamCameraCaptureProfile('teacher'),
     });
+    let onboardingStep = 0;
 
     renderChatMessages(root, []);
 
     if (startButton instanceof HTMLButtonElement) {
         startButton.addEventListener('click', async () => {
             await startOrJoin();
+        });
+    }
+
+    if (onboardingOpenButton instanceof HTMLButtonElement) {
+        onboardingOpenButton.addEventListener('click', () => {
+            openOnboardingModal();
+        });
+    }
+
+    if (onboardingCloseButton instanceof HTMLButtonElement) {
+        onboardingCloseButton.addEventListener('click', () => {
+            closeOnboardingModal();
+        });
+    }
+
+    if (onboardingBackdropButton instanceof HTMLButtonElement) {
+        onboardingBackdropButton.addEventListener('click', (event) => {
+            if (!isOnboardingDismissible()) {
+                event.preventDefault();
+            }
+        });
+    }
+
+    if (onboardingBackButton instanceof HTMLButtonElement) {
+        onboardingBackButton.addEventListener('click', () => {
+            setOnboardingStep(onboardingStep - 1);
+        });
+    }
+
+    if (onboardingNextButton instanceof HTMLButtonElement) {
+        onboardingNextButton.addEventListener('click', () => {
+            setOnboardingStep(onboardingStep + 1);
+        });
+    }
+
+    if (onboardingModal instanceof HTMLDialogElement) {
+        onboardingModal.addEventListener('cancel', (event) => {
+            if (!isOnboardingDismissible()) {
+                event.preventDefault();
+
+                return;
+            }
+
+            closeOnboardingModal();
         });
     }
 
@@ -196,6 +261,8 @@ export function initTeacherPage() {
     syncScreenShareButton();
     syncAudioOutputButton();
     setPollComposerExpanded(false);
+    setOnboardingStep(0);
+    openOnboardingModal();
 
     window.addEventListener('beforeunload', () => {
         previewController.destroy();
@@ -240,6 +307,84 @@ export function initTeacherPage() {
         }
     }
 
+    function setOnboardingStep(nextStep) {
+        const maxStep = Math.max(onboardingSteps.length - 1, 0);
+        onboardingStep = Math.min(Math.max(nextStep, 0), maxStep);
+        state.onboardingCompleted = state.onboardingCompleted || onboardingStep === maxStep;
+
+        onboardingSteps.forEach((stepElement, index) => {
+            stepElement.classList.toggle('hidden', index !== onboardingStep);
+        });
+
+        onboardingIndicators.forEach((indicator, index) => {
+            const isActive = index === onboardingStep;
+            const isCompleted = index < onboardingStep;
+
+            indicator.classList.toggle('border-primary', isActive || isCompleted);
+            indicator.classList.toggle('bg-primary', isActive);
+            indicator.classList.toggle('text-primary-content', isActive);
+            indicator.classList.toggle('bg-base-100', !isActive);
+            indicator.classList.toggle('text-base-content/70', !isActive && !isCompleted);
+            indicator.classList.toggle('text-base-content', isCompleted && !isActive);
+        });
+
+        if (onboardingBackButton instanceof HTMLButtonElement) {
+            onboardingBackButton.disabled = onboardingStep === 0;
+        }
+
+        if (onboardingNextButton instanceof HTMLButtonElement) {
+            onboardingNextButton.classList.toggle('hidden', onboardingStep === maxStep);
+        }
+
+        if (startButton instanceof HTMLButtonElement) {
+            startButton.classList.toggle('hidden', onboardingStep !== maxStep);
+        }
+
+        syncOnboardingDismissState();
+    }
+
+    function isOnboardingDismissible() {
+        return state.onboardingCompleted || state.joined;
+    }
+
+    function syncOnboardingDismissState() {
+        const canDismiss = isOnboardingDismissible();
+
+        if (onboardingCloseButton instanceof HTMLButtonElement) {
+            onboardingCloseButton.disabled = !canDismiss;
+            onboardingCloseButton.classList.toggle('invisible', !canDismiss);
+            onboardingCloseButton.setAttribute('aria-hidden', canDismiss ? 'false' : 'true');
+        }
+
+        if (onboardingBackdropButton instanceof HTMLButtonElement) {
+            onboardingBackdropButton.disabled = !canDismiss;
+        }
+    }
+
+    function openOnboardingModal() {
+        if (!(onboardingModal instanceof HTMLDialogElement)) {
+            return;
+        }
+
+        if (!onboardingModal.open) {
+            onboardingModal.showModal();
+        }
+
+        void previewController.open();
+    }
+
+    function closeOnboardingModal(options = {}) {
+        if (!(onboardingModal instanceof HTMLDialogElement) || !onboardingModal.open) {
+            return;
+        }
+
+        if (!options.force && !isOnboardingDismissible()) {
+            return;
+        }
+
+        onboardingModal.close();
+    }
+
     function updateTopBar() {
         const payload = state.latestState;
 
@@ -252,14 +397,21 @@ export function initTeacherPage() {
             setMessage(root, state.joined ? 'Diretta avviata e docente collegato.' : 'La diretta è attiva. Puoi rientrare.');
         } else {
             setBadgeState(root, 'Preflight', 'badge-outline');
-            setMessage(root, 'Prepara l’anteprima, poi avvia la diretta.');
+            setMessage(
+                root,
+                config.capabilities?.canManageBroadcast
+                    ? 'Prepara l’anteprima, poi avvia la diretta.'
+                    : 'Completa il setup e attendi l’avvio della regia.',
+            );
         }
 
         if (startButton instanceof HTMLButtonElement) {
-            const shouldShowStartButton = payload.status !== 'live' || !state.joined;
+            const shouldShowStartButton = config.capabilities?.canManageBroadcast
+                ? payload.status !== 'live' || !state.joined
+                : onboardingStep === Math.max(onboardingSteps.length - 1, 0) && !state.joined;
             const startLabel = config.capabilities?.canManageBroadcast
                 ? (payload.status === 'live' ? 'Rientra in regia' : 'Avvia live')
-                : (payload.status === 'live' ? 'Entra nella diretta' : 'In attesa della regia');
+                : 'Entra nella diretta';
 
             startButton.disabled = state.joined || (!config.routes.startSession && payload.status !== 'live');
             startButton.textContent = startLabel;
@@ -426,6 +578,7 @@ export function initTeacherPage() {
 
             await sendPresence();
             await fetchState();
+            closeOnboardingModal({ force: true });
         } catch (error) {
             startButton.disabled = false;
             startButton.textContent = config.capabilities?.canManageBroadcast ? 'Avvia live' : 'Entra nella diretta';
@@ -1324,10 +1477,10 @@ export function initTeacherPage() {
                 || (state.selectedAudioOutputId === 'default' && index === 0 && device.deviceId === 'default');
 
             button.type = 'button';
-            button.className = `btn justify-between ${isSelected ? 'btn-primary' : 'btn-outline'}`;
+            button.className = `btn h-auto min-h-0 w-full justify-between gap-3 overflow-hidden px-4 py-3 ${isSelected ? 'btn-primary' : 'btn-outline'}`;
             button.innerHTML = `
-                <span class="truncate">${formatAudioOutputDeviceLabel(device, index)}</span>
-                <span class="text-xs uppercase">${isSelected ? 'Attivo' : 'Seleziona'}</span>
+                <span class="min-w-0 flex-1 truncate text-left">${formatAudioOutputDeviceLabel(device, index)}</span>
+                <span class="shrink-0 text-xs uppercase">${isSelected ? 'Attivo' : 'Seleziona'}</span>
             `;
             button.addEventListener('click', async () => {
                 await applyAudioOutputDevice(device.deviceId);
@@ -1732,7 +1885,7 @@ export function initTeacherPage() {
         micToggleButton.classList.toggle('disabled', !hasAudioTrack);
         micToggleButton.setAttribute('aria-label', isEnabled ? 'Disattiva microfono' : 'Attiva microfono');
         micToggleButton.setAttribute('title', isEnabled ? 'Disattiva microfono' : 'Attiva microfono');
-        micToggleButton.innerHTML = getLiveStreamIconButtonContent(isEnabled ? 'mic' : 'mic-off', isEnabled ? 'Disattiva microfono' : 'Attiva microfono');
+        micToggleButton.innerHTML = buildIngressControlButtonMarkup(isEnabled ? 'mic' : 'mic-off', 'Microfono');
     }
 
     function syncScreenShareButton() {
@@ -1753,10 +1906,7 @@ export function initTeacherPage() {
         screenShareButton.classList.toggle('btn-warning', isSharingScreen);
         screenShareButton.setAttribute('aria-label', buttonLabel);
         screenShareButton.setAttribute('title', buttonLabel);
-        screenShareButton.innerHTML = getLiveStreamIconButtonContent(
-            isSharingScreen ? 'screen-share-off' : 'screen-share',
-            buttonLabel,
-        );
+        screenShareButton.innerHTML = buildIngressControlButtonMarkup(isSharingScreen ? 'screen-share-off' : 'screen-share', 'Schermo');
     }
 
     function setScreenShareStatus(message) {

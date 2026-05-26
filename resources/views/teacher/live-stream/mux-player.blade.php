@@ -79,7 +79,7 @@
         <div class="hidden" data-live-stream-audio-stage></div>
 
         <dialog class="modal" data-live-stream-audio-output-modal>
-            <div class="modal-box">
+            <div class="modal-box flex max-h-[min(42rem,calc(100vh-3rem))] w-11/12 max-w-3xl flex-col overflow-hidden">
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <h3 class="text-lg font-semibold">{{ __('Seleziona output audio') }}</h3>
@@ -94,7 +94,7 @@
                 </div>
 
                 <p class="mt-4 hidden text-sm text-base-content/60" data-live-stream-audio-output-status></p>
-                <div class="mt-6 grid gap-3" data-live-stream-audio-output-list></div>
+                <div class="mt-6 grid max-h-[min(28rem,calc(100vh-12rem))] gap-3 overflow-y-auto pr-1" data-live-stream-audio-output-list></div>
             </div>
 
             <form method="dialog" class="modal-backdrop">

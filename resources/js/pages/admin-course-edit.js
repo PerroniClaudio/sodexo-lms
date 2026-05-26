@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeModuleSorting(courseEditPage);
     initializeSatisfactionSurveyFields(courseEditPage);
     initializeCourseClasses(courseEditPage);
+    initializeTeacherAssignmentsTable(courseEditPage);
     initializeEnrollmentsTable(courseEditPage);
 });
 
@@ -60,6 +61,8 @@ function initializeCourseClasses(courseEditPage) {
     if (!indexUrl || !storeUrl || !tbody || !emptyState || !tableContainer || !tableLoader || !rowTemplate || !scheduleTemplate || !openClassModalButton || !classModal || !closeClassModalButton || !classForm || !classModalTitle || !classFormError || !schedulesContainer || !addScheduleButton || !peopleModal || !closePeopleModalButton || !peopleTitle || !peopleSubtitle || !peopleCount || !peopleSearch || !peopleSearchButton || !peopleResults || !peopleConfirmButton || !peopleAssigned || !peopleConfirmRemovalButton || !peopleError) {
         return;
     }
+
+    const defaultModuleId = classForm.elements.namedItem('module_id')?.value || '';
 
     const state = {
         classes: initialScript ? JSON.parse(initialScript.textContent || '[]') : [],
@@ -212,7 +215,7 @@ function initializeCourseClasses(courseEditPage) {
     const openClassForm = (courseClass = null) => {
         state.editingClass = courseClass;
         classModalTitle.textContent = courseClass ? 'Modifica classe' : 'Nuova classe';
-        classForm.module_id.value = courseClass?.module_id || '';
+        classForm.module_id.value = courseClass?.module_id || defaultModuleId;
         classForm.name.value = courseClass?.name || '';
         schedulesContainer.innerHTML = '';
         (courseClass?.schedules || []).forEach((schedule) => appendScheduleRow(schedule));
@@ -240,7 +243,7 @@ function initializeCourseClasses(courseEditPage) {
 
         const formData = new FormData(classForm);
         const payload = {
-            module_id: Number(formData.get('module_id')),
+            module_id: formData.get('module_id'),
             name: formData.get('name'),
             schedules: Array.from(schedulesContainer.querySelectorAll('[data-course-class-schedule-row]')).map((row) => ({
                 starts_at_date: row.querySelector('[data-schedule-starts-date]').value,
@@ -1183,4 +1186,448 @@ function initializeEnrollmentsTable(courseEditPage) {
 
     updateSortIndicators();
     loadEnrollments();
+}
+
+function initializeTeacherAssignmentsTable(courseEditPage) {
+    const container = courseEditPage.querySelector('[data-teacher-assignments-table]');
+
+    if (!container) {
+        return;
+    }
+
+    const apiUrl = container.dataset.teacherAssignmentsApiUrl;
+    const searchUsersApiUrl = container.dataset.teacherAssignmentsSearchUsersApiUrl;
+    const storeApiUrl = container.dataset.teacherAssignmentsStoreApiUrl;
+    const tbody = container.querySelector('[data-teacher-assignments-tbody]');
+    const template = container.querySelector('[data-teacher-assignment-row-template]');
+    const emptyState = container.querySelector('[data-teacher-assignments-empty]');
+    const tableContainer = container.querySelector('[data-teacher-assignments-table-container]');
+    const tableLoader = container.querySelector('[data-teacher-assignments-loader]');
+    const searchInput = container.querySelector('[data-teacher-assignments-search]');
+    const searchButton = container.querySelector('[data-teacher-assignments-search-button]');
+    const showTrashedCheckbox = container.querySelector('[data-teacher-assignments-show-trashed]');
+    const paginationContainer = container.querySelector('[data-teacher-assignments-pagination]');
+    const summaryElement = container.querySelector('[data-teacher-assignments-summary]');
+    const sortButtons = Array.from(container.querySelectorAll('[data-sort-key]'));
+    const sortIndicators = Array.from(new Set(Array.from(container.querySelectorAll('[data-sort-indicator]')).map((indicator) => indicator.dataset.sortIndicator)));
+    const openCreateModalButton = container.querySelector('[data-open-course-teacher-modal]');
+    const createModal = container.querySelector('[data-create-course-teacher-modal]');
+    const closeCreateModalButton = container.querySelector('[data-close-course-teacher-modal]');
+    const userSearchInput = container.querySelector('[data-course-teacher-user-search]');
+    const userSearchButton = container.querySelector('[data-course-teacher-user-search-button]');
+    const userResultsBody = container.querySelector('[data-course-teacher-user-results]');
+    const userResultsEmptyState = container.querySelector('[data-course-teacher-user-results-empty]');
+    const userRowTemplate = container.querySelector('[data-course-teacher-user-row-template]');
+    const confirmModal = container.querySelector('[data-confirm-course-teacher-modal]');
+    const confirmMessage = container.querySelector('[data-confirm-course-teacher-message]');
+    const confirmSubmitButton = container.querySelector('[data-confirm-course-teacher-submit]');
+
+    if (!apiUrl || !searchUsersApiUrl || !storeApiUrl || !tbody || !template || !emptyState || !tableContainer || !tableLoader || !searchInput || !searchButton || !showTrashedCheckbox || !paginationContainer || !summaryElement || !openCreateModalButton || !createModal || !closeCreateModalButton || !userSearchInput || !userSearchButton || !userResultsBody || !userResultsEmptyState || !userRowTemplate || !confirmModal || !confirmMessage || !confirmSubmitButton) {
+        return;
+    }
+
+    const state = {
+        page: 1,
+        search: '',
+        showTrashed: false,
+        sort: 'surname',
+        direction: 'asc',
+        loading: false,
+        selectedUser: null,
+        confirmAction: 'create',
+        restoreUrl: null,
+    };
+
+    const updateSortIndicators = () => {
+        sortIndicators.forEach((key) => {
+            const icons = container.querySelectorAll(`[data-sort-indicator="${key}"]`);
+
+            icons.forEach((icon) => {
+                const iconType = icon.dataset.sortIcon;
+                let shouldShow = false;
+
+                if (state.sort !== key) {
+                    shouldShow = iconType === 'none';
+                } else if (state.direction === 'asc') {
+                    shouldShow = iconType === 'asc';
+                } else if (state.direction === 'desc') {
+                    shouldShow = iconType === 'desc';
+                }
+
+                icon.classList.toggle('hidden', !shouldShow);
+            });
+        });
+    };
+
+    const buildQueryString = () => {
+        const params = new URLSearchParams();
+
+        params.set('page', String(state.page));
+        params.set('show_trashed', state.showTrashed ? '1' : '0');
+
+        if (state.search !== '') {
+            params.set('search', state.search);
+        }
+
+        if (state.sort !== null && state.direction !== null) {
+            params.set('sort', state.sort);
+            params.set('direction', state.direction);
+        }
+
+        return params.toString();
+    };
+
+    const setLoadingState = (loading) => {
+        state.loading = loading;
+        toggleAsyncTableLoading({ scope: container, container: tableContainer, loader: tableLoader }, loading);
+    };
+
+    const cycleSortDirection = (currentDirection) => {
+        if (currentDirection === null) {
+            return 'asc';
+        }
+
+        if (currentDirection === 'asc') {
+            return 'desc';
+        }
+
+        return null;
+    };
+
+    const renderPagination = (meta) => {
+        paginationContainer.innerHTML = '';
+
+        if (meta.last_page <= 1) {
+            return;
+        }
+
+        const createPageButton = (label, page, disabled = false, active = false) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `join-item btn btn-sm ${active ? 'btn-primary' : 'btn-ghost'}`;
+            button.textContent = label;
+            button.disabled = disabled;
+
+            if (!disabled) {
+                button.addEventListener('click', () => {
+                    state.page = page;
+                    loadTeacherAssignments();
+                });
+            }
+
+            return button;
+        };
+
+        paginationContainer.appendChild(createPageButton('«', Math.max(meta.current_page - 1, 1), meta.current_page <= 1));
+
+        const pagesToRender = new Set([
+            1,
+            meta.last_page,
+            Math.max(meta.current_page - 1, 1),
+            meta.current_page,
+            Math.min(meta.current_page + 1, meta.last_page),
+        ]);
+
+        Array.from(pagesToRender)
+            .sort((a, b) => a - b)
+            .forEach((page) => {
+                paginationContainer.appendChild(createPageButton(String(page), page, false, page === meta.current_page));
+            });
+
+        paginationContainer.appendChild(createPageButton('»', Math.min(meta.current_page + 1, meta.last_page), meta.current_page >= meta.last_page));
+    };
+
+    const renderRows = (rows) => {
+        tbody.innerHTML = '';
+
+        rows.forEach((row) => {
+            const fragment = template.content.cloneNode(true);
+            const tr = fragment.querySelector('tr');
+            const deleteButton = fragment.querySelector('[data-action="delete"]');
+            const restoreButton = fragment.querySelector('[data-action="restore"]');
+
+            fragment.querySelector('[data-cell="surname"]').textContent = row.user.surname || '-';
+            fragment.querySelector('[data-cell="name"]').textContent = row.user.name || '-';
+            fragment.querySelector('[data-cell="fiscal_code"]').textContent = row.user.fiscal_code || '-';
+            fragment.querySelector('[data-cell="email"]').textContent = row.user.email || '-';
+            fragment.querySelector('[data-cell="assigned_at"]').textContent = row.assigned_at || '-';
+
+            deleteButton.classList.toggle('hidden', !row.actions.can_delete);
+            restoreButton.classList.toggle('hidden', !row.actions.can_restore);
+
+            if (row.actions.can_delete) {
+                deleteButton.addEventListener('click', async () => {
+                    if (!window.confirm('Sei sicuro di voler rimuovere questo docente dal corso?')) {
+                        return;
+                    }
+
+                    try {
+                        await window.axios.delete(row.actions.delete_url, {
+                            headers: { Accept: 'application/json' },
+                        });
+
+                        await loadTeacherAssignments();
+                    } catch (error) {
+                        window.alert(error.response?.data?.message || 'Errore durante la rimozione del docente.');
+                    }
+                });
+            }
+
+            if (row.actions.can_restore) {
+                restoreButton.addEventListener('click', async () => {
+                    if (!window.confirm('Vuoi ripristinare questo docente del corso?')) {
+                        return;
+                    }
+
+                    try {
+                        await window.axios.post(
+                            row.actions.restore_url,
+                            {},
+                            { headers: { Accept: 'application/json' } },
+                        );
+
+                        await loadTeacherAssignments();
+                    } catch (error) {
+                        window.alert(error.response?.data?.message || 'Errore durante il ripristino del docente.');
+                    }
+                });
+            }
+
+            if (row.is_deleted) {
+                tr.classList.add('opacity-70');
+            }
+
+            tbody.appendChild(fragment);
+        });
+    };
+
+    const renderUserSearchResults = (users) => {
+        userResultsBody.innerHTML = '';
+
+        users.forEach((user) => {
+            const fragment = userRowTemplate.content.cloneNode(true);
+            const selectButton = fragment.querySelector('[data-action="select-user"]');
+
+            fragment.querySelector('[data-cell="id"]').textContent = user.id;
+            fragment.querySelector('[data-cell="surname"]').textContent = user.surname || '-';
+            fragment.querySelector('[data-cell="name"]').textContent = user.name || '-';
+            fragment.querySelector('[data-cell="fiscal_code"]').textContent = user.fiscal_code || '-';
+            fragment.querySelector('[data-cell="email"]').textContent = user.email || '-';
+
+            selectButton.addEventListener('click', () => {
+                state.selectedUser = user;
+                state.confirmAction = 'create';
+                state.restoreUrl = null;
+                confirmMessage.textContent = `Confermi l'assegnazione di ${user.surname || ''} ${user.name || ''} (ID ${user.id}) come docente del corso?`.trim();
+                confirmModal.showModal();
+            });
+
+            userResultsBody.appendChild(fragment);
+        });
+
+        userResultsEmptyState.classList.toggle('hidden', users.length > 0);
+    };
+
+    const searchUsers = async () => {
+        const search = userSearchInput.value.trim();
+
+        if (search === '') {
+            userResultsBody.innerHTML = '';
+            userResultsEmptyState.classList.remove('hidden');
+
+            return;
+        }
+
+        userSearchButton.disabled = true;
+
+        try {
+            const response = await window.axios.get(searchUsersApiUrl, {
+                params: { search },
+                headers: { Accept: 'application/json' },
+            });
+
+            renderUserSearchResults(response.data.data ?? []);
+        } catch (error) {
+            userResultsBody.innerHTML = '';
+            userResultsEmptyState.classList.remove('hidden');
+            window.alert('Errore durante la ricerca docenti.');
+        } finally {
+            userSearchButton.disabled = false;
+        }
+    };
+
+    const renderSummary = (meta) => {
+        if (meta.total === 0 || meta.from === null || meta.to === null) {
+            summaryElement.textContent = '0 docenti';
+
+            return;
+        }
+
+        summaryElement.textContent = `Mostrati ${meta.from}-${meta.to} di ${meta.total} docenti`;
+    };
+
+    const loadTeacherAssignments = async () => {
+        if (state.loading) {
+            return;
+        }
+
+        setLoadingState(true);
+
+        try {
+            const response = await window.axios.get(`${apiUrl}?${buildQueryString()}`, {
+                headers: { Accept: 'application/json' },
+            });
+
+            const rows = response.data.data ?? [];
+            const meta = response.data.meta ?? {
+                current_page: 1,
+                last_page: 1,
+                per_page: 10,
+                total: 0,
+                from: null,
+                to: null,
+            };
+
+            if (rows.length === 0 && meta.total > 0 && state.page > 1) {
+                state.page = Math.max(meta.last_page, 1);
+                setLoadingState(false);
+                await loadTeacherAssignments();
+
+                return;
+            }
+
+            renderRows(rows);
+            renderSummary(meta);
+            renderPagination(meta);
+            emptyState.classList.toggle('hidden', rows.length > 0);
+            updateSortIndicators();
+        } catch (error) {
+            tbody.innerHTML = '';
+            emptyState.classList.remove('hidden');
+            summaryElement.textContent = 'Errore nel caricamento dei docenti.';
+            paginationContainer.innerHTML = '';
+        } finally {
+            setLoadingState(false);
+        }
+    };
+
+    openCreateModalButton.addEventListener('click', () => {
+        userSearchInput.value = '';
+        userResultsBody.innerHTML = '';
+        userResultsEmptyState.classList.add('hidden');
+        state.selectedUser = null;
+        createModal.showModal();
+    });
+
+    closeCreateModalButton.addEventListener('click', () => {
+        createModal.close();
+    });
+
+    userSearchButton.addEventListener('click', () => {
+        searchUsers();
+    });
+
+    userSearchInput.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') {
+            return;
+        }
+
+        event.preventDefault();
+        searchUsers();
+    });
+
+    confirmSubmitButton.addEventListener('click', async () => {
+        if (!state.selectedUser) {
+            return;
+        }
+
+        setButtonLoading(confirmSubmitButton, true, { loadingText: 'Salvataggio...' });
+
+        try {
+            if (state.confirmAction === 'restore') {
+                if (!state.restoreUrl) {
+                    setButtonLoading(confirmSubmitButton, false);
+
+                    return;
+                }
+
+                await window.axios.post(
+                    state.restoreUrl,
+                    {},
+                    { headers: { Accept: 'application/json' } },
+                );
+            } else {
+                await window.axios.post(
+                    storeApiUrl,
+                    { user_id: state.selectedUser.id },
+                    { headers: { Accept: 'application/json' } },
+                );
+            }
+
+            confirmModal.close();
+            createModal.close();
+            state.confirmAction = 'create';
+            state.restoreUrl = null;
+            await loadTeacherAssignments();
+        } catch (error) {
+            const responseData = error.response?.data;
+
+            if (error.response?.status === 409 && responseData?.requires_restore && responseData?.restore_url) {
+                state.confirmAction = 'restore';
+                state.restoreUrl = responseData.restore_url;
+                confirmMessage.textContent = responseData.message || 'Esiste già una assegnazione docente eliminata. Vuoi ripristinarla?';
+            } else {
+                window.alert(responseData?.message || 'Errore durante l\'assegnazione del docente.');
+            }
+        } finally {
+            setButtonLoading(confirmSubmitButton, false);
+        }
+    });
+
+    searchButton.addEventListener('click', () => {
+        state.search = searchInput.value.trim();
+        state.page = 1;
+        loadTeacherAssignments();
+    });
+
+    searchInput.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') {
+            return;
+        }
+
+        event.preventDefault();
+        state.search = searchInput.value.trim();
+        state.page = 1;
+        loadTeacherAssignments();
+    });
+
+    showTrashedCheckbox.addEventListener('change', () => {
+        state.showTrashed = showTrashedCheckbox.checked;
+        state.page = 1;
+        loadTeacherAssignments();
+    });
+
+    sortButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const selectedSort = button.dataset.sortKey;
+
+            if (state.sort !== selectedSort) {
+                state.sort = selectedSort;
+                state.direction = 'asc';
+            } else {
+                state.direction = cycleSortDirection(state.direction);
+
+                if (state.direction === null) {
+                    state.sort = 'surname';
+                    state.direction = 'asc';
+                }
+            }
+
+            state.page = 1;
+            loadTeacherAssignments();
+        });
+    });
+
+    updateSortIndicators();
+    loadTeacherAssignments();
 }

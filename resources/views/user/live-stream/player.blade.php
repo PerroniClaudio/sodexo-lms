@@ -254,95 +254,126 @@
         <dialog class="modal" data-live-stream-join-prompt-modal>
             <div class="modal-box w-11/12 max-w-4xl rounded-[1.75rem] border border-base-300 bg-base-100 p-6 shadow-2xl">
                 <div class="space-y-2">
-                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/45">{{ __('Live in corso') }}</p>
-                    <h2 class="text-2xl font-semibold text-base-content">{{ __('La diretta è iniziata') }}</h2>
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/45">{{ __('Setup ingresso') }}</p>
+                    <h2 class="text-2xl font-semibold text-base-content">{{ __('Prepara i tuoi dispositivi') }}</h2>
                     <p class="text-sm leading-6 text-base-content/70">
-                        {{ __('Entra nella diretta per seguire il docente e partecipare alla chat') }}
+                        {{ __('Scegli camera e microfono prima di entrare nella diretta.') }}
                     </p>
                 </div>
 
-                <div class="modal-action mt-6">
-                    <button
-                        type="button"
-                        class="btn btn-outline"
-                        data-live-stream-join-prompt-devices
-                        aria-expanded="false"
-                    >
-                        {{ __('Configura i tuoi dispositivi') }}
-                    </button>
-                    <button type="button" class="btn btn-primary" data-live-stream-join-prompt-button>
-                        {{ __('Entra nella diretta') }}
-                    </button>
+                <div class="mt-5 grid grid-cols-2 gap-3">
+                    <div class="rounded-box border border-base-300 px-4 py-3 text-sm font-medium transition" data-live-stream-onboarding-indicator="0">
+                        {{ __('1. Telecamera') }}
+                    </div>
+                    <div class="rounded-box border border-base-300 px-4 py-3 text-sm font-medium transition" data-live-stream-onboarding-indicator="1">
+                        {{ __('2. Microfono') }}
+                    </div>
                 </div>
 
-                <div class="mt-6 hidden space-y-5 border-t border-base-300 pt-6" data-live-stream-join-prompt-devices-panel data-live-stream-preview-panel>
-                    <div class="hidden space-y-5" data-live-stream-preview-content>
-                        <div class="grid gap-5 lg:grid-cols-2">
-                            <div class="space-y-3">
-                                <div class="overflow-hidden rounded-box border border-base-300 bg-neutral">
-                                    <video
-                                        class="aspect-video w-full bg-neutral object-cover"
-                                        autoplay
-                                        muted
-                                        playsinline
-                                        data-live-stream-preview
-                                    ></video>
-                                    <div
-                                        class="hidden aspect-video w-full items-center justify-center bg-neutral px-6 text-center text-sm text-neutral-content/70"
-                                        data-live-stream-preview-empty
-                                    >
-                                        {{ __('Anteprima video non disponibile') }}
+                <div class="mt-6 border-t border-base-300 pt-6" data-live-stream-onboarding-preview-scope>
+                    <div class="space-y-5" data-live-stream-preview-panel>
+                        <div class="space-y-5" data-live-stream-preview-content>
+                            <section class="space-y-5" data-live-stream-onboarding-step="0">
+                                <div class="grid gap-5 lg:grid-cols-2">
+                                    <div class="space-y-3">
+                                        <div class="overflow-hidden rounded-box border border-base-300 bg-neutral">
+                                            <video
+                                                class="aspect-video w-full bg-neutral object-cover"
+                                                autoplay
+                                                muted
+                                                playsinline
+                                                data-live-stream-preview
+                                            ></video>
+                                            <div
+                                                class="hidden aspect-video w-full items-center justify-center bg-neutral px-6 text-center text-sm text-neutral-content/70"
+                                                data-live-stream-preview-empty
+                                            >
+                                                {{ __('Anteprima video non disponibile') }}
+                                            </div>
+                                        </div>
+
+                                        <div class="space-y-2">
+                                            <div class="flex items-center justify-between gap-3">
+                                                <p class="text-sm font-semibold">{{ __('Telecamera') }}</p>
+                                            </div>
+                                            <select
+                                                class="select select-bordered w-full"
+                                                data-live-stream-camera-device-list
+                                                aria-label="{{ __('Dispositivo telecamera') }}"
+                                            ></select>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-box border border-base-300 bg-base-200 p-4">
+                                        <p class="text-sm font-semibold">{{ __('Prima di continuare') }}</p>
+                                        <p class="mt-2 text-sm leading-6 text-base-content/70">{{ __('Verifica inquadratura e luce. Se non hai una camera disponibile puoi comunque entrare con il solo microfono.') }}</p>
                                     </div>
                                 </div>
+                            </section>
 
-                                <div class="space-y-2">
-                                    <div class="flex items-center justify-between gap-3">
-                                        <p class="text-sm font-semibold">{{ __('Telecamera') }}</p>
-                                        <button
-                                            type="button"
-                                            class="btn btn-outline btn-sm hidden"
-                                            data-live-stream-background-button
-                                            aria-label="{{ __('Cambia sfondo') }}"
-                                            title="{{ __('Cambia sfondo') }}"
-                                        >
-                                            <x-lucide-image class="h-4 w-4" />
-                                            <span data-live-stream-background-button-label>{{ __('Sfondo') }}</span>
-                                        </button>
+                            <section class="hidden space-y-5" data-live-stream-onboarding-step="1">
+                                <div class="grid gap-5 lg:grid-cols-2">
+                                    <div class="rounded-box border border-base-300 bg-base-200 p-4">
+                                        <div class="flex items-center justify-between gap-3">
+                                            <p class="text-sm font-semibold">{{ __('Microfono') }}</p>
+                                            <span class="text-xs text-base-content/60" data-live-stream-mic-label></span>
+                                        </div>
+                                        <progress class="progress progress-primary mt-3 w-full" value="0" max="100" data-live-stream-mic-meter></progress>
+                                        <p class="mt-3 text-xs text-base-content/60">{{ __('Parla normalmente e controlla che il livello reagisca.') }}</p>
                                     </div>
-                                    <select
-                                        class="select select-bordered w-full"
-                                        data-live-stream-camera-device-list
-                                        aria-label="{{ __('Dispositivo telecamera') }}"
-                                    ></select>
-                                </div>
-                            </div>
 
-                            <div class="space-y-3">
-                                <div class="rounded-box border border-base-300 bg-base-200 p-4">
-                                    <div class="flex items-center justify-between gap-3">
-                                        <p class="text-sm font-semibold">{{ __('Microfono') }}</p>
-                                        <span class="text-xs text-base-content/60" data-live-stream-mic-label></span>
+                                    <div class="space-y-4">
+                                        <div class="space-y-2">
+                                            <p class="text-sm font-semibold">{{ __('Dispositivo microfono') }}</p>
+                                            <select
+                                                class="select select-bordered w-full"
+                                                data-live-stream-microphone-device-list
+                                                aria-label="{{ __('Dispositivo microfono') }}"
+                                            ></select>
+                                        </div>
+
+                                        <div class="rounded-box border border-base-300 bg-base-200 p-4">
+                                            <p class="text-sm font-semibold">{{ __('Test audio') }}</p>
+                                            <p class="mt-1 text-xs text-base-content/60">{{ __('Ascolta il microfono in tempo reale per verificare volume e ritorno audio.') }}</p>
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline mt-4 w-full"
+                                                data-live-stream-microphone-playback-button
+                                            >
+                                                {{ __('Testa il microfono') }}
+                                            </button>
+                                            <p class="mt-3 hidden text-xs text-base-content/60" data-live-stream-microphone-playback-status></p>
+                                            <audio class="hidden" data-live-stream-microphone-playback-audio></audio>
+                                        </div>
                                     </div>
-                                    <progress class="progress progress-primary mt-3 w-full" value="0" max="100" data-live-stream-mic-meter></progress>
                                 </div>
+                            </section>
 
-                                <div class="space-y-2">
-                                    <p class="text-sm font-semibold">{{ __('Dispositivo microfono') }}</p>
-                                    <select
-                                        class="select select-bordered w-full"
-                                        data-live-stream-microphone-device-list
-                                        aria-label="{{ __('Dispositivo microfono') }}"
-                                    ></select>
-                                </div>
-                            </div>
+                            <div class="alert alert-warning hidden text-sm" data-live-stream-background-warning></div>
                         </div>
 
-                        <div class="alert alert-warning hidden text-sm" data-live-stream-background-warning></div>
+                        <p class="text-sm text-base-content/60" data-live-stream-device-status>
+                            {{ __('Consenti l\'accesso a videocamera e microfono per visualizzare l\'anteprima. Puoi continuare anche senza videocamera.') }}
+                        </p>
                     </div>
+                </div>
 
-                    <p class="text-sm text-base-content/60" data-live-stream-device-status>
-                        {{ __('Consenti l\'accesso a videocamera e microfono per visualizzare l\'anteprima. Puoi continuare anche senza videocamera.') }}
-                    </p>
+                <div class="modal-action mt-6 flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <button type="button" class="btn btn-ghost" data-live-stream-onboarding-back>
+                        {{ __('Indietro') }}
+                    </button>
+                    <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                        <button
+                            type="button"
+                            class="btn btn-outline"
+                            data-live-stream-onboarding-next
+                        >
+                            {{ __('Continua') }}
+                        </button>
+                        <button type="button" class="btn btn-primary" data-live-stream-join-prompt-button>
+                            {{ __('Entra nella diretta') }}
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="modal-backdrop bg-black/55"></div>

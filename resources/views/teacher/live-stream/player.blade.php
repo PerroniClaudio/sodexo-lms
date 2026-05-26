@@ -124,100 +124,230 @@
                         />
                         <div class="tab-content h-[calc(100%-4rem)] border-base-300 bg-base-100 p-4">
                             <div class="h-full overflow-y-auto space-y-4">
-                                <div data-live-stream-preview-panel>
-                                    <div class="card rounded-box border border-base-300 bg-base-100">
-                                        <div class="card-body gap-4 p-4">
-                                            <div class="space-y-3">
-                                                <button type="button" class="btn btn-outline w-full" data-live-stream-preview-request>
-                                                    {{ __('Attiva videocamera e microfono') }}
+                                <div class="card rounded-box border border-base-300 bg-base-100">
+                                    <div class="card-body gap-4 p-4">
+
+
+                                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline h-auto min-h-0 w-full justify-start gap-3 px-4 py-4 normal-case"
+                                                data-live-stream-onboarding-open
+                                            >
+                                                <span class="shrink-0 rounded-full bg-base-200 p-2.5 text-base-content">
+                                                    <x-lucide-sliders-horizontal class="h-5 w-5" />
+                                                </span>
+                                                <span class="min-w-0 text-left text-sm font-semibold leading-tight">{{ __('Gestione dispositivi') }}</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline h-auto min-h-0 w-full justify-start gap-3 px-4 py-4 normal-case"
+                                                data-live-stream-teacher-local-mic-toggle
+                                                aria-label="{{ __('Disattiva microfono') }}"
+                                                title="{{ __('Disattiva microfono') }}"
+                                                disabled
+                                            >
+                                                <span class="shrink-0 rounded-full bg-base-200 p-2.5 text-base-content">
+                                                    <x-lucide-mic class="h-5 w-5" />
+                                                </span>
+                                                <span class="min-w-0 text-left text-sm font-semibold leading-tight">{{ __('Microfono') }}</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline h-auto min-h-0 w-full justify-start gap-3 px-4 py-4 normal-case"
+                                                data-live-stream-audio-output-open
+                                                aria-label="{{ __('Output audio') }}"
+                                                title="{{ __('Output audio') }}"
+                                            >
+                                                <span class="shrink-0 rounded-full bg-base-200 p-2.5 text-base-content">
+                                                    <x-lucide-speaker class="h-5 w-5" />
+                                                </span>
+                                                <span class="min-w-0 text-left text-sm font-semibold leading-tight">{{ __('Output audio') }}</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline h-auto min-h-0 hidden w-full justify-start gap-3 px-4 py-4 normal-case"
+                                                data-live-stream-background-button
+                                                aria-label="{{ __('Cambia sfondo') }}"
+                                                title="{{ __('Cambia sfondo') }}"
+                                            >
+                                                <span class="shrink-0 rounded-full bg-base-200 p-2.5 text-base-content">
+                                                    <x-lucide-image class="h-5 w-5" />
+                                                </span>
+                                                <span class="min-w-0 text-left text-sm font-semibold leading-tight" data-live-stream-background-button-label>{{ __('Sfondo') }}</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline h-auto min-h-0 hidden w-full justify-start gap-3 px-4 py-4 normal-case"
+                                                data-live-stream-screen-share-card
+                                                data-live-stream-screen-share-toggle
+                                                aria-label="{{ __('Condividi schermo') }}"
+                                                title="{{ __('Condividi schermo') }}"
+                                                disabled
+                                            >
+                                                <span class="shrink-0 rounded-full bg-base-200 p-2.5 text-base-content">
+                                                    <x-lucide-monitor-up class="h-5 w-5" />
+                                                </span>
+                                                <span class="min-w-0 text-left text-sm font-semibold leading-tight">{{ __('Schermo') }}</span>
+                                            </button>
+                                        </div>
+
+                                        <p class="hidden text-xs text-base-content/60" data-live-stream-screen-share-status></p>
+
+                                        <button type="button" class="btn btn-error btn-lg hidden w-full" data-live-stream-end-button disabled>
+                                            {{ __('Termina diretta') }}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <dialog class="modal" data-live-stream-onboarding-modal>
+                                    <div class="modal-box w-11/12 max-w-5xl rounded-[1.75rem] border border-base-300 bg-base-100 p-0 shadow-2xl">
+                                        <div class="border-b border-base-300 px-6 py-5">
+                                            <div class="flex items-start justify-between gap-4">
+                                                <div class="space-y-2">
+                                                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/45">{{ __('Setup ingresso') }}</p>
+                                                    <h2 class="text-2xl font-semibold text-base-content">{{ __('Prepara la tua live') }}</h2>
+                                                    <p class="text-sm leading-6 text-base-content/70">{{ __('Configura camera, microfono e sfondo prima di andare in onda.') }}</p>
+                                                </div>
+
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-ghost btn-sm btn-square"
+                                                    data-live-stream-onboarding-close
+                                                    aria-label="{{ __('Chiudi setup') }}"
+                                                >
+                                                    <x-lucide-x class="h-4 w-4" />
                                                 </button>
+                                            </div>
 
-                                                <div class="hidden space-y-3" data-live-stream-preview-content>
-                                                    <div class="overflow-hidden rounded-box border border-base-300 bg-neutral">
-                                                        <video
-                                                            class="aspect-video w-full bg-neutral object-cover"
-                                                            autoplay
-                                                            muted
-                                                            playsinline
-                                                            data-live-stream-preview
-                                                        ></video>
-                                                        <div
-                                                            class="hidden aspect-video w-full items-center justify-center bg-neutral px-6 text-center text-sm text-neutral-content/70"
-                                                            data-live-stream-preview-empty
-                                                        >
-                                                            {{ __('Anteprima video non disponibile') }}
-                                                        </div>
-                                                    </div>
+                                            <div class="mt-5 grid grid-cols-3 gap-3">
+                                                <div class="rounded-box border border-base-300 px-4 py-3 text-sm font-medium transition" data-live-stream-onboarding-indicator="0">
+                                                    {{ __('1. Telecamera') }}
+                                                </div>
+                                                <div class="rounded-box border border-base-300 px-4 py-3 text-sm font-medium transition" data-live-stream-onboarding-indicator="1">
+                                                    {{ __('2. Microfono') }}
+                                                </div>
+                                                <div class="rounded-box border border-base-300 px-4 py-3 text-sm font-medium transition" data-live-stream-onboarding-indicator="2">
+                                                    {{ __('3. Sfondo') }}
+                                                </div>
+                                            </div>
+                                        </div>
 
-                                                    <div class="rounded-box border border-base-300 bg-base-200 p-4">
-                                                        <div class="flex items-center justify-between gap-3">
-                                                            <div>
-                                                                <p class="text-sm font-medium">{{ __('Microfono') }}</p>
-                                                                <span class="text-xs text-base-content/60" data-live-stream-mic-label></span>
+                                        <div class="px-6 py-6" data-live-stream-onboarding-preview-scope>
+                                            <div class="space-y-6" data-live-stream-preview-panel>
+                                                <div class="space-y-6" data-live-stream-preview-content>
+                                                    <section class="space-y-5" data-live-stream-onboarding-step="0">
+                                                        <div class="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.95fr)]">
+                                                            <div class="overflow-hidden rounded-[1.5rem] border border-base-300 bg-neutral">
+                                                                <video
+                                                                    class="aspect-video w-full bg-neutral object-cover"
+                                                                    autoplay
+                                                                    muted
+                                                                    playsinline
+                                                                    data-live-stream-preview
+                                                                ></video>
+                                                                <div
+                                                                    class="hidden aspect-video w-full items-center justify-center bg-neutral px-6 text-center text-sm text-neutral-content/70"
+                                                                    data-live-stream-preview-empty
+                                                                >
+                                                                    {{ __('Anteprima video non disponibile') }}
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="space-y-4">
+                                                                <div class="rounded-box border border-base-300 bg-base-200 p-4">
+                                                                    <p class="text-sm font-semibold">{{ __('Telecamera') }}</p>
+                                                                    <p class="mt-1 text-xs text-base-content/60">{{ __('Scegli la camera con cui entrerai in diretta.') }}</p>
+                                                                    <select
+                                                                        class="select select-bordered mt-4 w-full"
+                                                                        data-live-stream-camera-device-list
+                                                                        aria-label="{{ __('Dispositivo telecamera') }}"
+                                                                    ></select>
+                                                                </div>
+
+                                                                <div class="rounded-box border border-base-300 bg-base-200 p-4">
+                                                                    <p class="text-sm font-semibold">{{ __('Suggerimento') }}</p>
+                                                                    <p class="mt-1 text-sm leading-6 text-base-content/70">{{ __('Controlla inquadratura e luce. Puoi continuare anche se non hai una videocamera disponibile.') }}</p>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                        <progress class="progress progress-primary mt-3 w-full" value="0" max="100" data-live-stream-mic-meter></progress>
-                                                    </div>
+                                                    </section>
 
-                                                    <div class="rounded-box border border-base-300 bg-base-200 p-4">
-                                                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                                                            <button
-                                                                type="button"
-                                                                class="btn btn-outline btn-sm w-full gap-2"
-                                                                data-live-stream-teacher-local-mic-toggle
-                                                                aria-label="{{ __('Disattiva microfono') }}"
-                                                                title="{{ __('Disattiva microfono') }}"
-                                                                disabled
-                                                            >
-                                                                <x-lucide-mic class="h-4 w-4" />
-                                                                <span>{{ __('Microfono') }}</span>
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                class="btn btn-outline btn-sm w-full gap-2"
-                                                                data-live-stream-audio-output-open
-                                                                aria-label="{{ __('Output audio') }}"
-                                                                title="{{ __('Output audio') }}"
-                                                            >
-                                                                <x-lucide-speaker class="h-4 w-4" />
-                                                                <span class="sr-only">{{ __('Output audio') }}</span>
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                class="btn btn-outline btn-sm hidden w-full"
-                                                                data-live-stream-background-button
-                                                                aria-label="{{ __('Cambia sfondo') }}"
-                                                                title="{{ __('Cambia sfondo') }}"
-                                                            >
-                                                                <x-lucide-image class="h-4 w-4" />
-                                                                <span class="sr-only" data-live-stream-background-button-label>{{ __('Sfondo') }}</span>
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                class="btn btn-outline btn-sm hidden w-full"
-                                                                data-live-stream-screen-share-card
-                                                                data-live-stream-screen-share-toggle
-                                                                aria-label="{{ __('Condividi schermo') }}"
-                                                                title="{{ __('Condividi schermo') }}"
-                                                                disabled
-                                                            >
-                                                                <x-lucide-monitor-up class="h-4 w-4" />
-                                                                <span class="sr-only">{{ __('Condividi schermo') }}</span>
-                                                            </button>
+                                                    <section class="hidden space-y-5" data-live-stream-onboarding-step="1">
+                                                        <div class="grid gap-5 lg:grid-cols-2">
+                                                            <div class="rounded-box border border-base-300 bg-base-200 p-5">
+                                                                <div class="flex items-center justify-between gap-3">
+                                                                    <div>
+                                                                        <p class="text-sm font-semibold">{{ __('Microfono') }}</p>
+                                                                        <span class="text-xs text-base-content/60" data-live-stream-mic-label></span>
+                                                                    </div>
+                                                                </div>
+                                                                <progress class="progress progress-primary mt-4 w-full" value="0" max="100" data-live-stream-mic-meter></progress>
+                                                                <p class="mt-3 text-xs text-base-content/60">{{ __('Parla normalmente e verifica il livello in ingresso.') }}</p>
+                                                            </div>
+
+                                                            <div class="space-y-4">
+                                                                <div class="rounded-box border border-base-300 bg-base-200 p-4">
+                                                                    <p class="text-sm font-semibold">{{ __('Dispositivo microfono') }}</p>
+                                                                    <select
+                                                                        class="select select-bordered mt-4 w-full"
+                                                                        data-live-stream-microphone-device-list
+                                                                        aria-label="{{ __('Dispositivo microfono') }}"
+                                                                    ></select>
+                                                                </div>
+
+                                                                <div class="rounded-box border border-base-300 bg-base-200 p-4">
+                                                                    <p class="text-sm font-semibold">{{ __('Test audio') }}</p>
+                                                                    <p class="mt-1 text-xs text-base-content/60">{{ __('Ascolta il microfono in tempo reale per verificare volume e ritorno audio.') }}</p>
+                                                                    <button
+                                                                        type="button"
+                                                                        class="btn btn-outline mt-4 w-full"
+                                                                        data-live-stream-microphone-playback-button
+                                                                    >
+                                                                        {{ __('Testa il microfono') }}
+                                                                    </button>
+                                                                    <p class="mt-3 hidden text-xs text-base-content/60" data-live-stream-microphone-playback-status></p>
+                                                                    <audio class="hidden" data-live-stream-microphone-playback-audio></audio>
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <p class="mt-3 hidden text-xs text-base-content/60" data-live-stream-screen-share-status></p>
-                                                    </div>
+                                                    </section>
 
-                                                    <div class="alert alert-warning hidden text-sm" data-live-stream-background-warning></div>
+                                                    <section class="hidden space-y-5" data-live-stream-onboarding-step="2">
+                                                        <div class="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+                                                            <div class="rounded-[1.5rem] border border-base-300 bg-base-200 p-5">
+                                                                <div class="flex items-center justify-between gap-3">
+                                                                    <div>
+                                                                        <p class="text-sm font-semibold">{{ __('Sfondo videocamera') }}</p>
+                                                                        <p class="mt-1 text-sm leading-6 text-base-content/70">{{ __('Applica blur o scegli un’immagine personalizzata prima di entrare.') }}</p>
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        class="btn btn-outline hidden"
+                                                                        data-live-stream-background-button
+                                                                        aria-label="{{ __('Configura sfondo') }}"
+                                                                        title="{{ __('Configura sfondo') }}"
+                                                                    >
+                                                                        <x-lucide-image class="h-4 w-4" />
+                                                                        <span data-live-stream-background-button-label>{{ __('Sfondo') }}</span>
+                                                                    </button>
+                                                                </div>
 
-                                                    <div class="space-y-3">
-                                                        <button type="button" class="btn btn-primary btn-lg w-full" data-live-stream-start-button>
-                                                            {{ __('Avvia diretta') }}
-                                                        </button>
-                                                        <button type="button" class="btn btn-error btn-lg hidden w-full" data-live-stream-end-button disabled>
-                                                            {{ __('Termina diretta') }}
-                                                        </button>
-                                                    </div>
+                                                                <div class="mt-5 rounded-box border border-dashed border-base-300 bg-base-100/60 p-4 text-sm leading-6 text-base-content/70">
+                                                                    {{ __('Usa il pulsante qui sopra per scegliere nessuno sfondo, blur o un’immagine dalla libreria. La modifica si applica subito all’anteprima.') }}
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="space-y-4">
+                                                                <div class="rounded-box border border-base-300 bg-base-200 p-4">
+                                                                    <p class="text-sm font-semibold">{{ __('Prima di iniziare') }}</p>
+                                                                    <p class="mt-2 text-sm leading-6 text-base-content/70">{{ __('Quando sei pronto avvia la diretta. Il setup rimane riapribile anche dopo l’ingresso.') }}</p>
+                                                                </div>
+
+                                                                <div class="alert alert-warning hidden text-sm" data-live-stream-background-warning></div>
+                                                            </div>
+                                                        </div>
+                                                    </section>
                                                 </div>
 
                                                 <p class="text-sm text-base-content/60" data-live-stream-device-status>
@@ -225,8 +355,28 @@
                                                 </p>
                                             </div>
                                         </div>
+
+                                        <div class="flex flex-col gap-3 border-t border-base-300 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                                            <button type="button" class="btn btn-ghost" data-live-stream-onboarding-back>
+                                                {{ __('Indietro') }}
+                                            </button>
+                                            <div class="flex flex-col gap-3 sm:flex-row">
+                                                <button type="button" class="btn btn-outline" data-live-stream-onboarding-next>
+                                                    {{ __('Continua') }}
+                                                </button>
+                                                <button type="button" class="btn btn-primary" data-live-stream-start-button>
+                                                    {{ __('Avvia diretta') }}
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
+
+                                    <form method="dialog" class="modal-backdrop">
+                                        <button type="submit" data-live-stream-onboarding-backdrop aria-label="{{ __('Chiudi setup') }}">
+                                            <span class="sr-only">{{ __('Chiudi setup') }}</span>
+                                        </button>
+                                    </form>
+                                </dialog>
 
                                 <dialog class="modal" data-live-stream-background-modal>
                                     <div class="modal-box w-11/12 max-w-5xl">
@@ -267,7 +417,7 @@
                                 </dialog>
 
                                 <dialog class="modal" data-live-stream-audio-output-modal>
-                                    <div class="modal-box">
+                                    <div class="modal-box flex max-h-[min(42rem,calc(100vh-3rem))] w-11/12 max-w-3xl flex-col overflow-hidden">
                                         <div class="flex items-start justify-between gap-4">
                                             <div>
                                                 <h3 class="text-lg font-semibold">{{ __('Seleziona output audio') }}</h3>
@@ -279,7 +429,7 @@
                                         </div>
 
                                         <p class="mt-4 hidden text-sm text-base-content/60" data-live-stream-audio-output-status></p>
-                                        <div class="mt-6 grid gap-3" data-live-stream-audio-output-list></div>
+                                        <div class="mt-6 grid max-h-[min(28rem,calc(100vh-12rem))] gap-3 overflow-y-auto pr-1" data-live-stream-audio-output-list></div>
                                     </div>
 
                                     <form method="dialog" class="modal-backdrop">

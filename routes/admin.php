@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\CourseClassController;
 use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\CourseEnrollmentController;
 use App\Http\Controllers\Admin\CourseModuleController;
+use App\Http\Controllers\Admin\CourseTeacherEnrollmentController;
 use App\Http\Controllers\Admin\CustomCertificateController;
 use App\Http\Controllers\Admin\DocumentConversionJobDebugController;
 use App\Http\Controllers\Admin\HomepageCustomizationController;
@@ -203,6 +204,11 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::post('/courses/{course}/enrollments', [CourseEnrollmentController::class, 'storeApi'])->name('courses.enrollments.store');
             Route::post('/courses/{course}/enrollments/{enrollment}/restore', [CourseEnrollmentController::class, 'restoreApi'])->name('courses.enrollments.restore');
             Route::delete('/courses/{course}/enrollments/{enrollment}', [CourseEnrollmentController::class, 'destroyApi'])->name('courses.enrollments.destroy');
+            Route::get('/courses/{course}/teacher-enrollments', [CourseTeacherEnrollmentController::class, 'indexApi'])->name('courses.teacher-enrollments.index');
+            Route::get('/courses/{course}/teacher-enrollments/search-users', [CourseTeacherEnrollmentController::class, 'searchUsersApi'])->name('courses.teacher-enrollments.search-users');
+            Route::post('/courses/{course}/teacher-enrollments', [CourseTeacherEnrollmentController::class, 'storeApi'])->name('courses.teacher-enrollments.store');
+            Route::post('/courses/{course}/teacher-enrollments/{enrollment}/restore', [CourseTeacherEnrollmentController::class, 'restoreApi'])->name('courses.teacher-enrollments.restore');
+            Route::delete('/courses/{course}/teacher-enrollments/{enrollment}', [CourseTeacherEnrollmentController::class, 'destroyApi'])->name('courses.teacher-enrollments.destroy');
 
             // Lista domande e risposte
             Route::get('/courses/{course}/modules/{module}/quiz/questions', [ModuleQuizController::class, 'questionsWithAnswersApi'])->name('courses.modules.quiz.questions.index');
