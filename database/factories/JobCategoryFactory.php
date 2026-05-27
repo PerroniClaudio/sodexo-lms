@@ -19,7 +19,6 @@ class JobCategoryFactory extends Factory
     {
         return [
             'name' => fake()->jobTitle(),
-            'code' => strtoupper(fake()->unique()->lexify('CAT???')),
             'description' => fake()->optional()->sentence(),
         ];
     }

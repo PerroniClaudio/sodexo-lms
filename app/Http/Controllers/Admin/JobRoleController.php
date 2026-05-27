@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreJobRoleRequest;
 use App\Http\Requests\UpdateJobRoleRequest;
 use App\Models\JobRole;
+use App\Models\JobSector;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -37,7 +38,6 @@ class JobRoleController extends Controller
                     });
                 })
                 ->when($sort === 'status', function ($query) use ($direction) {
-                    // Per status: ordina per deleted_at IS NULL (attivi prima) poi per deleted_at
                     if ($direction === 'asc') {
                         $query->orderByRaw('deleted_at IS NOT NULL ASC, deleted_at ASC');
                     } else {
@@ -71,8 +71,11 @@ class JobRoleController extends Controller
 
     public function edit(JobRole $jobRole): View
     {
+        $jobRole->load('jobSectors');
+
         return view('admin.job-role.edit', [
             'role' => $jobRole,
+            'allSectors' => JobSector::query()->orderBy('name')->get(),
         ]);
     }
 
@@ -102,5 +105,51 @@ class JobRoleController extends Controller
         return redirect()
             ->route('admin.job-roles.index')
             ->with('status', __('Ruolo ripristinato con successo.'));
+    }
+
+    public function attachSector(Request $request, JobRole $jobRole): RedirectResponse
+    {
+        $validated = $request->validate([
+            'job_sector_id' => ['required', 'exists:job_sectors,id'],
+            'role_risk_level' => ['required', 'in:low,medium,high'],
+        ]);
+
+        if ($jobRole->jobSectors()->where('job_sector_id', $validated['job_sector_id'])->exists()) {
+            return redirect()
+                ->route('admin.job-roles.edit', $jobRole)
+                ->with('error', __('Questo settore è già associato a questo ruolo.'));
+        }
+
+        $jobRole->jobSectors()->attach($validated['job_sector_id'], [
+            'role_risk_level' => $validated['role_risk_level'],
+        ]);
+
+        return redirect()
+            ->route('admin.job-roles.edit', $jobRole)
+            ->with('status', __('Settore associato con successo.'));
+    }
+
+    public function detachSector(JobRole $jobRole, JobSector $jobSector): RedirectResponse
+    {
+        $jobRole->jobSectors()->detach($jobSector->id);
+
+        return redirect()
+            ->route('admin.job-roles.edit', $jobRole)
+            ->with('status', __('Settore rimosso con successo.'));
+    }
+
+    public function updateSectorRisk(Request $request, JobRole $jobRole, JobSector $jobSector): RedirectResponse
+    {
+        $validated = $request->validate([
+            'role_risk_level' => ['required', 'in:low,medium,high'],
+        ]);
+
+        $jobRole->jobSectors()->updateExistingPivot($jobSector->id, [
+            'role_risk_level' => $validated['role_risk_level'],
+        ]);
+
+        return redirect()
+            ->route('admin.job-roles.edit', $jobRole)
+            ->with('status', __('Rischio aggiornato con successo.'));
     }
 }

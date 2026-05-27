@@ -19,7 +19,6 @@ class JobSectorFactory extends Factory
     {
         return [
             'name' => fake()->randomElement(['Ristorazione', 'Meccanica', 'Edilizia', 'Sanità', 'Logistica', 'Pulizie e Servizi']),
-            'code' => strtoupper(fake()->unique()->lexify('SEC???')),
             'description' => fake()->optional()->sentence(),
         ];
     }

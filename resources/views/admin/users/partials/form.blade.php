@@ -208,20 +208,6 @@
             @error('job_level_id')<span class="text-error text-sm">{{ $message }}</span>@enderror
         </div>
 
-        <!-- Mansione -->
-        <div class="form-control" data-user-only>
-            <label for="job_title_id" class="label">
-                <span class="label-text font-semibold">Mansione <span class="text-error">*</span></span>
-            </label>
-            <select name="job_title_id" id="job_title_id" class="select select-bordered w-full" required>
-                <option value="">{{ __('Seleziona') }}</option>
-                @foreach($jobTitles as $title)
-                    <option value="{{ $title->id }}" @selected(old('job_title_id', $user->job_title_id ?? '') == $title->id)>{{ $title->name }}</option>
-                @endforeach
-            </select>
-            @error('job_title_id')<span class="text-error text-sm">{{ $message }}</span>@enderror
-        </div>
-
         <!-- Ruolo -->
         <div class="form-control" data-user-only>
             <label for="job_role_id" class="label">
@@ -234,6 +220,20 @@
                 @endforeach
             </select>
             @error('job_role_id')<span class="text-error text-sm">{{ $message }}</span>@enderror
+        </div>
+
+        <!-- Mansione -->
+        <div class="form-control" data-user-only>
+            <label for="job_title_id" class="label">
+                <span class="label-text font-semibold">Mansione <span class="text-error">*</span></span>
+            </label>
+            <select name="job_title_id" id="job_title_id" class="select select-bordered w-full" required>
+                <option value="">{{ __('Seleziona') }}</option>
+                @foreach($jobTitles as $title)
+                    <option value="{{ $title->id }}" @selected(old('job_title_id', $user->job_title_id ?? '') == $title->id)>{{ $title->name }}</option>
+                @endforeach
+            </select>
+            @error('job_title_id')<span class="text-error text-sm">{{ $message }}</span>@enderror
         </div>
 
         <!-- Unità Produttiva -->

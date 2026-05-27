@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UserRequest;
+use App\Models\CourseEnrollment;
 use App\Models\JobCategory;
 use App\Models\JobLevel;
 use App\Models\JobRole;
@@ -11,13 +12,13 @@ use App\Models\JobSector;
 use App\Models\JobTitle;
 use App\Models\JobUnit;
 use App\Models\Province;
-use App\Models\Course;
 use App\Models\RiskBasedRequirement;
 use App\Models\User;
 use App\Models\WorldCity;
 use App\Models\WorldCountry;
 use App\Models\WorldDivision;
 use App\Support\UserGeographyMapper;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -163,13 +164,13 @@ class UserController extends Controller
         $jobUnits = JobUnit::all();
         $allRiskBasedRequirements = RiskBasedRequirement::query()->orderBy('name')->get(['id', 'name']);
         $availableCourses = $user->courseEnrollments()
-            ->where('status', \App\Models\CourseEnrollment::STATUS_COMPLETED)
+            ->where('status', CourseEnrollment::STATUS_COMPLETED)
             ->whereNotNull('completed_at')
             ->with(['course:id,title'])
             ->orderByDesc('completed_at')
             ->get()
-            ->filter(fn (\App\Models\CourseEnrollment $enrollment): bool => $enrollment->course !== null)
-            ->map(fn (\App\Models\CourseEnrollment $enrollment): array => [
+            ->filter(fn (CourseEnrollment $enrollment): bool => $enrollment->course !== null)
+            ->map(fn (CourseEnrollment $enrollment): array => [
                 'id' => (int) $enrollment->course->getKey(),
                 'title' => $enrollment->course->title,
                 'completed_at_label' => $enrollment->completed_at?->format('d/m/Y'),
@@ -193,7 +194,7 @@ class UserController extends Controller
         ));
     }
 
-    public function update(UserRequest $request, User $user): RedirectResponse
+    public function update(UserRequest $request, User $user): RedirectResponse|JsonResponse
     {
         $data = $this->userGeographyMapper->toHomeIds($request->validated());
         $accountType = $this->resolveAccountType($data['account_type'] ?? $user->getRoleNames()->first() ?? 'user');
@@ -237,7 +238,7 @@ class UserController extends Controller
         return redirect()->route('admin.users.index')->with('success', 'Utente aggiornato con successo');
     }
 
-    public function riskSummaryApi(User $user): \Illuminate\Http\JsonResponse
+    public function riskSummaryApi(User $user): JsonResponse
     {
         return response()->json([
             'data' => $this->buildRiskSummary($user),

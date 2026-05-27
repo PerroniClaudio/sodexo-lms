@@ -4,6 +4,7 @@ use App\Enums\HierarchyLevel;
 use App\Enums\InclusionType;
 use App\Enums\RiskLevel;
 use App\Models\Course;
+use App\Models\JobRole;
 use App\Models\JobSector;
 use App\Models\JobTitle;
 use App\Models\NaceAteco;
@@ -55,17 +56,21 @@ function prepareRiskContextForUser(User $user): array
         'inclusion_type' => InclusionType::DIVISION->value,
     ]);
 
+    $role = JobRole::create([
+        'name' => 'Preposto',
+        'description' => 'Ruolo con responsabilità di vigilanza',
+    ]);
     $title = JobTitle::create([
         'name' => 'Infermiere',
-        'code' => 'INFERMIERE',
         'description' => 'Professionista sanitario',
     ]);
-    $sector->jobTitles()->attach($title->getKey(), [
-        'title_risk_level' => RiskLevel::HIGH->value,
+    $role->jobSectors()->attach($sector->getKey(), [
+        'role_risk_level' => RiskLevel::HIGH->value,
     ]);
 
     $user->forceFill([
         'job_sector_id' => $sector->getKey(),
+        'job_role_id' => $role->getKey(),
         'job_title_id' => $title->getKey(),
     ])->save();
 
@@ -206,7 +211,7 @@ it('returns the current risk summary via api', function () {
 
     $response->assertSuccessful()
         ->assertJsonPath('data.risk_label', 'Rischio Alto')
-        ->assertJsonPath('data.risk_based_requirements.0.risk_based_requirement_name', 'Corso rischio alto');
+        ->assertJsonFragment(['risk_based_requirement_name' => 'Corso rischio alto']);
 });
 
 it('updates the user through json and keeps the page refresh contract stable', function () {

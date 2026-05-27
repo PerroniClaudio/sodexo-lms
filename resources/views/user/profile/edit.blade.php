@@ -117,12 +117,12 @@
                                 <input type="text" class="input input-bordered w-full" value="{{ $user->jobLevel?->name }}" readonly>
                             </div>
                             <div class="form-control flex flex-col">
-                                <label class="label"><span class="label-text font-semibold">Mansione</span></label>
-                                <input type="text" class="input input-bordered w-full" value="{{ $user->jobTitle?->name }}" readonly>
-                            </div>
-                            <div class="form-control flex flex-col">
                                 <label class="label"><span class="label-text font-semibold">Ruolo</span></label>
                                 <input type="text" class="input input-bordered w-full" value="{{ $user->jobRole?->name }}" readonly>
+                            </div>
+                            <div class="form-control flex flex-col">
+                                <label class="label"><span class="label-text font-semibold">Mansione</span></label>
+                                <input type="text" class="input input-bordered w-full" value="{{ $user->jobTitle?->name }}" readonly>
                             </div>
                             <div class="form-control flex flex-col">
                                 <label class="label"><span class="label-text font-semibold">Unità Produttiva</span></label>

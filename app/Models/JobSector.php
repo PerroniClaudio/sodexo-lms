@@ -31,28 +31,22 @@ class JobSector extends Model
             ->withTimestamps();
     }
 
-    /**
-     * Get the job titles associated with this job sector
-     */
-    public function jobTitles(): BelongsToMany
+    public function jobRoles(): BelongsToMany
     {
-        return $this->belongsToMany(JobTitle::class, 'job_sector_job_title')
-            ->withPivot('title_risk_level')
+        return $this->belongsToMany(JobRole::class, 'job_role_job_sector')
+            ->withPivot('role_risk_level')
             ->withTimestamps();
     }
 
-    /**
-     * Get the risk level for a specific job title in this sector
-     */
-    public function getJobTitleRisk(int $jobTitleId): ?RiskLevel
+    public function getJobRoleRisk(int $jobRoleId): ?RiskLevel
     {
-        $pivot = $this->jobTitles()->wherePivot('job_title_id', $jobTitleId)->first()?->pivot;
+        $pivot = $this->jobRoles()->wherePivot('job_role_id', $jobRoleId)->first()?->pivot;
 
         if (! $pivot) {
             return null;
         }
 
-        return RiskLevel::tryFrom($pivot->title_risk_level);
+        return RiskLevel::tryFrom($pivot->role_risk_level);
     }
 
     /**
@@ -64,12 +58,9 @@ class JobSector extends Model
             ->getSectorRiskLevel($this->id);
     }
 
-    /**
-     * Get the effective risk level for a worker in this sector with a specific job title
-     */
-    public function getEffectiveWorkerRisk(int $jobTitleId): RiskLevel
+    public function getEffectiveWorkerRisk(int $jobRoleId): RiskLevel
     {
         return app(RiskCalculationService::class)
-            ->getEffectiveWorkerRisk($this->id, $jobTitleId);
+            ->getEffectiveWorkerRisk($this->id, $jobRoleId);
     }
 }

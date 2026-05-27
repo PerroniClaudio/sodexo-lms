@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use App\Enums\RiskLevel;
-use App\Services\RiskCalculationService;
 use App\Enums\OnboardingStep;
+use App\Enums\RiskLevel;
 use App\Enums\UserStatus;
+use App\Services\RiskCalculationService;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Builder;
@@ -468,16 +468,16 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Get the effective risk level for a worker in this sector with a specific job title
+     * Get the effective risk level for a worker in this sector with a specific job role.
      */
     public function getEffectiveWorkerRisk(): RiskLevel
     {
-        if(! $this->hasRole('user') || ! $this->jobSector || ! $this->jobTitle) {
-            throw new \LogicException('Cannot calculate risk level for user without "user" role, job sector or job title');
+        if (! $this->hasRole('user') || ! $this->jobSector || ! $this->jobRole) {
+            throw new \LogicException('Cannot calculate risk level for user without "user" role, job sector or job role');
         }
 
         return app(RiskCalculationService::class)
-            ->getEffectiveWorkerRisk($this->jobSector?->id, $this->jobTitle?->id);
+            ->getEffectiveWorkerRisk($this->jobSector->id, $this->jobRole->id);
     }
 
     public function getRiskBasedRequirementsForEffectiveRisk(): array
