@@ -237,18 +237,13 @@
         </div>
 
         <!-- Unità Produttiva -->
-        <div class="form-control" data-user-only>
-            <label for="job_unit_id" class="label">
-                <span class="label-text font-semibold">Unità Produttiva <span class="text-error">*</span></span>
-            </label>
-            <select name="job_unit_id" id="job_unit_id" class="select select-bordered w-full" required>
-                <option value="">{{ __('Seleziona') }}</option>
-                @foreach($jobUnits as $unit)
-                    <option value="{{ $unit->id }}" @selected(old('job_unit_id', $user->job_unit_id ?? '') == $unit->id)>{{ $unit->name }}</option>
-                @endforeach
-            </select>
-            @error('job_unit_id')<span class="text-error text-sm">{{ $message }}</span>@enderror
-        </div>
+        <x-job-unit-selector 
+            :units="$jobUnits"
+            :selectedId="old('job_unit_id', $user->job_unit_id ?? null)"
+            :label="__('Unità Produttiva')"
+            :required="true"
+            data-user-only
+        />
     </div>
 
 

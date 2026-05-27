@@ -3,6 +3,7 @@
         $columns = [
             ['key' => 'id', 'label' => __('ID'), 'sortable' => true],
             ['key' => 'name', 'label' => __('Nome'), 'sortable' => true],
+            ['key' => 'unit_code', 'label' => __('Codice'), 'sortable' => true],
             ['key' => 'city', 'label' => __('Città'), 'sortable' => true],
             ['key' => 'region', 'label' => __('Regione'), 'sortable' => true],
             ['key' => 'country', 'label' => __('Paese'), 'sortable' => true],
@@ -71,6 +72,13 @@
                 <tr class="hover:bg-base-200">
                     <td>{{ $unit->id }}</td>
                     <td>{{ $unit->name }}</td>
+                    <td>
+                        @if($unit->unit_code)
+                            <code class="badge badge-sm badge-ghost">{{ $unit->unit_code }}</code>
+                        @else
+                            <span class="text-base-content/40">-</span>
+                        @endif
+                    </td>
                     <td>{{ $unit->city?->name }}</td>
                     <td>{{ $unit->region?->name }}</td>
                     <td>{{ $unit->country?->name }}</td>

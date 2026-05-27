@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['name', 'description', 'country_id', 'region_id', 'province_id', 'city_id', 'address', 'postal_code'])]
+#[Fillable(['name', 'unit_code', 'description', 'country_id', 'region_id', 'province_id', 'city_id', 'address', 'postal_code'])]
 class JobUnit extends Model
 {
     use HasFactory, SoftDeletes;

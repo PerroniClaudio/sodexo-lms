@@ -32,6 +32,7 @@ class JobUnitFactory extends Factory
 
         return [
             'name' => 'Sede '.$city->name,
+            'unit_code' => fake()->optional(0.7)->bothify('??###'),
             'description' => fake()->optional()->sentence(),
             'country_id' => $city->country_id,
             'region_id' => $city->division_id,

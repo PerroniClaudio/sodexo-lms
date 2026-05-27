@@ -18,7 +18,7 @@ class JobUnitController extends Controller
 {
     public function index(Request $request): View
     {
-        $allowedSorts = ['id', 'name', 'city', 'region', 'country', 'status'];
+        $allowedSorts = ['id', 'name', 'unit_code', 'city', 'region', 'country', 'status'];
         $requestedSort = $request->string('sort')->toString();
         $hasValidSort = in_array($requestedSort, $allowedSorts, true);
         $sort = $hasValidSort ? $requestedSort : 'id';
@@ -39,6 +39,7 @@ class JobUnitController extends Controller
                         $query
                             ->where('id', 'like', "%{$search}%")
                             ->orWhere('name', 'like', "%{$search}%")
+                            ->orWhere('unit_code', 'like', "%{$search}%")
                             ->orWhere('address', 'like', "%{$search}%")
                             ->orWhereHas('city', function ($q) use ($search) {
                                 $q->where('name', 'like', "%{$search}%");

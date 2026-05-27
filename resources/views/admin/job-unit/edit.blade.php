@@ -55,6 +55,24 @@
                         @enderror
                     </div>
 
+                    <div class="form-control flex flex-col gap-2">
+                        <label for="unit_code" class="label p-0">
+                            <span class="label-text font-medium">{{ __('Codice Unità') }}</span>
+                            <span class="label-text-alt text-base-content/60">{{ __('Opzionale') }}</span>
+                        </label>
+                        <input
+                            id="unit_code"
+                            name="unit_code"
+                            type="text"
+                            value="{{ old('unit_code', $unit->unit_code) }}"
+                            class="input input-bordered w-full @error('unit_code') input-error @enderror"
+                            placeholder="{{ __('Es: MI001, RM042') }}"
+                        >
+                        @error('unit_code')
+                            <p class="text-sm text-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     <!-- Selezione geografica gerarchica -->
                     <x-address-selector-simple 
                         :countryValue="old('country', $unit->country?->code ?: 'it')"

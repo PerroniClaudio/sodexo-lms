@@ -24,6 +24,7 @@ class UpdateJobUnitRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'unit_code' => ['nullable', 'string', 'max:50', 'alpha_num'],
             'description' => ['nullable', 'string', 'max:1000'],
             'country' => ['required', 'string', 'max:100'],
             'region' => ['required', 'string', 'max:100'],
@@ -43,6 +44,7 @@ class UpdateJobUnitRequest extends FormRequest
     {
         return [
             'name' => __('Nome'),
+            'unit_code' => __('Codice Unità'),
             'description' => __('Descrizione'),
             'country' => __('Paese'),
             'region' => __('Regione'),
