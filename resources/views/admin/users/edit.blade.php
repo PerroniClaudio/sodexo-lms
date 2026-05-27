@@ -1,10 +1,57 @@
 <x-layouts.admin>
-    <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8" data-admin-user-edit-page>
         <x-page-header :title="__('Modifica utente')" />
+
+        <div
+            class="card border border-base-300 bg-base-100 shadow-sm"
+            data-risk-summary
+            data-risk-summary-url="{{ route('admin.api.users.risk-summary', $user) }}"
+        >
+            <div class="card-body gap-4">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h2 class="card-title">{{ __('Rischio attuale') }}</h2>
+                        <p class="text-sm text-base-content/70" data-risk-summary-message>
+                            {{ $riskSummary['message'] }}
+                        </p>
+                    </div>
+                    <span class="badge badge-lg {{ $riskSummary['risk_badge_class'] }}" data-risk-summary-badge>
+                        {{ $riskSummary['risk_label'] ?? __('Non applicabile') }}
+                    </span>
+                </div>
+
+                <div class="grid gap-3" data-risk-summary-requirements>
+                    @forelse ($riskSummary['requirements'] as $requirement)
+                        <div class="rounded-box border border-base-300 bg-base-200/40 p-4">
+                            <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                <div class="space-y-1">
+                                    <div class="font-semibold text-base-content">{{ $requirement['requirement_name'] }}</div>
+                                    @if ($requirement['requirement_description'])
+                                        <p class="text-sm text-base-content/70">{{ $requirement['requirement_description'] }}</p>
+                                    @endif
+                                </div>
+                                <span class="badge {{
+                                    $requirement['status'] === 'satisfied'
+                                        ? 'badge-success badge-soft'
+                                        : ($requirement['status'] === 'expired' ? 'badge-warning badge-soft' : 'badge-error badge-soft')
+                                }}">
+                                    {{ $requirement['status_label'] }}
+                                </span>
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-sm text-base-content/70">{{ __('Nessun requisito disponibile.') }}</p>
+                    @endforelse
+                </div>
+            </div>
+        </div>
 
         <div class="card border border-base-300 bg-base-100 shadow-sm">
             <div class="card-body gap-6">
-                <form method="POST" action="{{ route('admin.users.update', $user) }}" class="flex flex-col gap-6">
+                <div class="alert alert-success hidden" data-user-form-success></div>
+                <div class="alert alert-error hidden" data-user-form-error></div>
+
+                <form method="POST" action="{{ route('admin.users.update', $user) }}" class="flex flex-col gap-6" data-user-edit-form>
                     @csrf
                     @method('PUT')
                     @include('admin.users.partials.form')
@@ -17,43 +64,208 @@
                             <x-lucide-save class="h-4 w-4" />
                         </button>
                     </div>
-                <script>
-                    document.addEventListener('DOMContentLoaded', function () {
-                        const typeSelect = document.getElementById('account_type');
-                        const userOnlyBlocks = document.querySelectorAll('[data-user-only]');
-                        function toggleUserOnlyFields() {
-                            if (!typeSelect) return;
-                            if (typeSelect.value === 'user') {
-                                userOnlyBlocks.forEach(block => {
-                                    block.style.display = '';
-                                    block.querySelectorAll('input,select,textarea').forEach(el => {
-                                        if (el.dataset.originalName) {
-                                            el.name = el.dataset.originalName;
-                                        }
-                                        el.disabled = false;
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function () {
+                            const typeSelect = document.getElementById('account_type');
+                            const userOnlyBlocks = document.querySelectorAll('[data-user-only]');
+
+                            function toggleUserOnlyFields() {
+                                if (!typeSelect) {
+                                    return;
+                                }
+
+                                if (typeSelect.value === 'user') {
+                                    userOnlyBlocks.forEach((block) => {
+                                        block.style.display = '';
+                                        block.querySelectorAll('input,select,textarea').forEach((element) => {
+                                            if (element.dataset.originalName) {
+                                                element.name = element.dataset.originalName;
+                                            }
+
+                                            element.disabled = false;
+                                        });
                                     });
-                                });
-                            } else {
-                                userOnlyBlocks.forEach(block => {
-                                    block.style.display = 'none';
-                                    block.querySelectorAll('input,select,textarea').forEach(el => {
-                                        if (!el.dataset.originalName) {
-                                            el.dataset.originalName = el.name;
-                                        }
-                                        el.removeAttribute('name');
-                                        el.disabled = true;
+                                } else {
+                                    userOnlyBlocks.forEach((block) => {
+                                        block.style.display = 'none';
+                                        block.querySelectorAll('input,select,textarea').forEach((element) => {
+                                            if (!element.dataset.originalName) {
+                                                element.dataset.originalName = element.name;
+                                            }
+
+                                            element.removeAttribute('name');
+                                            element.disabled = true;
+                                        });
                                     });
-                                });
+                                }
                             }
-                        }
-                        if (typeSelect) {
-                            toggleUserOnlyFields();
-                            typeSelect.addEventListener('change', toggleUserOnlyFields);
-                        }
-                    });
-                </script>
+
+                            if (typeSelect) {
+                                toggleUserOnlyFields();
+                                typeSelect.addEventListener('change', toggleUserOnlyFields);
+                            }
+                        });
+                    </script>
                 </form>
             </div>
+        </div>
+
+        <div
+            class="card border border-base-300 bg-base-100 shadow-sm"
+            data-user-certificates
+            data-index-url="{{ route('admin.api.users.certificates.index', $user) }}"
+            data-store-url="{{ route('admin.api.users.certificates.store', $user) }}"
+        >
+            <div class="card-body gap-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h2 class="card-title">{{ __('Certificati utente') }}</h2>
+                        <p class="text-sm text-base-content/70">
+                            {{ __('Gestisci attestati interni ed esterni e i requisiti soddisfatti da ogni certificato.') }}
+                        </p>
+                    </div>
+
+                    <button type="button" class="btn btn-primary" data-open-certificate-modal>
+                        <x-lucide-plus class="h-4 w-4" />
+                        <span>{{ __('Aggiungi certificato') }}</span>
+                    </button>
+                </div>
+
+                <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <label class="input input-bordered flex w-full max-w-md items-center gap-2">
+                        <x-lucide-search class="h-4 w-4 shrink-0 text-base-content/60" />
+                        <input type="search" class="grow" placeholder="{{ __('Cerca per nome o descrizione') }}" data-certificates-search-input>
+                    </label>
+
+                    <button type="button" class="btn btn-primary btn-outline" data-certificates-search-button>
+                        {{ __('Cerca') }}
+                    </button>
+                </div>
+
+                <div class="hidden rounded-box border border-base-300 bg-base-200/40 px-4 py-3 text-sm text-base-content/70" data-certificates-loading>
+                    {{ __('Caricamento certificati in corso...') }}
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra">
+                        <thead>
+                            <tr>
+                                <th><button type="button" class="inline-flex items-center gap-2" data-sort-key="name">{{ __('Nome') }}</button></th>
+                                <th><button type="button" class="inline-flex items-center gap-2" data-sort-key="issued_at">{{ __('Data conseguimento') }}</button></th>
+                                <th><button type="button" class="inline-flex items-center gap-2" data-sort-key="expires_at">{{ __('Data scadenza') }}</button></th>
+                                <th><button type="button" class="inline-flex items-center gap-2" data-sort-key="is_internal">{{ __('Tipo') }}</button></th>
+                                <th>{{ __('Requisiti') }}</th>
+                                <th class="text-right">{{ __('Azioni') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody data-certificates-tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="rounded-box border border-dashed border-base-300 px-4 py-6 text-center text-sm text-base-content/70" data-certificates-empty>
+                    {{ __('Nessun certificato disponibile per questo utente.') }}
+                </div>
+
+                <div class="flex flex-col gap-4 border-t border-base-300 pt-4 lg:flex-row lg:items-center lg:justify-between">
+                    <p class="text-sm text-base-content/70" data-certificates-summary>0 certificati</p>
+                    <div class="join" data-certificates-pagination></div>
+                </div>
+            </div>
+
+            <dialog class="modal" data-certificate-modal>
+                <div class="modal-box max-w-3xl">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <h3 class="text-lg font-semibold">{{ __('Aggiungi certificato') }}</h3>
+                            <p class="text-sm text-base-content/70">
+                                {{ __('Registra un attestato manualmente e collega i requisiti soddisfatti.') }}
+                            </p>
+                        </div>
+                        <button type="button" class="btn btn-ghost btn-sm btn-circle" data-close-certificate-modal>
+                            <x-lucide-x class="h-4 w-4" />
+                        </button>
+                    </div>
+
+                    <form class="mt-6 flex flex-col gap-4" data-certificate-form>
+                        <input type="hidden" name="certificate_id" value="">
+                        <div class="alert alert-error hidden text-sm" data-certificate-form-error></div>
+
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <div class="form-control flex flex-col gap-2 md:col-span-2">
+                                <label class="label p-0" for="certificate_name">
+                                    <span class="label-text font-medium">{{ __('Nome certificato') }}</span>
+                                </label>
+                                <input id="certificate_name" name="name" type="text" class="input input-bordered w-full" required>
+                            </div>
+
+                            <div class="form-control flex flex-col gap-2">
+                                <label class="label p-0" for="certificate_issued_at">
+                                    <span class="label-text font-medium">{{ __('Data conseguimento') }}</span>
+                                </label>
+                                <input id="certificate_issued_at" name="issued_at" type="date" class="input input-bordered w-full" required>
+                            </div>
+
+                            <div class="form-control flex flex-col gap-2">
+                                <label class="label p-0" for="certificate_expires_at">
+                                    <span class="label-text font-medium">{{ __('Data scadenza') }}</span>
+                                </label>
+                                <input id="certificate_expires_at" name="expires_at" type="date" class="input input-bordered w-full">
+                            </div>
+
+                            <div class="form-control flex flex-col gap-2 md:col-span-2">
+                                <label class="label p-0" for="certificate_description">
+                                    <span class="label-text font-medium">{{ __('Descrizione') }}</span>
+                                </label>
+                                <textarea id="certificate_description" name="description" class="textarea textarea-bordered min-h-24 w-full"></textarea>
+                            </div>
+
+                            <div class="form-control flex flex-col gap-2">
+                                <label class="label p-0" for="certificate_file_path">
+                                    <span class="label-text font-medium">{{ __('Percorso file') }}</span>
+                                </label>
+                                <input id="certificate_file_path" name="file_path" type="text" class="input input-bordered w-full" placeholder="certificates/user/example.pdf">
+                            </div>
+
+                            <div class="form-control flex flex-col gap-2">
+                                <label class="label p-0" for="certificate_internal_course_id">
+                                    <span class="label-text font-medium">{{ __('Corso interno') }}</span>
+                                </label>
+                                <select id="certificate_internal_course_id" name="internal_course_id" class="select select-bordered w-full" @disabled($availableCourses->isEmpty())>
+                                    @if ($availableCourses->isEmpty())
+                                        <option value="">{{ __('Nessun corso completato') }}</option>
+                                    @else
+                                        <option value="">{{ __('Nessuno') }}</option>
+                                        @foreach ($availableCourses as $course)
+                                            <option value="{{ $course['id'] }}">
+                                                {{ $course['title'] }}{{ $course['completed_at_label'] ? ' - completato il '.$course['completed_at_label'] : '' }}
+                                            </option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+
+                            <div class="form-control flex flex-col gap-2 md:col-span-2">
+                                <label class="label p-0" for="certificate_requirements">
+                                    <span class="label-text font-medium">{{ __('Requisiti soddisfatti') }}</span>
+                                </label>
+                                <select id="certificate_requirements" name="requirements[]" class="select select-bordered min-h-48 w-full" multiple data-certificate-requirements>
+                                    @foreach ($allRequirements as $requirement)
+                                        <option value="{{ $requirement->id }}">{{ $requirement->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end gap-3">
+                            <button type="button" class="btn btn-ghost" data-close-certificate-modal>{{ __('Annulla') }}</button>
+                            <button type="submit" class="btn btn-primary">{{ __('Salva certificato') }}</button>
+                        </div>
+                    </form>
+                </div>
+                <form method="dialog" class="modal-backdrop">
+                    <button>{{ __('Chiudi') }}</button>
+                </form>
+            </dialog>
         </div>
     </div>
 </x-layouts.admin>

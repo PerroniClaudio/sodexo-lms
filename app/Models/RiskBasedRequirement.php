@@ -6,6 +6,7 @@ use App\Enums\RiskLevel;
 use Illuminate\Database\Eloquent\Casts\AsEnumCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class RiskBasedRequirement extends Model
@@ -89,6 +90,16 @@ class RiskBasedRequirement extends Model
     public function scopeForRiskLevel($query, RiskLevel $riskLevel)
     {
         return $query->whereJsonContains('risk_levels', $riskLevel->value);
+    }
+
+    public function userCertificates(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            UserCertificate::class,
+            'requirement_user_certificate',
+            'risk_based_requirement_id',
+            'user_certificate_id'
+        );
     }
 
     /**

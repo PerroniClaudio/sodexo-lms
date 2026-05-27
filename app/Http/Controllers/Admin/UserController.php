@@ -11,6 +11,8 @@ use App\Models\JobSector;
 use App\Models\JobTitle;
 use App\Models\JobUnit;
 use App\Models\Province;
+use App\Models\Course;
+use App\Models\RiskBasedRequirement;
 use App\Models\User;
 use App\Models\WorldCity;
 use App\Models\WorldCountry;
@@ -159,8 +161,36 @@ class UserController extends Controller
         $jobRoles = JobRole::all();
         $jobSectors = JobSector::all();
         $jobUnits = JobUnit::all();
+        $allRequirements = RiskBasedRequirement::query()->orderBy('name')->get(['id', 'name']);
+        $availableCourses = $user->courseEnrollments()
+            ->where('status', \App\Models\CourseEnrollment::STATUS_COMPLETED)
+            ->whereNotNull('completed_at')
+            ->with(['course:id,title'])
+            ->orderByDesc('completed_at')
+            ->get()
+            ->filter(fn (\App\Models\CourseEnrollment $enrollment): bool => $enrollment->course !== null)
+            ->map(fn (\App\Models\CourseEnrollment $enrollment): array => [
+                'id' => (int) $enrollment->course->getKey(),
+                'title' => $enrollment->course->title,
+                'completed_at_label' => $enrollment->completed_at?->format('d/m/Y'),
+            ])
+            ->unique('id')
+            ->values();
 
-        return view('admin.users.edit', compact('user', 'jobCategories', 'jobLevels', 'jobTitles', 'jobRoles', 'jobSectors', 'jobUnits'));
+        $riskSummary = $this->buildRiskSummary($user);
+
+        return view('admin.users.edit', compact(
+            'user',
+            'jobCategories',
+            'jobLevels',
+            'jobTitles',
+            'jobRoles',
+            'jobSectors',
+            'jobUnits',
+            'allRequirements',
+            'availableCourses',
+            'riskSummary',
+        ));
     }
 
     public function update(UserRequest $request, User $user): RedirectResponse
@@ -197,7 +227,21 @@ class UserController extends Controller
         $user->update($data);
         $user->syncRoles([$accountType]);
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Utente aggiornato con successo',
+            ]);
+        }
+
         return redirect()->route('admin.users.index')->with('success', 'Utente aggiornato con successo');
+    }
+
+    public function riskSummaryApi(User $user): \Illuminate\Http\JsonResponse
+    {
+        return response()->json([
+            'data' => $this->buildRiskSummary($user),
+        ]);
     }
 
     public function destroy(User $user): RedirectResponse
@@ -277,5 +321,51 @@ class UserController extends Controller
         }
 
         return $availableTeacherRoles->first() ?? $accountType;
+    }
+
+    /**
+     * @return array{
+     *     risk_label: ?string,
+     *     risk_badge_class: string,
+     *     is_applicable: bool,
+     *     message: string,
+     *     requirements: array<int, array{
+     *         requirement_id: int,
+     *         requirement_name: string,
+     *         requirement_description: ?string,
+     *         satisfied: bool,
+     *         status: string,
+     *         status_label: string,
+     *         expires_at: ?string,
+     *         expires_at_label: ?string,
+     *         certificate_ids: array<int, int>,
+     *         certificate_names: array<int, string>
+     *     }>
+     * }
+     */
+    private function buildRiskSummary(User $user): array
+    {
+        try {
+            $effectiveRisk = $user->getEffectiveWorkerRisk();
+            $requirementsCompliance = $user->checkRequirementsCompliance();
+
+            return [
+                'risk_label' => $effectiveRisk->label(),
+                'risk_badge_class' => $effectiveRisk->badgeColor(),
+                'is_applicable' => true,
+                'message' => $requirementsCompliance->isEmpty()
+                    ? __('Nessun requisito disponibile per il rischio corrente.')
+                    : __('Requisiti in base al rischio effettivo dell\'utente.'),
+                'requirements' => $requirementsCompliance->values()->all(),
+            ];
+        } catch (\LogicException) {
+            return [
+                'risk_label' => null,
+                'risk_badge_class' => 'badge-ghost',
+                'is_applicable' => false,
+                'message' => __('Nessun requisito disponibile per il rischio corrente o utente non classificabile come lavoratore.'),
+                'requirements' => [],
+            ];
+        }
     }
 }

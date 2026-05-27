@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements MustVerifyEmail
@@ -134,6 +135,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function courseEnrollments(): HasMany
     {
         return $this->hasMany(CourseEnrollment::class);
+    }
+
+    public function userCertificates(): HasMany
+    {
+        return $this->hasMany(UserCertificate::class);
     }
 
     public function moduleTeacherEnrollments(): HasMany
@@ -484,5 +490,83 @@ class User extends Authenticatable implements MustVerifyEmail
 
         return app(RiskCalculationService::class)
             ->getRequirementsForRiskLevel($effectiveRisk);
+    }
+
+    /**
+     * @return Collection<int, array{
+     *     requirement_id: int,
+     *     requirement_name: string,
+     *     requirement_description: ?string,
+     *     satisfied: bool,
+     *     status: string,
+     *     status_label: string,
+     *     expires_at: ?string,
+     *     expires_at_label: ?string,
+     *     certificate_ids: array<int, int>,
+     *     certificate_names: array<int, string>
+     * }>
+     */
+    public function checkRequirementsCompliance(): Collection
+    {
+        $requirements = collect($this->getRequirementsForEffectiveRisk())
+            ->filter(fn (mixed $requirement): bool => $requirement instanceof RiskBasedRequirement)
+            ->values();
+
+        if ($requirements->isEmpty()) {
+            return collect();
+        }
+
+        $requirementIds = $requirements->pluck('id')->all();
+        $today = now()->toDateString();
+
+        $allRelevantCertificates = $this->userCertificates()
+            ->with(['requirements:id,name'])
+            ->whereHas('requirements', function (Builder $query) use ($requirementIds): void {
+                $query->whereIn('risk_based_requirements.id', $requirementIds);
+            })
+            ->get();
+
+        $validCertificates = $allRelevantCertificates
+            ->filter(function (UserCertificate $certificate) use ($today): bool {
+                return $certificate->expires_at === null
+                    || $certificate->expires_at->toDateString() >= $today;
+            })
+            ->values();
+
+        return $requirements->map(function (RiskBasedRequirement $requirement) use ($allRelevantCertificates, $validCertificates): array {
+            $matchingValidCertificates = $validCertificates
+                ->filter(fn (UserCertificate $certificate): bool => $certificate->requirements->contains('id', $requirement->getKey()))
+                ->values();
+
+            $matchingExpiredCertificates = $allRelevantCertificates
+                ->filter(fn (UserCertificate $certificate): bool => $certificate->requirements->contains('id', $requirement->getKey()))
+                ->reject(fn (UserCertificate $certificate): bool => $matchingValidCertificates->contains('id', $certificate->getKey()))
+                ->values();
+
+            $bestValidCertificate = $matchingValidCertificates
+                ->sortByDesc(fn (UserCertificate $certificate): int => $certificate->expires_at?->timestamp ?? PHP_INT_MAX)
+                ->first();
+
+            $isSatisfied = $bestValidCertificate !== null;
+            $expiresAt = $bestValidCertificate?->expires_at;
+            $status = $isSatisfied ? 'satisfied' : ($matchingExpiredCertificates->isNotEmpty() ? 'expired' : 'missing');
+
+            return [
+                'requirement_id' => (int) $requirement->getKey(),
+                'requirement_name' => $requirement->name,
+                'requirement_description' => $requirement->description,
+                'satisfied' => $isSatisfied,
+                'status' => $status,
+                'status_label' => match ($status) {
+                    'satisfied' => $expiresAt === null ? __('Soddisfatto') : __('Soddisfatto fino al :date', ['date' => $expiresAt->format('d/m/Y')]),
+                    'expired' => __('Scaduto'),
+                    default => __('Mancante'),
+                },
+                'expires_at' => $expiresAt?->toDateString(),
+                'expires_at_label' => $expiresAt?->format('d/m/Y'),
+                'certificate_ids' => $matchingValidCertificates->pluck('id')->map(fn (mixed $id): int => (int) $id)->all(),
+                'certificate_names' => $matchingValidCertificates->pluck('name')->values()->all(),
+            ];
+        })->values();
     }
 }

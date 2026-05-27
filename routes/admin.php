@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\RegiaController;
 use App\Http\Controllers\Admin\RiskBasedRequirementController;
 use App\Http\Controllers\Admin\SatisfactionSurveyController;
 use App\Http\Controllers\Admin\ScormPackageController;
+use App\Http\Controllers\Admin\UserCertificateController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VideoController;
 use App\Http\Controllers\Admin\VideoReportController;
@@ -209,6 +210,11 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::post('/courses/{course}/teacher-enrollments', [CourseTeacherEnrollmentController::class, 'storeApi'])->name('courses.teacher-enrollments.store');
             Route::post('/courses/{course}/teacher-enrollments/{enrollment}/restore', [CourseTeacherEnrollmentController::class, 'restoreApi'])->name('courses.teacher-enrollments.restore');
             Route::delete('/courses/{course}/teacher-enrollments/{enrollment}', [CourseTeacherEnrollmentController::class, 'destroyApi'])->name('courses.teacher-enrollments.destroy');
+            Route::get('/users/{user}/certificates', [UserCertificateController::class, 'indexApi'])->name('users.certificates.index');
+            Route::post('/users/{user}/certificates', [UserCertificateController::class, 'storeApi'])->name('users.certificates.store');
+            Route::put('/users/{user}/certificates/{userCertificate}', [UserCertificateController::class, 'updateApi'])->name('users.certificates.update');
+            Route::delete('/users/{user}/certificates/{userCertificate}', [UserCertificateController::class, 'destroyApi'])->name('users.certificates.destroy');
+            Route::get('/users/{user}/risk-summary', [UserController::class, 'riskSummaryApi'])->name('users.risk-summary');
 
             // Lista domande e risposte
             Route::get('/courses/{course}/modules/{module}/quiz/questions', [ModuleQuizController::class, 'questionsWithAnswersApi'])->name('courses.modules.quiz.questions.index');

@@ -6,6 +6,7 @@ use App\Enums\InclusionType;
 use App\Enums\RiskLevel;
 use App\Models\JobSector;
 use App\Models\NaceAteco;
+use App\Models\RiskBasedRequirement;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -73,6 +74,18 @@ class RiskCalculationService
 
         // Restituisce il rischio più alto tra settore e mansione
         return $sectorRisk->max($titleRisk);
+    }
+
+    /**
+     * @return array<int, RiskBasedRequirement>
+     */
+    public function getRequirementsForRiskLevel(RiskLevel $riskLevel): array
+    {
+        return RiskBasedRequirement::query()
+            ->forRiskLevel($riskLevel)
+            ->orderBy('name')
+            ->get()
+            ->all();
     }
 
     /**
