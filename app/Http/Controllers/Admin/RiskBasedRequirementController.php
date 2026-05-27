@@ -26,7 +26,7 @@ class RiskBasedRequirementController extends Controller
         $showTrashed = $request->boolean('show_trashed');
 
         return view('admin.risk-based-requirement.index', [
-            'requirements' => RiskBasedRequirement::query()
+            'riskBasedRequirements' => RiskBasedRequirement::query()
                 ->when($showTrashed, function ($query) {
                     $query->withTrashed();
                 })
@@ -57,17 +57,17 @@ class RiskBasedRequirementController extends Controller
 
     public function store(StoreRiskBasedRequirementRequest $request): RedirectResponse
     {
-        $requirement = RiskBasedRequirement::create($request->validated());
+        $riskBasedRequirement = RiskBasedRequirement::create($request->validated());
 
         return redirect()
-            ->route('admin.risk-based-requirements.edit', $requirement)
-            ->with('status', __('Requisito creato con successo.'));
+            ->route('admin.risk-based-requirements.edit', $riskBasedRequirement)
+            ->with('status', __('Requisito di rischio creato con successo.'));
     }
 
     public function edit(RiskBasedRequirement $riskBasedRequirement): View
     {
         return view('admin.risk-based-requirement.edit', [
-            'requirement' => $riskBasedRequirement,
+            'riskBasedRequirement' => $riskBasedRequirement,
             'riskLevels' => RiskLevel::cases(),
         ]);
     }
@@ -78,7 +78,7 @@ class RiskBasedRequirementController extends Controller
 
         return redirect()
             ->route('admin.risk-based-requirements.edit', $riskBasedRequirement)
-            ->with('status', __('Requisito aggiornato con successo.'));
+            ->with('status', __('Requisito di rischio aggiornato con successo.'));
     }
 
     public function destroy(RiskBasedRequirement $riskBasedRequirement): RedirectResponse
@@ -87,16 +87,16 @@ class RiskBasedRequirementController extends Controller
 
         return redirect()
             ->route('admin.risk-based-requirements.index')
-            ->with('status', __('Requisito eliminato con successo.'));
+            ->with('status', __('Requisito di rischio eliminato con successo.'));
     }
 
     public function restore($id): RedirectResponse
     {
-        $requirement = RiskBasedRequirement::withTrashed()->findOrFail($id);
-        $requirement->restore();
+        $riskBasedRequirement = RiskBasedRequirement::withTrashed()->findOrFail($id);
+        $riskBasedRequirement->restore();
 
         return redirect()
             ->route('admin.risk-based-requirements.index')
-            ->with('status', __('Requisito ripristinato con successo.'));
+            ->with('status', __('Requisito di rischio ripristinato con successo.'));
     }
 }

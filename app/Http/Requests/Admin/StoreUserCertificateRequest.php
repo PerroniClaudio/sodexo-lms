@@ -24,8 +24,8 @@ class StoreUserCertificateRequest extends FormRequest
             'expires_at' => ['nullable', 'date', 'after_or_equal:issued_at'],
             'internal_course_id' => ['nullable', 'integer', 'exists:courses,id'],
             'is_internal' => ['nullable', 'boolean'],
-            'requirements' => ['nullable', 'array'],
-            'requirements.*' => ['integer', 'exists:risk_based_requirements,id'],
+            'risk_based_requirement_ids' => ['nullable', 'array'],
+            'risk_based_requirement_ids.*' => ['integer', 'exists:risk_based_requirements,id'],
         ];
     }
 
@@ -41,7 +41,7 @@ class StoreUserCertificateRequest extends FormRequest
             'issued_at' => __('data conseguimento'),
             'expires_at' => __('data scadenza'),
             'internal_course_id' => __('corso interno'),
-            'requirements' => __('requisiti'),
+            'risk_based_requirement_ids' => __('requisiti di rischio'),
         ];
     }
 }

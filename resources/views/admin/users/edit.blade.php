@@ -20,27 +20,27 @@
                     </span>
                 </div>
 
-                <div class="grid gap-3" data-risk-summary-requirements>
-                    @forelse ($riskSummary['requirements'] as $requirement)
+                <div class="grid gap-3" data-risk-based-requirements-items>
+                    @forelse ($riskSummary['risk_based_requirements'] as $riskBasedRequirement)
                         <div class="rounded-box border border-base-300 bg-base-200/40 p-4">
                             <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                                 <div class="space-y-1">
-                                    <div class="font-semibold text-base-content">{{ $requirement['requirement_name'] }}</div>
-                                    @if ($requirement['requirement_description'])
-                                        <p class="text-sm text-base-content/70">{{ $requirement['requirement_description'] }}</p>
+                                    <div class="font-semibold text-base-content">{{ $riskBasedRequirement['risk_based_requirement_name'] }}</div>
+                                    @if ($riskBasedRequirement['risk_based_requirement_description'])
+                                        <p class="text-sm text-base-content/70">{{ $riskBasedRequirement['risk_based_requirement_description'] }}</p>
                                     @endif
                                 </div>
                                 <span class="badge {{
-                                    $requirement['status'] === 'satisfied'
+                                    $riskBasedRequirement['status'] === 'satisfied'
                                         ? 'badge-success badge-soft'
-                                        : ($requirement['status'] === 'expired' ? 'badge-warning badge-soft' : 'badge-error badge-soft')
+                                        : ($riskBasedRequirement['status'] === 'expired' ? 'badge-warning badge-soft' : 'badge-error badge-soft')
                                 }}">
-                                    {{ $requirement['status_label'] }}
+                                    {{ $riskBasedRequirement['status_label'] }}
                                 </span>
                             </div>
                         </div>
                     @empty
-                        <p class="text-sm text-base-content/70">{{ __('Nessun requisito disponibile.') }}</p>
+                        <p class="text-sm text-base-content/70">{{ __('Nessun requisito di rischio disponibile.') }}</p>
                     @endforelse
                 </div>
             </div>
@@ -121,7 +121,7 @@
                     <div>
                         <h2 class="card-title">{{ __('Certificati utente') }}</h2>
                         <p class="text-sm text-base-content/70">
-                            {{ __('Gestisci attestati interni ed esterni e i requisiti soddisfatti da ogni certificato.') }}
+                            {{ __('Gestisci attestati interni ed esterni e i requisiti di rischio soddisfatti da ogni certificato.') }}
                         </p>
                     </div>
 
@@ -154,7 +154,7 @@
                                 <th><button type="button" class="inline-flex items-center gap-2" data-sort-key="issued_at">{{ __('Data conseguimento') }}</button></th>
                                 <th><button type="button" class="inline-flex items-center gap-2" data-sort-key="expires_at">{{ __('Data scadenza') }}</button></th>
                                 <th><button type="button" class="inline-flex items-center gap-2" data-sort-key="is_internal">{{ __('Tipo') }}</button></th>
-                                <th>{{ __('Requisiti') }}</th>
+                                <th>{{ __('Requisiti di rischio') }}</th>
                                 <th class="text-right">{{ __('Azioni') }}</th>
                             </tr>
                         </thead>
@@ -178,7 +178,7 @@
                         <div>
                             <h3 class="text-lg font-semibold">{{ __('Aggiungi certificato') }}</h3>
                             <p class="text-sm text-base-content/70">
-                                {{ __('Registra un attestato manualmente e collega i requisiti soddisfatti.') }}
+                                {{ __('Registra un attestato manualmente e collega i requisiti di rischio soddisfatti.') }}
                             </p>
                         </div>
                         <button type="button" class="btn btn-ghost btn-sm btn-circle" data-close-certificate-modal>
@@ -245,12 +245,12 @@
                             </div>
 
                             <div class="form-control flex flex-col gap-2 md:col-span-2">
-                                <label class="label p-0" for="certificate_requirements">
-                                    <span class="label-text font-medium">{{ __('Requisiti soddisfatti') }}</span>
+                                <label class="label p-0" for="certificate_risk_based_requirement_ids">
+                                    <span class="label-text font-medium">{{ __('Requisiti di rischio soddisfatti') }}</span>
                                 </label>
-                                <select id="certificate_requirements" name="requirements[]" class="select select-bordered min-h-48 w-full" multiple data-certificate-requirements>
-                                    @foreach ($allRequirements as $requirement)
-                                        <option value="{{ $requirement->id }}">{{ $requirement->name }}</option>
+                                <select id="certificate_risk_based_requirement_ids" name="risk_based_requirement_ids[]" class="select select-bordered min-h-48 w-full" multiple data-risk-based-requirements-select>
+                                    @foreach ($allRiskBasedRequirements as $riskBasedRequirement)
+                                        <option value="{{ $riskBasedRequirement->id }}">{{ $riskBasedRequirement->name }}</option>
                                     @endforeach
                                 </select>
                             </div>

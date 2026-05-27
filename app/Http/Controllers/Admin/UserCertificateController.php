@@ -36,7 +36,7 @@ class UserCertificateController extends Controller
         $query = UserCertificate::query()
             ->whereBelongsTo($user)
             ->with([
-                'requirements:id,name',
+                'riskBasedRequirements:id,name',
                 'internalCourse:id,title',
             ]);
 
@@ -68,10 +68,10 @@ class UserCertificateController extends Controller
                     'is_internal' => $certificate->is_internal,
                     'type_label' => $certificate->is_internal ? __('Interno') : __('Esterno'),
                     'internal_course' => $certificate->internalCourse?->title,
-                    'requirements' => $certificate->requirements
-                        ->map(fn ($requirement): array => [
-                            'id' => $requirement->getKey(),
-                            'name' => $requirement->name,
+                    'risk_based_requirements' => $certificate->riskBasedRequirements
+                        ->map(fn ($riskBasedRequirement): array => [
+                            'id' => $riskBasedRequirement->getKey(),
+                            'name' => $riskBasedRequirement->name,
                         ])
                         ->values()
                         ->all(),
@@ -167,8 +167,8 @@ class UserCertificateController extends Controller
             'expires_at' => $validated['expires_at'] ?? null,
         ]);
         $certificate->save();
-        $certificate->requirements()->sync($validated['requirements'] ?? []);
+        $certificate->riskBasedRequirements()->sync($validated['risk_based_requirement_ids'] ?? []);
 
-        return $certificate->load(['requirements:id,name', 'internalCourse:id,title']);
+        return $certificate->load(['riskBasedRequirements:id,name', 'internalCourse:id,title']);
     }
 }

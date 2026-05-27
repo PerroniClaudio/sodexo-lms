@@ -49,7 +49,7 @@ class UserCertificate extends Model
         return $this->belongsTo(Course::class, 'internal_course_id');
     }
 
-    public function requirements(): BelongsToMany
+    public function riskBasedRequirements(): BelongsToMany
     {
         return $this->belongsToMany(
             RiskBasedRequirement::class,

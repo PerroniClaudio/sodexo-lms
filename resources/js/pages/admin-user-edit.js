@@ -20,9 +20,9 @@ function initializeRiskSummary(page) {
     const summaryUrl = container.dataset.riskSummaryUrl;
     const messageElement = container.querySelector('[data-risk-summary-message]');
     const badgeElement = container.querySelector('[data-risk-summary-badge]');
-    const requirementsContainer = container.querySelector('[data-risk-summary-requirements]');
+    const riskBasedRequirementsContainer = container.querySelector('[data-risk-based-requirements-items]');
 
-    if (!summaryUrl || !messageElement || !badgeElement || !requirementsContainer) {
+    if (!summaryUrl || !messageElement || !badgeElement || !riskBasedRequirementsContainer) {
         return;
     }
 
@@ -49,30 +49,30 @@ function initializeRiskSummary(page) {
         messageElement.textContent = summary.message || '';
         badgeElement.className = `badge badge-lg ${summary.risk_badge_class || 'badge-ghost'}`;
         badgeElement.textContent = summary.risk_label || 'Non applicabile';
-        requirementsContainer.innerHTML = '';
+        riskBasedRequirementsContainer.innerHTML = '';
 
-        if (!Array.isArray(summary.requirements) || summary.requirements.length === 0) {
+        if (!Array.isArray(summary.risk_based_requirements) || summary.risk_based_requirements.length === 0) {
             const empty = document.createElement('p');
             empty.className = 'text-sm text-base-content/70';
-            empty.textContent = 'Nessun requisito disponibile.';
-            requirementsContainer.appendChild(empty);
+            empty.textContent = 'Nessun requisito di rischio disponibile.';
+            riskBasedRequirementsContainer.appendChild(empty);
 
             return;
         }
 
-        summary.requirements.forEach((requirement) => {
+        summary.risk_based_requirements.forEach((riskBasedRequirement) => {
             const item = document.createElement('div');
             item.className = 'rounded-box border border-base-300 bg-base-200/40 p-4';
             item.innerHTML = `
                 <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div class="space-y-1">
-                        <div class="font-semibold text-base-content">${escapeHtml(requirement.requirement_name)}</div>
-                        ${requirement.requirement_description ? `<p class="text-sm text-base-content/70">${escapeHtml(requirement.requirement_description)}</p>` : ''}
+                        <div class="font-semibold text-base-content">${escapeHtml(riskBasedRequirement.risk_based_requirement_name)}</div>
+                        ${riskBasedRequirement.risk_based_requirement_description ? `<p class="text-sm text-base-content/70">${escapeHtml(riskBasedRequirement.risk_based_requirement_description)}</p>` : ''}
                     </div>
-                    <span class="badge ${requirementBadgeClass(requirement.status)}">${escapeHtml(requirement.status_label)}</span>
+                    <span class="badge ${requirementBadgeClass(riskBasedRequirement.status)}">${escapeHtml(riskBasedRequirement.status_label)}</span>
                 </div>
             `;
-            requirementsContainer.appendChild(item);
+            riskBasedRequirementsContainer.appendChild(item);
         });
     };
 
@@ -163,11 +163,11 @@ function initializeCertificatesTable(page) {
     const form = container.querySelector('[data-certificate-form]');
     const formError = container.querySelector('[data-certificate-form-error]');
     const submitButton = form?.querySelector('button[type="submit"]');
-    const requirementsSelect = form?.querySelector('[data-certificate-requirements]');
+    const riskBasedRequirementsSelect = form?.querySelector('[data-risk-based-requirements-select]');
     const certificateIdInput = form?.elements.namedItem('certificate_id');
     const modalTitle = container.querySelector('[data-certificate-modal] h3');
 
-    if (!apiUrl || !storeUrl || !tableBody || !emptyState || !summary || !pagination || !searchInput || !searchButton || !loadingIndicator || !modal || !openModalButton || closeButtons.length === 0 || !form || !formError || !submitButton || !requirementsSelect || !certificateIdInput || !modalTitle) {
+    if (!apiUrl || !storeUrl || !tableBody || !emptyState || !summary || !pagination || !searchInput || !searchButton || !loadingIndicator || !modal || !openModalButton || closeButtons.length === 0 || !form || !formError || !submitButton || !riskBasedRequirementsSelect || !certificateIdInput || !modalTitle) {
         return;
     }
 
@@ -221,13 +221,13 @@ function initializeCertificatesTable(page) {
         return params.toString();
     };
 
-    const renderRequirements = (requirements) => {
-        if (!Array.isArray(requirements) || requirements.length === 0) {
+    const renderRiskBasedRequirements = (riskBasedRequirements) => {
+        if (!Array.isArray(riskBasedRequirements) || riskBasedRequirements.length === 0) {
             return '<span class="text-sm text-base-content/50">-</span>';
         }
 
-        return requirements
-            .map((requirement) => `<span class="badge badge-outline badge-sm">${escapeHtml(requirement.name)}</span>`)
+        return riskBasedRequirements
+            .map((riskBasedRequirement) => `<span class="badge badge-outline badge-sm">${escapeHtml(riskBasedRequirement.name)}</span>`)
             .join(' ');
     };
 
@@ -250,7 +250,7 @@ function initializeCertificatesTable(page) {
                     ${row.internal_course ? `<div class="mt-1 text-xs text-base-content/60">${escapeHtml(row.internal_course)}</div>` : ''}
                 </td>
                 <td class="max-w-md">
-                    <div class="flex flex-wrap gap-1">${renderRequirements(row.requirements)}</div>
+                    <div class="flex flex-wrap gap-1">${renderRiskBasedRequirements(row.risk_based_requirements)}</div>
                 </td>
                 <td>
                     <div class="flex justify-end gap-2">
@@ -340,7 +340,7 @@ function initializeCertificatesTable(page) {
         submitButton.textContent = 'Salva certificato';
         formError.classList.add('hidden');
         formError.textContent = '';
-        Array.from(requirementsSelect.options).forEach((option) => {
+        Array.from(riskBasedRequirementsSelect.options).forEach((option) => {
             option.selected = false;
         });
     };
@@ -358,9 +358,9 @@ function initializeCertificatesTable(page) {
         form.elements.namedItem('expires_at').value = certificate.expires_at_iso || '';
         form.elements.namedItem('internal_course_id').value = certificate.internal_course_id || '';
 
-        const requirementIds = new Set((certificate.requirements || []).map((requirement) => Number(requirement.id)));
-        Array.from(requirementsSelect.options).forEach((option) => {
-            option.selected = requirementIds.has(Number(option.value));
+        const riskBasedRequirementIds = new Set((certificate.risk_based_requirements || []).map((riskBasedRequirement) => Number(riskBasedRequirement.id)));
+        Array.from(riskBasedRequirementsSelect.options).forEach((option) => {
+            option.selected = riskBasedRequirementIds.has(Number(option.value));
         });
 
         modal.showModal();
@@ -409,7 +409,7 @@ function initializeCertificatesTable(page) {
             issued_at: formData.get('issued_at'),
             expires_at: formData.get('expires_at') || null,
             internal_course_id: formData.get('internal_course_id') || null,
-            requirements: Array.from(requirementsSelect.selectedOptions).map((option) => Number(option.value)),
+            risk_based_requirement_ids: Array.from(riskBasedRequirementsSelect.selectedOptions).map((option) => Number(option.value)),
         };
 
         try {

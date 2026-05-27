@@ -18,12 +18,12 @@
 
         <x-data-table
             :columns="$columns"
-            :rows="$requirements"
+            :rows="$riskBasedRequirements"
             :sort="$tableSort"
             :direction="$tableDirection"
             :search="$tableSearch"
-            :search-placeholder="__('Cerca nei requisiti')"
-            :empty-message="__('Nessun requisito disponibile.')"
+            :search-placeholder="__('Cerca nei requisiti di rischio')"
+            :empty-message="__('Nessun requisito di rischio disponibile.')"
             :show-search="false"
         >
             <x-slot:filters>
@@ -52,7 +52,7 @@
                             type="search"
                             name="search"
                             value="{{ $tableSearch }}"
-                            placeholder="{{ __('Cerca nei requisiti') }}"
+                            placeholder="{{ __('Cerca nei requisiti di rischio') }}"
                             class="input input-bordered w-full"
                         >
                         <button type="submit" class="btn btn-primary">
@@ -62,20 +62,20 @@
                 </form>
             </x-slot:filters>
 
-            @foreach ($requirements as $requirement)
+            @foreach ($riskBasedRequirements as $riskBasedRequirement)
                 <tr class="hover:bg-base-200">
-                    <td class="text-sm">{{ $requirement->id }}</td>
+                    <td class="text-sm">{{ $riskBasedRequirement->id }}</td>
                     <td>
                         <div class="flex flex-col gap-1">
-                            <span class="font-medium">{{ $requirement->name }}</span>
-                            @if($requirement->description)
-                                <span class="text-sm text-base-content/70">{{ Str::limit($requirement->description, 60) }}</span>
+                            <span class="font-medium">{{ $riskBasedRequirement->name }}</span>
+                            @if($riskBasedRequirement->description)
+                                <span class="text-sm text-base-content/70">{{ Str::limit($riskBasedRequirement->description, 60) }}</span>
                             @endif
                         </div>
                     </td>
                     <td>
                         <div class="flex flex-wrap gap-1">
-                            @foreach($requirement->risk_levels as $level)
+                            @foreach($riskBasedRequirement->risk_levels as $level)
                                 <span class="badge {{ $level->badgeColor() }} badge-sm">
                                     {{ $level->label() }}
                                 </span>
@@ -84,9 +84,9 @@
                     </td>
                     <td class="text-sm">
                         <div class="flex items-center gap-2">
-                            @if($requirement->is_limited_validity)
+                            @if($riskBasedRequirement->is_limited_validity)
                                 <x-lucide-clock class="h-4 w-4 text-warning" />
-                                <span>{{ $requirement->getValidityDescription() }}</span>
+                                <span>{{ $riskBasedRequirement->getValidityDescription() }}</span>
                             @else
                                 <x-lucide-infinity class="h-4 w-4 text-success" />
                                 <span>{{ __('Illimitata') }}</span>
@@ -95,8 +95,8 @@
                     </td>
                     <td>
                         <div class="flex items-center gap-2">
-                            @if($requirement->trashed())
-                                <form method="POST" action="{{ route('admin.risk-based-requirements.restore', $requirement->id) }}" class="inline">
+                            @if($riskBasedRequirement->trashed())
+                                <form method="POST" action="{{ route('admin.risk-based-requirements.restore', $riskBasedRequirement->id) }}" class="inline">
                                     @csrf
                                     <button type="submit" class="btn btn-success btn-sm">
                                         <x-lucide-undo class="h-4 w-4" />
@@ -104,11 +104,11 @@
                                     </button>
                                 </form>
                             @else
-                                <a href="{{ route('admin.risk-based-requirements.edit', $requirement) }}" class="btn btn-ghost btn-sm">
+                                <a href="{{ route('admin.risk-based-requirements.edit', $riskBasedRequirement) }}" class="btn btn-ghost btn-sm">
                                     <x-lucide-pencil class="h-4 w-4" />
                                     {{ __('Modifica') }}
                                 </a>
-                                <form method="POST" action="{{ route('admin.risk-based-requirements.destroy', $requirement) }}" class="inline" onsubmit="return confirm('{{ __('Sei sicuro di voler eliminare questo requisito?') }}')">
+                                <form method="POST" action="{{ route('admin.risk-based-requirements.destroy', $riskBasedRequirement) }}" class="inline" onsubmit="return confirm('{{ __('Sei sicuro di voler eliminare questo requisito di rischio?') }}')">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn btn-error btn-sm">

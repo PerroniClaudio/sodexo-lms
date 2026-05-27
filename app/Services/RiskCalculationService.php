@@ -79,7 +79,7 @@ class RiskCalculationService
     /**
      * @return array<int, RiskBasedRequirement>
      */
-    public function getRequirementsForRiskLevel(RiskLevel $riskLevel): array
+    public function getRiskBasedRequirementsForRiskLevel(RiskLevel $riskLevel): array
     {
         return RiskBasedRequirement::query()
             ->forRiskLevel($riskLevel)

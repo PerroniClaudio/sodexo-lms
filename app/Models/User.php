@@ -480,7 +480,7 @@ class User extends Authenticatable implements MustVerifyEmail
             ->getEffectiveWorkerRisk($this->jobSector?->id, $this->jobTitle?->id);
     }
 
-    public function getRequirementsForEffectiveRisk(): array
+    public function getRiskBasedRequirementsForEffectiveRisk(): array
     {
         $effectiveRisk = $this->getEffectiveWorkerRisk();
 
@@ -489,14 +489,14 @@ class User extends Authenticatable implements MustVerifyEmail
         }
 
         return app(RiskCalculationService::class)
-            ->getRequirementsForRiskLevel($effectiveRisk);
+            ->getRiskBasedRequirementsForRiskLevel($effectiveRisk);
     }
 
     /**
      * @return Collection<int, array{
-     *     requirement_id: int,
-     *     requirement_name: string,
-     *     requirement_description: ?string,
+     *     risk_based_requirement_id: int,
+     *     risk_based_requirement_name: string,
+     *     risk_based_requirement_description: ?string,
      *     satisfied: bool,
      *     status: string,
      *     status_label: string,
@@ -506,23 +506,23 @@ class User extends Authenticatable implements MustVerifyEmail
      *     certificate_names: array<int, string>
      * }>
      */
-    public function checkRequirementsCompliance(): Collection
+    public function checkRiskBasedRequirementsCompliance(): Collection
     {
-        $requirements = collect($this->getRequirementsForEffectiveRisk())
+        $riskBasedRequirements = collect($this->getRiskBasedRequirementsForEffectiveRisk())
             ->filter(fn (mixed $requirement): bool => $requirement instanceof RiskBasedRequirement)
             ->values();
 
-        if ($requirements->isEmpty()) {
+        if ($riskBasedRequirements->isEmpty()) {
             return collect();
         }
 
-        $requirementIds = $requirements->pluck('id')->all();
+        $riskBasedRequirementIds = $riskBasedRequirements->pluck('id')->all();
         $today = now()->toDateString();
 
         $allRelevantCertificates = $this->userCertificates()
-            ->with(['requirements:id,name'])
-            ->whereHas('requirements', function (Builder $query) use ($requirementIds): void {
-                $query->whereIn('risk_based_requirements.id', $requirementIds);
+            ->with(['riskBasedRequirements:id,name'])
+            ->whereHas('riskBasedRequirements', function (Builder $query) use ($riskBasedRequirementIds): void {
+                $query->whereIn('risk_based_requirements.id', $riskBasedRequirementIds);
             })
             ->get();
 
@@ -533,13 +533,13 @@ class User extends Authenticatable implements MustVerifyEmail
             })
             ->values();
 
-        return $requirements->map(function (RiskBasedRequirement $requirement) use ($allRelevantCertificates, $validCertificates): array {
+        return $riskBasedRequirements->map(function (RiskBasedRequirement $riskBasedRequirement) use ($allRelevantCertificates, $validCertificates): array {
             $matchingValidCertificates = $validCertificates
-                ->filter(fn (UserCertificate $certificate): bool => $certificate->requirements->contains('id', $requirement->getKey()))
+                ->filter(fn (UserCertificate $certificate): bool => $certificate->riskBasedRequirements->contains('id', $riskBasedRequirement->getKey()))
                 ->values();
 
             $matchingExpiredCertificates = $allRelevantCertificates
-                ->filter(fn (UserCertificate $certificate): bool => $certificate->requirements->contains('id', $requirement->getKey()))
+                ->filter(fn (UserCertificate $certificate): bool => $certificate->riskBasedRequirements->contains('id', $riskBasedRequirement->getKey()))
                 ->reject(fn (UserCertificate $certificate): bool => $matchingValidCertificates->contains('id', $certificate->getKey()))
                 ->values();
 
@@ -552,9 +552,9 @@ class User extends Authenticatable implements MustVerifyEmail
             $status = $isSatisfied ? 'satisfied' : ($matchingExpiredCertificates->isNotEmpty() ? 'expired' : 'missing');
 
             return [
-                'requirement_id' => (int) $requirement->getKey(),
-                'requirement_name' => $requirement->name,
-                'requirement_description' => $requirement->description,
+                'risk_based_requirement_id' => (int) $riskBasedRequirement->getKey(),
+                'risk_based_requirement_name' => $riskBasedRequirement->name,
+                'risk_based_requirement_description' => $riskBasedRequirement->description,
                 'satisfied' => $isSatisfied,
                 'status' => $status,
                 'status_label' => match ($status) {

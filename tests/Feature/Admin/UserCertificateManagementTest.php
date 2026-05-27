@@ -88,7 +88,7 @@ beforeEach(function () {
     actingAsRole('superadmin');
 });
 
-it('lists user certificates with pagination search sorting and requirements', function () {
+it('lists user certificates with pagination search sorting and risk-based requirements', function () {
     $user = makeWorkerUser();
     [$validRequirement] = prepareRiskContextForUser($user);
 
@@ -99,7 +99,7 @@ it('lists user certificates with pagination search sorting and requirements', fu
             'issued_at' => '2026-01-10',
             'expires_at' => '2027-01-10',
         ]);
-    $certificate->requirements()->attach([$validRequirement->getKey()]);
+    $certificate->riskBasedRequirements()->attach([$validRequirement->getKey()]);
 
     UserCertificate::factory()
         ->for($user)
@@ -118,10 +118,10 @@ it('lists user certificates with pagination search sorting and requirements', fu
     $response->assertSuccessful()
         ->assertJsonPath('meta.total', 1)
         ->assertJsonPath('data.0.name', 'Primo soccorso')
-        ->assertJsonPath('data.0.requirements.0.name', 'Corso rischio alto');
+        ->assertJsonPath('data.0.risk_based_requirements.0.name', 'Corso rischio alto');
 });
 
-it('stores a manual certificate and syncs linked requirements', function () {
+it('stores a manual certificate and syncs linked risk-based requirements', function () {
     $user = makeWorkerUser();
     [$validRequirement, $expiredRequirement] = prepareRiskContextForUser($user);
     $course = Course::factory()->create(['title' => 'Corso interno']);
@@ -131,7 +131,7 @@ it('stores a manual certificate and syncs linked requirements', function () {
         'issued_at' => '2026-05-01',
         'expires_at' => '2027-05-01',
         'internal_course_id' => $course->getKey(),
-        'requirements' => [$validRequirement->getKey(), $expiredRequirement->getKey()],
+        'risk_based_requirement_ids' => [$validRequirement->getKey(), $expiredRequirement->getKey()],
     ]);
 
     $response->assertCreated()
@@ -141,7 +141,7 @@ it('stores a manual certificate and syncs linked requirements', function () {
 
     expect($certificate->user_id)->toBe($user->getKey())
         ->and($certificate->is_internal)->toBeTrue()
-        ->and($certificate->requirements()->pluck('risk_based_requirements.id')->all())
+        ->and($certificate->riskBasedRequirements()->pluck('risk_based_requirements.id')->all())
         ->toEqualCanonicalizing([$validRequirement->getKey(), $expiredRequirement->getKey()]);
 });
 
@@ -156,14 +156,14 @@ it('updates a user certificate with the same form payload', function () {
             'description' => 'Descrizione iniziale',
             'expires_at' => '2027-01-10',
         ]);
-    $certificate->requirements()->attach($validRequirement->getKey());
+    $certificate->riskBasedRequirements()->attach($validRequirement->getKey());
 
     $response = $this->putJson(route('admin.api.users.certificates.update', [$user, $certificate]), [
         'name' => 'Attestato aggiornato',
         'description' => 'Nuova descrizione',
         'issued_at' => '2026-05-01',
         'expires_at' => '2028-05-01',
-        'requirements' => [$expiredRequirement->getKey()],
+        'risk_based_requirement_ids' => [$expiredRequirement->getKey()],
     ]);
 
     $response->assertOk()
@@ -171,7 +171,7 @@ it('updates a user certificate with the same form payload', function () {
 
     expect($certificate->fresh()->name)->toBe('Attestato aggiornato')
         ->and($certificate->fresh()->description)->toBe('Nuova descrizione')
-        ->and($certificate->fresh()->requirements()->pluck('risk_based_requirements.id')->all())
+        ->and($certificate->fresh()->riskBasedRequirements()->pluck('risk_based_requirements.id')->all())
         ->toEqualCanonicalizing([$expiredRequirement->getKey()]);
 });
 
@@ -200,13 +200,13 @@ it('returns the current risk summary via api', function () {
         ->create([
             'expires_at' => now()->addMonth()->toDateString(),
         ]);
-    $certificate->requirements()->attach($validRequirement->getKey());
+    $certificate->riskBasedRequirements()->attach($validRequirement->getKey());
 
     $response = $this->getJson(route('admin.api.users.risk-summary', $user));
 
     $response->assertSuccessful()
         ->assertJsonPath('data.risk_label', 'Rischio Alto')
-        ->assertJsonPath('data.requirements.0.requirement_name', 'Corso rischio alto');
+        ->assertJsonPath('data.risk_based_requirements.0.risk_based_requirement_name', 'Corso rischio alto');
 });
 
 it('updates the user through json and keeps the page refresh contract stable', function () {
@@ -233,7 +233,7 @@ it('updates the user through json and keeps the page refresh contract stable', f
         ->and($user->fresh()->getRoleNames()->all())->toBe(['admin']);
 });
 
-it('computes satisfied expired and missing requirements for compliance', function () {
+it('computes satisfied expired and missing risk-based requirements for compliance', function () {
     $user = makeWorkerUser();
     [$validRequirement, $expiredRequirement] = prepareRiskContextForUser($user);
     $missingRequirement = RiskBasedRequirement::factory()
@@ -248,7 +248,7 @@ it('computes satisfied expired and missing requirements for compliance', functio
             'name' => 'Corso valido',
             'expires_at' => now()->addYear()->toDateString(),
         ]);
-    $validCertificate->requirements()->attach($validRequirement->getKey());
+    $validCertificate->riskBasedRequirements()->attach($validRequirement->getKey());
 
     $expiredCertificate = UserCertificate::factory()
         ->for($user)
@@ -256,12 +256,12 @@ it('computes satisfied expired and missing requirements for compliance', functio
             'name' => 'Corso scaduto',
             'expires_at' => now()->subDay()->toDateString(),
         ]);
-    $expiredCertificate->requirements()->attach($expiredRequirement->getKey());
+    $expiredCertificate->riskBasedRequirements()->attach($expiredRequirement->getKey());
 
-    $compliance = $user->checkRequirementsCompliance()->keyBy('requirement_name');
+    $riskBasedRequirementsCompliance = $user->checkRiskBasedRequirementsCompliance()->keyBy('risk_based_requirement_name');
 
     expect($missingRequirement->exists)->toBeTrue()
-        ->and($compliance['Corso rischio alto']['status'])->toBe('satisfied')
-        ->and($compliance['Aggiornamento periodico']['status'])->toBe('expired')
-        ->and($compliance['Formazione aggiuntiva']['status'])->toBe('missing');
+        ->and($riskBasedRequirementsCompliance['Corso rischio alto']['status'])->toBe('satisfied')
+        ->and($riskBasedRequirementsCompliance['Aggiornamento periodico']['status'])->toBe('expired')
+        ->and($riskBasedRequirementsCompliance['Formazione aggiuntiva']['status'])->toBe('missing');
 });

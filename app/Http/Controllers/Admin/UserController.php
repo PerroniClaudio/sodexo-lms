@@ -161,7 +161,7 @@ class UserController extends Controller
         $jobRoles = JobRole::all();
         $jobSectors = JobSector::all();
         $jobUnits = JobUnit::all();
-        $allRequirements = RiskBasedRequirement::query()->orderBy('name')->get(['id', 'name']);
+        $allRiskBasedRequirements = RiskBasedRequirement::query()->orderBy('name')->get(['id', 'name']);
         $availableCourses = $user->courseEnrollments()
             ->where('status', \App\Models\CourseEnrollment::STATUS_COMPLETED)
             ->whereNotNull('completed_at')
@@ -187,7 +187,7 @@ class UserController extends Controller
             'jobRoles',
             'jobSectors',
             'jobUnits',
-            'allRequirements',
+            'allRiskBasedRequirements',
             'availableCourses',
             'riskSummary',
         ));
@@ -329,10 +329,10 @@ class UserController extends Controller
      *     risk_badge_class: string,
      *     is_applicable: bool,
      *     message: string,
-     *     requirements: array<int, array{
-     *         requirement_id: int,
-     *         requirement_name: string,
-     *         requirement_description: ?string,
+     *     risk_based_requirements: array<int, array{
+     *         risk_based_requirement_id: int,
+     *         risk_based_requirement_name: string,
+     *         risk_based_requirement_description: ?string,
      *         satisfied: bool,
      *         status: string,
      *         status_label: string,
@@ -347,24 +347,24 @@ class UserController extends Controller
     {
         try {
             $effectiveRisk = $user->getEffectiveWorkerRisk();
-            $requirementsCompliance = $user->checkRequirementsCompliance();
+            $riskBasedRequirementsCompliance = $user->checkRiskBasedRequirementsCompliance();
 
             return [
                 'risk_label' => $effectiveRisk->label(),
                 'risk_badge_class' => $effectiveRisk->badgeColor(),
                 'is_applicable' => true,
-                'message' => $requirementsCompliance->isEmpty()
-                    ? __('Nessun requisito disponibile per il rischio corrente.')
-                    : __('Requisiti in base al rischio effettivo dell\'utente.'),
-                'requirements' => $requirementsCompliance->values()->all(),
+                'message' => $riskBasedRequirementsCompliance->isEmpty()
+                    ? __('Nessun requisito di rischio disponibile per il rischio corrente.')
+                    : __('Requisiti di rischio in base al rischio effettivo dell\'utente.'),
+                'risk_based_requirements' => $riskBasedRequirementsCompliance->values()->all(),
             ];
         } catch (\LogicException) {
             return [
                 'risk_label' => null,
                 'risk_badge_class' => 'badge-ghost',
                 'is_applicable' => false,
-                'message' => __('Nessun requisito disponibile per il rischio corrente o utente non classificabile come lavoratore.'),
-                'requirements' => [],
+                'message' => __('Nessun requisito di rischio disponibile per il rischio corrente o utente non classificabile come lavoratore.'),
+                'risk_based_requirements' => [],
             ];
         }
     }

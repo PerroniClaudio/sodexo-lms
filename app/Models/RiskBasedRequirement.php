@@ -85,7 +85,7 @@ class RiskBasedRequirement extends Model
     }
 
     /**
-     * Scope to get requirements for a specific risk level
+     * Scope to get risk-based requirements for a specific risk level.
      */
     public function scopeForRiskLevel($query, RiskLevel $riskLevel)
     {

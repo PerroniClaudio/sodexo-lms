@@ -1,10 +1,10 @@
 <x-layouts.admin>
     @php
-        $validityParts = $requirement->getValidityParts();
+        $validityParts = $riskBasedRequirement->getValidityParts();
     @endphp
 
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
-        <x-page-header :title="__('Modifica requisito')">
+        <x-page-header :title="__('Modifica requisito di rischio')">
             <x-slot:actions>
                 <a href="{{ route('admin.risk-based-requirements.index') }}" class="btn btn-ghost">
                     <x-lucide-arrow-left class="h-4 w-4" />
@@ -15,7 +15,7 @@
 
         <div class="card border border-base-300 bg-base-100 shadow-sm">
             <div class="card-body gap-6">
-                <form method="POST" action="{{ route('admin.risk-based-requirements.update', $requirement) }}" class="flex flex-col gap-6">
+                <form method="POST" action="{{ route('admin.risk-based-requirements.update', $riskBasedRequirement) }}" class="flex flex-col gap-6">
                     @csrf
                     @method('PUT')
 
@@ -28,7 +28,7 @@
                                 id="name"
                                 name="name"
                                 type="text"
-                                value="{{ old('name', $requirement->name) }}"
+                                value="{{ old('name', $riskBasedRequirement->name) }}"
                                 class="input input-bordered w-full @error('name') input-error @enderror"
                                 required
                             >
@@ -47,7 +47,7 @@
                             name="description"
                             rows="4"
                             class="textarea textarea-bordered w-full @error('description') textarea-error @enderror"
-                        >{{ old('description', $requirement->description) }}</textarea>
+                        >{{ old('description', $riskBasedRequirement->description) }}</textarea>
                         @error('description')
                             <p class="text-sm text-error">{{ $message }}</p>
                         @enderror
@@ -65,7 +65,7 @@
                                         name="risk_levels[]"
                                         value="{{ $level->value }}"
                                         class="checkbox"
-                                        @checked(in_array($level->value, old('risk_levels', $requirement->risk_levels->pluck('value')->toArray())))
+                                        @checked(in_array($level->value, old('risk_levels', $riskBasedRequirement->risk_levels->pluck('value')->toArray())))
                                     >
                                     <span class="badge {{ $level->badgeColor() }}">{{ $level->label() }}</span>
                                 </label>
@@ -84,7 +84,7 @@
                                 id="is_limited_validity"
                                 value="1"
                                 class="checkbox"
-                                @checked(old('is_limited_validity', $requirement->is_limited_validity))
+                                @checked(old('is_limited_validity', $riskBasedRequirement->is_limited_validity))
                                 onchange="toggleValidityFields()"
                             >
                             <span class="label-text font-medium">{{ __('Validità limitata') }}</span>
@@ -94,7 +94,7 @@
                         @enderror
                     </div>
 
-                    <div id="validity-fields" class="grid gap-4 md:grid-cols-2" style="display: {{ old('is_limited_validity', $requirement->is_limited_validity) ? 'grid' : 'none' }}">
+                    <div id="validity-fields" class="grid gap-4 md:grid-cols-2" style="display: {{ old('is_limited_validity', $riskBasedRequirement->is_limited_validity) ? 'grid' : 'none' }}">
                         <div class="form-control flex flex-col gap-2">
                             <label for="validity_years" class="label p-0">
                                 <span class="label-text font-medium">{{ __('Anni') }}</span>
