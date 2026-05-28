@@ -3,18 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreJobTitleRequest;
-use App\Http\Requests\UpdateJobTitleRequest;
-use App\Models\JobTitle;
+use App\Http\Requests\StoreJobTaskRequest;
+use App\Http\Requests\UpdateJobTaskRequest;
+use App\Models\JobTask;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-class JobTitleController extends Controller
+class JobTaskController extends Controller
 {
     public function index(Request $request): View
     {
-        $allowedSorts = ['id', 'name', 'status'];
+        $allowedSorts = ['id', 'name', 'code', 'status'];
         $requestedSort = $request->string('sort')->toString();
         $hasValidSort = in_array($requestedSort, $allowedSorts, true);
         $sort = $hasValidSort ? $requestedSort : 'id';
@@ -24,8 +24,8 @@ class JobTitleController extends Controller
         $search = trim($request->string('search')->toString());
         $showTrashed = $request->boolean('show_trashed');
 
-        return view('admin.job-title.index', [
-            'titles' => JobTitle::query()
+        return view('admin.job-task.index', [
+            'tasks' => JobTask::query()
                 ->when($showTrashed, function ($query) {
                     $query->withTrashed();
                 })
@@ -33,7 +33,8 @@ class JobTitleController extends Controller
                     $query->where(function ($query) use ($search) {
                         $query
                             ->where('id', 'like', "%{$search}%")
-                            ->orWhere('name', 'like', "%{$search}%");
+                            ->orWhere('name', 'like', "%{$search}%")
+                            ->orWhere('code', 'like', "%{$search}%");
                     });
                 })
                 ->when($sort === 'status', function ($query) use ($direction) {
@@ -56,50 +57,50 @@ class JobTitleController extends Controller
 
     public function create(): View
     {
-        return view('admin.job-title.create');
+        return view('admin.job-task.create');
     }
 
-    public function store(StoreJobTitleRequest $request): RedirectResponse
+    public function store(StoreJobTaskRequest $request): RedirectResponse
     {
-        $title = JobTitle::query()->create($request->validated());
+        $task = JobTask::query()->create($request->validated());
 
         return redirect()
-            ->route('admin.job-titles.edit', $title)
+            ->route('admin.job-tasks.edit', $task)
             ->with('status', __('Mansione creata con successo.'));
     }
 
-    public function edit(JobTitle $jobTitle): View
+    public function edit(JobTask $jobTask): View
     {
-        return view('admin.job-title.edit', [
-            'title' => $jobTitle,
+        return view('admin.job-task.edit', [
+            'task' => $jobTask,
         ]);
     }
 
-    public function update(UpdateJobTitleRequest $request, JobTitle $jobTitle): RedirectResponse
+    public function update(UpdateJobTaskRequest $request, JobTask $jobTask): RedirectResponse
     {
-        $jobTitle->update($request->validated());
+        $jobTask->update($request->validated());
 
         return redirect()
-            ->route('admin.job-titles.edit', $jobTitle)
+            ->route('admin.job-tasks.edit', $jobTask)
             ->with('status', __('Mansione aggiornata con successo.'));
     }
 
-    public function destroy(JobTitle $jobTitle): RedirectResponse
+    public function destroy(JobTask $jobTask): RedirectResponse
     {
-        $jobTitle->delete();
+        $jobTask->delete();
 
         return redirect()
-            ->route('admin.job-titles.index')
+            ->route('admin.job-tasks.index')
             ->with('status', __('Mansione eliminata con successo.'));
     }
 
     public function restore($id): RedirectResponse
     {
-        $title = JobTitle::withTrashed()->findOrFail($id);
-        $title->restore();
+        $task = JobTask::withTrashed()->findOrFail($id);
+        $task->restore();
 
         return redirect()
-            ->route('admin.job-titles.index')
+            ->route('admin.job-tasks.index')
             ->with('status', __('Mansione ripristinata con successo.'));
     }
 }

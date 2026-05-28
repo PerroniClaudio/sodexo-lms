@@ -35,7 +35,7 @@ class UserRequest extends FormRequest
             'fiscal_code' => ['required', 'string', 'max:16'],
             // Campi user-only, validazione condizionale
             'is_foreigner_or_immigrant' => ['required_if:account_type,user', 'boolean'],
-            'job_title_id' => ['required_if:account_type,user', 'exists:job_titles,id'],
+            'job_task_id' => ['required_if:account_type,user', 'exists:job_tasks,id'],
             'job_role_id' => ['required_if:account_type,user', 'exists:job_roles,id'],
             'job_sector_id' => ['required_if:account_type,user', 'exists:job_sectors,id'],
             'job_unit_id' => ['required_if:account_type,user', 'exists:job_units,id'],

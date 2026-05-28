@@ -17,7 +17,7 @@ return [
             'job_sector' => 'Settore',
             'job_category' => 'Categoria',
             'job_level' => 'Livello',
-            'job_title' => 'Titolo professionale',
+            'job_task' => 'Mansione',
             'job_role' => 'Ruolo',
             'job_unit' => 'Unita organizzativa',
             'module_status' => 'Stato modulo',

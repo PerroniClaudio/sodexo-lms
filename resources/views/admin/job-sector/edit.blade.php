@@ -115,29 +115,27 @@
                         <span>{{ __('La selezione di un codice include automaticamente tutti i codici sottostanti nella gerarchia (es: selezionare una Sezione include tutte le relative Divisioni, Gruppi, ecc.)') }}</span>
                     </div>
                     
-                    <div class="form-control flex flex-col gap-2">
-                        <label for="nace_ateco_code" class="label p-0">
-                            <span class="label-text font-medium">{{ __('Codice ATECO') }}</span>
-                        </label>
-                        <select
-                            id="nace_ateco_code"
-                            name="nace_ateco_code"
-                            class="select select-bordered w-full @error('nace_ateco_code') select-error @enderror"
-                            required
-                        >
-                            <option value="">{{ __('Seleziona un codice') }}</option>
-                            @foreach($allAtecoCodes as $hierarchy => $codes)
-                                <optgroup label="{{ \App\Enums\HierarchyLevel::from($hierarchy)->label() }}">
-                                    @foreach($codes as $code)
-                                        <option value="{{ $code->code }}" data-hierarchy="{{ $code->hierarchy }}">{{ $code->code }} - {{ $code->title_it }}</option>
-                                    @endforeach
-                                </optgroup>
-                            @endforeach
-                        </select>
-                        @error('nace_ateco_code')
-                            <p class="text-sm text-error">{{ $message }}</p>
-                        @enderror
-                    </div>
+                    <x-searchable-select
+                        name="nace_ateco_code"
+                        id="nace_ateco_code"
+                        :required="true"
+                        :selected-value="old('nace_ateco_code')"
+                        :options="collect($allAtecoCodes)->flatMap(function ($codes, $hierarchy) {
+                            return $codes->map(function ($code) use ($hierarchy) {
+                                $hierarchyLabel = \App\Enums\HierarchyLevel::from((int) $hierarchy)->label();
+
+                                return [
+                                    'value' => $code->code,
+                                    'label' => $code->code.' - '.$code->title_it,
+                                    'search' => implode(' ', array_filter([$code->code, $code->title_it, $hierarchyLabel])),
+                                    'badge' => $code->code,
+                                    'description' => $hierarchyLabel,
+                                ];
+                            });
+                        })->values()->all()"
+                        :label="__('Codice ATECO')"
+                        :placeholder="__('Cerca o seleziona un codice ATECO...')"
+                    />
 
                     <input type="hidden" id="inclusion_type" name="inclusion_type" value="">
 
@@ -226,10 +224,15 @@
             6: 'full_code'
         };
 
+        const naceAtecoHierarchyMap = @json(
+            collect($allAtecoCodes)->flatMap(function ($codes, $hierarchy) {
+                return $codes->mapWithKeys(fn ($code) => [$code->code => (int) $hierarchy]);
+            })
+        );
+
         // Imposta automaticamente il tipo di inclusione in base al codice selezionato
         document.getElementById('nace_ateco_code').addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            const hierarchy = selectedOption.getAttribute('data-hierarchy');
+            const hierarchy = naceAtecoHierarchyMap[this.value];
             const inclusionTypeInput = document.getElementById('inclusion_type');
             
             if (hierarchy && hierarchyToInclusionType[hierarchy]) {

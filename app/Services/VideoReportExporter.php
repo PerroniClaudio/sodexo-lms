@@ -33,7 +33,7 @@ class VideoReportExporter
         'job_sector',
         'job_category',
         'job_level',
-        'job_title',
+        'job_task',
         'job_role',
         'job_unit',
         'module_status',
@@ -170,7 +170,7 @@ class VideoReportExporter
                 'job_sectors.name as job_sector',
                 'job_categories.name as job_category',
                 'job_levels.name as job_level',
-                'job_titles.name as job_title',
+                'job_tasks.name as job_task',
                 'job_roles.name as job_role',
                 'job_units.name as job_unit',
                 'module_progress.status as module_status',
@@ -202,7 +202,7 @@ class VideoReportExporter
                 $row->job_sector,
                 $row->job_category,
                 $row->job_level,
-                $row->job_title,
+                $row->job_task,
                 $row->job_role,
                 $row->job_unit,
                 $row->module_status,
@@ -291,7 +291,7 @@ class VideoReportExporter
             ->leftJoin('job_sectors', 'job_sectors.id', '=', 'users.job_sector_id')
             ->leftJoin('job_categories', 'job_categories.id', '=', 'users.job_category_id')
             ->leftJoin('job_levels', 'job_levels.id', '=', 'users.job_level_id')
-            ->leftJoin('job_titles', 'job_titles.id', '=', 'users.job_title_id')
+            ->leftJoin('job_tasks', 'job_tasks.id', '=', 'users.job_task_id')
             ->leftJoin('job_roles', 'job_roles.id', '=', 'users.job_role_id')
             ->leftJoin('job_units', 'job_units.id', '=', 'users.job_unit_id')
             ->whereIn('courses.type', Course::AUDIT_TRAIL_TYPES)

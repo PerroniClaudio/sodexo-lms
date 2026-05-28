@@ -24,7 +24,7 @@ class UpdateJobUnitRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'unit_code' => ['nullable', 'string', 'max:50', 'alpha_num'],
+            'unit_code' => ['nullable', 'string', 'max:50'],
             'description' => ['nullable', 'string', 'max:1000'],
             'country' => ['required', 'string', 'max:100'],
             'region' => ['required', 'string', 'max:100'],

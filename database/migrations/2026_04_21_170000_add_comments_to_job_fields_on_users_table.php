@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->foreignId('job_title_id')->nullable()->comment('Mansione')->change();
+            $table->foreignId('job_task_id')->nullable()->comment('Mansione')->change();
             $table->foreignId('job_role_id')->nullable()->comment('Ruolo')->change();
             $table->foreignId('job_sector_id')->nullable()->comment('Settore')->change();
             $table->foreignId('job_unit_id')->nullable()->comment('Unità lavorativa')->change();
@@ -27,7 +27,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->foreignId('job_title_id')->nullable()->comment(null)->change();
+            $table->foreignId('job_task_id')->nullable()->comment(null)->change();
             $table->foreignId('job_role_id')->nullable()->comment(null)->change();
             $table->foreignId('job_sector_id')->nullable()->comment(null)->change();
             $table->foreignId('job_unit_id')->nullable()->comment(null)->change();

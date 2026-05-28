@@ -12,7 +12,7 @@ use App\Http\Controllers\Admin\JobCategoryController;
 use App\Http\Controllers\Admin\JobLevelController;
 use App\Http\Controllers\Admin\JobRoleController;
 use App\Http\Controllers\Admin\JobSectorController;
-use App\Http\Controllers\Admin\JobTitleController;
+use App\Http\Controllers\Admin\JobTaskController;
 use App\Http\Controllers\Admin\JobUnitController;
 use App\Http\Controllers\Admin\LiveStreamLogController;
 use App\Http\Controllers\Admin\ModuleQuizController;
@@ -142,7 +142,7 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::middleware('permission:manage job data')->group(function () {
             Route::resource('job-categories', JobCategoryController::class)->except(['show']);
             Route::resource('job-levels', JobLevelController::class)->except(['show']);
-            Route::resource('job-titles', JobTitleController::class)->except(['show']);
+            Route::resource('job-tasks', JobTaskController::class)->except(['show']);
             Route::resource('job-roles', JobRoleController::class)->except(['show']);
             Route::resource('job-sectors', JobSectorController::class)->except(['show']);
             Route::resource('job-units', JobUnitController::class)->except(['show']);
@@ -157,7 +157,7 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             // Restore routes for soft deleted items
             Route::post('job-categories/{id}/restore', [JobCategoryController::class, 'restore'])->name('job-categories.restore');
             Route::post('job-levels/{id}/restore', [JobLevelController::class, 'restore'])->name('job-levels.restore');
-            Route::post('job-titles/{id}/restore', [JobTitleController::class, 'restore'])->name('job-titles.restore');
+            Route::post('job-tasks/{id}/restore', [JobTaskController::class, 'restore'])->name('job-tasks.restore');
             Route::post('job-roles/{id}/restore', [JobRoleController::class, 'restore'])->name('job-roles.restore');
             Route::post('job-sectors/{id}/restore', [JobSectorController::class, 'restore'])->name('job-sectors.restore');
             Route::post('job-units/{id}/restore', [JobUnitController::class, 'restore'])->name('job-units.restore');

@@ -99,25 +99,15 @@
                     <h3 class="font-medium">{{ __('Aggiungi nuova associazione') }}</h3>
 
                     <div class="grid gap-4 md:grid-cols-2">
-                        <div class="form-control flex flex-col gap-2">
-                            <label for="job_sector_id" class="label p-0">
-                                <span class="label-text font-medium">{{ __('Settore') }}</span>
-                            </label>
-                            <select
-                                id="job_sector_id"
-                                name="job_sector_id"
-                                class="select select-bordered w-full @error('job_sector_id') select-error @enderror"
-                                required
-                            >
-                                <option value="">{{ __('Seleziona un settore') }}</option>
-                                @foreach($allSectors as $sector)
-                                    <option value="{{ $sector->id }}">{{ $sector->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('job_sector_id')
-                                <p class="text-sm text-error">{{ $message }}</p>
-                            @enderror
-                        </div>
+                        <x-searchable-select
+                            name="job_sector_id"
+                            id="job_sector_id"
+                            :required="true"
+                            :selected-value="old('job_sector_id')"
+                            :options="$allSectors->map(fn ($sector) => ['value' => (string) $sector->id, 'label' => $sector->name, 'search' => $sector->name])->values()->all()"
+                            :label="__('Settore')"
+                            :placeholder="__('Cerca o seleziona un settore...')"
+                        />
 
                         <div class="form-control flex flex-col gap-2">
                             <label for="role_risk_level" class="label p-0">

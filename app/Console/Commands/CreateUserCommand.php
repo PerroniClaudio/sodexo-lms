@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
-#[Signature('user:create {email?} {name?} {surname?} {fiscal_code?} {role=user} {--active : Crea utente già attivo (per test/setup)} {--password= : Password personalizzata (solo con --active)} {--job-unit= : ID Unità lavorativa} {--job-title= : ID Mansione} {--job-role= : ID Ruolo} {--job-sector= : ID Settore}')]
+#[Signature('user:create {email?} {name?} {surname?} {fiscal_code?} {role=user} {--active : Crea utente già attivo (per test/setup)} {--password= : Password personalizzata (solo con --active)} {--job-unit= : ID Unità lavorativa} {--job-task= : ID Mansione} {--job-title= : Alias legacy di --job-task} {--job-role= : ID Ruolo} {--job-sector= : ID Settore}')]
 #[Description('Crea un nuovo utente e invia email di attivazione')]
 class CreateUserCommand extends Command
 {
@@ -93,8 +93,8 @@ class CreateUserCommand extends Command
             if ($jobUnitId = $this->option('job-unit')) {
                 $userData['job_unit_id'] = $jobUnitId;
             }
-            if ($jobTitleId = $this->option('job-title')) {
-                $userData['job_title_id'] = $jobTitleId;
+            if ($jobTaskId = $this->option('job-task') ?: $this->option('job-title')) {
+                $userData['job_task_id'] = $jobTaskId;
             }
             if ($jobRoleId = $this->option('job-role')) {
                 $userData['job_role_id'] = $jobRoleId;

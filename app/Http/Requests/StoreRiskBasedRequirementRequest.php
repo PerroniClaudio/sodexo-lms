@@ -15,17 +15,21 @@ class StoreRiskBasedRequirementRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $isLimitedValidity = $this->boolean('is_limited_validity');
+
         // Calculate total months from years and months
-        if ($this->boolean('is_limited_validity')) {
+        if ($isLimitedValidity) {
             $years = (int) $this->input('validity_years', 0);
             $months = (int) $this->input('validity_months_part', 0);
             $totalMonths = ($years * 12) + $months;
 
             $this->merge([
+                'is_limited_validity' => true,
                 'validity_months' => $totalMonths > 0 ? $totalMonths : null,
             ]);
         } else {
             $this->merge([
+                'is_limited_validity' => false,
                 'validity_months' => null,
             ]);
         }

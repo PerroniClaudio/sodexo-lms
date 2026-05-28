@@ -6,7 +6,7 @@ use App\Enums\RiskLevel;
 use App\Models\Course;
 use App\Models\JobRole;
 use App\Models\JobSector;
-use App\Models\JobTitle;
+use App\Models\JobTask;
 use App\Models\NaceAteco;
 use App\Models\RiskBasedRequirement;
 use App\Models\User;
@@ -60,7 +60,7 @@ function prepareRiskContextForUser(User $user): array
         'name' => 'Preposto',
         'description' => 'Ruolo con responsabilità di vigilanza',
     ]);
-    $title = JobTitle::create([
+    $title = JobTask::create([
         'name' => 'Infermiere',
         'description' => 'Professionista sanitario',
     ]);
@@ -71,7 +71,7 @@ function prepareRiskContextForUser(User $user): array
     $user->forceFill([
         'job_sector_id' => $sector->getKey(),
         'job_role_id' => $role->getKey(),
-        'job_title_id' => $title->getKey(),
+        'job_task_id' => $title->getKey(),
     ])->save();
 
     $validRequirement = RiskBasedRequirement::factory()

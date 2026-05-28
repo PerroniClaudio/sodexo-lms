@@ -224,16 +224,16 @@
 
         <!-- Mansione -->
         <div class="form-control" data-user-only>
-            <label for="job_title_id" class="label">
+            <label for="job_task_id" class="label">
                 <span class="label-text font-semibold">Mansione <span class="text-error">*</span></span>
             </label>
-            <select name="job_title_id" id="job_title_id" class="select select-bordered w-full" required>
+            <select name="job_task_id" id="job_task_id" class="select select-bordered w-full" required>
                 <option value="">{{ __('Seleziona') }}</option>
-                @foreach($jobTitles as $title)
-                    <option value="{{ $title->id }}" @selected(old('job_title_id', $user->job_title_id ?? '') == $title->id)>{{ $title->name }}</option>
+                @foreach($jobTasks as $task)
+                    <option value="{{ $task->id }}" @selected(old('job_task_id', $user->job_task_id ?? '') == $task->id)>{{ $task->name }}</option>
                 @endforeach
             </select>
-            @error('job_title_id')<span class="text-error text-sm">{{ $message }}</span>@enderror
+            @error('job_task_id')<span class="text-error text-sm">{{ $message }}</span>@enderror
         </div>
 
         <!-- Unità Produttiva -->
@@ -241,7 +241,7 @@
             :units="$jobUnits"
             :selectedId="old('job_unit_id', $user->job_unit_id ?? null)"
             :label="__('Unità Produttiva')"
-            :required="true"
+            :required="$selectedAccountType === 'user'"
             data-user-only
         />
     </div>

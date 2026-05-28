@@ -58,7 +58,7 @@ return new class extends Migration
             // Relazioni job (tutti opzionali)
             $table->foreignId('job_category_id')->nullable();
             $table->foreignId('job_level_id')->nullable();
-            $table->foreignId('job_title_id')->nullable();
+            $table->foreignId('job_task_id')->nullable();
             $table->foreignId('job_role_id')->nullable();
             $table->foreignId('job_sector_id')->nullable();
 

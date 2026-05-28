@@ -29,7 +29,7 @@ class VideoReportRequest extends Model
 
     public const JOB_DIMENSION_LEVEL = 'job_level';
 
-    public const JOB_DIMENSION_TITLE = 'job_title';
+    public const JOB_DIMENSION_TASK = 'job_task';
 
     public const JOB_DIMENSION_ROLE = 'job_role';
 
@@ -105,10 +105,10 @@ class VideoReportRequest extends Model
                 'model' => JobLevel::class,
                 'user_column' => 'job_level_id',
             ],
-            self::JOB_DIMENSION_TITLE => [
+            self::JOB_DIMENSION_TASK => [
                 'label' => __('Mansione'),
-                'model' => JobTitle::class,
-                'user_column' => 'job_title_id',
+                'model' => JobTask::class,
+                'user_column' => 'job_task_id',
             ],
             self::JOB_DIMENSION_ROLE => [
                 'label' => __('Ruolo'),

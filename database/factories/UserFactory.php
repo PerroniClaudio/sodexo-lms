@@ -8,7 +8,7 @@ use App\Models\JobCategory;
 use App\Models\JobLevel;
 use App\Models\JobRole;
 use App\Models\JobSector;
-use App\Models\JobTitle;
+use App\Models\JobTask;
 use App\Models\JobUnit;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -90,7 +90,7 @@ class UserFactory extends Factory
     protected function defaultUserRoleAttributes(): array
     {
         $jobUnit = JobUnit::query()->inRandomOrder()->first() ?? JobUnit::factory()->create();
-        $jobTitle = JobTitle::query()->inRandomOrder()->first() ?? JobTitle::factory()->create();
+        $jobTask = JobTask::query()->inRandomOrder()->first() ?? JobTask::factory()->create();
         $jobRole = JobRole::query()->inRandomOrder()->first() ?? JobRole::factory()->create();
         $jobSector = JobSector::query()->inRandomOrder()->first() ?? JobSector::factory()->create();
 
@@ -104,7 +104,7 @@ class UserFactory extends Factory
             'job_unit_id' => $jobUnit->id,
             'job_category_id' => null,
             'job_level_id' => null,
-            'job_title_id' => $jobTitle->id,
+            'job_task_id' => $jobTask->id,
             'job_role_id' => $jobRole->id,
             'job_sector_id' => $jobSector->id,
             'is_foreigner_or_immigrant' => fake()->boolean(20),
@@ -128,7 +128,7 @@ class UserFactory extends Factory
             'job_unit_id' => null,
             'job_category_id' => null,
             'job_level_id' => null,
-            'job_title_id' => null,
+            'job_task_id' => null,
             'job_role_id' => null,
             'job_sector_id' => null,
             'is_foreigner_or_immigrant' => null,
@@ -196,14 +196,14 @@ class UserFactory extends Factory
     {
         return $this->state(function (array $attributes) {
             $jobUnit = JobUnit::query()->inRandomOrder()->first() ?? JobUnit::factory()->create();
-            $jobTitle = JobTitle::query()->inRandomOrder()->first() ?? JobTitle::factory()->create();
+            $jobTask = JobTask::query()->inRandomOrder()->first() ?? JobTask::factory()->create();
             $jobRole = JobRole::query()->inRandomOrder()->first() ?? JobRole::factory()->create();
             $jobSector = JobSector::query()->inRandomOrder()->first() ?? JobSector::factory()->create();
 
             return [
                 // Job relations obbligatori
                 'job_unit_id' => $jobUnit->id,
-                'job_title_id' => $jobTitle->id,
+                'job_task_id' => $jobTask->id,
                 'job_role_id' => $jobRole->id,
                 'job_sector_id' => $jobSector->id,
                 'home_country_id' => $jobUnit->country_id,

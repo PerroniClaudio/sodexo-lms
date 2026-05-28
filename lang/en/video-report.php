@@ -17,7 +17,7 @@ return [
             'job_sector' => 'Job sector',
             'job_category' => 'Job category',
             'job_level' => 'Job level',
-            'job_title' => 'Job title',
+            'job_task' => 'Task',
             'job_role' => 'Job role',
             'job_unit' => 'Job unit',
             'module_status' => 'Module status',

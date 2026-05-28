@@ -147,8 +147,8 @@
                                     </li>
                                     <li>
                                         <a
-                                            href="{{ route('admin.job-titles.index') }}"
-                                            @class(['menu-active' => request()->routeIs('admin.job-titles.*')])
+                                            href="{{ route('admin.job-tasks.index') }}"
+                                            @class(['menu-active' => request()->routeIs('admin.job-tasks.*')])
                                         >
                                             {{ __('Mansioni') }}
                                         </a>

@@ -61,7 +61,7 @@ return new class extends Migration
             'job_unit_id' => 'job_units',
             'job_category_id' => 'job_categories',
             'job_level_id' => 'job_levels',
-            'job_title_id' => 'job_titles',
+            'job_task_id' => 'job_titles',
             'job_role_id' => 'job_roles',
             'job_sector_id' => 'job_sectors',
         ];

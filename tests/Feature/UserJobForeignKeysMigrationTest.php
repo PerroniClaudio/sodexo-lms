@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Schema;
 uses(RefreshDatabase::class);
 
 test('users table defines all job foreign keys after migrations', function () {
+    expect(Schema::hasColumn('users', 'job_task_id'))->toBeTrue();
+    expect(Schema::hasColumn('users', 'job_title_id'))->toBeFalse();
+
     $foreignKeys = [];
 
     foreach (Schema::getForeignKeys('users') as $foreignKey) {
@@ -22,7 +25,7 @@ test('users table defines all job foreign keys after migrations', function () {
     expect($foreignKeys['job_unit_id'] ?? null)->toBe('job_units');
     expect($foreignKeys['job_category_id'] ?? null)->toBe('job_categories');
     expect($foreignKeys['job_level_id'] ?? null)->toBe('job_levels');
-    expect($foreignKeys['job_title_id'] ?? null)->toBe('job_titles');
+    expect($foreignKeys['job_task_id'] ?? null)->toBe('job_tasks');
     expect($foreignKeys['job_role_id'] ?? null)->toBe('job_roles');
     expect($foreignKeys['job_sector_id'] ?? null)->toBe('job_sectors');
 });

@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreJobTitleRequest extends FormRequest
+class StoreJobTaskRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -15,6 +15,7 @@ class StoreJobTitleRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'code' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -23,6 +24,7 @@ class StoreJobTitleRequest extends FormRequest
     {
         return [
             'name' => __('Nome'),
+            'code' => __('Codice'),
             'description' => __('Descrizione'),
         ];
     }

@@ -4,10 +4,10 @@
 
         <div class="card border border-base-300 bg-base-100 shadow-sm">
             <div class="card-body gap-6">
-                <form method="POST" action="{{ route('admin.job-titles.store') }}" class="flex flex-col gap-6">
+                <form method="POST" action="{{ route('admin.job-tasks.store') }}" class="flex flex-col gap-6">
                     @csrf
 
-                    <div class="grid gap-6 md:grid-cols-1">
+                    <div class="grid gap-6 md:grid-cols-2">
                         <div class="form-control flex flex-col gap-2">
                             <label for="name" class="label p-0">
                                 <span class="label-text font-medium">{{ __('Nome') }}</span>
@@ -21,6 +21,22 @@
                                 required
                             >
                             @error('name')
+                                <p class="text-sm text-error">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="form-control flex flex-col gap-2">
+                            <label for="code" class="label p-0">
+                                <span class="label-text font-medium">{{ __('Codice') }}</span>
+                            </label>
+                            <input
+                                id="code"
+                                name="code"
+                                type="text"
+                                value="{{ old('code') }}"
+                                class="input input-bordered w-full @error('code') input-error @enderror"
+                            >
+                            @error('code')
                                 <p class="text-sm text-error">{{ $message }}</p>
                             @enderror
                         </div>
@@ -42,7 +58,7 @@
                     </div>
 
                     <div class="flex justify-end gap-3">
-                        <a href="{{ route('admin.job-titles.index') }}" class="btn btn-ghost">
+                        <a href="{{ route('admin.job-tasks.index') }}" class="btn btn-ghost">
                             {{ __('Cancel') }}
                         </a>
                         <button type="submit" class="btn btn-primary">

@@ -41,7 +41,7 @@ class UserObserver
     public function updating(User $user): void
     {
         // Valida campi job se modificati e utente è normale
-        if ($user->isDirty(['job_unit_id', 'job_title_id', 'job_role_id', 'job_sector_id'])) {
+        if ($user->isDirty(['job_unit_id', 'job_task_id', 'job_role_id', 'job_sector_id'])) {
             $this->validateJobFields($user);
         }
     }
@@ -67,8 +67,8 @@ class UserObserver
                 $errors['job_unit_id'] = __('L\'unità lavorativa è obbligatoria per gli utenti.');
             }
 
-            if (! $user->job_title_id) {
-                $errors['job_title_id'] = __('La mansione è obbligatoria per gli utenti.');
+            if (! $user->job_task_id) {
+                $errors['job_task_id'] = __('La mansione è obbligatoria per gli utenti.');
             }
 
             if (! $user->job_role_id) {

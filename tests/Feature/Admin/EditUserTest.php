@@ -44,6 +44,23 @@ it('shows the current spatie role in the account type field', function () {
     $response->assertDontSee('option value="user" selected', escape: false);
 });
 
+it('marks the job unit selector as required for worker users', function () {
+    actingAsRole('superadmin');
+
+    $user = makeStaffUser([
+        'email' => 'worker@example.test',
+        'name' => 'Luca',
+        'surname' => 'Verdi',
+        'fiscal_code' => 'VRDLCU80A01H501Z',
+    ]);
+    $user->assignRole('user');
+
+    $response = $this->get(route('admin.users.edit', $user));
+
+    $response->assertOk();
+    $response->assertSee('data-required="true"', escape: false);
+});
+
 it('keeps the current role when updating other fields without changing account type', function () {
     actingAsRole('admin');
 

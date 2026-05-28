@@ -9,7 +9,7 @@ use App\Models\JobCategory;
 use App\Models\JobLevel;
 use App\Models\JobRole;
 use App\Models\JobSector;
-use App\Models\JobTitle;
+use App\Models\JobTask;
 use App\Models\JobUnit;
 use App\Models\Province;
 use App\Models\RiskBasedRequirement;
@@ -111,12 +111,12 @@ class UserController extends Controller
     {
         $jobCategories = JobCategory::all();
         $jobLevels = JobLevel::all();
-        $jobTitles = JobTitle::all();
+        $jobTasks = JobTask::all();
         $jobRoles = JobRole::all();
         $jobSectors = JobSector::all();
         $jobUnits = JobUnit::all();
 
-        return view('admin.users.create', compact('jobCategories', 'jobLevels', 'jobTitles', 'jobRoles', 'jobSectors', 'jobUnits'));
+        return view('admin.users.create', compact('jobCategories', 'jobLevels', 'jobTasks', 'jobRoles', 'jobSectors', 'jobUnits'));
     }
 
     public function store(UserRequest $request): RedirectResponse
@@ -158,7 +158,7 @@ class UserController extends Controller
         $user->load('roles', 'homeCountry', 'homeRegion', 'homeProvince', 'homeCity');
         $jobCategories = JobCategory::all();
         $jobLevels = JobLevel::all();
-        $jobTitles = JobTitle::all();
+        $jobTasks = JobTask::all();
         $jobRoles = JobRole::all();
         $jobSectors = JobSector::all();
         $jobUnits = JobUnit::all();
@@ -184,7 +184,7 @@ class UserController extends Controller
             'user',
             'jobCategories',
             'jobLevels',
-            'jobTitles',
+            'jobTasks',
             'jobRoles',
             'jobSectors',
             'jobUnits',

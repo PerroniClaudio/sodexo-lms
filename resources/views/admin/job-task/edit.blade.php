@@ -2,8 +2,8 @@
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
         <x-page-header :title="__('Modifica mansione')">
             <x-slot:actions>
-                @if($title->trashed())
-                    <form method="POST" action="{{ route('admin.job-titles.restore', $title->id) }}" class="inline">
+                @if($task->trashed())
+                    <form method="POST" action="{{ route('admin.job-tasks.restore', $task->id) }}" class="inline">
                         @csrf
                         <button type="submit" class="btn btn-success btn-outline">
                             <x-lucide-refresh-cw class="h-4 w-4" />
@@ -11,7 +11,7 @@
                         </button>
                     </form>
                 @else
-                    <form method="POST" action="{{ route('admin.job-titles.destroy', $title) }}" onsubmit="return confirm('{{ __('Sei sicuro di voler eliminare questa mansione?') }}')">
+                    <form method="POST" action="{{ route('admin.job-tasks.destroy', $task) }}" onsubmit="return confirm('{{ __('Sei sicuro di voler eliminare questa mansione?') }}')">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-error btn-outline">
@@ -32,11 +32,11 @@
                     </p>
                 </div>
 
-                <form method="POST" action="{{ route('admin.job-titles.update', $title) }}" class="flex flex-col gap-6">
+                <form method="POST" action="{{ route('admin.job-tasks.update', $task) }}" class="flex flex-col gap-6">
                     @csrf
                     @method('PUT')
 
-                    <div class="grid gap-6 md:grid-cols-1">
+                    <div class="grid gap-6 md:grid-cols-2">
                         <div class="form-control flex flex-col gap-2">
                             <label for="name" class="label p-0">
                                 <span class="label-text font-medium">{{ __('Nome') }}</span>
@@ -45,11 +45,27 @@
                                 id="name"
                                 name="name"
                                 type="text"
-                                value="{{ old('name', $title->name) }}"
+                                value="{{ old('name', $task->name) }}"
                                 class="input input-bordered w-full @error('name') input-error @enderror"
                                 required
                             >
                             @error('name')
+                                <p class="text-sm text-error">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="form-control flex flex-col gap-2">
+                            <label for="code" class="label p-0">
+                                <span class="label-text font-medium">{{ __('Codice') }}</span>
+                            </label>
+                            <input
+                                id="code"
+                                name="code"
+                                type="text"
+                                value="{{ old('code', $task->code) }}"
+                                class="input input-bordered w-full @error('code') input-error @enderror"
+                            >
+                            @error('code')
                                 <p class="text-sm text-error">{{ $message }}</p>
                             @enderror
                         </div>
@@ -64,14 +80,14 @@
                             name="description"
                             rows="4"
                             class="textarea textarea-bordered w-full @error('description') textarea-error @enderror"
-                        >{{ old('description', $title->description) }}</textarea>
+                        >{{ old('description', $task->description) }}</textarea>
                         @error('description')
                             <p class="text-sm text-error">{{ $message }}</p>
                         @enderror
                     </div>
 
                     <div class="flex justify-end gap-3">
-                        <a href="{{ route('admin.job-titles.index') }}" class="btn btn-ghost">
+                        <a href="{{ route('admin.job-tasks.index') }}" class="btn btn-ghost">
                             {{ __('Annulla') }}
                         </a>
                         <button type="submit" class="btn btn-primary">

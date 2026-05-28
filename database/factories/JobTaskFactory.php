@@ -2,14 +2,16 @@
 
 namespace Database\Factories;
 
-use App\Models\JobTitle;
+use App\Models\JobTask;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<JobTitle>
+ * @extends Factory<JobTask>
  */
-class JobTitleFactory extends Factory
+class JobTaskFactory extends Factory
 {
+    protected $model = JobTask::class;
+
     /**
      * Define the model's default state.
      *
@@ -19,8 +21,8 @@ class JobTitleFactory extends Factory
     {
         return [
             'name' => fake()->jobTitle(),
+            'code' => fake()->optional()->bothify('TASK-###'),
             'description' => fake()->optional()->sentence(),
-
         ];
     }
 }

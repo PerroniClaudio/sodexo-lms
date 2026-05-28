@@ -10,7 +10,7 @@ use App\Models\JobCategory;
 use App\Models\JobLevel;
 use App\Models\JobRole;
 use App\Models\JobSector;
-use App\Models\JobTitle;
+use App\Models\JobTask;
 use App\Models\JobUnit;
 use App\Models\VideoReportRequest;
 use Illuminate\Http\JsonResponse;
@@ -39,7 +39,7 @@ class VideoReportController extends Controller
                 VideoReportRequest::JOB_DIMENSION_SECTOR => JobSector::query()->orderBy('name')->get(['id', 'name']),
                 VideoReportRequest::JOB_DIMENSION_CATEGORY => JobCategory::query()->orderBy('name')->get(['id', 'name']),
                 VideoReportRequest::JOB_DIMENSION_LEVEL => JobLevel::query()->orderBy('name')->get(['id', 'name']),
-                VideoReportRequest::JOB_DIMENSION_TITLE => JobTitle::query()->orderBy('name')->get(['id', 'name']),
+                VideoReportRequest::JOB_DIMENSION_TASK => JobTask::query()->orderBy('name')->get(['id', 'name']),
                 VideoReportRequest::JOB_DIMENSION_ROLE => JobRole::query()->orderBy('name')->get(['id', 'name']),
                 VideoReportRequest::JOB_DIMENSION_UNIT => JobUnit::query()->orderBy('name')->get(['id', 'name']),
             ],

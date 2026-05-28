@@ -50,7 +50,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'job_unit_id',
         'job_category_id',
         'job_level_id',
-        'job_title_id',
+        'job_task_id',
         'job_role_id',
         'job_sector_id',
         'is_foreigner_or_immigrant',
@@ -105,12 +105,11 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Job Title relazione
-     * QUESTA SAREBBE LA MANSIONE
+     * Job Task relazione (mansione)
      */
-    public function jobTitle(): BelongsTo
+    public function jobTask(): BelongsTo
     {
-        return $this->belongsTo(JobTitle::class);
+        return $this->belongsTo(JobTask::class, 'job_task_id');
     }
 
     /**

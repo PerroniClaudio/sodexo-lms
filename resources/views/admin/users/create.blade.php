@@ -39,6 +39,9 @@
                                                 el.name = el.dataset.originalName;
                                             }
                                             el.disabled = false;
+                                            if (el.dataset.required === 'true') {
+                                                el.required = true;
+                                            }
                                         });
                                     });
                                 } else {
@@ -48,6 +51,7 @@
                                             if (!el.dataset.originalName) {
                                                 el.dataset.originalName = el.name;
                                             }
+                                            el.required = false;
                                             el.removeAttribute('name');
                                             el.disabled = true;
                                         });

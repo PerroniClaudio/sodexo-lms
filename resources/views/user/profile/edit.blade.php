@@ -122,7 +122,7 @@
                             </div>
                             <div class="form-control flex flex-col">
                                 <label class="label"><span class="label-text font-semibold">Mansione</span></label>
-                                <input type="text" class="input input-bordered w-full" value="{{ $user->jobTitle?->name }}" readonly>
+                                <input type="text" class="input input-bordered w-full" value="{{ $user->jobTask?->name }}" readonly>
                             </div>
                             <div class="form-control flex flex-col">
                                 <label class="label"><span class="label-text font-semibold">Unità Produttiva</span></label>

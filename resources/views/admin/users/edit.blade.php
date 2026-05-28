@@ -83,6 +83,9 @@
                                             }
 
                                             element.disabled = false;
+                                            if (element.dataset.required === 'true') {
+                                                element.required = true;
+                                            }
                                         });
                                     });
                                 } else {
@@ -93,6 +96,7 @@
                                                 element.dataset.originalName = element.name;
                                             }
 
+                                            element.required = false;
                                             element.removeAttribute('name');
                                             element.disabled = true;
                                         });

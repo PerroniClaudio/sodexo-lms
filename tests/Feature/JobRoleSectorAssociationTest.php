@@ -27,6 +27,37 @@ test('can view sector associations in job role edit page', function () {
         ->assertSee('Associazioni Settore-Rischio');
 });
 
+test('job role edit page uses searchable selector for sector association', function () {
+    $role = JobRole::factory()->create(['name' => 'Preposto']);
+    JobSector::factory()->create(['name' => 'Logistica']);
+
+    $response = $this->get(route('admin.job-roles.edit', $role));
+
+    $response->assertOk()
+        ->assertSee('data-searchable-select="job_sector_id_', escape: false)
+        ->assertSee('placeholder="Cerca o seleziona un settore..."', escape: false);
+});
+
+test('job sector edit page uses searchable selector for ateco association', function () {
+    $sector = JobSector::factory()->create(['name' => 'Logistica']);
+
+    NaceAteco::create([
+        'section' => 'H',
+        'code' => 'H',
+        'order' => 1,
+        'hierarchy' => 1,
+        'title_it' => 'Trasporto e magazzinaggio',
+        'title_en' => 'Transportation and storage',
+        'risk' => RiskLevel::MEDIUM->value,
+    ]);
+
+    $response = $this->get(route('admin.job-sectors.edit', $sector));
+
+    $response->assertOk()
+        ->assertSee('data-searchable-select="nace_ateco_code_', escape: false)
+        ->assertSee('placeholder="Cerca o seleziona un codice ATECO..."', escape: false);
+});
+
 test('can attach sector to job role with risk level', function () {
     $role = JobRole::factory()->create();
     $sector = JobSector::factory()->create();

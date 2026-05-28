@@ -5,7 +5,7 @@ namespace Database\Seeders;
 use App\Enums\UserStatus;
 use App\Models\JobRole;
 use App\Models\JobSector;
-use App\Models\JobTitle;
+use App\Models\JobTask;
 use App\Models\JobUnit;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -75,17 +75,17 @@ class TestUserSeeder extends Seeder
     private function userRoleAttributes(): array
     {
         $jobUnit = JobUnit::query()->inRandomOrder()->first();
-        $jobTitle = JobTitle::query()->inRandomOrder()->first();
+        $jobTask = JobTask::query()->inRandomOrder()->first();
         $jobRole = JobRole::query()->inRandomOrder()->first();
         $jobSector = JobSector::query()->inRandomOrder()->first();
 
-        if ($jobUnit === null || $jobTitle === null || $jobRole === null || $jobSector === null) {
+        if ($jobUnit === null || $jobTask === null || $jobRole === null || $jobSector === null) {
             throw new ModelNotFoundException('Missing required job data for seeding the test user with role user.');
         }
 
         return [
             'job_unit_id' => $jobUnit->id,
-            'job_title_id' => $jobTitle->id,
+            'job_task_id' => $jobTask->id,
             'job_role_id' => $jobRole->id,
             'job_sector_id' => $jobSector->id,
             'is_foreigner_or_immigrant' => false,
