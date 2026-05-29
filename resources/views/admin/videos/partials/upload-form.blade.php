@@ -50,6 +50,9 @@ function initVideoUploadForm() {
     var progressPercent = document.getElementById('video-upload-percent');
     var progressEta = document.getElementById('video-upload-eta');
     if (!dropLabel || !fileInput || !fileNameSpan || !uploadForm) return;
+    if (uploadForm.dataset.initialized === 'true') return;
+
+    uploadForm.dataset.initialized = 'true';
 
     // Blocca sempre il comportamento di default su drag&drop
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function(event) {
@@ -74,12 +77,6 @@ function initVideoUploadForm() {
             var event = new Event('change', { bubbles: true });
             fileInput.dispatchEvent(event);
         }
-    });
-
-    // Clicca sull'input file quando si clicca sull'area
-    dropLabel.addEventListener('click', function(e) {
-        if (e.target === fileInput) return;
-        fileInput.click();
     });
 
     // Gestione selezione manuale e visualizzazione nome file

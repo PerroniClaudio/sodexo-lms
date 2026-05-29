@@ -96,7 +96,8 @@ class CourseController extends Controller
             'course' => $course,
             'courseStatusLabels' => Course::availableStatusLabels(),
             'courseRiskRequirementValidityTypeLabels' => CourseRiskRequirementValidityType::labels(),
-            'moduleTypeLabels' => collect(Module::availableTypeLabels())
+            'moduleTypeLabels' => collect(Module::availableTypeLabels()),
+            'creatableModuleTypeLabels' => collect(Module::availableTypeLabels())
                 ->only(Module::creatableTypes())
                 ->all(),
             'moduleStatusLabels' => Module::availableStatusLabels(),

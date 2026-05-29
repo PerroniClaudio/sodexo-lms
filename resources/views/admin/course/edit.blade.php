@@ -525,7 +525,7 @@
                                     </legend>
 
                                     <div class="grid gap-3 sm:grid-cols-2">
-                                @foreach ($moduleTypeLabels as $moduleType => $moduleTypeLabel)
+                                @foreach ($creatableModuleTypeLabels as $moduleType => $moduleTypeLabel)
                                     <label class="cursor-pointer">
                                                 <input
                                                     type="radio"
