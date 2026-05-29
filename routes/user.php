@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
     Route::group(['prefix' => 'user', 'as' => 'user.'], function () {
+        Route::view('dashboard', 'user.dashboard')->name('dashboard');
+        Route::get('dashboard/courses-stats', [UserController::class, 'coursesStats'])->name('dashboard.courses-stats');
+
         Route::get('/live-stream/{module}/player', [LiveStreamController::class, 'userPlayer'])->name('live-stream.player');
         Route::post('/live-stream/{module}/join', [LiveStreamController::class, 'userJoin'])->name('live-stream.join');
         Route::get('/live-stream/{module}/state', [LiveStreamController::class, 'userState'])->name('live-stream.state');

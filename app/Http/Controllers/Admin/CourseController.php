@@ -93,7 +93,8 @@ class CourseController extends Controller
         return view('admin.course.edit', [
             'course' => $course,
             'courseStatusLabels' => Course::availableStatusLabels(),
-            'moduleTypeLabels' => collect(Module::availableTypeLabels())
+            'moduleTypeLabels' => Module::availableTypeLabels(),
+            'creatableModuleTypeLabels' => collect(Module::availableTypeLabels())
                 ->only(Module::creatableTypes())
                 ->all(),
             'moduleStatusLabels' => Module::availableStatusLabels(),

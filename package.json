@@ -1,6 +1,7 @@
 {
     "$schema": "https://www.schemastore.org/package.json",
     "private": true,
+    "packageManager": "pnpm@10.22.0",
     "type": "module",
     "scripts": {
         "build": "vite build",
@@ -22,6 +23,7 @@
         "@tiptap/extension-underline": "^3.22.5",
         "@tiptap/starter-kit": "^3.22.5",
         "@twilio/video-processors": "^3.2.0",
+        "chart.js": "^4.5.1",
         "lucide": "^1.8.0",
         "twilio-video": "^2.34.0"
     }

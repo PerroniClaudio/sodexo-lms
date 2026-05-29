@@ -74,7 +74,7 @@ APP_THEME=nome-tema
 Poi rebuilda il CSS:
 
 ```bash
-npm run build
+pnpm build
 ```
 
 ### 4. Configurare il Deploy

@@ -21,7 +21,7 @@ class LoginResponse implements LoginResponseContract
         } elseif ($user?->hasRole('tutor')) {
             $redirectTo = route('tutor.courses.index');
         } elseif ($user?->hasRole('user')) {
-            $redirectTo = route('user.courses.index');
+            $redirectTo = route('user.dashboard');
         } else {
             $redirectTo = route('reserved-area');
         }

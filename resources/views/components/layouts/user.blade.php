@@ -21,6 +21,15 @@
             <div class="flex min-h-full w-72 flex-col bg-base-200 p-4">
                 <ul class="menu w-full gap-1">
                     <li class="w-full">
+                        <a href="{{ route('user.dashboard') }}" @class([
+                            'w-full',
+                            'menu-active' => request()->routeIs('user.dashboard'),
+                        ])>
+                            <x-lucide-layout-dashboard class="mr-2 inline-block h-5 w-5" />
+                            {{ __('Dashboard') }}
+                        </a>
+                    </li>
+                    <li class="w-full">
                         <a href="{{ route($authUserRole . '.courses.index') }}" @class([
                             'w-full',
                             'menu-active' => request()->routeIs($authUserRole . '.courses.*'),
