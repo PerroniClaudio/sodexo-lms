@@ -123,6 +123,26 @@
                         <p class="text-sm text-error">{{ $message }}</p>
                     @enderror
 
+                    <div class="form-control flex flex-col gap-2">
+                        <label for="reset_formation_years" class="label p-0">
+                            <span class="label-text font-medium">{{ __('Tempo reset formazione (anni)') }}</span>
+                        </label>
+                        <input
+                            id="reset_formation_years"
+                            name="reset_formation_years"
+                            type="number"
+                            min="1"
+                            value="{{ old('reset_formation_years') }}"
+                            class="input input-bordered w-full @error('reset_formation_years') input-error @enderror"
+                        >
+                        <p class="text-sm text-base-content/70">
+                            {{ __('Tempo dall\'ultimo certificato oltre il quale si deve ripetere questa formazione da capo e non basta l\'aggiornamento.') }}
+                        </p>
+                        @error('reset_formation_years')
+                            <p class="text-sm text-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     <div class="flex justify-end gap-3">
                         <a href="{{ route('admin.risk-based-requirements.index') }}" class="btn btn-ghost">
                             {{ __('Cancel') }}

@@ -268,5 +268,9 @@ it('computes satisfied expired and missing risk-based requirements for complianc
     expect($missingRequirement->exists)->toBeTrue()
         ->and($riskBasedRequirementsCompliance['Corso rischio alto']['status'])->toBe('satisfied')
         ->and($riskBasedRequirementsCompliance['Aggiornamento periodico']['status'])->toBe('expired')
-        ->and($riskBasedRequirementsCompliance['Formazione aggiuntiva']['status'])->toBe('missing');
+        ->and($riskBasedRequirementsCompliance['Aggiornamento periodico']['required_course_validity_type'])->toBe('refresh')
+        ->and($riskBasedRequirementsCompliance['Aggiornamento periodico']['required_course_validity_type_label'])->toBe('Aggiornamento')
+        ->and($riskBasedRequirementsCompliance['Formazione aggiuntiva']['status'])->toBe('missing')
+        ->and($riskBasedRequirementsCompliance['Formazione aggiuntiva']['required_course_validity_type'])->toBe('first_achievement')
+        ->and($riskBasedRequirementsCompliance['Formazione aggiuntiva']['required_course_validity_type_label'])->toBe('Primo conseguimento');
 });

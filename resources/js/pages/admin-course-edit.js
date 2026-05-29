@@ -14,10 +14,231 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeDeleteModuleDialogs(courseEditPage);
     initializeModuleSorting(courseEditPage);
     initializeSatisfactionSurveyFields(courseEditPage);
+    initializeCourseRiskRequirements(courseEditPage);
     initializeCourseClasses(courseEditPage);
     initializeTeacherAssignmentsTable(courseEditPage);
     initializeEnrollmentsTable(courseEditPage);
 });
+
+function initializeCourseRiskRequirements(courseEditPage) {
+    const container = courseEditPage.querySelector('[data-course-risk-requirements]');
+
+    if (!container) {
+        return;
+    }
+
+    const list = container.querySelector('[data-course-risk-requirements-list]');
+    const emptyState = container.querySelector('[data-course-risk-requirements-empty]');
+    const hiddenInputsContainer = container.querySelector('[data-course-risk-requirements-hidden-inputs]');
+    const openSelectionModalButton = container.querySelector('[data-open-risk-requirement-selection-modal]');
+    const selectionModal = container.querySelector('[data-course-risk-requirement-selection-modal]');
+    const selectionTableBody = container.querySelector('[data-course-risk-requirement-selection-tbody]');
+    const selectionEmptyState = container.querySelector('[data-course-risk-requirement-selection-empty]');
+    const closeSelectionModalButtons = container.querySelectorAll('[data-close-risk-requirement-selection-modal]');
+    const validityModal = container.querySelector('[data-course-risk-requirement-validity-modal]');
+    const validityModalTitle = container.querySelector('[data-course-risk-requirement-validity-modal-title]');
+    const validityModalDescription = container.querySelector('[data-course-risk-requirement-validity-modal-description]');
+    const validitySelect = container.querySelector('[data-course-risk-requirement-validity-select]');
+    const closeValidityModalButtons = container.querySelectorAll('[data-close-risk-requirement-validity-modal]');
+    const confirmValidityButton = container.querySelector('[data-confirm-risk-requirement-validity]');
+    const deleteModal = container.querySelector('[data-course-risk-requirement-delete-modal]');
+    const deleteModalDescription = container.querySelector('[data-course-risk-requirement-delete-modal-description]');
+    const closeDeleteModalButtons = container.querySelectorAll('[data-close-risk-requirement-delete-modal]');
+    const confirmDeleteButton = container.querySelector('[data-confirm-risk-requirement-delete]');
+    const allRequirementsScript = container.querySelector('[data-course-risk-requirements-all]');
+    const selectedRequirementsScript = container.querySelector('[data-course-risk-requirements-selected]');
+
+    if (!list || !emptyState || !hiddenInputsContainer || !selectionModal || !selectionTableBody || !selectionEmptyState || !validityModal || !validityModalTitle || !validityModalDescription || !validitySelect || !confirmValidityButton || !deleteModal || !deleteModalDescription || !confirmDeleteButton || !allRequirementsScript || !selectedRequirementsScript) {
+        return;
+    }
+
+    const allRequirements = JSON.parse(allRequirementsScript.textContent || '[]');
+    const initialAssociations = JSON.parse(selectedRequirementsScript.textContent || '[]');
+    const validityTypeLabels = Object.fromEntries(
+        Array.from(validitySelect.options).map((option) => [option.value, option.textContent.trim()]),
+    );
+
+    const state = {
+        associations: Array.isArray(initialAssociations) ? [...initialAssociations] : [],
+        pendingRequirement: null,
+        pendingAction: null,
+    };
+
+    const escapeHtml = (value) => String(value || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+
+    const getAssociationIndex = (requirementId) => state.associations.findIndex(
+        (association) => Number(association.id) === Number(requirementId),
+    );
+
+    const syncHiddenInputs = () => {
+        hiddenInputsContainer.innerHTML = '';
+
+        state.associations.forEach((association) => {
+            const requirementIdInput = document.createElement('input');
+            requirementIdInput.type = 'hidden';
+            requirementIdInput.name = 'risk_based_requirement_ids[]';
+            requirementIdInput.value = String(association.id);
+            hiddenInputsContainer.appendChild(requirementIdInput);
+
+            const validityTypeInput = document.createElement('input');
+            validityTypeInput.type = 'hidden';
+            validityTypeInput.name = `risk_based_requirement_validity_types[${association.id}]`;
+            validityTypeInput.value = association.course_validity_type;
+            hiddenInputsContainer.appendChild(validityTypeInput);
+        });
+    };
+
+    const renderAssociations = () => {
+        list.innerHTML = '';
+        emptyState.classList.toggle('hidden', state.associations.length > 0);
+
+        state.associations.forEach((association) => {
+            const item = document.createElement('div');
+            item.className = 'rounded-box border border-base-300 bg-base-100 p-4';
+            item.innerHTML = `
+                <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div class="space-y-1">
+                        <p class="font-medium text-base-content">${escapeHtml(association.name)}</p>
+                        ${association.description ? `<p class="text-sm text-base-content/70">${escapeHtml(association.description)}</p>` : ''}
+                        <span class="badge badge-outline badge-sm">${escapeHtml(validityTypeLabels[association.course_validity_type] || association.course_validity_type)}</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-action="edit">${escapeHtml('Modifica validità')}</button>
+                        <button type="button" class="btn btn-accent btn-outline btn-sm" data-action="delete">${escapeHtml('Elimina')}</button>
+                    </div>
+                </div>
+            `;
+
+            item.querySelector('[data-action="edit"]').addEventListener('click', () => {
+                state.pendingRequirement = association;
+                state.pendingAction = 'edit';
+                validityModalTitle.textContent = 'Modifica validità del corso';
+                validityModalDescription.textContent = `Imposta come il corso vale per il requisito "${association.name}".`;
+                validitySelect.value = association.course_validity_type;
+                validityModal.showModal();
+            });
+
+            item.querySelector('[data-action="delete"]').addEventListener('click', () => {
+                state.pendingRequirement = association;
+                deleteModalDescription.textContent = `Vuoi rimuovere l'associazione del requisito "${association.name}" da questo corso?`;
+                deleteModal.showModal();
+            });
+
+            list.appendChild(item);
+        });
+
+        syncHiddenInputs();
+    };
+
+    const renderSelectionOptions = () => {
+        selectionTableBody.innerHTML = '';
+
+        const selectedIds = new Set(state.associations.map((association) => Number(association.id)));
+        const availableRequirements = allRequirements.filter(
+            (requirement) => !selectedIds.has(Number(requirement.id)),
+        );
+
+        selectionEmptyState.classList.toggle('hidden', availableRequirements.length > 0);
+
+        availableRequirements.forEach((requirement) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="font-medium">${escapeHtml(requirement.name)}</td>
+                <td class="text-sm text-base-content/70">${escapeHtml(requirement.description || '-')}</td>
+                <td class="text-right">
+                    <button type="button" class="btn btn-primary btn-sm" data-action="add">Aggiungi</button>
+                </td>
+            `;
+
+            row.querySelector('[data-action="add"]').addEventListener('click', () => {
+                state.pendingRequirement = requirement;
+                state.pendingAction = 'create';
+                validityModalTitle.textContent = 'Imposta validità del corso';
+                validityModalDescription.textContent = `Imposta come il corso vale per il requisito "${requirement.name}".`;
+                validitySelect.value = 'both';
+                selectionModal.close();
+                validityModal.showModal();
+            });
+
+            selectionTableBody.appendChild(row);
+        });
+    };
+
+    confirmValidityButton.addEventListener('click', () => {
+        if (!state.pendingRequirement) {
+            return;
+        }
+
+        const payload = {
+            ...state.pendingRequirement,
+            course_validity_type: validitySelect.value,
+        };
+        const existingIndex = getAssociationIndex(payload.id);
+
+        if (existingIndex >= 0) {
+            state.associations.splice(existingIndex, 1, payload);
+        } else {
+            state.associations.push(payload);
+            state.associations.sort((left, right) => left.name.localeCompare(right.name, 'it'));
+        }
+
+        state.pendingRequirement = null;
+        state.pendingAction = null;
+        validityModal.close();
+        renderAssociations();
+        renderSelectionOptions();
+    });
+
+    confirmDeleteButton.addEventListener('click', () => {
+        if (!state.pendingRequirement) {
+            return;
+        }
+
+        state.associations = state.associations.filter(
+            (association) => Number(association.id) !== Number(state.pendingRequirement.id),
+        );
+        state.pendingRequirement = null;
+        deleteModal.close();
+        renderAssociations();
+        renderSelectionOptions();
+    });
+
+    if (openSelectionModalButton) {
+        openSelectionModalButton.addEventListener('click', () => {
+            renderSelectionOptions();
+            selectionModal.showModal();
+        });
+    }
+
+    closeSelectionModalButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            selectionModal.close();
+        });
+    });
+
+    closeValidityModalButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            state.pendingRequirement = null;
+            state.pendingAction = null;
+            validityModal.close();
+        });
+    });
+
+    closeDeleteModalButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            state.pendingRequirement = null;
+            deleteModal.close();
+        });
+    });
+
+    renderAssociations();
+    renderSelectionOptions();
+}
 
 function initializeCourseClasses(courseEditPage) {
     const container = courseEditPage.querySelector('[data-course-classes]');

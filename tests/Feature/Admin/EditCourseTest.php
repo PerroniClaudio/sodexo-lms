@@ -62,6 +62,8 @@ it('shows the edit course page with the update form and modules card', function 
     $response->assertSeeText('Bozza');
     $response->assertSeeText('Pubblicato');
     $response->assertSeeText('Archiviato');
+    $response->assertSeeText('Requisiti di rischio coperti dal corso');
+    $response->assertSeeText('Aggiungi requisito');
     $response->assertSeeText('Salva dati');
 });
 

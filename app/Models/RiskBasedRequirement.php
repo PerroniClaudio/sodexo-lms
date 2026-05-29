@@ -24,6 +24,7 @@ class RiskBasedRequirement extends Model
         'is_limited_validity',
         'risk_levels',
         'validity_months',
+        'reset_formation_years',
     ];
 
     /**
@@ -37,6 +38,7 @@ class RiskBasedRequirement extends Model
             'risk_levels' => AsEnumCollection::of(RiskLevel::class),
             'is_limited_validity' => 'boolean',
             'validity_months' => 'integer',
+            'reset_formation_years' => 'integer',
         ];
     }
 
@@ -102,6 +104,13 @@ class RiskBasedRequirement extends Model
         );
     }
 
+    public function courses(): BelongsToMany
+    {
+        return $this->belongsToMany(Course::class)
+            ->withPivot('course_validity_type')
+            ->withTimestamps();
+    }
+
     /**
      * Get the validity in years and months
      *
@@ -117,5 +126,10 @@ class RiskBasedRequirement extends Model
         $months = $this->validity_months % 12;
 
         return ['years' => $years, 'months' => $months];
+    }
+
+    public function hasFormationResetWindow(): bool
+    {
+        return $this->reset_formation_years !== null && $this->reset_formation_years > 0;
     }
 }

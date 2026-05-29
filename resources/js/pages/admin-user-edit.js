@@ -61,6 +61,9 @@ function initializeRiskSummary(page) {
         }
 
         summary.risk_based_requirements.forEach((riskBasedRequirement) => {
+            const requiredTypeLabel = riskBasedRequirement.required_course_validity_type_label
+                ? String(riskBasedRequirement.required_course_validity_type_label).toLowerCase()
+                : '';
             const item = document.createElement('div');
             item.className = 'rounded-box border border-base-300 bg-base-200/40 p-4';
             item.innerHTML = `
@@ -69,7 +72,12 @@ function initializeRiskSummary(page) {
                         <div class="font-semibold text-base-content">${escapeHtml(riskBasedRequirement.risk_based_requirement_name)}</div>
                         ${riskBasedRequirement.risk_based_requirement_description ? `<p class="text-sm text-base-content/70">${escapeHtml(riskBasedRequirement.risk_based_requirement_description)}</p>` : ''}
                     </div>
-                    <span class="badge ${requirementBadgeClass(riskBasedRequirement.status)}">${escapeHtml(riskBasedRequirement.status_label)}</span>
+                    <div class="flex flex-col items-start gap-2 md:items-end">
+                        <span class="badge ${requirementBadgeClass(riskBasedRequirement.status)}">${escapeHtml(riskBasedRequirement.status_label)}</span>
+                        ${['missing', 'expired'].includes(riskBasedRequirement.status) && requiredTypeLabel !== ''
+                            ? `<p class="text-sm text-base-content/70">Richiesto: ${escapeHtml(requiredTypeLabel)}</p>`
+                            : ''}
+                    </div>
                 </div>
             `;
             riskBasedRequirementsContainer.appendChild(item);

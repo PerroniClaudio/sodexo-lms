@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\CourseRiskRequirementValidityType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCourseRequest;
 use App\Http\Requests\UpdateCourseRequest;
 use App\Models\Course;
 use App\Models\Module;
+use App\Models\RiskBasedRequirement;
 use App\Models\SatisfactionSurveyTemplate;
 use App\Services\CourseValidation\CourseValidatorService;
 use App\Services\SyncCourseSatisfactionSurvey;
@@ -93,6 +95,7 @@ class CourseController extends Controller
         return view('admin.course.edit', [
             'course' => $course,
             'courseStatusLabels' => Course::availableStatusLabels(),
+            'courseRiskRequirementValidityTypeLabels' => CourseRiskRequirementValidityType::labels(),
             'moduleTypeLabels' => collect(Module::availableTypeLabels())
                 ->only(Module::creatableTypes())
                 ->all(),
@@ -100,6 +103,7 @@ class CourseController extends Controller
             'modules' => $modules,
             'courseValidator' => $this->courseValidator,
             'activeSatisfactionSurveyTemplate' => SatisfactionSurveyTemplate::active(),
+            'riskBasedRequirements' => RiskBasedRequirement::query()->orderBy('name')->get(),
         ]);
     }
 
@@ -110,8 +114,12 @@ class CourseController extends Controller
     ): RedirectResponse {
         try {
             $validated = $request->validated();
+            $courseAttributes = collect($validated)->except([
+                'risk_based_requirement_ids',
+                'risk_based_requirement_validity_types',
+            ])->all();
             $attributes = [
-                ...$validated,
+                ...$courseAttributes,
                 'has_satisfaction_survey' => (bool) ($validated['has_satisfaction_survey'] ?? false),
                 'satisfaction_survey_required_for_certificate' => (bool) (($validated['has_satisfaction_survey'] ?? false)
                     && ($validated['satisfaction_survey_required_for_certificate'] ?? false)),
@@ -124,6 +132,9 @@ class CourseController extends Controller
             }
 
             $course->update($attributes);
+            $course->riskBasedRequirements()->sync(
+                $this->buildRiskBasedRequirementSyncPayload($validated)
+            );
             $syncCourseSatisfactionSurvey->handle($course);
 
             return redirect()
@@ -135,6 +146,31 @@ class CourseController extends Controller
                 ->withInput()
                 ->with('error', $e->getMessage());
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<int, array{course_validity_type: string}>
+     */
+    private function buildRiskBasedRequirementSyncPayload(array $validated): array
+    {
+        $selectedRequirementIds = collect($validated['risk_based_requirement_ids'] ?? [])
+            ->map(fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values();
+        $validityTypes = collect($validated['risk_based_requirement_validity_types'] ?? []);
+
+        return $selectedRequirementIds
+            ->mapWithKeys(function (int $riskBasedRequirementId) use ($validityTypes): array {
+                return [
+                    $riskBasedRequirementId => [
+                        'course_validity_type' => CourseRiskRequirementValidityType::tryFrom(
+                            (string) $validityTypes->get((string) $riskBasedRequirementId)
+                        )?->value ?? CourseRiskRequirementValidityType::Both->value,
+                    ],
+                ];
+            })
+            ->all();
     }
 
     /**

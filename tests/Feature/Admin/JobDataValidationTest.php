@@ -15,6 +15,7 @@ test('admin can create a risk based requirement without limited validity', funct
         'name' => 'Requisito senza scadenza',
         'description' => 'Test validazione checkbox',
         'risk_levels' => [RiskLevel::LOW->value],
+        'reset_formation_years' => 4,
     ]);
 
     $requirement = RiskBasedRequirement::query()->first();
@@ -24,7 +25,8 @@ test('admin can create a risk based requirement without limited validity', funct
     expect($requirement)
         ->not->toBeNull()
         ->and($requirement->is_limited_validity)->toBeFalse()
-        ->and($requirement->validity_months)->toBeNull();
+        ->and($requirement->validity_months)->toBeNull()
+        ->and($requirement->reset_formation_years)->toBe(4);
 });
 
 test('job unit validation accepts punctuation in unit code', function () {

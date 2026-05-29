@@ -188,6 +188,188 @@
                                     </div>
                                 </div>
                             </div>
+
+                            @php
+                                $selectedRiskBasedRequirementIds = collect(old(
+                                    'risk_based_requirement_ids',
+                                    $course->riskBasedRequirements->pluck('id')->map(fn ($id) => (string) $id)->all(),
+                                ))->map(fn ($id) => (string) $id);
+                                $selectedRiskBasedRequirementValidityTypes = collect(
+                                    old(
+                                        'risk_based_requirement_validity_types',
+                                        $course->riskBasedRequirements
+                                            ->mapWithKeys(fn ($riskBasedRequirement) => [
+                                                (string) $riskBasedRequirement->getKey() => $riskBasedRequirement->pivot->course_validity_type,
+                                            ])
+                                            ->all(),
+                                    )
+                                );
+                                $allRiskBasedRequirementsPayload = $riskBasedRequirements
+                                    ->map(fn ($riskBasedRequirement) => [
+                                        'id' => (int) $riskBasedRequirement->getKey(),
+                                        'name' => $riskBasedRequirement->name,
+                                        'description' => $riskBasedRequirement->description,
+                                    ])
+                                    ->values();
+                                $selectedRiskBasedRequirementsPayload = $riskBasedRequirements
+                                    ->filter(fn ($riskBasedRequirement) => $selectedRiskBasedRequirementIds->contains((string) $riskBasedRequirement->getKey()))
+                                    ->map(fn ($riskBasedRequirement) => [
+                                        'id' => (int) $riskBasedRequirement->getKey(),
+                                        'name' => $riskBasedRequirement->name,
+                                        'description' => $riskBasedRequirement->description,
+                                        'course_validity_type' => $selectedRiskBasedRequirementValidityTypes->get(
+                                            (string) $riskBasedRequirement->getKey(),
+                                            \App\Enums\CourseRiskRequirementValidityType::Both->value,
+                                        ),
+                                    ])
+                                    ->values();
+                            @endphp
+
+                            <div
+                                class="rounded-box border border-base-300 bg-base-200/40 p-4 md:col-span-2"
+                                data-course-risk-requirements
+                            >
+                                <div class="flex flex-col gap-4">
+                                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                        <div>
+                                            <h3 class="text-sm font-semibold text-base-content">{{ __('Requisiti di rischio coperti dal corso') }}</h3>
+                                            <p class="text-sm text-base-content/70">
+                                                {{ __('Aggiungi solo i requisiti associati al corso e definisci per ciascuno la validità del corso.') }}
+                                            </p>
+                                        </div>
+
+                                        @if ($riskBasedRequirements->isNotEmpty())
+                                            <button type="button" class="btn btn-primary btn-sm" data-open-risk-requirement-selection-modal>
+                                                <x-lucide-plus class="h-4 w-4" />
+                                                <span>{{ __('Aggiungi requisito') }}</span>
+                                            </button>
+                                        @endif
+                                    </div>
+
+                                    @if ($riskBasedRequirements->isEmpty())
+                                        <div class="rounded-box border border-dashed border-base-300 bg-base-100/70 p-4 text-sm text-base-content/70">
+                                            {{ __('Non ci sono ancora requisiti di rischio configurati.') }}
+                                        </div>
+                                    @else
+                                        <div class="grid gap-3" data-course-risk-requirements-list></div>
+
+                                        <div class="rounded-box border border-dashed border-base-300 bg-base-100/70 p-4 text-sm text-base-content/70 hidden" data-course-risk-requirements-empty>
+                                            {{ __('Nessun requisito di rischio associato al corso.') }}
+                                        </div>
+
+                                        <div data-course-risk-requirements-hidden-inputs></div>
+
+                                        <script type="application/json" data-course-risk-requirements-all>
+                                            {!! json_encode($allRiskBasedRequirementsPayload->all(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}
+                                        </script>
+                                        <script type="application/json" data-course-risk-requirements-selected>
+                                            {!! json_encode($selectedRiskBasedRequirementsPayload->all(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}
+                                        </script>
+
+                                        <dialog class="modal" data-course-risk-requirement-selection-modal>
+                                            <div class="modal-box max-w-4xl">
+                                                <div class="flex items-start justify-between gap-4">
+                                                    <div>
+                                                        <h3 class="text-lg font-semibold">{{ __('Seleziona requisito di rischio') }}</h3>
+                                                        <p class="text-sm text-base-content/70">
+                                                            {{ __('Scegli uno dei requisiti disponibili da associare al corso.') }}
+                                                        </p>
+                                                    </div>
+                                                    <button type="button" class="btn btn-ghost btn-sm btn-circle" data-close-risk-requirement-selection-modal>
+                                                        <x-lucide-x class="h-4 w-4" />
+                                                    </button>
+                                                </div>
+
+                                                <div class="mt-6 overflow-x-auto rounded-box border border-base-300">
+                                                    <table class="table w-full">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>{{ __('Nome') }}</th>
+                                                                <th>{{ __('Descrizione') }}</th>
+                                                                <th class="text-right">{{ __('Azioni') }}</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody data-course-risk-requirement-selection-tbody></tbody>
+                                                    </table>
+                                                </div>
+
+                                                <div class="mt-4 rounded-box border border-dashed border-base-300 bg-base-100/70 p-4 text-sm text-base-content/70 hidden" data-course-risk-requirement-selection-empty>
+                                                    {{ __('Tutti i requisiti disponibili sono già associati al corso.') }}
+                                                </div>
+
+                                                <div class="modal-action">
+                                                    <button type="button" class="btn btn-ghost" data-close-risk-requirement-selection-modal>
+                                                        {{ __('Chiudi') }}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <form method="dialog" class="modal-backdrop">
+                                                <button>{{ __('Chiudi') }}</button>
+                                            </form>
+                                        </dialog>
+
+                                        <dialog class="modal" data-course-risk-requirement-validity-modal>
+                                            <div class="modal-box max-w-lg">
+                                                <div class="space-y-2">
+                                                    <h3 class="text-lg font-semibold" data-course-risk-requirement-validity-modal-title>{{ __('Imposta validità del corso') }}</h3>
+                                                    <p class="text-sm text-base-content/70" data-course-risk-requirement-validity-modal-description></p>
+                                                </div>
+
+                                                <div class="mt-6 form-control flex flex-col gap-2">
+                                                    <label class="label p-0" for="course_risk_requirement_validity_type">
+                                                        <span class="label-text font-medium">{{ __('Validità del corso') }}</span>
+                                                    </label>
+                                                    <select id="course_risk_requirement_validity_type" class="select select-bordered w-full" data-course-risk-requirement-validity-select>
+                                                        @foreach ($courseRiskRequirementValidityTypeLabels as $value => $label)
+                                                            <option value="{{ $value }}">{{ $label }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+
+                                                <div class="modal-action">
+                                                    <button type="button" class="btn btn-ghost" data-close-risk-requirement-validity-modal>
+                                                        {{ __('Annulla') }}
+                                                    </button>
+                                                    <button type="button" class="btn btn-primary" data-confirm-risk-requirement-validity>
+                                                        {{ __('Conferma') }}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <form method="dialog" class="modal-backdrop">
+                                                <button>{{ __('Chiudi') }}</button>
+                                            </form>
+                                        </dialog>
+
+                                        <dialog class="modal" data-course-risk-requirement-delete-modal>
+                                            <div class="modal-box max-w-lg">
+                                                <div class="space-y-2">
+                                                    <h3 class="text-lg font-semibold">{{ __('Rimuovi associazione') }}</h3>
+                                                    <p class="text-sm text-base-content/70" data-course-risk-requirement-delete-modal-description></p>
+                                                </div>
+
+                                                <div class="modal-action">
+                                                    <button type="button" class="btn btn-ghost" data-close-risk-requirement-delete-modal>
+                                                        {{ __('Annulla') }}
+                                                    </button>
+                                                    <button type="button" class="btn btn-accent" data-confirm-risk-requirement-delete>
+                                                        {{ __('Conferma eliminazione') }}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <form method="dialog" class="modal-backdrop">
+                                                <button>{{ __('Chiudi') }}</button>
+                                            </form>
+                                        </dialog>
+                                    @endif
+
+                                    @error('risk_based_requirement_ids')
+                                        <p class="text-sm text-error">{{ $message }}</p>
+                                    @enderror
+                                    @error('risk_based_requirement_validity_types')
+                                        <p class="text-sm text-error">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            </div>
                         </div>
 
                         <div class="flex justify-end">

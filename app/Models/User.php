@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Enums\CourseRiskRequirementValidityType;
 use App\Enums\OnboardingStep;
 use App\Enums\RiskLevel;
 use App\Enums\UserStatus;
+use App\Services\CourseRiskRequirementService;
 use App\Services\RiskCalculationService;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -499,6 +501,8 @@ class User extends Authenticatable implements MustVerifyEmail
      *     satisfied: bool,
      *     status: string,
      *     status_label: string,
+     *     required_course_validity_type: ?string,
+     *     required_course_validity_type_label: ?string,
      *     expires_at: ?string,
      *     expires_at_label: ?string,
      *     certificate_ids: array<int, int>,
@@ -532,7 +536,9 @@ class User extends Authenticatable implements MustVerifyEmail
             })
             ->values();
 
-        return $riskBasedRequirements->map(function (RiskBasedRequirement $riskBasedRequirement) use ($allRelevantCertificates, $validCertificates): array {
+        $courseRiskRequirementService = app(CourseRiskRequirementService::class);
+
+        return $riskBasedRequirements->map(function (RiskBasedRequirement $riskBasedRequirement) use ($allRelevantCertificates, $validCertificates, $courseRiskRequirementService): array {
             $matchingValidCertificates = $validCertificates
                 ->filter(fn (UserCertificate $certificate): bool => $certificate->riskBasedRequirements->contains('id', $riskBasedRequirement->getKey()))
                 ->values();
@@ -549,6 +555,9 @@ class User extends Authenticatable implements MustVerifyEmail
             $isSatisfied = $bestValidCertificate !== null;
             $expiresAt = $bestValidCertificate?->expires_at;
             $status = $isSatisfied ? 'satisfied' : ($matchingExpiredCertificates->isNotEmpty() ? 'expired' : 'missing');
+            $requiredCourseValidityType = in_array($status, ['missing', 'expired'], true)
+                ? $courseRiskRequirementService->determineRequiredValidityType($this, $riskBasedRequirement)
+                : null;
 
             return [
                 'risk_based_requirement_id' => (int) $riskBasedRequirement->getKey(),
@@ -560,6 +569,12 @@ class User extends Authenticatable implements MustVerifyEmail
                     'satisfied' => $expiresAt === null ? __('Soddisfatto') : __('Soddisfatto fino al :date', ['date' => $expiresAt->format('d/m/Y')]),
                     'expired' => __('Scaduto'),
                     default => __('Mancante'),
+                },
+                'required_course_validity_type' => $requiredCourseValidityType?->value,
+                'required_course_validity_type_label' => match ($requiredCourseValidityType) {
+                    CourseRiskRequirementValidityType::FirstAchievement => __('Primo conseguimento'),
+                    CourseRiskRequirementValidityType::Refresh => __('Aggiornamento'),
+                    default => null,
                 },
                 'expires_at' => $expiresAt?->toDateString(),
                 'expires_at_label' => $expiresAt?->format('d/m/Y'),

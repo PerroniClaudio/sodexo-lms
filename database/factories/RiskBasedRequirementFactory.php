@@ -40,6 +40,7 @@ class RiskBasedRequirementFactory extends Factory
                 fake()->numberBetween(1, 3)
             ),
             'validity_months' => $hasLimitedValidity ? fake()->randomElement([12, 24, 36, 48, 60]) : null,
+            'reset_formation_years' => fake()->optional(0.4)->numberBetween(1, 10),
         ];
     }
 
@@ -62,6 +63,13 @@ class RiskBasedRequirementFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'is_limited_validity' => true,
             'validity_months' => $months,
+        ]);
+    }
+
+    public function withFormationReset(int $years): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'reset_formation_years' => $years,
         ]);
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\CourseRiskRequirementValidityType;
 use App\Models\Course;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -32,6 +33,10 @@ class UpdateCourseRequest extends FormRequest
             'status' => ['required', 'string', Rule::in(Course::availableStatuses())],
             'has_satisfaction_survey' => ['nullable', 'boolean'],
             'satisfaction_survey_required_for_certificate' => ['nullable', 'boolean'],
+            'risk_based_requirement_ids' => ['nullable', 'array'],
+            'risk_based_requirement_ids.*' => ['integer', 'exists:risk_based_requirements,id'],
+            'risk_based_requirement_validity_types' => ['nullable', 'array'],
+            'risk_based_requirement_validity_types.*' => ['nullable', 'string', Rule::in(CourseRiskRequirementValidityType::values())],
         ];
     }
 
@@ -50,6 +55,8 @@ class UpdateCourseRequest extends FormRequest
             'status' => __('Stato'),
             'has_satisfaction_survey' => __('Includi questionario di gradimento'),
             'satisfaction_survey_required_for_certificate' => __('Questionario obbligatorio per attestato'),
+            'risk_based_requirement_ids' => __('Requisiti di rischio'),
+            'risk_based_requirement_validity_types' => __('Tipo di validità corso per requisito'),
         ];
     }
 }

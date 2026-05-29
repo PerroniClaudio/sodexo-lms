@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\CourseEnrollment;
 use App\Services\Certificates\CourseCertificateGenerator;
+use App\Services\CourseRiskRequirementService;
 use Illuminate\Support\Facades\DB;
 
 class CourseEnrollmentObserver
@@ -15,7 +16,7 @@ class CourseEnrollmentObserver
 
     public function updated(CourseEnrollment $courseEnrollment): void
     {
-        if (! $courseEnrollment->wasChanged('status')) {
+        if (! $this->wasCompletedNow($courseEnrollment)) {
             return;
         }
 
@@ -24,7 +25,7 @@ class CourseEnrollmentObserver
 
     private function dispatchCertificateGenerationIfCompleted(CourseEnrollment $courseEnrollment): void
     {
-        if ($courseEnrollment->status !== CourseEnrollment::STATUS_COMPLETED) {
+        if (! $this->isCompleted($courseEnrollment)) {
             return;
         }
 
@@ -38,6 +39,25 @@ class CourseEnrollmentObserver
             }
 
             app(CourseCertificateGenerator::class)->generateForEnrollment($enrollment);
+            app(CourseRiskRequirementService::class)->syncCertificatesForEnrollment($enrollment);
         });
+    }
+
+    private function wasCompletedNow(CourseEnrollment $courseEnrollment): bool
+    {
+        if (! $this->isCompleted($courseEnrollment)) {
+            return false;
+        }
+
+        return ($courseEnrollment->wasChanged('status')
+                && $courseEnrollment->status === CourseEnrollment::STATUS_COMPLETED)
+            || ($courseEnrollment->wasChanged('completed_at')
+                && $courseEnrollment->completed_at !== null);
+    }
+
+    private function isCompleted(CourseEnrollment $courseEnrollment): bool
+    {
+        return $courseEnrollment->status === CourseEnrollment::STATUS_COMPLETED
+            || $courseEnrollment->completed_at !== null;
     }
 }

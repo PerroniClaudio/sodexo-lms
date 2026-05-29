@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CourseRiskRequirementValidityType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -161,6 +162,24 @@ class Course extends Model
     public function scormPackages(): HasMany
     {
         return $this->hasMany(ScormPackage::class);
+    }
+
+    public function riskBasedRequirements(): BelongsToMany
+    {
+        return $this->belongsToMany(RiskBasedRequirement::class)
+            ->withPivot('course_validity_type')
+            ->withTimestamps();
+    }
+
+    public function courseValidityTypeForRequirement(RiskBasedRequirement $riskBasedRequirement): CourseRiskRequirementValidityType
+    {
+        $type = $this->riskBasedRequirements
+            ->firstWhere('id', $riskBasedRequirement->getKey())
+            ?->pivot
+            ?->course_validity_type;
+
+        return CourseRiskRequirementValidityType::tryFrom((string) $type)
+            ?? CourseRiskRequirementValidityType::Both;
     }
 
     /**

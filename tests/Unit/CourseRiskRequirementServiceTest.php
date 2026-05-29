@@ -1,0 +1,210 @@
+<?php
+
+use App\Enums\CourseRiskRequirementValidityType;
+use App\Models\Course;
+use App\Models\CourseEnrollment;
+use App\Models\Module;
+use App\Models\RiskBasedRequirement;
+use App\Models\User;
+use App\Models\UserCertificate;
+use App\Services\CourseRiskRequirementService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+
+uses(RefreshDatabase::class);
+
+function makeTestUser(): User
+{
+    return User::forceCreate([
+        'name' => 'Test',
+        'surname' => 'User',
+        'email' => fake()->unique()->safeEmail(),
+        'password' => Hash::make('password'),
+        'fiscal_code' => strtoupper(Str::random(16)),
+        'email_verified_at' => now(),
+        'profile_completed_at' => now(),
+        'account_state' => 'active',
+        'is_foreigner_or_immigrant' => false,
+    ]);
+}
+
+it('determines first achievement when the user has no certificate for the requirement', function () {
+    $user = makeTestUser();
+    $requirement = RiskBasedRequirement::factory()->create();
+
+    $requiredType = app(CourseRiskRequirementService::class)
+        ->determineRequiredValidityType($user, $requirement, now());
+
+    expect($requiredType)->toBe(CourseRiskRequirementValidityType::FirstAchievement);
+});
+
+it('determines refresh when the user already has a valid certificate for the requirement', function () {
+    $user = makeTestUser();
+    $requirement = RiskBasedRequirement::factory()->limited(24)->create();
+
+    $certificate = UserCertificate::factory()
+        ->for($user)
+        ->create([
+            'issued_at' => now()->subMonths(3)->toDateString(),
+            'expires_at' => now()->addMonths(21)->toDateString(),
+        ]);
+    $certificate->riskBasedRequirements()->attach($requirement->getKey());
+
+    $requiredType = app(CourseRiskRequirementService::class)
+        ->determineRequiredValidityType($user, $requirement, now());
+
+    expect($requiredType)->toBe(CourseRiskRequirementValidityType::Refresh);
+});
+
+it('switches between refresh and first achievement based on the formation reset window', function () {
+    $user = makeTestUser();
+    $requirement = RiskBasedRequirement::factory()
+        ->limited(12)
+        ->withFormationReset(5)
+        ->create();
+
+    $certificate = UserCertificate::factory()
+        ->for($user)
+        ->create([
+            'issued_at' => now()->subYears(5)->subMonths(6)->toDateString(),
+            'expires_at' => now()->subMonths(6)->toDateString(),
+        ]);
+    $certificate->riskBasedRequirements()->attach($requirement->getKey());
+
+    $service = app(CourseRiskRequirementService::class);
+
+    expect($service->determineRequiredValidityType($user, $requirement, now()))
+        ->toBe(CourseRiskRequirementValidityType::Refresh);
+
+    $certificate->forceFill([
+        'issued_at' => now()->subYears(8)->toDateString(),
+        'expires_at' => now()->subYears(6)->toDateString(),
+    ])->save();
+
+    expect($service->determineRequiredValidityType($user, $requirement, now()))
+        ->toBe(CourseRiskRequirementValidityType::FirstAchievement);
+});
+
+it('matches the course requirement validity type against the current user need', function () {
+    $user = makeTestUser();
+    $requirement = RiskBasedRequirement::factory()->create();
+    $service = app(CourseRiskRequirementService::class);
+
+    expect($service->courseRequirementMatchesUserNeed(
+        $user,
+        $requirement,
+        CourseRiskRequirementValidityType::FirstAchievement,
+        now(),
+    ))->toBeTrue();
+
+    expect($service->courseRequirementMatchesUserNeed(
+        $user,
+        $requirement,
+        CourseRiskRequirementValidityType::Refresh,
+        now(),
+    ))->toBeFalse();
+
+    expect($service->courseRequirementMatchesUserNeed(
+        $user,
+        $requirement,
+        CourseRiskRequirementValidityType::Both,
+        now(),
+    ))->toBeTrue();
+});
+
+it('creates an internal risk certificate when an enrollment completes', function () {
+    $user = makeTestUser();
+    $course = Course::factory()->create(['title' => 'Corso spazi confinati']);
+    $module = Module::factory()->create([
+        'type' => Module::TYPE_VIDEO,
+        'order' => 1,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+    $requirement = RiskBasedRequirement::factory()->limited(24)->create([
+        'name' => 'Spazi confinati',
+    ]);
+    $course->riskBasedRequirements()->attach($requirement->getKey(), [
+        'course_validity_type' => CourseRiskRequirementValidityType::Both->value,
+    ]);
+
+    $enrollment = CourseEnrollment::enroll($user, $course);
+    $enrollment->moduleProgresses()->where('module_id', $module->getKey())->firstOrFail()->markCompleted();
+
+    $certificate = UserCertificate::query()->sole();
+
+    expect($certificate->internal_course_id)->toBe($course->getKey())
+        ->and($certificate->is_internal)->toBeTrue()
+        ->and($certificate->name)->toBe('Corso spazi confinati')
+        ->and($certificate->description)->toBe('Corso '.$course->getKey().' (Corso spazi confinati) che risponde al requisito Spazi confinati')
+        ->and($certificate->issued_at?->toDateString())->toBe($enrollment->fresh()->completed_at?->toDateString())
+        ->and($certificate->expires_at?->toDateString())->toBe($enrollment->fresh()->completed_at?->copy()->addMonthsNoOverflow(24)->toDateString())
+        ->and($certificate->riskBasedRequirements()->pluck('risk_based_requirements.id')->all())
+        ->toEqualCanonicalizing([$requirement->getKey()]);
+});
+
+it('does not create a duplicate valid certificate for the same course and requirement', function () {
+    $user = makeTestUser();
+    $course = Course::factory()->create(['title' => 'Corso aggiornamento']);
+    $requirement = RiskBasedRequirement::factory()->limited(24)->create();
+    $course->riskBasedRequirements()->attach($requirement->getKey(), [
+        'course_validity_type' => CourseRiskRequirementValidityType::Both->value,
+    ]);
+
+    $enrollment = CourseEnrollment::withoutEvents(fn (): CourseEnrollment => CourseEnrollment::factory()->create([
+        'user_id' => $user->getKey(),
+        'course_id' => $course->getKey(),
+        'status' => CourseEnrollment::STATUS_COMPLETED,
+        'completed_at' => now()->subDay(),
+        'completion_percentage' => 100,
+    ]));
+
+    $certificate = UserCertificate::factory()
+        ->for($user)
+        ->internal($course)
+        ->create([
+            'name' => 'Corso aggiornamento',
+            'issued_at' => now()->subDay()->toDateString(),
+            'expires_at' => now()->addYear()->toDateString(),
+        ]);
+    $certificate->riskBasedRequirements()->attach($requirement->getKey());
+
+    app(CourseRiskRequirementService::class)->syncCertificatesForEnrollment($enrollment->fresh());
+
+    expect(UserCertificate::query()->count())->toBe(1);
+});
+
+it('backfills certificates for enrollments completed outside the observer flow', function () {
+    $user = makeTestUser();
+    $course = Course::factory()->create(['title' => 'Corso manuale']);
+    $requirement = RiskBasedRequirement::factory()->create([
+        'name' => 'Manuale',
+    ]);
+    $course->riskBasedRequirements()->attach($requirement->getKey(), [
+        'course_validity_type' => CourseRiskRequirementValidityType::Both->value,
+    ]);
+
+    $enrollment = CourseEnrollment::factory()->create([
+        'user_id' => $user->getKey(),
+        'course_id' => $course->getKey(),
+        'status' => CourseEnrollment::STATUS_ASSIGNED,
+        'completed_at' => null,
+        'completion_percentage' => 0,
+    ]);
+
+    CourseEnrollment::withoutEvents(function () use ($enrollment): void {
+        $enrollment->forceFill([
+            'status' => CourseEnrollment::STATUS_COMPLETED,
+            'completed_at' => now()->subDays(2),
+            'completion_percentage' => 100,
+        ])->save();
+    });
+
+    app(CourseRiskRequirementService::class)->syncCertificatesForCompletedEnrollments();
+
+    $certificate = UserCertificate::query()->sole();
+
+    expect($certificate->internal_course_id)->toBe($course->getKey())
+        ->and($certificate->riskBasedRequirements()->pluck('risk_based_requirements.id')->all())
+        ->toEqualCanonicalizing([$requirement->getKey()]);
+});

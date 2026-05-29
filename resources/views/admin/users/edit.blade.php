@@ -30,13 +30,20 @@
                                         <p class="text-sm text-base-content/70">{{ $riskBasedRequirement['risk_based_requirement_description'] }}</p>
                                     @endif
                                 </div>
-                                <span class="badge {{
-                                    $riskBasedRequirement['status'] === 'satisfied'
-                                        ? 'badge-success badge-soft'
-                                        : ($riskBasedRequirement['status'] === 'expired' ? 'badge-warning badge-soft' : 'badge-error badge-soft')
-                                }}">
-                                    {{ $riskBasedRequirement['status_label'] }}
-                                </span>
+                                <div class="flex flex-col items-start gap-2 md:items-end">
+                                    <span class="badge {{
+                                        $riskBasedRequirement['status'] === 'satisfied'
+                                            ? 'badge-success badge-soft'
+                                            : ($riskBasedRequirement['status'] === 'expired' ? 'badge-warning badge-soft' : 'badge-error badge-soft')
+                                    }}">
+                                        {{ $riskBasedRequirement['status_label'] }}
+                                    </span>
+                                    @if (in_array($riskBasedRequirement['status'], ['missing', 'expired'], true) && $riskBasedRequirement['required_course_validity_type_label'])
+                                        <p class="text-sm text-base-content/70">
+                                            {{ __('Richiesto: :type', ['type' => \Illuminate\Support\Str::lower($riskBasedRequirement['required_course_validity_type_label'])]) }}
+                                        </p>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     @empty
