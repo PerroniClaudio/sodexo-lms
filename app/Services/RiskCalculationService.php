@@ -50,19 +50,19 @@ class RiskCalculationService
 
     /**
      * Funzione 2: Calcola il rischio finale effettivo del lavoratore
-     * Prende il rischio del settore e lo paragona al rischio specifico del ruolo
+     * Prende il rischio del settore e lo paragona al rischio specifico della mansione
      * Restituisce il rischio più alto tra i due
      */
-    public function getEffectiveWorkerRisk(int $jobSectorId, int $jobRoleId): RiskLevel
+    public function getEffectiveWorkerRisk(int $jobSectorId, int $jobTaskId): RiskLevel
     {
         $sectorRisk = $this->getSectorRiskLevel($jobSectorId);
-        $roleRisk = $this->getRoleRiskInSector($jobSectorId, $jobRoleId);
+        $taskRisk = $this->getTaskRiskInSector($jobSectorId, $jobTaskId);
 
-        if (! $roleRisk) {
+        if (! $taskRisk) {
             return $sectorRisk;
         }
 
-        return $sectorRisk->max($roleRisk);
+        return $sectorRisk->max($taskRisk);
     }
 
     /**
@@ -172,18 +172,18 @@ class RiskCalculationService
         return $chain;
     }
 
-    protected function getRoleRiskInSector(int $jobSectorId, int $jobRoleId): ?RiskLevel
+    protected function getTaskRiskInSector(int $jobSectorId, int $jobTaskId): ?RiskLevel
     {
-        $pivot = DB::table('job_role_job_sector')
+        $pivot = DB::table('job_task_job_sector')
             ->where('job_sector_id', $jobSectorId)
-            ->where('job_role_id', $jobRoleId)
+            ->where('job_task_id', $jobTaskId)
             ->first();
 
-        if (! $pivot || ! $pivot->role_risk_level) {
+        if (! $pivot || ! $pivot->task_risk_level) {
             return null;
         }
 
-        return RiskLevel::tryFrom($pivot->role_risk_level);
+        return RiskLevel::tryFrom($pivot->task_risk_level);
     }
 
     protected function getHighestRisk(Collection $risks): RiskLevel

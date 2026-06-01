@@ -58,20 +58,20 @@ function prepareRiskContextForUser(User $user): array
 
     $role = JobRole::create([
         'name' => 'Preposto',
-        'description' => 'Ruolo con responsabilità di vigilanza',
+        'description' => 'Ruolo anagrafico',
     ]);
-    $title = JobTask::create([
+    $task = JobTask::create([
         'name' => 'Infermiere',
         'description' => 'Professionista sanitario',
     ]);
-    $role->jobSectors()->attach($sector->getKey(), [
-        'role_risk_level' => RiskLevel::HIGH->value,
+    $task->jobSectors()->attach($sector->getKey(), [
+        'task_risk_level' => RiskLevel::HIGH->value,
     ]);
 
     $user->forceFill([
         'job_sector_id' => $sector->getKey(),
         'job_role_id' => $role->getKey(),
-        'job_task_id' => $title->getKey(),
+        'job_task_id' => $task->getKey(),
     ])->save();
 
     $validRequirement = RiskBasedRequirement::factory()

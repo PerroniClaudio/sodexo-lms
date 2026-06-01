@@ -31,22 +31,22 @@ class JobSector extends Model
             ->withTimestamps();
     }
 
-    public function jobRoles(): BelongsToMany
+    public function jobTasks(): BelongsToMany
     {
-        return $this->belongsToMany(JobRole::class, 'job_role_job_sector')
-            ->withPivot('role_risk_level')
+        return $this->belongsToMany(JobTask::class, 'job_task_job_sector')
+            ->withPivot('task_risk_level')
             ->withTimestamps();
     }
 
-    public function getJobRoleRisk(int $jobRoleId): ?RiskLevel
+    public function getJobTaskRisk(int $jobTaskId): ?RiskLevel
     {
-        $pivot = $this->jobRoles()->wherePivot('job_role_id', $jobRoleId)->first()?->pivot;
+        $pivot = $this->jobTasks()->wherePivot('job_task_id', $jobTaskId)->first()?->pivot;
 
         if (! $pivot) {
             return null;
         }
 
-        return RiskLevel::tryFrom($pivot->role_risk_level);
+        return RiskLevel::tryFrom($pivot->task_risk_level);
     }
 
     /**
@@ -58,9 +58,9 @@ class JobSector extends Model
             ->getSectorRiskLevel($this->id);
     }
 
-    public function getEffectiveWorkerRisk(int $jobRoleId): RiskLevel
+    public function getEffectiveWorkerRisk(int $jobTaskId): RiskLevel
     {
         return app(RiskCalculationService::class)
-            ->getEffectiveWorkerRisk($this->id, $jobRoleId);
+            ->getEffectiveWorkerRisk($this->id, $jobTaskId);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreJobTaskRequest;
 use App\Http\Requests\UpdateJobTaskRequest;
+use App\Models\JobSector;
 use App\Models\JobTask;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -71,8 +72,11 @@ class JobTaskController extends Controller
 
     public function edit(JobTask $jobTask): View
     {
+        $jobTask->load('jobSectors');
+
         return view('admin.job-task.edit', [
             'task' => $jobTask,
+            'allSectors' => JobSector::query()->orderBy('name')->get(),
         ]);
     }
 
@@ -102,5 +106,51 @@ class JobTaskController extends Controller
         return redirect()
             ->route('admin.job-tasks.index')
             ->with('status', __('Mansione ripristinata con successo.'));
+    }
+
+    public function attachSector(Request $request, JobTask $jobTask): RedirectResponse
+    {
+        $validated = $request->validate([
+            'job_sector_id' => ['required', 'exists:job_sectors,id'],
+            'task_risk_level' => ['required', 'in:low,medium,high'],
+        ]);
+
+        if ($jobTask->jobSectors()->where('job_sector_id', $validated['job_sector_id'])->exists()) {
+            return redirect()
+                ->route('admin.job-tasks.edit', $jobTask)
+                ->with('error', __('Questo settore è già associato a questa mansione.'));
+        }
+
+        $jobTask->jobSectors()->attach($validated['job_sector_id'], [
+            'task_risk_level' => $validated['task_risk_level'],
+        ]);
+
+        return redirect()
+            ->route('admin.job-tasks.edit', $jobTask)
+            ->with('status', __('Settore associato con successo.'));
+    }
+
+    public function detachSector(JobTask $jobTask, JobSector $jobSector): RedirectResponse
+    {
+        $jobTask->jobSectors()->detach($jobSector->id);
+
+        return redirect()
+            ->route('admin.job-tasks.edit', $jobTask)
+            ->with('status', __('Settore rimosso con successo.'));
+    }
+
+    public function updateSectorRisk(Request $request, JobTask $jobTask, JobSector $jobSector): RedirectResponse
+    {
+        $validated = $request->validate([
+            'task_risk_level' => ['required', 'in:low,medium,high'],
+        ]);
+
+        $jobTask->jobSectors()->updateExistingPivot($jobSector->id, [
+            'task_risk_level' => $validated['task_risk_level'],
+        ]);
+
+        return redirect()
+            ->route('admin.job-tasks.edit', $jobTask)
+            ->with('status', __('Rischio aggiornato con successo.'));
     }
 }

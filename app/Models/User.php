@@ -469,16 +469,16 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Get the effective risk level for a worker in this sector with a specific job role.
+     * Get the effective risk level for a worker in this sector with a specific job task.
      */
     public function getEffectiveWorkerRisk(): RiskLevel
     {
-        if (! $this->hasRole('user') || ! $this->jobSector || ! $this->jobRole) {
-            throw new \LogicException('Cannot calculate risk level for user without "user" role, job sector or job role');
+        if (! $this->hasRole('user') || ! $this->jobSector || ! $this->jobTask) {
+            throw new \LogicException('Cannot calculate risk level for user without "user" role, job sector or job task');
         }
 
         return app(RiskCalculationService::class)
-            ->getEffectiveWorkerRisk($this->jobSector->id, $this->jobRole->id);
+            ->getEffectiveWorkerRisk($this->jobSector->id, $this->jobTask->id);
     }
 
     public function getRiskBasedRequirementsForEffectiveRisk(): array

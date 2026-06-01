@@ -162,10 +162,10 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::post('job-sectors/{id}/restore', [JobSectorController::class, 'restore'])->name('job-sectors.restore');
             Route::post('job-units/{id}/restore', [JobUnitController::class, 'restore'])->name('job-units.restore');
 
-            // Job Role - Sector associations
-            Route::post('job-roles/{job_role}/sectors', [JobRoleController::class, 'attachSector'])->name('job-roles.sectors.attach');
-            Route::delete('job-roles/{job_role}/sectors/{job_sector}', [JobRoleController::class, 'detachSector'])->name('job-roles.sectors.detach');
-            Route::put('job-roles/{job_role}/sectors/{job_sector}', [JobRoleController::class, 'updateSectorRisk'])->name('job-roles.sectors.update');
+            // Job Task - Sector associations
+            Route::post('job-tasks/{job_task}/sectors', [JobTaskController::class, 'attachSector'])->name('job-tasks.sectors.attach');
+            Route::delete('job-tasks/{job_task}/sectors/{job_sector}', [JobTaskController::class, 'detachSector'])->name('job-tasks.sectors.detach');
+            Route::put('job-tasks/{job_task}/sectors/{job_sector}', [JobTaskController::class, 'updateSectorRisk'])->name('job-tasks.sectors.update');
 
             // Job Sector - ATECO associations
             Route::post('job-sectors/{job_sector}/ateco', [JobSectorController::class, 'attachAtecoCode'])->name('job-sectors.ateco.attach');

@@ -3,8 +3,8 @@
 use App\Enums\HierarchyLevel;
 use App\Enums\InclusionType;
 use App\Enums\RiskLevel;
-use App\Models\JobRole;
 use App\Models\JobSector;
+use App\Models\JobTask;
 use App\Models\NaceAteco;
 use App\Services\RiskCalculationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,13 +21,13 @@ test('getSectorRiskLevel returns highest risk from ATECO codes', function () {
         'code' => '86.90',
         'order' => 3,
         'hierarchy' => HierarchyLevel::NACE_CLASS->value,
-        'title_it' => 'Altre attività di assistenza sanitaria',
+        'title_it' => 'Altre attivita di assistenza sanitaria',
         'title_en' => 'Other human health activities',
         'risk' => RiskLevel::MEDIUM->value,
     ]);
 
     $jobSector = JobSector::create([
-        'name' => 'Sanità',
+        'name' => 'Sanita',
         'code' => 'SANITA',
         'description' => 'Settore sanitario',
     ]);
@@ -47,7 +47,7 @@ test('getSectorRiskLevel returns highest risk when including entire section', fu
         'code' => 'Q',
         'order' => 1,
         'hierarchy' => HierarchyLevel::SECTION->value,
-        'title_it' => 'Sanità',
+        'title_it' => 'Sanita',
         'title_en' => 'Health',
         'risk' => RiskLevel::HIGH->value,
     ]);
@@ -63,7 +63,7 @@ test('getSectorRiskLevel returns highest risk when including entire section', fu
     ]);
 
     $jobSector = JobSector::create([
-        'name' => 'Sanità Generale',
+        'name' => 'Sanita Generale',
         'code' => 'SANITA_GEN',
         'description' => 'Tutto il settore sanitario',
     ]);
@@ -77,7 +77,7 @@ test('getSectorRiskLevel returns highest risk when including entire section', fu
     expect($result)->toBe(RiskLevel::HIGH);
 });
 
-test('getEffectiveWorkerRisk returns highest between sector and role risk', function () {
+test('getEffectiveWorkerRisk returns highest between sector and task risk', function () {
     $code86 = NaceAteco::create([
         'section' => 'Q',
         'code' => '86',
@@ -89,7 +89,7 @@ test('getEffectiveWorkerRisk returns highest between sector and role risk', func
     ]);
 
     $jobSector = JobSector::create([
-        'name' => 'Sanità',
+        'name' => 'Sanita',
         'code' => 'SANITA',
         'description' => 'Settore sanitario',
     ]);
@@ -98,21 +98,21 @@ test('getEffectiveWorkerRisk returns highest between sector and role risk', func
         'inclusion_type' => InclusionType::DIVISION->value,
     ]);
 
-    $jobRole = JobRole::create([
-        'name' => 'Preposto',
-        'description' => 'Ruolo con responsabilità di vigilanza',
+    $jobTask = JobTask::create([
+        'name' => 'Infermiere',
+        'description' => 'Professionista sanitario',
     ]);
 
-    $jobRole->jobSectors()->attach($jobSector->id, [
-        'role_risk_level' => RiskLevel::HIGH->value,
+    $jobTask->jobSectors()->attach($jobSector->id, [
+        'task_risk_level' => RiskLevel::HIGH->value,
     ]);
 
-    $result = $this->service->getEffectiveWorkerRisk($jobSector->id, $jobRole->id);
+    $result = $this->service->getEffectiveWorkerRisk($jobSector->id, $jobTask->id);
 
     expect($result)->toBe(RiskLevel::HIGH);
 });
 
-test('getEffectiveWorkerRisk returns sector risk when no role mapping exists', function () {
+test('getEffectiveWorkerRisk returns sector risk when no task mapping exists', function () {
     $code86 = NaceAteco::create([
         'section' => 'Q',
         'code' => '86',
@@ -124,7 +124,7 @@ test('getEffectiveWorkerRisk returns sector risk when no role mapping exists', f
     ]);
 
     $jobSector = JobSector::create([
-        'name' => 'Sanità',
+        'name' => 'Sanita',
         'code' => 'SANITA',
         'description' => 'Settore sanitario',
     ]);
@@ -133,12 +133,12 @@ test('getEffectiveWorkerRisk returns sector risk when no role mapping exists', f
         'inclusion_type' => InclusionType::DIVISION->value,
     ]);
 
-    $jobRole = JobRole::create([
-        'name' => 'Lavoratore',
-        'description' => 'Ruolo base',
+    $jobTask = JobTask::create([
+        'name' => 'Impiegato',
+        'description' => 'Mansione base',
     ]);
 
-    $result = $this->service->getEffectiveWorkerRisk($jobSector->id, $jobRole->id);
+    $result = $this->service->getEffectiveWorkerRisk($jobSector->id, $jobTask->id);
 
     expect($result)->toBe(RiskLevel::HIGH);
 });
@@ -176,7 +176,7 @@ test('findSectorByAtecoCode finds sector by hierarchical parent', function () {
         'code' => 'Q',
         'order' => 1,
         'hierarchy' => HierarchyLevel::SECTION->value,
-        'title_it' => 'Sanità',
+        'title_it' => 'Sanita',
         'title_en' => 'Health',
         'risk' => RiskLevel::HIGH->value,
     ]);
@@ -202,7 +202,7 @@ test('findSectorByAtecoCode finds sector by hierarchical parent', function () {
     ]);
 
     $jobSector = JobSector::create([
-        'name' => 'Sanità',
+        'name' => 'Sanita',
         'code' => 'SANITA',
         'description' => 'Tutto il settore sanitario',
     ]);
@@ -223,7 +223,7 @@ test('getSectionForCode returns section record', function () {
         'code' => 'Q',
         'order' => 1,
         'hierarchy' => HierarchyLevel::SECTION->value,
-        'title_it' => 'Sanità e assistenza sociale',
+        'title_it' => 'Sanita e assistenza sociale',
         'title_en' => 'Human health and social work',
         'risk' => RiskLevel::HIGH->value,
     ]);
@@ -242,5 +242,5 @@ test('getSectionForCode returns section record', function () {
 
     expect($result)->not->toBeNull()
         ->and($result->code)->toBe('Q')
-        ->and($result->title_it)->toBe('Sanità e assistenza sociale');
+        ->and($result->title_it)->toBe('Sanita e assistenza sociale');
 });
