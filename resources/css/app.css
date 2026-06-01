@@ -76,6 +76,63 @@
     .homepage-hero-content a {
         @apply underline underline-offset-4;
     }
+
+    .user-event-calendar .fc {
+        @apply text-base-content;
+    }
+
+    .user-event-calendar .fc .fc-toolbar {
+        @apply mt-2 mb-6 items-center;
+    }
+
+    .user-event-calendar .fc .fc-toolbar-title {
+        @apply text-xl font-semibold;
+    }
+
+    .user-event-calendar .fc .fc-toolbar-chunk:last-child {
+        @apply ml-auto flex items-center gap-4;
+    }
+
+    .user-event-calendar .fc .fc-button {
+        @apply border-0 bg-transparent p-0 text-base-content shadow-none;
+    }
+
+    .user-event-calendar .fc .fc-button:hover,
+    .user-event-calendar .fc .fc-button:focus,
+    .user-event-calendar .fc .fc-button:active {
+        @apply border-0 bg-transparent text-primary shadow-none outline-none;
+    }
+
+    .user-event-calendar .fc .fc-button .fc-icon {
+        @apply text-base;
+    }
+
+    .user-event-calendar .fc .fc-scrollgrid,
+    .user-event-calendar .fc .fc-theme-standard td,
+    .user-event-calendar .fc .fc-theme-standard th {
+        border: 0;
+    }
+
+    .user-event-calendar .fc .fc-col-header-cell-cushion {
+        @apply py-2 text-sm font-medium text-base-content/60 no-underline;
+    }
+
+    .user-event-calendar .fc .fc-daygrid-day-frame {
+        @apply px-2 py-3;
+        min-height: 4.5rem;
+    }
+
+    .user-event-calendar .fc .fc-daygrid-day-top {
+        @apply justify-center;
+    }
+
+    .user-event-calendar .fc .fc-daygrid-day-number {
+        @apply text-base font-medium text-base-content no-underline;
+    }
+
+    .user-event-calendar .fc .fc-day-today {
+        background: transparent;
+    }
 }
 
 
