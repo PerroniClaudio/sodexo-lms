@@ -15,6 +15,8 @@ Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
     Route::group(['prefix' => 'user', 'as' => 'user.'], function () {
         Route::view('dashboard', 'user.dashboard')->name('dashboard');
         Route::get('dashboard/courses-stats', [UserController::class, 'coursesStats'])->name('dashboard.courses-stats');
+        Route::get('dashboard/calendar-events', [UserController::class, 'calendarEvents'])->name('dashboard.calendar-events');
+        Route::get('dashboard/calendar-events/fake', [UserController::class, 'fakeCalendarEvents'])->name('dashboard.calendar-events.fake');
 
         Route::get('/live-stream/{module}/player', [LiveStreamController::class, 'userPlayer'])->name('live-stream.player');
         Route::post('/live-stream/{module}/join', [LiveStreamController::class, 'userJoin'])->name('live-stream.join');

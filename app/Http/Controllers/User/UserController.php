@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\CourseClass;
+use App\Models\CourseClassSchedule;
 use App\Models\CourseEnrollment;
+use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\User;
 use App\Support\UserGeographyMapper;
@@ -95,6 +98,145 @@ class UserController extends Controller
                 ])
                 ->values(),
             'weekly_activity' => $this->weeklyActivityFor($user),
+        ]);
+    }
+
+    public function calendarEvents(): JsonResponse
+    {
+        $user = $this->authUser();
+
+        $assignedClasses = $user->courseClassAssignments()
+            ->with([
+                'courseClass' => fn ($query) => $query
+                    ->select(['id', 'module_id', 'name'])
+                    ->with([
+                        'module' => fn ($moduleQuery) => $moduleQuery
+                            ->select(['id', 'title', 'type', 'belongsTo'])
+                            ->with('course:id,title'),
+                        'schedules' => fn ($scheduleQuery) => $scheduleQuery
+                            ->select(['id', 'course_class_id', 'starts_at', 'ends_at'])
+                            ->orderBy('starts_at'),
+                    ]),
+            ])
+            ->whereHas('courseClass.module', fn ($query) => $query->whereIn('type', [
+                Module::TYPE_LIVE,
+                Module::TYPE_RESIDENTIAL,
+            ]))
+            ->get()
+            ->pluck('courseClass')
+            ->filter(fn (?CourseClass $courseClass): bool => $courseClass instanceof CourseClass)
+            ->unique(fn (CourseClass $courseClass): int => (int) $courseClass->getKey())
+            ->values();
+
+        $events = $assignedClasses
+            ->flatMap(function (CourseClass $courseClass) {
+                $courseTitle = $courseClass->module?->course?->title ?? __('Corso senza titolo');
+                $moduleTitle = $courseClass->module?->title ?? __('Modulo senza titolo');
+                $eventType = $courseClass->module?->type;
+
+                return $courseClass->schedules
+                    ->map(function (CourseClassSchedule $schedule) use ($courseClass, $courseTitle, $moduleTitle, $eventType): array {
+                        return [
+                            'id' => sprintf('class-%d-schedule-%d', $courseClass->getKey(), $schedule->getKey()),
+                            'title' => $moduleTitle,
+                            'start' => $schedule->starts_at->toAtomString(),
+                            'end' => $schedule->ends_at->toAtomString(),
+                            'allDay' => false,
+                            'extendedProps' => [
+                                'type' => $eventType,
+                                'course_title' => $courseTitle,
+                                'class_name' => $courseClass->name,
+                                'module_id' => $courseClass->module?->getKey(),
+                                'course_class_id' => $courseClass->getKey(),
+                            ],
+                        ];
+                    });
+            })
+            ->sortBy('start')
+            ->values();
+
+        return response()->json([
+            'events' => $events,
+        ]);
+    }
+
+    public function fakeCalendarEvents(): JsonResponse
+    {
+        $baseDate = CarbonImmutable::today()->startOfMonth()->addDays(8);
+
+        return response()->json([
+            'events' => [
+                [
+                    'id' => 'fake-live-1',
+                    'title' => 'Lezione Live: Deploy Vercel',
+                    'start' => $baseDate->setTime(18, 0)->toAtomString(),
+                    'end' => $baseDate->setTime(19, 30)->toAtomString(),
+                    'allDay' => false,
+                    'extendedProps' => [
+                        'type' => Module::TYPE_LIVE,
+                        'course_title' => 'React & Next.js',
+                        'class_name' => 'Classe Live Serale',
+                        'module_id' => 101,
+                        'course_class_id' => 201,
+                    ],
+                ],
+                [
+                    'id' => 'fake-live-2',
+                    'title' => 'Lezione Live: Q&A Tutor',
+                    'start' => $baseDate->setTime(21, 0)->toAtomString(),
+                    'end' => $baseDate->setTime(22, 0)->toAtomString(),
+                    'allDay' => false,
+                    'extendedProps' => [
+                        'type' => Module::TYPE_LIVE,
+                        'course_title' => 'React & Next.js',
+                        'class_name' => 'Classe Live Serale',
+                        'module_id' => 102,
+                        'course_class_id' => 201,
+                    ],
+                ],
+                [
+                    'id' => 'fake-res-1',
+                    'title' => 'Corso RES: Sicurezza Antincendio',
+                    'start' => $baseDate->addDays(2)->setTime(9, 0)->toAtomString(),
+                    'end' => $baseDate->addDays(2)->setTime(13, 0)->toAtomString(),
+                    'allDay' => false,
+                    'extendedProps' => [
+                        'type' => Module::TYPE_RESIDENTIAL,
+                        'course_title' => 'Formazione Obbligatoria',
+                        'class_name' => 'Aula Milano 1',
+                        'module_id' => 103,
+                        'course_class_id' => 202,
+                    ],
+                ],
+                [
+                    'id' => 'fake-live-3',
+                    'title' => 'Webinar: Aggiornamento HACCP',
+                    'start' => $baseDate->addDays(6)->setTime(17, 30)->toAtomString(),
+                    'end' => $baseDate->addDays(6)->setTime(18, 30)->toAtomString(),
+                    'allDay' => false,
+                    'extendedProps' => [
+                        'type' => Module::TYPE_LIVE,
+                        'course_title' => 'Aggiornamenti Normativi',
+                        'class_name' => 'Webinar Nazionale',
+                        'module_id' => 104,
+                        'course_class_id' => 203,
+                    ],
+                ],
+                [
+                    'id' => 'fake-res-2',
+                    'title' => 'Corso RES: Primo Soccorso',
+                    'start' => $baseDate->addDays(6)->setTime(10, 0)->toAtomString(),
+                    'end' => $baseDate->addDays(6)->setTime(12, 30)->toAtomString(),
+                    'allDay' => false,
+                    'extendedProps' => [
+                        'type' => Module::TYPE_RESIDENTIAL,
+                        'course_title' => 'Formazione Presenziale',
+                        'class_name' => 'Aula Roma 2',
+                        'module_id' => 105,
+                        'course_class_id' => 204,
+                    ],
+                ],
+            ],
         ]);
     }
 
