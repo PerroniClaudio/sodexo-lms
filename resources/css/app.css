@@ -205,13 +205,13 @@
         @apply m-0 h-2 w-2 rounded-full border-0 bg-primary;
     }
 
-    .user-event-calendar .fc .fc-event-time,
-    .user-event-calendar .fc .fc-event-title,
-    .user-event-calendar .fc .fc-daygrid-event-harness-abs {
+    .user-event-calendar .fc .fc-daygrid-body .fc-event-time,
+    .user-event-calendar .fc .fc-daygrid-body .fc-event-title,
+    .user-event-calendar .fc .fc-daygrid-body .fc-daygrid-event-harness-abs {
         display: none !important;
     }
 
-    .user-event-calendar .fc .fc-event-main {
+    .user-event-calendar .fc .fc-daygrid-body .fc-event-main {
         @apply hidden;
     }
 

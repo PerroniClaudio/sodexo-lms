@@ -1,9 +1,9 @@
 <x-layouts.user>
-    <section class="flex w-full flex-col gap-6 p-4 sm:p-6 lg:p-8 h-screen">
-        <div class="flex flex-col xl:grid xl:grid-cols-3 gap-4 h-full">
+    <section class="flex min-h-full w-full flex-col gap-6 p-4 sm:p-6 lg:p-8">
+        <div class="flex flex-col gap-4 xl:grid xl:min-h-full xl:grid-cols-3">
             <div class="col-span-2 flex flex-col gap-4">
                 <x-user.courses-stats :stats-url="route('user.dashboard.courses-stats')" />
-                <x-user.courses-list />
+                <x-user.courses-list :courses="$recentCourses" />
             </div>
             <div class="flex flex-col gap-4">
                 <x-user.event-calendar />

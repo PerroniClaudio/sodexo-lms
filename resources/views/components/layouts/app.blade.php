@@ -12,7 +12,7 @@
         
     </head>
 
-    <body class="antialiased">
+    <body class="antialiased overflow-y-scroll [scrollbar-gutter:stable]">
         <div class="min-h-screen bg-base-100">
             @session('status')
                 <div class="pointer-events-none fixed right-4 bottom-4 z-50 sm:right-6 sm:bottom-6">

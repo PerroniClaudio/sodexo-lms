@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\Course;
 use App\Models\CourseClass;
 use App\Models\CourseClassSchedule;
 use App\Models\CourseEnrollment;
@@ -14,6 +15,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 /**
@@ -25,6 +27,16 @@ class UserController extends Controller
     public function __construct(
         private readonly UserGeographyMapper $userGeographyMapper,
     ) {}
+
+    /**
+     * Mostra dashboard utente autenticato
+     */
+    public function dashboard(): View
+    {
+        return view('user.dashboard', [
+            'recentCourses' => $this->recentCoursesFor($this->authUser()),
+        ]);
+    }
 
     /**
      * Mostra la pagina di modifica del proprio profilo utente
@@ -276,6 +288,83 @@ class UserController extends Controller
                 })
                 ->all(),
         ];
+    }
+
+    /**
+     * @return Collection<int, array{
+     *     title: string,
+     *     type: string,
+     *     type_label: string,
+     *     status: string,
+     *     progress: int,
+     *     last_accessed_at: ?string,
+     *     modules_count: int,
+     *     open_url: string
+     * }>
+     */
+    private function recentCoursesFor(User $user): Collection
+    {
+        $typeLabels = Course::availableTypeLabels();
+
+        return $user->courseEnrollments()
+            ->with([
+                'course' => fn ($query) => $query
+                    ->select(['id', 'title', 'type'])
+                    ->withCount('modules'),
+                'currentModule:id,title,belongsTo',
+            ])
+            ->whereNotNull('last_accessed_at')
+            ->orderByDesc('last_accessed_at')
+            ->limit(4)
+            ->get([
+                'id',
+                'user_id',
+                'course_id',
+                'current_module_id',
+                'status',
+                'completion_percentage',
+                'last_accessed_at',
+            ])
+            ->sort(function (CourseEnrollment $first, CourseEnrollment $second): int {
+                $firstPriority = $this->dashboardStatusPriority($first->status);
+                $secondPriority = $this->dashboardStatusPriority($second->status);
+
+                if ($firstPriority !== $secondPriority) {
+                    return $firstPriority <=> $secondPriority;
+                }
+
+                return $second->last_accessed_at?->getTimestamp() <=> $first->last_accessed_at?->getTimestamp();
+            })
+            ->map(function (CourseEnrollment $enrollment) use ($typeLabels): array {
+                $course = $enrollment->course;
+                $currentModule = $enrollment->currentModule;
+
+                return [
+                    'title' => $course?->title ?? __('Corso senza titolo'),
+                    'type' => (string) ($course?->type ?? 'unknown'),
+                    'type_label' => $typeLabels[$course?->type ?? ''] ?? strtoupper((string) $course?->type),
+                    'status' => (string) $enrollment->status,
+                    'progress' => (int) ($enrollment->completion_percentage ?? 0),
+                    'last_accessed_at' => $enrollment->last_accessed_at?->format('d/m/Y H:i'),
+                    'modules_count' => (int) ($course?->modules_count ?? 0),
+                    'open_url' => $course === null
+                        ? route('user.courses.index')
+                        : ($currentModule !== null
+                            ? route('user.courses.modules.player', [$course, $currentModule])
+                            : route('user.courses.show', $course)),
+                ];
+            })
+            ->values();
+    }
+
+    private function dashboardStatusPriority(string $status): int
+    {
+        return match ($status) {
+            CourseEnrollment::STATUS_IN_PROGRESS,
+            CourseEnrollment::STATUS_ASSIGNED => 0,
+            CourseEnrollment::STATUS_COMPLETED => 1,
+            default => 2,
+        };
     }
 
     private function authUser(): User

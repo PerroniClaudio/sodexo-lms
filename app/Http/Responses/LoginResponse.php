@@ -23,7 +23,7 @@ class LoginResponse implements LoginResponseContract
         } elseif ($user?->hasRole('user')) {
             $redirectTo = route('user.dashboard');
         } else {
-            $redirectTo = route('reserved-area');
+            $redirectTo = route('user.dashboard');
         }
 
         return redirect()->intended($redirectTo);

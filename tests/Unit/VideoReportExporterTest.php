@@ -244,15 +244,3 @@ function seedVideoReportFixture(?JobSector $jobSector = null, string $courseTitl
 
     return [$videoReportRequest, $moduleProgress, $jobSector];
 }
-
-function zipCanOpen(string $path): bool
-{
-    $zip = new ZipArchive;
-    $opened = $zip->open($path) === true;
-
-    if ($opened) {
-        $zip->close();
-    }
-
-    return $opened;
-}
