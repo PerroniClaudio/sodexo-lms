@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\CourseRiskRequirementValidityType;
+use App\Enums\RiskLevel;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCourseRequest;
 use App\Http\Requests\UpdateCourseRequest;
@@ -35,6 +36,7 @@ class CourseController extends Controller
     {
         $allowedSorts = ['id', 'title', 'status', 'year'];
         $courseStatusLabels = Course::availableStatusLabels();
+        $courseTypeLabels = Course::availableTypeLabels();
         $requestedSort = $request->string('sort')->toString();
         $hasValidSort = in_array($requestedSort, $allowedSorts, true);
         $sort = $hasValidSort ? $requestedSort : 'id';
@@ -50,14 +52,16 @@ class CourseController extends Controller
                         $query
                             ->where('id', 'like', "%{$search}%")
                             ->orWhere('title', 'like', "%{$search}%")
+                            ->orWhere('type', 'like', "%{$search}%")
                             ->orWhere('status', 'like', "%{$search}%")
                             ->orWhere('year', 'like', "%{$search}%");
                     });
                 })
                 ->orderBy($sort, $direction)
                 ->paginate(20)
-                ->through(function (Course $course) use ($courseStatusLabels): Course {
+                ->through(function (Course $course) use ($courseStatusLabels, $courseTypeLabels): Course {
                     $course->status = $courseStatusLabels[$course->status] ?? $course->status;
+                    $course->type = $courseTypeLabels[$course->type] ?? $course->type;
 
                     return $course;
                 })
@@ -91,9 +95,11 @@ class CourseController extends Controller
     public function edit(Course $course): View
     {
         $modules = $course->modules()->get();
+        $course->load('riskBasedRequirements');
 
         return view('admin.course.edit', [
             'course' => $course,
+            'courseTypeLabels' => Course::availableTypeLabels(),
             'courseStatusLabels' => Course::availableStatusLabels(),
             'courseRiskRequirementValidityTypeLabels' => CourseRiskRequirementValidityType::labels(),
             'moduleTypeLabels' => collect(Module::availableTypeLabels()),
@@ -105,6 +111,7 @@ class CourseController extends Controller
             'courseValidator' => $this->courseValidator,
             'activeSatisfactionSurveyTemplate' => SatisfactionSurveyTemplate::active(),
             'riskBasedRequirements' => RiskBasedRequirement::query()->orderBy('name')->get(),
+            'riskLevels' => RiskLevel::ordered(),
         ]);
     }
 
@@ -118,6 +125,7 @@ class CourseController extends Controller
             $courseAttributes = collect($validated)->except([
                 'risk_based_requirement_ids',
                 'risk_based_requirement_validity_types',
+                'risk_based_requirement_integrative_start_levels',
             ])->all();
             $attributes = [
                 ...$courseAttributes,
@@ -132,11 +140,37 @@ class CourseController extends Controller
                 ];
             }
 
-            $course->update($attributes);
+            $targetStatus = (string) ($attributes['status'] ?? $course->status);
+            $shouldPrepareSurveyBeforePublishing = $targetStatus === 'published'
+                && ($course->status !== 'published' || ! $course->exists)
+                && (bool) ($attributes['has_satisfaction_survey'] ?? false);
+
+            if ($shouldPrepareSurveyBeforePublishing) {
+                $course->update([
+                    ...$attributes,
+                    'status' => 'draft',
+                ]);
+            } else {
+                $course->update($attributes);
+            }
+
             $course->riskBasedRequirements()->sync(
                 $this->buildRiskBasedRequirementSyncPayload($validated)
             );
             $syncCourseSatisfactionSurvey->handle($course);
+
+            if ($shouldPrepareSurveyBeforePublishing) {
+                $course->modules()
+                    ->where('type', Module::TYPE_SATISFACTION_QUIZ)
+                    ->update(['status' => 'published']);
+
+                $course->unsetRelation('modules');
+                $course->refresh();
+
+                $course->update([
+                    'status' => 'published',
+                ]);
+            }
 
             return redirect()
                 ->route('admin.courses.edit', $course)
@@ -151,7 +185,7 @@ class CourseController extends Controller
 
     /**
      * @param  array<string, mixed>  $validated
-     * @return array<int, array{course_validity_type: string}>
+     * @return array<int, array{course_validity_type: string, integrative_start_risk_levels: ?string}>
      */
     private function buildRiskBasedRequirementSyncPayload(array $validated): array
     {
@@ -160,14 +194,26 @@ class CourseController extends Controller
             ->unique()
             ->values();
         $validityTypes = collect($validated['risk_based_requirement_validity_types'] ?? []);
+        $integrativeStartLevels = collect($validated['risk_based_requirement_integrative_start_levels'] ?? []);
 
         return $selectedRequirementIds
-            ->mapWithKeys(function (int $riskBasedRequirementId) use ($validityTypes): array {
+            ->mapWithKeys(function (int $riskBasedRequirementId) use ($integrativeStartLevels, $validityTypes): array {
+                $courseValidityType = CourseRiskRequirementValidityType::tryFrom(
+                    (string) $validityTypes->get((string) $riskBasedRequirementId)
+                )?->value ?? CourseRiskRequirementValidityType::Both->value;
+
+                $startRiskLevels = collect($integrativeStartLevels->get((string) $riskBasedRequirementId, []))
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all();
+
                 return [
                     $riskBasedRequirementId => [
-                        'course_validity_type' => CourseRiskRequirementValidityType::tryFrom(
-                            (string) $validityTypes->get((string) $riskBasedRequirementId)
-                        )?->value ?? CourseRiskRequirementValidityType::Both->value,
+                        'course_validity_type' => $courseValidityType,
+                        'integrative_start_risk_levels' => $courseValidityType === CourseRiskRequirementValidityType::Integrative->value
+                            ? json_encode($startRiskLevels)
+                            : null,
                     ],
                 ];
             })

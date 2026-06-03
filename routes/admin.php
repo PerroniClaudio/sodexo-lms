@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\CourseModuleController;
 use App\Http\Controllers\Admin\CourseTeacherEnrollmentController;
 use App\Http\Controllers\Admin\CustomCertificateController;
 use App\Http\Controllers\Admin\DocumentConversionJobDebugController;
+use App\Http\Controllers\Admin\DocumentTypeController;
 use App\Http\Controllers\Admin\HomepageCustomizationController;
 use App\Http\Controllers\Admin\JobCategoryController;
 use App\Http\Controllers\Admin\JobLevelController;
@@ -118,6 +119,8 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::get('/video-reports/{videoReportRequest}/download', [VideoReportController::class, 'download'])->name('video-reports.download');
         Route::resource('users', UserController::class)->except(['show']);
         Route::post('users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
+        Route::get('users/{user}/risk-course-selection', [UserController::class, 'riskCourseSelection'])->name('users.risk-course-selection');
+        Route::post('users/{user}/risk-course-selection/enroll', [UserController::class, 'enrollRiskCourse'])->name('users.risk-course-selection.enroll');
 
         Route::middleware('role:superadmin')->group(function () {
             Route::get('/document-conversion-jobs', [DocumentConversionJobDebugController::class, 'index'])
@@ -146,6 +149,7 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::resource('job-roles', JobRoleController::class)->except(['show']);
             Route::resource('job-sectors', JobSectorController::class)->except(['show']);
             Route::resource('job-units', JobUnitController::class)->except(['show']);
+            Route::resource('document-types', DocumentTypeController::class)->except(['show']);
 
             // NACE/ATECO codes
             Route::get('nace-ateco', [NaceAtecoController::class, 'index'])->name('nace-ateco.index');
@@ -161,6 +165,7 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::post('job-roles/{id}/restore', [JobRoleController::class, 'restore'])->name('job-roles.restore');
             Route::post('job-sectors/{id}/restore', [JobSectorController::class, 'restore'])->name('job-sectors.restore');
             Route::post('job-units/{id}/restore', [JobUnitController::class, 'restore'])->name('job-units.restore');
+            Route::post('document-types/{id}/restore', [DocumentTypeController::class, 'restore'])->name('document-types.restore');
 
             // Job Task - Sector associations
             Route::post('job-tasks/{job_task}/sectors', [JobTaskController::class, 'attachSector'])->name('job-tasks.sectors.attach');

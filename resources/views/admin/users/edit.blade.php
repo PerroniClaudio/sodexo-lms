@@ -89,9 +89,14 @@
                             {{ $riskSummary['message'] }}
                         </p>
                     </div>
-                    <span class="badge badge-lg {{ $riskSummary['risk_badge_class'] }}" data-risk-summary-badge>
-                        {{ $riskSummary['risk_label'] ?? __('Non applicabile') }}
-                    </span>
+                    <div class="flex flex-col items-end gap-2">
+                        <span class="badge badge-lg {{ $riskSummary['risk_badge_class'] }}" data-risk-summary-badge>
+                            {{ $riskSummary['risk_label'] ?? __('Non applicabile') }}
+                        </span>
+                        <a href="{{ route('admin.users.risk-course-selection', $user) }}" class="btn btn-primary btn-sm">
+                            {{ __('Selezione manuale corso') }}
+                        </a>
+                    </div>
                 </div>
 
                 <div class="grid gap-3" data-risk-based-requirements-items>
@@ -112,6 +117,11 @@
                                     }}">
                                         {{ $riskBasedRequirement['status_label'] }}
                                     </span>
+                                    @if (($riskBasedRequirement['covered_by_higher_risk_certificate'] ?? false) && ($riskBasedRequirement['covering_risk_label'] ?? null))
+                                        <p class="text-sm text-base-content/70">
+                                            {{ __('Coperto da attestato valido di livello superiore: :risk', ['risk' => $riskBasedRequirement['covering_risk_label']]) }}
+                                        </p>
+                                    @endif
                                     @if (in_array($riskBasedRequirement['status'], ['missing', 'expired'], true) && $riskBasedRequirement['required_course_validity_type_label'])
                                         <p class="text-sm text-base-content/70">
                                             {{ __('Richiesto: :type', ['type' => \Illuminate\Support\Str::lower($riskBasedRequirement['required_course_validity_type_label'])]) }}
@@ -124,6 +134,28 @@
                         <p class="text-sm text-base-content/70">{{ __('Nessun requisito di rischio disponibile.') }}</p>
                     @endforelse
                 </div>
+
+                @if (! empty($riskSummary['future_risk_transitions']))
+                    <div class="rounded-box border border-dashed border-base-300 bg-base-100/80 p-4">
+                        <div class="space-y-1">
+                            <h3 class="font-semibold text-base-content">{{ __('Variazioni di rischio future') }}</h3>
+                            <p class="text-sm text-base-content/70">
+                                {{ __('Le mansioni con decorrenza o termine futuro cambiano il rischio nelle date seguenti.') }}
+                            </p>
+                        </div>
+
+                        <div class="mt-4 flex flex-wrap gap-3">
+                            @foreach ($riskSummary['future_risk_transitions'] as $futureRiskTransition)
+                                <div class="rounded-box border border-base-300 bg-base-100 px-4 py-3">
+                                    <div class="text-sm text-base-content/70">{{ $futureRiskTransition['effective_on_label'] }}</div>
+                                    <span class="mt-2 inline-flex badge {{ $futureRiskTransition['risk_badge_class'] }}">
+                                        {{ $futureRiskTransition['risk_label'] }}
+                                    </span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
 
@@ -171,6 +203,7 @@
                                 <th><button type="button" class="inline-flex items-center gap-2" data-sort-key="issued_at">{{ __('Data conseguimento') }}</button></th>
                                 <th><button type="button" class="inline-flex items-center gap-2" data-sort-key="expires_at">{{ __('Data scadenza') }}</button></th>
                                 <th><button type="button" class="inline-flex items-center gap-2" data-sort-key="is_internal">{{ __('Tipo') }}</button></th>
+                                <th>{{ __('Tipologia documento') }}</th>
                                 <th>{{ __('Requisiti di rischio') }}</th>
                                 <th class="text-right">{{ __('Azioni') }}</th>
                             </tr>
@@ -240,6 +273,18 @@
                                     <span class="label-text font-medium">{{ __('Percorso file') }}</span>
                                 </label>
                                 <input id="certificate_file_path" name="file_path" type="text" class="input input-bordered w-full" placeholder="certificates/user/example.pdf">
+                            </div>
+
+                            <div class="form-control flex flex-col gap-2">
+                                <label class="label p-0" for="certificate_document_type_id">
+                                    <span class="label-text font-medium">{{ __('Tipologia documento') }}</span>
+                                </label>
+                                <select id="certificate_document_type_id" name="document_type_id" class="select select-bordered w-full">
+                                    <option value="">{{ __('Nessuna') }}</option>
+                                    @foreach ($documentTypes as $documentType)
+                                        <option value="{{ $documentType->id }}">{{ $documentType->name }}</option>
+                                    @endforeach
+                                </select>
                             </div>
 
                             <div class="form-control flex flex-col gap-2">

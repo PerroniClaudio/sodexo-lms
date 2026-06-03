@@ -20,6 +20,7 @@ class UserCertificate extends Model
         'name',
         'description',
         'file_path',
+        'document_type_id',
         'is_internal',
         'issued_at',
         'expires_at',
@@ -47,6 +48,11 @@ class UserCertificate extends Model
     public function internalCourse(): BelongsTo
     {
         return $this->belongsTo(Course::class, 'internal_course_id');
+    }
+
+    public function documentType(): BelongsTo
+    {
+        return $this->belongsTo(DocumentType::class)->withTrashed();
     }
 
     public function riskBasedRequirements(): BelongsToMany

@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\RiskLevel;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UserRequest;
+use App\Models\Course;
 use App\Models\CourseEnrollment;
+use App\Models\DocumentType;
 use App\Models\JobCategory;
 use App\Models\JobLevel;
 use App\Models\JobRole;
@@ -17,6 +20,7 @@ use App\Models\User;
 use App\Models\WorldCity;
 use App\Models\WorldCountry;
 use App\Models\WorldDivision;
+use App\Services\CourseRiskRequirementService;
 use App\Services\UserJobAssignmentService;
 use App\Support\UserGeographyMapper;
 use Illuminate\Http\JsonResponse;
@@ -37,6 +41,7 @@ class UserController extends Controller
     public function __construct(
         private readonly UserGeographyMapper $userGeographyMapper,
         private readonly UserJobAssignmentService $userJobAssignmentService,
+        private readonly CourseRiskRequirementService $courseRiskRequirementService,
     ) {}
 
     public function index(Request $request): View
@@ -171,6 +176,7 @@ class UserController extends Controller
         $jobSectors = JobSector::all();
         $jobUnits = JobUnit::all();
         $allRiskBasedRequirements = RiskBasedRequirement::query()->orderBy('name')->get(['id', 'name']);
+        $documentTypes = DocumentType::query()->orderBy('name')->get(['id', 'name']);
         $availableCourses = $user->courseEnrollments()
             ->where('status', CourseEnrollment::STATUS_COMPLETED)
             ->whereNotNull('completed_at')
@@ -197,6 +203,7 @@ class UserController extends Controller
             'jobSectors',
             'jobUnits',
             'allRiskBasedRequirements',
+            'documentTypes',
             'availableCourses',
             'riskSummary',
         ));
@@ -204,6 +211,7 @@ class UserController extends Controller
 
     public function update(UserRequest $request, User $user): RedirectResponse|JsonResponse
     {
+        $beforeRiskSnapshot = $this->captureRiskSnapshot($user->fresh(['jobSector', 'jobTasks', 'roles']));
         $data = $this->userGeographyMapper->toHomeIds($request->validated());
         $accountType = $this->resolveAccountType($data['account_type'] ?? $user->getRoleNames()->first() ?? 'user');
         $jobTaskAssignments = $data['job_tasks'] ?? [];
@@ -241,14 +249,24 @@ class UserController extends Controller
             $this->userJobAssignmentService->syncAssignments($user, $jobTaskAssignments, $accountType === 'user');
         });
 
+        $afterRiskSnapshot = $this->captureRiskSnapshot($user->fresh(['jobSector', 'jobTasks', 'roles']));
+        $riskWarnings = $this->buildRiskChangeWarnings($beforeRiskSnapshot, $afterRiskSnapshot, $user);
+
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Utente aggiornato con successo',
+                'warnings' => $riskWarnings,
             ]);
         }
 
-        return redirect()->route('admin.users.index')->with('success', 'Utente aggiornato con successo');
+        $redirect = redirect()->route('admin.users.index')->with('success', 'Utente aggiornato con successo');
+
+        if ($riskWarnings !== []) {
+            $redirect->with('warning', collect($riskWarnings)->implode(' '));
+        }
+
+        return $redirect;
     }
 
     public function riskSummaryApi(User $user): JsonResponse
@@ -256,6 +274,87 @@ class UserController extends Controller
         return response()->json([
             'data' => $this->buildRiskSummary($user),
         ]);
+    }
+
+    public function riskCourseSelection(User $user): View
+    {
+        $user->loadMissing(['jobSector', 'jobTasks', 'roles']);
+
+        $riskSummary = $this->buildRiskSummary($user);
+        $requirementNeeds = collect($riskSummary['risk_based_requirements'])
+            ->filter(fn (array $requirement): bool => in_array($requirement['status'], ['missing', 'expired'], true))
+            ->keyBy('risk_based_requirement_id');
+        $courses = Course::query()
+            ->where('status', 'published')
+            ->whereHas('riskBasedRequirements', function ($query) use ($requirementNeeds): void {
+                $query->whereIn('risk_based_requirements.id', $requirementNeeds->keys());
+            })
+            ->with('riskBasedRequirements')
+            ->orderBy('title')
+            ->get()
+            ->map(function (Course $course) use ($requirementNeeds, $user): array {
+                $matchingRequirement = $course->riskBasedRequirements
+                    ->first(fn (RiskBasedRequirement $requirement): bool => $requirementNeeds->has($requirement->getKey()));
+                $requiredNeed = $matchingRequirement !== null
+                    ? $requirementNeeds->get($matchingRequirement->getKey())
+                    : null;
+
+                return [
+                    'course' => $course,
+                    'matching_requirement' => $matchingRequirement,
+                    'required_need' => $requiredNeed,
+                    'course_validity_type' => $matchingRequirement !== null
+                        ? $course->courseValidityTypeForRequirement($matchingRequirement)
+                        : null,
+                    'integrative_start_risk_levels' => $matchingRequirement !== null
+                        ? $course->integrativeStartRiskLevelsForRequirement($matchingRequirement)
+                        : collect(),
+                    'matches_required_need' => $matchingRequirement !== null
+                        && is_array($requiredNeed)
+                        && $this->courseRiskRequirementService->courseRequirementMatchesUserNeed(
+                            $user,
+                            $matchingRequirement,
+                            $course->courseValidityTypeForRequirement($matchingRequirement),
+                        ),
+                    'eligible_to_enroll' => $this->courseRiskRequirementService->userCanEnrollInCourse($user, $course),
+                ];
+            })
+            ->filter(fn (array $entry): bool => $entry['matches_required_need'] === true)
+            ->values();
+
+        return view('admin.users.risk-course-selection', [
+            'user' => $user,
+            'riskSummary' => $riskSummary,
+            'latestCertificates' => $user->latestCertificatesByRequirementGroup(),
+            'courseRecommendations' => $courses,
+        ]);
+    }
+
+    public function enrollRiskCourse(Request $request, User $user): RedirectResponse
+    {
+        $validated = $request->validate([
+            'course_id' => ['required', 'integer', 'exists:courses,id'],
+        ]);
+
+        $course = Course::query()->with('riskBasedRequirements')->findOrFail($validated['course_id']);
+
+        if (! $this->courseRiskRequirementService->userCanEnrollInCourse($user, $course)) {
+            return redirect()
+                ->route('admin.users.risk-course-selection', $user)
+                ->with('error', __('L\'utente non possiede i prerequisiti necessari per l\'iscrizione a questo corso.'));
+        }
+
+        try {
+            CourseEnrollment::enroll($user, $course);
+        } catch (\DomainException $exception) {
+            return redirect()
+                ->route('admin.users.risk-course-selection', $user)
+                ->with('error', __($exception->getMessage()));
+        }
+
+        return redirect()
+            ->route('admin.users.risk-course-selection', $user)
+            ->with('status', __('Corso assegnato con successo all\'utente.'));
     }
 
     public function destroy(User $user): RedirectResponse
@@ -343,6 +442,13 @@ class UserController extends Controller
      *     risk_badge_class: string,
      *     is_applicable: bool,
      *     message: string,
+     *     future_risk_transitions: array<int, array{
+     *         effective_on: string,
+     *         effective_on_label: string,
+     *         risk_level: string,
+     *         risk_label: string,
+     *         risk_badge_class: string
+     *     }>,
      *     risk_based_requirements: array<int, array{
      *         risk_based_requirement_id: int,
      *         risk_based_requirement_name: string,
@@ -370,6 +476,7 @@ class UserController extends Controller
                 'message' => $riskBasedRequirementsCompliance->isEmpty()
                     ? __('Nessun requisito di rischio disponibile per il rischio corrente.')
                     : __('Requisiti di rischio in base al rischio effettivo dell\'utente.'),
+                'future_risk_transitions' => $user->futureRiskTransitions()->all(),
                 'risk_based_requirements' => $riskBasedRequirementsCompliance->values()->all(),
             ];
         } catch (\LogicException) {
@@ -378,8 +485,72 @@ class UserController extends Controller
                 'risk_badge_class' => 'badge-ghost',
                 'is_applicable' => false,
                 'message' => __('Nessun requisito di rischio disponibile per il rischio corrente o utente non classificabile come lavoratore.'),
+                'future_risk_transitions' => [],
                 'risk_based_requirements' => [],
             ];
         }
+    }
+
+    /**
+     * @return array{current_risk: ?string, future_risks: array<int, string>}
+     */
+    private function captureRiskSnapshot(User $user): array
+    {
+        $currentRisk = rescue(
+            fn (): ?string => $user->getEffectiveWorkerRisk()->value,
+            null,
+            false,
+        );
+        $futureRisks = rescue(
+            fn (): array => $user->futureRiskTransitions()->pluck('risk_level')->all(),
+            [],
+            false,
+        );
+
+        return [
+            'current_risk' => $currentRisk,
+            'future_risks' => $futureRisks,
+        ];
+    }
+
+    /**
+     * @param  array{current_risk: ?string, future_risks: array<int, string>}  $beforeRiskSnapshot
+     * @param  array{current_risk: ?string, future_risks: array<int, string>}  $afterRiskSnapshot
+     * @return array<int, string>
+     */
+    private function buildRiskChangeWarnings(array $beforeRiskSnapshot, array $afterRiskSnapshot, User $user): array
+    {
+        $warnings = [];
+
+        if ($beforeRiskSnapshot['current_risk'] !== $afterRiskSnapshot['current_risk']) {
+            $beforeRiskLabel = $this->riskLabelFromValue($beforeRiskSnapshot['current_risk']);
+            $afterRiskLabel = $this->riskLabelFromValue($afterRiskSnapshot['current_risk']);
+
+            if ($afterRiskLabel === null) {
+                $warnings[] = __('Il rischio attuale di :user non è più calcolabile dopo questa modifica.', ['user' => $user->full_name]);
+            } elseif ($beforeRiskLabel === null) {
+                $warnings[] = __('Il rischio attuale di :user è ora calcolato come :risk.', [
+                    'user' => $user->full_name,
+                    'risk' => $afterRiskLabel,
+                ]);
+            } else {
+                $warnings[] = __('Il rischio attuale di :user è cambiato da :before a :after.', [
+                    'user' => $user->full_name,
+                    'before' => $beforeRiskLabel,
+                    'after' => $afterRiskLabel,
+                ]);
+            }
+        }
+
+        if ($beforeRiskSnapshot['future_risks'] !== $afterRiskSnapshot['future_risks']) {
+            $warnings[] = __('Le mansioni programmate modificano anche il rischio futuro. Verifica il corso da assegnare nella selezione manuale.');
+        }
+
+        return $warnings;
+    }
+
+    private function riskLabelFromValue(?string $riskLevel): ?string
+    {
+        return RiskLevel::tryFrom((string) $riskLevel)?->label();
     }
 }

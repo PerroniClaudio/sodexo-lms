@@ -6,11 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\User;
+use App\Services\CourseRiskRequirementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CourseEnrollmentController extends Controller
 {
+    public function __construct(
+        private readonly CourseRiskRequirementService $courseRiskRequirementService,
+    ) {}
+
     /**
      * Restituisce la lista paginata degli iscritti del corso per la tabella dinamica admin.
      */
@@ -225,6 +230,13 @@ class CourseEnrollmentController extends Controller
                 'message' => __('Esiste già un\'iscrizione eliminata per questo utente. Vuoi ripristinarla?'),
                 'restore_url' => route('admin.api.courses.enrollments.restore', [$course, $existingEnrollment->getKey()]),
             ], 409);
+        }
+
+        if (! $this->courseRiskRequirementService->userCanEnrollInCourse($user, $course)) {
+            return response()->json([
+                'success' => false,
+                'message' => __('L\'utente non possiede i prerequisiti necessari per l\'iscrizione a questo corso.'),
+            ], 422);
         }
 
         CourseEnrollment::enroll($user, $course);

@@ -21,6 +21,7 @@ class RiskBasedRequirement extends Model
     protected $fillable = [
         'name',
         'description',
+        'risk_progression_group',
         'is_limited_validity',
         'risk_levels',
         'validity_months',
@@ -107,7 +108,7 @@ class RiskBasedRequirement extends Model
     public function courses(): BelongsToMany
     {
         return $this->belongsToMany(Course::class)
-            ->withPivot('course_validity_type')
+            ->withPivot(['course_validity_type', 'integrative_start_risk_levels'])
             ->withTimestamps();
     }
 
@@ -131,5 +132,31 @@ class RiskBasedRequirement extends Model
     public function hasFormationResetWindow(): bool
     {
         return $this->reset_formation_years !== null && $this->reset_formation_years > 0;
+    }
+
+    public function singleRiskLevel(): ?RiskLevel
+    {
+        if ($this->risk_levels->count() !== 1) {
+            return null;
+        }
+
+        $riskLevel = $this->risk_levels->first();
+
+        return $riskLevel instanceof RiskLevel ? $riskLevel : null;
+    }
+
+    public function isRiskSpecific(): bool
+    {
+        return $this->singleRiskLevel() !== null;
+    }
+
+    /**
+     * The progression group links only requirements in the same low/medium/high
+     * training family. Risk order alone is not enough because separate requirement
+     * families can share the same risk levels.
+     */
+    public function supportsRiskProgressionRules(): bool
+    {
+        return $this->isRiskSpecific() && filled($this->risk_progression_group);
     }
 }

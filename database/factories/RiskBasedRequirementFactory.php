@@ -34,6 +34,7 @@ class RiskBasedRequirementFactory extends Factory
         return [
             'name' => fake()->randomElement($requirements),
             'description' => fake()->optional()->sentence(),
+            'risk_progression_group' => null,
             'is_limited_validity' => $hasLimitedValidity,
             'risk_levels' => fake()->randomElements(
                 [RiskLevel::LOW, RiskLevel::MEDIUM, RiskLevel::HIGH],
@@ -89,5 +90,12 @@ class RiskBasedRequirementFactory extends Factory
     public function highRiskOnly(): static
     {
         return $this->forRiskLevel(RiskLevel::HIGH);
+    }
+
+    public function progressionGroup(string $group): static
+    {
+        return $this->state(fn () => [
+            'risk_progression_group' => $group,
+        ]);
     }
 }

@@ -6,6 +6,7 @@ enum CourseRiskRequirementValidityType: string
 {
     case FirstAchievement = 'first_achievement';
     case Refresh = 'refresh';
+    case Integrative = 'integrative';
     case Both = 'both';
 
     /**
@@ -27,12 +28,17 @@ enum CourseRiskRequirementValidityType: string
         return [
             self::FirstAchievement->value => __('Solo primo conseguimento'),
             self::Refresh->value => __('Solo aggiornamento'),
+            self::Integrative->value => __('Solo integrativo'),
             self::Both->value => __('Primo conseguimento e aggiornamento'),
         ];
     }
 
     public function matchesRequirementNeed(self $requiredType): bool
     {
+        if ($requiredType === self::Integrative) {
+            return $this === self::Integrative;
+        }
+
         return $this === self::Both || $this === $requiredType;
     }
 }

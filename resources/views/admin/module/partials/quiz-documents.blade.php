@@ -13,7 +13,7 @@
             </a>
         </div>
 
-        <form method="POST" action="{{ route('admin.courses.modules.quiz.document-uploads.store', [$course, $module]) }}" enctype="multipart/form-data" class="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+        <form method="POST" action="{{ route('admin.courses.modules.quiz.document-uploads.store', [$course, $module]) }}" enctype="multipart/form-data" class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
             @csrf
             <div class="grid gap-2">
                 <label for="quiz-submission" class="label p-0">

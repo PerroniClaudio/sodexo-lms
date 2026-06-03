@@ -33,6 +33,9 @@
                             <p class="text-sm text-base-content/70">
                                 {{ __('Gestisci le informazioni principali del corso.') }}
                             </p>
+                            <div class="mt-3">
+                                <span class="text-base-content/70">{{ __('Tipologia:') }}</span> <span class="badge badge-outline">{{ $courseTypeLabels[$course->type] ?? $course->type }}</span>
+                            </div>
                         </div>
                         <div>
                             @include('admin.course.partials.course-validity-badge')
@@ -209,6 +212,8 @@
                                         'id' => (int) $riskBasedRequirement->getKey(),
                                         'name' => $riskBasedRequirement->name,
                                         'description' => $riskBasedRequirement->description,
+                                        'risk_levels' => $riskBasedRequirement->risk_levels->pluck('value')->values()->all(),
+                                        'single_risk_level' => $riskBasedRequirement->singleRiskLevel()?->value,
                                     ])
                                     ->values();
                                 $selectedRiskBasedRequirementsPayload = $riskBasedRequirements
@@ -217,10 +222,16 @@
                                         'id' => (int) $riskBasedRequirement->getKey(),
                                         'name' => $riskBasedRequirement->name,
                                         'description' => $riskBasedRequirement->description,
+                                        'risk_levels' => $riskBasedRequirement->risk_levels->pluck('value')->values()->all(),
+                                        'single_risk_level' => $riskBasedRequirement->singleRiskLevel()?->value,
                                         'course_validity_type' => $selectedRiskBasedRequirementValidityTypes->get(
                                             (string) $riskBasedRequirement->getKey(),
                                             \App\Enums\CourseRiskRequirementValidityType::Both->value,
                                         ),
+                                        'integrative_start_risk_levels' => collect(old(
+                                            'risk_based_requirement_integrative_start_levels.'.(string) $riskBasedRequirement->getKey(),
+                                            $course->integrativeStartRiskLevelsForRequirement($riskBasedRequirement)->pluck('value')->all(),
+                                        ))->filter()->values()->all(),
                                     ])
                                     ->values();
                             @endphp
@@ -232,9 +243,9 @@
                                 <div class="flex flex-col gap-4">
                                     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                                         <div>
-                                            <h3 class="text-sm font-semibold text-base-content">{{ __('Requisiti di rischio coperti dal corso') }}</h3>
+                                            <h3 class="text-sm font-semibold text-base-content">{{ __('Abilitazioni di rischio acquisite') }}</h3>
                                             <p class="text-sm text-base-content/70">
-                                                {{ __('Aggiungi solo i requisiti associati al corso e definisci per ciascuno la validità del corso.') }}
+                                                {{ __('Seleziona i rischi certificati da questo corso e definisci la tipologia di percorso (conseguimento, aggiornamento o integrazione).') }}
                                             </p>
                                         </div>
 
@@ -303,9 +314,9 @@
                                                     </button>
                                                 </div>
                                             </div>
-                                            <form method="dialog" class="modal-backdrop">
-                                                <button>{{ __('Chiudi') }}</button>
-                                            </form>
+                                            <button type="button" class="modal-backdrop" data-close-risk-requirement-selection-modal>
+                                                {{ __('Chiudi') }}
+                                            </button>
                                         </dialog>
 
                                         <dialog class="modal" data-course-risk-requirement-validity-modal>
@@ -326,6 +337,29 @@
                                                     </select>
                                                 </div>
 
+                                                <div class="mt-4 hidden rounded-box border border-base-300 bg-base-200/40 p-4" data-course-risk-requirement-integrative-fields>
+                                                    <div class="space-y-2">
+                                                        <div class="font-medium text-base-content">{{ __('Livelli di partenza ammessi') }}</div>
+                                                        <p class="text-sm text-base-content/70">
+                                                            {{ __('Seleziona i livelli che l\'utente deve possedere per poter frequentare il corso integrativo.') }}
+                                                        </p>
+                                                    </div>
+
+                                                    <div class="mt-4 flex flex-col gap-2" data-course-risk-requirement-integrative-options>
+                                                        @foreach ($riskLevels as $riskLevel)
+                                                            <label class="label cursor-pointer justify-start gap-3 ">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    value="{{ $riskLevel->value }}"
+                                                                    class="checkbox"
+                                                                    data-integrative-start-level-option
+                                                                >
+                                                                <span class="badge {{ $riskLevel->badgeColor() }}">{{ $riskLevel->label() }}</span>
+                                                            </label>
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+
                                                 <div class="modal-action">
                                                     <button type="button" class="btn btn-ghost" data-close-risk-requirement-validity-modal>
                                                         {{ __('Annulla') }}
@@ -335,9 +369,9 @@
                                                     </button>
                                                 </div>
                                             </div>
-                                            <form method="dialog" class="modal-backdrop">
-                                                <button>{{ __('Chiudi') }}</button>
-                                            </form>
+                                            <button type="button" class="modal-backdrop" data-close-risk-requirement-validity-modal>
+                                                {{ __('Chiudi') }}
+                                            </button>
                                         </dialog>
 
                                         <dialog class="modal" data-course-risk-requirement-delete-modal>
@@ -356,9 +390,9 @@
                                                     </button>
                                                 </div>
                                             </div>
-                                            <form method="dialog" class="modal-backdrop">
-                                                <button>{{ __('Chiudi') }}</button>
-                                            </form>
+                                            <button type="button" class="modal-backdrop" data-close-risk-requirement-delete-modal>
+                                                {{ __('Chiudi') }}
+                                            </button>
                                         </dialog>
                                     @endif
 
@@ -366,6 +400,9 @@
                                         <p class="text-sm text-error">{{ $message }}</p>
                                     @enderror
                                     @error('risk_based_requirement_validity_types')
+                                        <p class="text-sm text-error">{{ $message }}</p>
+                                    @enderror
+                                    @error('risk_based_requirement_integrative_start_levels')
                                         <p class="text-sm text-error">{{ $message }}</p>
                                     @enderror
                                 </div>

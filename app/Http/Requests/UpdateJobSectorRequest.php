@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\RiskLevel;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateJobSectorRequest extends FormRequest
 {
@@ -16,6 +18,7 @@ class UpdateJobSectorRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
+            'manual_risk_level' => ['nullable', 'string', Rule::in(RiskLevel::values())],
         ];
     }
 
@@ -24,6 +27,7 @@ class UpdateJobSectorRequest extends FormRequest
         return [
             'name' => __('Nome'),
             'description' => __('Descrizione'),
+            'manual_risk_level' => __('Rischio manuale'),
         ];
     }
 }

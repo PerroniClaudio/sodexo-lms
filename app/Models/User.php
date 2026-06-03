@@ -486,7 +486,12 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function getEffectiveWorkerRisk(): RiskLevel
     {
-        $activeJobTaskIds = $this->activeJobTasks()
+        return $this->getEffectiveWorkerRiskAt();
+    }
+
+    public function getEffectiveWorkerRiskAt(?CarbonInterface $referenceDate = null): RiskLevel
+    {
+        $activeJobTaskIds = $this->activeJobTasks($referenceDate)
             ->pluck('id')
             ->map(fn (mixed $jobTaskId): int => (int) $jobTaskId)
             ->all();
@@ -519,6 +524,83 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->activeJobTasks()
             ->sortByDesc(fn (JobTask $jobTask): string => (string) ($jobTask->pivot->starts_at ?? ''))
             ->first();
+    }
+
+    /**
+     * @return Collection<int, array{
+     *     effective_on: string,
+     *     effective_on_label: string,
+     *     risk_level: string,
+     *     risk_label: string,
+     *     risk_badge_class: string
+     * }>
+     */
+    public function futureRiskTransitions(?CarbonInterface $referenceDate = null): Collection
+    {
+        $anchorDate = CarbonImmutable::instance($referenceDate ?? today());
+        $jobTasks = $this->relationLoaded('jobTasks')
+            ? $this->jobTasks
+            : $this->jobTasks()->get();
+
+        if (! $this->hasRole('user') || ! $this->jobSector || $jobTasks->isEmpty()) {
+            return collect();
+        }
+
+        $candidateDates = $jobTasks
+            ->flatMap(function (JobTask $jobTask) use ($anchorDate): array {
+                $startsAt = $this->pivotDate($jobTask->pivot->starts_at ?? null);
+                $endsAt = $this->pivotDate($jobTask->pivot->ends_at ?? null);
+                $dates = [];
+
+                if ($startsAt !== null && $startsAt->gt($anchorDate)) {
+                    $dates[] = $startsAt;
+                }
+
+                if ($endsAt !== null && $endsAt->gte($anchorDate)) {
+                    $dates[] = $endsAt->addDay();
+                }
+
+                return $dates;
+            })
+            ->filter()
+            ->unique(fn (CarbonImmutable $date): string => $date->toDateString())
+            ->sortBy(fn (CarbonImmutable $date): string => $date->toDateString())
+            ->values();
+
+        $currentRisk = rescue(
+            fn (): RiskLevel => $this->getEffectiveWorkerRiskAt($anchorDate),
+            report: false,
+        );
+
+        if (! $currentRisk instanceof RiskLevel) {
+            return collect();
+        }
+
+        $lastRisk = $currentRisk;
+
+        return $candidateDates
+            ->map(function (CarbonImmutable $date) use (&$lastRisk): ?array {
+                $futureRisk = rescue(
+                    fn (): RiskLevel => $this->getEffectiveWorkerRiskAt($date),
+                    report: false,
+                );
+
+                if (! $futureRisk instanceof RiskLevel || $futureRisk === $lastRisk) {
+                    return null;
+                }
+
+                $lastRisk = $futureRisk;
+
+                return [
+                    'effective_on' => $date->toDateString(),
+                    'effective_on_label' => $date->format('d/m/Y'),
+                    'risk_level' => $futureRisk->value,
+                    'risk_label' => $futureRisk->label(),
+                    'risk_badge_class' => $futureRisk->badgeColor(),
+                ];
+            })
+            ->filter()
+            ->values();
     }
 
     private function jobTaskIsActiveOnDate(JobTask $jobTask, CarbonImmutable $referenceDate): bool
@@ -584,44 +666,22 @@ class User extends Authenticatable implements MustVerifyEmail
             return collect();
         }
 
-        $riskBasedRequirementIds = $riskBasedRequirements->pluck('id')->all();
-        $today = now()->toDateString();
-
-        $allRelevantCertificates = $this->userCertificates()
-            ->with(['riskBasedRequirements:id,name'])
-            ->whereHas('riskBasedRequirements', function (Builder $query) use ($riskBasedRequirementIds): void {
-                $query->whereIn('risk_based_requirements.id', $riskBasedRequirementIds);
-            })
-            ->get();
-
-        $validCertificates = $allRelevantCertificates
-            ->filter(function (UserCertificate $certificate) use ($today): bool {
-                return $certificate->expires_at === null
-                    || $certificate->expires_at->toDateString() >= $today;
-            })
-            ->values();
-
         $courseRiskRequirementService = app(CourseRiskRequirementService::class);
 
-        return $riskBasedRequirements->map(function (RiskBasedRequirement $riskBasedRequirement) use ($allRelevantCertificates, $validCertificates, $courseRiskRequirementService): array {
-            $matchingValidCertificates = $validCertificates
-                ->filter(fn (UserCertificate $certificate): bool => $certificate->riskBasedRequirements->contains('id', $riskBasedRequirement->getKey()))
-                ->values();
-
-            $matchingExpiredCertificates = $allRelevantCertificates
-                ->filter(fn (UserCertificate $certificate): bool => $certificate->riskBasedRequirements->contains('id', $riskBasedRequirement->getKey()))
-                ->reject(fn (UserCertificate $certificate): bool => $matchingValidCertificates->contains('id', $certificate->getKey()))
-                ->values();
-
-            $bestValidCertificate = $matchingValidCertificates
-                ->sortByDesc(fn (UserCertificate $certificate): int => $certificate->expires_at?->timestamp ?? PHP_INT_MAX)
-                ->first();
-
-            $isSatisfied = $bestValidCertificate !== null;
+        return $riskBasedRequirements->map(function (RiskBasedRequirement $riskBasedRequirement) use ($courseRiskRequirementService): array {
+            $coverage = $courseRiskRequirementService->bestValidCertificateCoverageForRequirement($this, $riskBasedRequirement);
+            $bestValidCertificate = $coverage['certificate'] ?? null;
+            $coveringRequirement = $coverage['requirement'] ?? null;
+            $matchingExpiredCertificates = $courseRiskRequirementService
+                ->expiredCertificatesForRequirement($this, $riskBasedRequirement);
+            $isSatisfied = $bestValidCertificate instanceof UserCertificate;
             $expiresAt = $bestValidCertificate?->expires_at;
             $status = $isSatisfied ? 'satisfied' : ($matchingExpiredCertificates->isNotEmpty() ? 'expired' : 'missing');
             $requiredCourseValidityType = in_array($status, ['missing', 'expired'], true)
-                ? $courseRiskRequirementService->determineRequiredValidityType($this, $riskBasedRequirement)
+                ? $courseRiskRequirementService->determineRequiredCourseValidityType($this, $riskBasedRequirement)
+                : null;
+            $coveringRiskLevel = $coveringRequirement instanceof RiskBasedRequirement
+                ? $coveringRequirement->singleRiskLevel()
                 : null;
 
             return [
@@ -631,7 +691,9 @@ class User extends Authenticatable implements MustVerifyEmail
                 'satisfied' => $isSatisfied,
                 'status' => $status,
                 'status_label' => match ($status) {
-                    'satisfied' => $expiresAt === null ? __('Soddisfatto') : __('Soddisfatto fino al :date', ['date' => $expiresAt->format('d/m/Y')]),
+                    'satisfied' => $expiresAt === null
+                        ? __('Soddisfatto')
+                        : __('Soddisfatto fino al :date', ['date' => $expiresAt->format('d/m/Y')]),
                     'expired' => __('Scaduto'),
                     default => __('Mancante'),
                 },
@@ -639,13 +701,62 @@ class User extends Authenticatable implements MustVerifyEmail
                 'required_course_validity_type_label' => match ($requiredCourseValidityType) {
                     CourseRiskRequirementValidityType::FirstAchievement => __('Primo conseguimento'),
                     CourseRiskRequirementValidityType::Refresh => __('Aggiornamento'),
+                    CourseRiskRequirementValidityType::Integrative => __('Integrativo'),
                     default => null,
                 },
+                'covered_by_higher_risk_certificate' => $coveringRiskLevel?->isHigherThan($riskBasedRequirement->singleRiskLevel() ?? $coveringRiskLevel) ?? false,
+                'covering_risk_label' => $coveringRiskLevel?->label(),
                 'expires_at' => $expiresAt?->toDateString(),
                 'expires_at_label' => $expiresAt?->format('d/m/Y'),
-                'certificate_ids' => $matchingValidCertificates->pluck('id')->map(fn (mixed $id): int => (int) $id)->all(),
-                'certificate_names' => $matchingValidCertificates->pluck('name')->values()->all(),
+                'certificate_ids' => $bestValidCertificate instanceof UserCertificate ? [(int) $bestValidCertificate->getKey()] : [],
+                'certificate_names' => $bestValidCertificate instanceof UserCertificate ? [$bestValidCertificate->name] : [],
             ];
         })->values();
+    }
+
+    /**
+     * @return Collection<int, array{
+     *     requirement: RiskBasedRequirement,
+     *     certificate: ?UserCertificate,
+     *     issued_at_label: ?string,
+     *     expires_at_label: ?string
+     * }>
+     */
+    public function latestCertificatesByRequirementGroup(): Collection
+    {
+        $certificates = $this->userCertificates()
+            ->with('riskBasedRequirements')
+            ->orderByDesc('issued_at')
+            ->get();
+
+        return $certificates
+            ->flatMap(function (UserCertificate $certificate): Collection {
+                return $certificate->riskBasedRequirements
+                    ->filter(fn (RiskBasedRequirement $requirement): bool => $requirement->exists)
+                    ->map(fn (RiskBasedRequirement $requirement): array => [
+                        'group_key' => $requirement->risk_progression_group ?: 'requirement:'.$requirement->getKey(),
+                        'requirement' => $requirement,
+                        'certificate' => $certificate,
+                    ]);
+            })
+            ->groupBy('group_key')
+            ->map(function (Collection $items): array {
+                $latest = $items->sortByDesc(
+                    fn (array $item): int => $item['certificate']->issued_at?->timestamp ?? 0
+                )->first();
+
+                /** @var RiskBasedRequirement $requirement */
+                $requirement = $latest['requirement'];
+                /** @var UserCertificate $certificate */
+                $certificate = $latest['certificate'];
+
+                return [
+                    'requirement' => $requirement,
+                    'certificate' => $certificate,
+                    'issued_at_label' => $certificate->issued_at?->format('d/m/Y'),
+                    'expires_at_label' => $certificate->expires_at?->format('d/m/Y'),
+                ];
+            })
+            ->values();
     }
 }

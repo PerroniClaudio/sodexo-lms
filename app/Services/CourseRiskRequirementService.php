@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\CourseRiskRequirementValidityType;
+use App\Enums\RiskLevel;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\RiskBasedRequirement;
@@ -21,12 +22,7 @@ class CourseRiskRequirementService
     ): CourseRiskRequirementValidityType {
         $referenceDate ??= now();
 
-        $relevantCertificates = $user->userCertificates()
-            ->whereHas('riskBasedRequirements', function (Builder $query) use ($riskBasedRequirement): void {
-                $query->whereKey($riskBasedRequirement->getKey());
-            })
-            ->orderByDesc('issued_at')
-            ->get();
+        $relevantCertificates = $this->certificatesDirectlyMatchingRequirement($user, $riskBasedRequirement);
 
         if ($relevantCertificates->isEmpty()) {
             return CourseRiskRequirementValidityType::FirstAchievement;
@@ -60,6 +56,48 @@ class CourseRiskRequirementService
             : CourseRiskRequirementValidityType::Refresh;
     }
 
+    public function determineRequiredCourseValidityType(
+        User $user,
+        RiskBasedRequirement $riskBasedRequirement,
+        ?CarbonInterface $referenceDate = null,
+    ): CourseRiskRequirementValidityType {
+        $referenceDate ??= now();
+
+        if (! $riskBasedRequirement->supportsRiskProgressionRules()) {
+            return $this->determineRequiredValidityType($user, $riskBasedRequirement, $referenceDate);
+        }
+
+        $targetRiskLevel = $riskBasedRequirement->singleRiskLevel();
+
+        if (! $targetRiskLevel instanceof RiskLevel) {
+            return $this->determineRequiredValidityType($user, $riskBasedRequirement, $referenceDate);
+        }
+
+        $bestValidCoverage = $this->bestValidCertificateCoverageAcrossFamily($user, $riskBasedRequirement, $referenceDate);
+        $bestValidRiskLevel = $bestValidCoverage['requirement']?->singleRiskLevel();
+
+        if ($bestValidRiskLevel instanceof RiskLevel) {
+            if ($bestValidRiskLevel->isHigherThan($targetRiskLevel)) {
+                return CourseRiskRequirementValidityType::Refresh;
+            }
+
+            if ($bestValidRiskLevel->isLowerThan($targetRiskLevel)) {
+                return CourseRiskRequirementValidityType::Integrative;
+            }
+
+            return CourseRiskRequirementValidityType::Refresh;
+        }
+
+        $latestCoverage = $this->latestCertificateCoverageAcrossFamily($user, $riskBasedRequirement);
+        $latestRiskLevel = $latestCoverage['requirement']?->singleRiskLevel();
+
+        if ($latestRiskLevel instanceof RiskLevel && $latestRiskLevel->isAtLeast($targetRiskLevel)) {
+            return CourseRiskRequirementValidityType::Refresh;
+        }
+
+        return $this->determineRequiredValidityType($user, $riskBasedRequirement, $referenceDate);
+    }
+
     public function courseRequirementMatchesUserNeed(
         User $user,
         RiskBasedRequirement $riskBasedRequirement,
@@ -72,8 +110,52 @@ class CourseRiskRequirementService
                 ?? CourseRiskRequirementValidityType::Both);
 
         return $normalizedCourseValidityType->matchesRequirementNeed(
-            $this->determineRequiredValidityType($user, $riskBasedRequirement, $referenceDate)
+            $this->determineRequiredCourseValidityType($user, $riskBasedRequirement, $referenceDate)
         );
+    }
+
+    /**
+     * @return array{certificate: ?UserCertificate, requirement: ?RiskBasedRequirement}
+     */
+    public function bestValidCertificateCoverageForRequirement(
+        User $user,
+        RiskBasedRequirement $riskBasedRequirement,
+        ?CarbonInterface $referenceDate = null,
+    ): array {
+        $referenceDate ??= now();
+        $familyRequirements = $this->requirementFamily($riskBasedRequirement);
+        $targetRiskLevel = $riskBasedRequirement->singleRiskLevel();
+
+        $bestCoverage = $this->bestCertificateCoverage(
+            $this->certificatesForRequirementFamily($user, $familyRequirements)
+                ->filter(fn (UserCertificate $certificate): bool => $this->isCertificateValidOn($certificate, $referenceDate))
+                ->values(),
+            $familyRequirements,
+        );
+
+        $coveredRiskLevel = $bestCoverage['requirement']?->singleRiskLevel();
+
+        if ($targetRiskLevel instanceof RiskLevel && $coveredRiskLevel instanceof RiskLevel && $coveredRiskLevel->isLowerThan($targetRiskLevel)) {
+            return ['certificate' => null, 'requirement' => null];
+        }
+
+        return $bestCoverage;
+    }
+
+    /**
+     * @return Collection<int, UserCertificate>
+     */
+    public function expiredCertificatesForRequirement(
+        User $user,
+        RiskBasedRequirement $riskBasedRequirement,
+        ?CarbonInterface $referenceDate = null,
+    ): Collection {
+        $referenceDate ??= now();
+        $familyRequirements = $this->requirementFamily($riskBasedRequirement);
+
+        return $this->certificatesForRequirementFamily($user, $familyRequirements)
+            ->reject(fn (UserCertificate $certificate): bool => $this->isCertificateValidOn($certificate, $referenceDate))
+            ->values();
     }
 
     /**
@@ -97,12 +179,16 @@ class CourseRiskRequirementService
 
         return $course->riskBasedRequirements
             ->filter(function (RiskBasedRequirement $riskBasedRequirement) use ($course, $user, $issuedAt): bool {
-                return $this->courseRequirementMatchesUserNeed(
+                if (! $this->courseRequirementMatchesUserNeed(
                     $user,
                     $riskBasedRequirement,
                     $course->courseValidityTypeForRequirement($riskBasedRequirement),
                     $issuedAt,
-                );
+                )) {
+                    return false;
+                }
+
+                return $this->userSatisfiesCoursePrerequisiteAtDate($user, $course, $riskBasedRequirement, $issuedAt);
             })
             ->map(function (RiskBasedRequirement $riskBasedRequirement) use ($course, $user, $issuedAt): ?UserCertificate {
                 if ($this->hasValidCertificateForCourseRequirement($user, $course, $riskBasedRequirement, $issuedAt)) {
@@ -156,6 +242,178 @@ class CourseRiskRequirementService
             });
 
         return $processedEnrollments;
+    }
+
+    public function userCanEnrollInCourse(User $user, Course $course, ?CarbonInterface $referenceDate = null): bool
+    {
+        $referenceDate ??= now();
+        $course->loadMissing('riskBasedRequirements');
+
+        return $course->riskBasedRequirements->every(
+            fn (RiskBasedRequirement $requirement): bool => $this->userSatisfiesCoursePrerequisiteAtDate($user, $course, $requirement, $referenceDate)
+        );
+    }
+
+    public function userSatisfiesCoursePrerequisiteAtDate(
+        User $user,
+        Course $course,
+        RiskBasedRequirement $riskBasedRequirement,
+        CarbonInterface $referenceDate,
+    ): bool {
+        if ($course->courseValidityTypeForRequirement($riskBasedRequirement) !== CourseRiskRequirementValidityType::Integrative) {
+            return true;
+        }
+
+        $allowedStartRiskLevels = $course->integrativeStartRiskLevelsForRequirement($riskBasedRequirement);
+
+        if ($allowedStartRiskLevels->isEmpty()) {
+            return false;
+        }
+
+        $familyRequirements = $this->requirementFamily($riskBasedRequirement);
+
+        return $this->certificatesForRequirementFamily($user, $familyRequirements)
+            ->filter(fn (UserCertificate $certificate): bool => $this->isCertificateValidOn($certificate, $referenceDate))
+            ->contains(function (UserCertificate $certificate) use ($allowedStartRiskLevels): bool {
+                return $certificate->riskBasedRequirements
+                    ->contains(function (RiskBasedRequirement $attachedRequirement) use ($allowedStartRiskLevels): bool {
+                        $certificateRiskLevel = $attachedRequirement->singleRiskLevel();
+
+                        return $certificateRiskLevel instanceof RiskLevel
+                            && $allowedStartRiskLevels->contains(
+                                fn (RiskLevel $allowedRiskLevel): bool => $allowedRiskLevel === $certificateRiskLevel
+                            );
+                    });
+            });
+    }
+
+    /**
+     * @return Collection<int, UserCertificate>
+     */
+    private function certificatesDirectlyMatchingRequirement(User $user, RiskBasedRequirement $riskBasedRequirement): Collection
+    {
+        return $user->userCertificates()
+            ->whereHas('riskBasedRequirements', function (Builder $query) use ($riskBasedRequirement): void {
+                $query->whereKey($riskBasedRequirement->getKey());
+            })
+            ->orderByDesc('issued_at')
+            ->get();
+    }
+
+    /**
+     * @return Collection<int, RiskBasedRequirement>
+     */
+    private function requirementFamily(RiskBasedRequirement $riskBasedRequirement): Collection
+    {
+        if (! $riskBasedRequirement->supportsRiskProgressionRules()) {
+            return collect([$riskBasedRequirement]);
+        }
+
+        // Group progression applies only within the same training family, not across
+        // every requirement that happens to share the same low/medium/high ordering.
+        return RiskBasedRequirement::query()
+            ->where('risk_progression_group', $riskBasedRequirement->risk_progression_group)
+            ->get()
+            ->filter(fn (RiskBasedRequirement $requirement): bool => $requirement->isRiskSpecific())
+            ->values();
+    }
+
+    /**
+     * @return array{certificate: ?UserCertificate, requirement: ?RiskBasedRequirement}
+     */
+    private function bestValidCertificateCoverageAcrossFamily(
+        User $user,
+        RiskBasedRequirement $riskBasedRequirement,
+        CarbonInterface $referenceDate,
+    ): array {
+        $familyRequirements = $this->requirementFamily($riskBasedRequirement);
+
+        return $this->bestCertificateCoverage(
+            $this->certificatesForRequirementFamily($user, $familyRequirements)
+                ->filter(fn (UserCertificate $certificate): bool => $this->isCertificateValidOn($certificate, $referenceDate))
+                ->values(),
+            $familyRequirements,
+        );
+    }
+
+    /**
+     * @return array{certificate: ?UserCertificate, requirement: ?RiskBasedRequirement}
+     */
+    private function latestCertificateCoverageAcrossFamily(User $user, RiskBasedRequirement $riskBasedRequirement): array
+    {
+        $familyRequirements = $this->requirementFamily($riskBasedRequirement);
+
+        return $this->bestCertificateCoverage(
+            $this->certificatesForRequirementFamily($user, $familyRequirements),
+            $familyRequirements,
+        );
+    }
+
+    /**
+     * @param  Collection<int, RiskBasedRequirement>  $familyRequirements
+     * @return Collection<int, UserCertificate>
+     */
+    private function certificatesForRequirementFamily(User $user, Collection $familyRequirements): Collection
+    {
+        $familyRequirementIds = $familyRequirements->pluck('id')->all();
+
+        return $user->userCertificates()
+            ->with('riskBasedRequirements')
+            ->whereHas('riskBasedRequirements', function (Builder $query) use ($familyRequirementIds): void {
+                $query->whereIn('risk_based_requirements.id', $familyRequirementIds);
+            })
+            ->orderByDesc('issued_at')
+            ->get();
+    }
+
+    /**
+     * @param  Collection<int, UserCertificate>  $certificates
+     * @param  Collection<int, RiskBasedRequirement>  $familyRequirements
+     * @return array{certificate: ?UserCertificate, requirement: ?RiskBasedRequirement}
+     */
+    private function bestCertificateCoverage(Collection $certificates, Collection $familyRequirements): array
+    {
+        $familyRequirementMap = $familyRequirements->keyBy('id');
+
+        $bestCertificate = null;
+        $bestRequirement = null;
+        $bestRiskLevel = null;
+
+        foreach ($certificates as $certificate) {
+            $matchedRequirement = $certificate->riskBasedRequirements
+                ->map(fn (RiskBasedRequirement $requirement): ?RiskBasedRequirement => $familyRequirementMap->get($requirement->getKey()))
+                ->filter()
+                ->sortByDesc(fn (RiskBasedRequirement $requirement): int => $requirement->singleRiskLevel()?->order() ?? 0)
+                ->first();
+
+            if (! $matchedRequirement instanceof RiskBasedRequirement) {
+                continue;
+            }
+
+            $matchedRiskLevel = $matchedRequirement->singleRiskLevel();
+
+            if (! $matchedRiskLevel instanceof RiskLevel) {
+                continue;
+            }
+
+            if (
+                ! $bestRiskLevel instanceof RiskLevel
+                || $matchedRiskLevel->isHigherThan($bestRiskLevel)
+                || (
+                    $matchedRiskLevel === $bestRiskLevel
+                    && ($certificate->expires_at?->timestamp ?? PHP_INT_MAX) > ($bestCertificate?->expires_at?->timestamp ?? PHP_INT_MIN)
+                )
+            ) {
+                $bestCertificate = $certificate;
+                $bestRequirement = $matchedRequirement;
+                $bestRiskLevel = $matchedRiskLevel;
+            }
+        }
+
+        return [
+            'certificate' => $bestCertificate,
+            'requirement' => $bestRequirement,
+        ];
     }
 
     private function hasValidCertificateForCourseRequirement(

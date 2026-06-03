@@ -66,6 +66,30 @@
                         @enderror
                     </div>
 
+                    <div class="form-control flex flex-col gap-2">
+                        <label for="manual_risk_level" class="label p-0">
+                            <span class="label-text font-medium">{{ __('Rischio manuale di fallback') }}</span>
+                        </label>
+                        <select
+                            id="manual_risk_level"
+                            name="manual_risk_level"
+                            class="select select-bordered w-full @error('manual_risk_level') select-error @enderror"
+                        >
+                            <option value="">{{ __('Nessuno') }}</option>
+                            @foreach (\App\Enums\RiskLevel::ordered() as $riskLevel)
+                                <option value="{{ $riskLevel->value }}" @selected(old('manual_risk_level', $sector->manual_risk_level?->value) === $riskLevel->value)>
+                                    {{ $riskLevel->label() }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="text-sm text-base-content/70">
+                            {{ __('Se il settore non ha codici ATECO associati viene usato questo rischio. Se ha ATECO associati viene considerato il rischio più alto tra questo valore e quello calcolato dai codici.') }}
+                        </p>
+                        @error('manual_risk_level')
+                            <p class="text-sm text-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     <div class="flex justify-end gap-3">
                         <a href="{{ route('admin.job-sectors.index') }}" class="btn btn-ghost">
                             {{ __('Cancel') }}

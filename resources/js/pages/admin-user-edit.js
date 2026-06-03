@@ -199,8 +199,9 @@ function initializeCertificatesTable(page) {
     const riskBasedRequirementsSelect = form?.querySelector('[data-risk-based-requirements-select]');
     const certificateIdInput = form?.elements.namedItem('certificate_id');
     const modalTitle = container.querySelector('[data-certificate-modal] h3');
+    const documentTypeSelect = form?.elements.namedItem('document_type_id');
 
-    if (!apiUrl || !storeUrl || !tableBody || !emptyState || !summary || !pagination || !searchInput || !searchButton || !loadingIndicator || !modal || !openModalButton || closeButtons.length === 0 || !form || !submitButton || !riskBasedRequirementsSelect || !certificateIdInput || !modalTitle) {
+    if (!apiUrl || !storeUrl || !tableBody || !emptyState || !summary || !pagination || !searchInput || !searchButton || !loadingIndicator || !modal || !openModalButton || closeButtons.length === 0 || !form || !submitButton || !riskBasedRequirementsSelect || !certificateIdInput || !modalTitle || !documentTypeSelect) {
         return;
     }
 
@@ -229,6 +230,37 @@ function initializeCertificatesTable(page) {
         } catch (error) {
             console.error('Unable to refresh risk summary after certificate mutation.', error);
         }
+    };
+
+    const ensureDocumentTypeOption = (certificate) => {
+        const currentValue = certificate?.document_type_id;
+
+        Array.from(documentTypeSelect.options)
+            .filter((option) => option.dataset.dynamicDeleted === 'true')
+            .forEach((option) => {
+                if (String(option.value) !== String(currentValue || '')) {
+                    option.remove();
+                }
+            });
+
+        if (!currentValue) {
+            return;
+        }
+
+        const existingOption = Array.from(documentTypeSelect.options)
+            .find((option) => String(option.value) === String(currentValue));
+
+        if (existingOption) {
+            return;
+        }
+
+        const option = document.createElement('option');
+        option.value = String(currentValue);
+        option.textContent = certificate.document_type_is_deleted
+            ? `${certificate.document_type_name || 'Tipologia documento'} (eliminata)`
+            : (certificate.document_type_name || 'Tipologia documento');
+        option.dataset.dynamicDeleted = 'true';
+        documentTypeSelect.appendChild(option);
     };
 
     const setLoading = (loading) => {
@@ -281,6 +313,11 @@ function initializeCertificatesTable(page) {
                         ${escapeHtml(row.type_label)}
                     </span>
                     ${row.internal_course ? `<div class="mt-1 text-xs text-base-content/60">${escapeHtml(row.internal_course)}</div>` : ''}
+                </td>
+                <td>
+                    ${row.document_type_name
+                        ? `<span class="badge badge-outline">${escapeHtml(row.document_type_name)}${row.document_type_is_deleted ? ' (eliminata)' : ''}</span>`
+                        : '<span class="text-sm text-base-content/50">-</span>'}
                 </td>
                 <td class="max-w-md">
                     <div class="flex flex-wrap gap-1">${renderRiskBasedRequirements(row.risk_based_requirements)}</div>
@@ -371,6 +408,10 @@ function initializeCertificatesTable(page) {
         certificateIdInput.value = '';
         modalTitle.textContent = 'Aggiungi certificato';
         submitButton.textContent = 'Salva certificato';
+        Array.from(documentTypeSelect.options)
+            .filter((option) => option.dataset.dynamicDeleted === 'true')
+            .forEach((option) => option.remove());
+        documentTypeSelect.value = '';
         Array.from(riskBasedRequirementsSelect.options).forEach((option) => {
             option.selected = false;
         });
@@ -385,6 +426,8 @@ function initializeCertificatesTable(page) {
         form.elements.namedItem('name').value = certificate.name || '';
         form.elements.namedItem('description').value = certificate.description || '';
         form.elements.namedItem('file_path').value = certificate.file_path || '';
+        ensureDocumentTypeOption(certificate);
+        documentTypeSelect.value = certificate.document_type_id || '';
         form.elements.namedItem('issued_at').value = certificate.issued_at_iso || '';
         form.elements.namedItem('expires_at').value = certificate.expires_at_iso || '';
         form.elements.namedItem('internal_course_id').value = certificate.internal_course_id || '';
@@ -436,6 +479,7 @@ function initializeCertificatesTable(page) {
             name: formData.get('name'),
             description: formData.get('description') || null,
             file_path: formData.get('file_path') || null,
+            document_type_id: formData.get('document_type_id') || null,
             issued_at: formData.get('issued_at'),
             expires_at: formData.get('expires_at') || null,
             internal_course_id: formData.get('internal_course_id') || null,

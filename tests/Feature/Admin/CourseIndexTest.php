@@ -17,6 +17,7 @@ it('shows the courses index page with paginated results', function () {
     $response->assertSuccessful();
     $response->assertSeeText('Corsi');
     $response->assertSeeText('Titolo del corso');
+    $response->assertSeeText('Tipologia');
     $response->assertSeeText('Stato');
     $response->assertSeeText('Anno del corso');
     $response->assertSeeText('Crea nuovo');
@@ -94,4 +95,17 @@ it('searches across the visible course columns and keeps query strings in pagina
     $response->assertSee('direction=asc', escape: false);
     $response->assertViewHas('courses', fn ($courses) => $courses->count() === 1
         && $courses->first()->title === 'Corso compliance');
+});
+
+it('shows the translated course type in the list', function () {
+    Course::factory()->create([
+        'title' => 'Corso FAD',
+        'type' => 'fad',
+    ]);
+
+    $response = $this->get(route('admin.courses.index'));
+
+    $response->assertSuccessful()
+        ->assertSeeText('Corso FAD')
+        ->assertSeeText('FAD');
 });

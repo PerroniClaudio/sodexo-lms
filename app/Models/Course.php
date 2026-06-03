@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\CourseRiskRequirementValidityType;
+use App\Enums\RiskLevel;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -167,7 +168,7 @@ class Course extends Model
     public function riskBasedRequirements(): BelongsToMany
     {
         return $this->belongsToMany(RiskBasedRequirement::class)
-            ->withPivot('course_validity_type')
+            ->withPivot(['course_validity_type', 'integrative_start_risk_levels'])
             ->withTimestamps();
     }
 
@@ -180,6 +181,26 @@ class Course extends Model
 
         return CourseRiskRequirementValidityType::tryFrom((string) $type)
             ?? CourseRiskRequirementValidityType::Both;
+    }
+
+    /**
+     * @return Collection<int, RiskLevel>
+     */
+    public function integrativeStartRiskLevelsForRequirement(RiskBasedRequirement $riskBasedRequirement): Collection
+    {
+        $encodedLevels = $this->riskBasedRequirements
+            ->firstWhere('id', $riskBasedRequirement->getKey())
+            ?->pivot
+            ?->integrative_start_risk_levels;
+
+        $levels = is_string($encodedLevels)
+            ? json_decode($encodedLevels, true)
+            : $encodedLevels;
+
+        return collect(is_array($levels) ? $levels : [])
+            ->map(fn (mixed $value): ?RiskLevel => RiskLevel::tryFrom((string) $value))
+            ->filter()
+            ->values();
     }
 
     /**

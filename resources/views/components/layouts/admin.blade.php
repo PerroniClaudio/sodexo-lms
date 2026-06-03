@@ -108,7 +108,7 @@
                     @role('superadmin')
                         <li>
                             {{-- <details @if(request()->routeIs('admin.job-*')) open @endif> --}}
-                            <details @if(request()->routeIs('admin.job-*') or request()->routeIs('admin.nace-ateco.index') or request()->routeIs('admin.risk-based-requirements.*')) open @endif>
+                            <details @if(request()->routeIs('admin.job-*') or request()->routeIs('admin.nace-ateco.index') or request()->routeIs('admin.risk-based-requirements.*') or request()->routeIs('admin.document-types.*')) open @endif>
                                 <summary @class(['menu-active' => request()->routeIs('admin.job-*')])>
                                     {{ __('Configurazione Lavori') }}
                                 </summary>
@@ -175,6 +175,14 @@
                                             @class(['menu-active' => request()->routeIs('admin.risk-based-requirements.*')])
                                         >
                                             {{ __('Requisiti (Rischio)') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.document-types.index') }}"
+                                            @class(['menu-active' => request()->routeIs('admin.document-types.*')])
+                                        >
+                                            {{ __('Tipologie documento') }}
                                         </a>
                                     </li>
                                 </ul>

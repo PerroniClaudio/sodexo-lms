@@ -106,6 +106,9 @@
                         <p class="text-sm text-base-content/70">
                             {{ __('Specifica il livello di rischio di questa mansione per settore specifico, se differisce dal rischio nativo del settore.') }}
                         </p>
+                        <p class="text-sm text-base-content/70">
+                            {{ __('La sovrascrittura del rischio settore si applica solo se tutte le mansioni attive dell\'utente, per quel settore, hanno un\'associazione specifica e il flag di sovrascrittura attivo.') }}
+                        </p>
                     </div>
                 </div>
 
@@ -153,7 +156,7 @@
                                     class="checkbox checkbox-primary"
                                     @checked(old('sector_risk_override'))
                                 >
-                                <span class="label-text whitespace-break-spaces">{{ __('Selezionare per sovrascrivere il rischio del settore (necessario Documento di Valutazione dei Rischi)') }}</span>
+                                <span class="label-text whitespace-break-spaces">{{ __('Selezionare per consentire la sovrascrittura del rischio del settore. L\'override sarà effettivo solo se tutte le mansioni attive dell\'utente hanno questo flag attivo per lo stesso settore (necessario Documento di Valutazione dei Rischi).') }}</span>
                             </label>
                         </div>
 
@@ -281,7 +284,7 @@
 
                 <label class="label mt-4 cursor-pointer justify-start gap-3 rounded-box border border-base-300 px-4 py-3">
                     <input type="checkbox" id="modal_sector_risk_override" name="sector_risk_override" value="1" class="checkbox checkbox-primary">
-                    <span class="label-text font-medium">{{ __('Sovrascrive il rischio del settore anche se inferiore') }}</span>
+                    <span class="label-text font-medium">{{ __('Consente la sovrascrittura del rischio del settore solo se tutte le mansioni attive dell\'utente la prevedono') }}</span>
                 </label>
 
                 <div class="modal-action">

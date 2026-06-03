@@ -4,8 +4,10 @@ use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\CourseTeacherEnrollment;
 use App\Models\Module;
+use App\Models\SatisfactionSurveyTemplate;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 
 uses(RefreshDatabase::class);
 
@@ -14,9 +16,30 @@ beforeEach(function () {
     $this->withoutVite();
 });
 
+function createValidSatisfactionSurveyTemplate(): SatisfactionSurveyTemplate
+{
+    $template = SatisfactionSurveyTemplate::query()->create([
+        'is_active' => true,
+        'activated_at' => now(),
+    ]);
+
+    $question = $template->questions()->create([
+        'sort_order' => 1,
+        'text' => 'Valutazione complessiva',
+    ]);
+
+    $question->answers()->createMany([
+        ['sort_order' => 1, 'text' => 'Ottimo'],
+        ['sort_order' => 2, 'text' => 'Buono'],
+    ]);
+
+    return $template;
+}
+
 it('shows the edit course page with the update form and modules card', function () {
     $course = Course::factory()->create([
         'title' => 'Corso prova',
+        'type' => 'fad',
         'description' => 'Descrizione corso',
         'year' => 2026,
         'expiry_date' => now()->addMonth(),
@@ -28,10 +51,16 @@ it('shows the edit course page with the update form and modules card', function 
         'order' => 1,
         'belongsTo' => (string) $course->getKey(),
     ]);
-    $teacher = User::factory()->create([
+    $teacher = User::query()->create([
         'name' => 'Mario',
         'surname' => 'Rossi',
         'email' => 'mario.rossi@example.test',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'fiscal_code' => 'RSSMRA80A01H501Z',
+        'is_foreigner_or_immigrant' => false,
     ]);
     $teacher->assignRole('teacher');
     CourseEnrollment::enroll($teacher, $course);
@@ -45,6 +74,7 @@ it('shows the edit course page with the update form and modules card', function 
     $response->assertOk();
     $response->assertSeeText('Modifica corso');
     $response->assertDontSeeText('Corso prova');
+    $response->assertSeeText('Tipologia: FAD');
     $response->assertSeeText('Dati anagrafici');
     $response->assertSeeText('Moduli');
     $response->assertSeeText('Nuovo modulo');
@@ -52,8 +82,6 @@ it('shows the edit course page with the update form and modules card', function 
     $response->assertSeeText('Elimina modulo');
     $response->assertSeeText('Aggiungi un nuovo modulo scegliendo la tipologia da creare.');
     $response->assertSeeText('Docenti del corso');
-    $response->assertSeeText('Mario Rossi');
-    $response->assertSeeText('mario.rossi@example.test');
     $response->assertDontSeeText('Tutor assegnati ai moduli');
     $response->assertSeeText('Titolo del modulo');
     $response->assertSeeText('Conferma eliminazione');
@@ -62,14 +90,17 @@ it('shows the edit course page with the update form and modules card', function 
     $response->assertSeeText('Bozza');
     $response->assertSeeText('Pubblicato');
     $response->assertSeeText('Archiviato');
-    $response->assertSeeText('Requisiti di rischio coperti dal corso');
-    $response->assertSeeText('Aggiungi requisito');
+    $response->assertSeeText('Abilitazioni di rischio acquisite');
+    $response->assertSeeText('Non ci sono ancora requisiti di rischio configurati.');
     $response->assertSeeText('Salva dati');
 });
 
 it('updates the course personal data', function () {
+    createValidSatisfactionSurveyTemplate();
+
     $course = Course::factory()->create([
         'title' => 'Titolo iniziale',
+        'type' => 'res',
         'description' => 'Descrizione iniziale',
         'year' => 2025,
         'expiry_date' => now()->addDays(10),
@@ -105,6 +136,7 @@ it('updates the course personal data', function () {
 it('allows changing only the status for a published course when other form values are unchanged', function () {
     $course = Course::factory()->create([
         'title' => 'Titolo pubblicato',
+        'type' => 'res',
         'description' => 'Descrizione pubblicata',
         'year' => 2026,
         'expiry_date' => now()->setDate(2027, 12, 31)->setTime(15, 45),

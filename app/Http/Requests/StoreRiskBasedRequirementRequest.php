@@ -41,6 +41,7 @@ class StoreRiskBasedRequirementRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
+            'risk_progression_group' => ['nullable', 'string', 'max:100'],
             'is_limited_validity' => ['required', 'boolean'],
             'risk_levels' => ['required', 'array', 'min:1'],
             'risk_levels.*' => [Rule::enum(RiskLevel::class)],
@@ -61,6 +62,7 @@ class StoreRiskBasedRequirementRequest extends FormRequest
         return [
             'name' => __('Nome'),
             'description' => __('Descrizione'),
+            'risk_progression_group' => __('Gruppo progressione rischio'),
             'is_limited_validity' => __('Validita limitata'),
             'risk_levels' => __('Livelli di rischio'),
             'validity_years' => __('Anni'),

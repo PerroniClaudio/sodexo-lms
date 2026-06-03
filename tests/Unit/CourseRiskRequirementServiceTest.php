@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\CourseRiskRequirementValidityType;
+use App\Enums\RiskLevel;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Module;
@@ -111,6 +112,91 @@ it('matches the course requirement validity type against the current user need',
         CourseRiskRequirementValidityType::Both,
         now(),
     ))->toBeTrue();
+});
+
+it('determines integrative when the user has a valid lower-risk certificate in the same progression group', function () {
+    $user = makeTestUser();
+    $lowRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::LOW)
+        ->progressionGroup('specific-worker-training')
+        ->limited(60)
+        ->create();
+    $mediumRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::MEDIUM)
+        ->progressionGroup('specific-worker-training')
+        ->limited(60)
+        ->create();
+
+    $certificate = UserCertificate::factory()
+        ->for($user)
+        ->create([
+            'issued_at' => now()->subMonths(2)->toDateString(),
+            'expires_at' => now()->addMonths(58)->toDateString(),
+        ]);
+    $certificate->riskBasedRequirements()->attach($lowRequirement->getKey());
+
+    $requiredType = app(CourseRiskRequirementService::class)
+        ->determineRequiredCourseValidityType($user, $mediumRequirement, now());
+
+    expect($requiredType)->toBe(CourseRiskRequirementValidityType::Integrative);
+});
+
+it('uses a higher-risk valid certificate to satisfy a lower-risk requirement until expiry', function () {
+    $user = makeTestUser();
+    $mediumRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::MEDIUM)
+        ->progressionGroup('specific-worker-training')
+        ->limited(60)
+        ->create();
+    $highRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::HIGH)
+        ->progressionGroup('specific-worker-training')
+        ->limited(60)
+        ->create();
+
+    $certificate = UserCertificate::factory()
+        ->for($user)
+        ->create([
+            'issued_at' => now()->subMonths(4)->toDateString(),
+            'expires_at' => now()->addMonths(56)->toDateString(),
+        ]);
+    $certificate->riskBasedRequirements()->attach($highRequirement->getKey());
+
+    $coverage = app(CourseRiskRequirementService::class)
+        ->bestValidCertificateCoverageForRequirement($user, $mediumRequirement, now());
+
+    expect($coverage['certificate'])->not->toBeNull()
+        ->and($coverage['requirement']?->is($highRequirement))->toBeTrue();
+});
+
+it('requires a valid starting certificate to enroll in an integrative course', function () {
+    $user = makeTestUser();
+    $lowRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::LOW)
+        ->progressionGroup('specific-worker-training')
+        ->limited(60)
+        ->create();
+    $highRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::HIGH)
+        ->progressionGroup('specific-worker-training')
+        ->limited(60)
+        ->create();
+    $course = Course::factory()->create();
+    $course->riskBasedRequirements()->attach($highRequirement->getKey(), [
+        'course_validity_type' => CourseRiskRequirementValidityType::Integrative->value,
+        'integrative_start_risk_levels' => json_encode([RiskLevel::LOW->value]),
+    ]);
+
+    expect(app(CourseRiskRequirementService::class)->userCanEnrollInCourse($user, $course))->toBeFalse();
+
+    $certificate = UserCertificate::factory()
+        ->for($user)
+        ->create([
+            'expires_at' => now()->addYear()->toDateString(),
+        ]);
+    $certificate->riskBasedRequirements()->attach($lowRequirement->getKey());
+
+    expect(app(CourseRiskRequirementService::class)->userCanEnrollInCourse($user, $course))->toBeTrue();
 });
 
 it('creates an internal risk certificate when an enrollment completes', function () {

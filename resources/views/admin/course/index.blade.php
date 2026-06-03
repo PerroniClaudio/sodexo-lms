@@ -3,6 +3,7 @@
         $columns = [
             ['key' => 'id', 'label' => __('ID'), 'sortable' => true],
             ['key' => 'title', 'label' => __('Titolo del corso'), 'sortable' => true],
+            ['key' => 'type', 'label' => __('Tipologia'), 'sortable' => false],
             ['key' => 'status', 'label' => __('Stato'), 'sortable' => true],
             ['key' => 'year', 'label' => __('Anno del corso'), 'sortable' => true],
         ];
@@ -31,6 +32,7 @@
                 >
                     <td>{{ $course->id }}</td>
                     <td>{{ $course->title }}</td>
+                    <td>{{ $course->type }}</td>
                     <td>
                         <span class="badge badge-ghost">
                             {{ $course->status }}

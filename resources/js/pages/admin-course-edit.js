@@ -39,6 +39,8 @@ function initializeCourseRiskRequirements(courseEditPage) {
     const validityModalTitle = container.querySelector('[data-course-risk-requirement-validity-modal-title]');
     const validityModalDescription = container.querySelector('[data-course-risk-requirement-validity-modal-description]');
     const validitySelect = container.querySelector('[data-course-risk-requirement-validity-select]');
+    const integrativeFields = container.querySelector('[data-course-risk-requirement-integrative-fields]');
+    const integrativeOptions = Array.from(container.querySelectorAll('[data-integrative-start-level-option]'));
     const closeValidityModalButtons = container.querySelectorAll('[data-close-risk-requirement-validity-modal]');
     const confirmValidityButton = container.querySelector('[data-confirm-risk-requirement-validity]');
     const deleteModal = container.querySelector('[data-course-risk-requirement-delete-modal]');
@@ -48,7 +50,7 @@ function initializeCourseRiskRequirements(courseEditPage) {
     const allRequirementsScript = container.querySelector('[data-course-risk-requirements-all]');
     const selectedRequirementsScript = container.querySelector('[data-course-risk-requirements-selected]');
 
-    if (!list || !emptyState || !hiddenInputsContainer || !selectionModal || !selectionTableBody || !selectionEmptyState || !validityModal || !validityModalTitle || !validityModalDescription || !validitySelect || !confirmValidityButton || !deleteModal || !deleteModalDescription || !confirmDeleteButton || !allRequirementsScript || !selectedRequirementsScript) {
+    if (!list || !emptyState || !hiddenInputsContainer || !selectionModal || !selectionTableBody || !selectionEmptyState || !validityModal || !validityModalTitle || !validityModalDescription || !validitySelect || !integrativeFields || integrativeOptions.length === 0 || !confirmValidityButton || !deleteModal || !deleteModalDescription || !confirmDeleteButton || !allRequirementsScript || !selectedRequirementsScript) {
         return;
     }
 
@@ -75,6 +77,20 @@ function initializeCourseRiskRequirements(courseEditPage) {
         (association) => Number(association.id) === Number(requirementId),
     );
 
+    const syncIntegrativeFields = (requirement = null, selectedLevels = []) => {
+        const isIntegrative = validitySelect.value === 'integrative';
+        const finalRiskLevel = requirement?.single_risk_level || null;
+        const riskOrder = { low: 1, medium: 2, high: 3 };
+
+        integrativeFields.classList.toggle('hidden', !isIntegrative);
+
+        integrativeOptions.forEach((option) => {
+            const shouldDisable = !isIntegrative || (finalRiskLevel !== null && (riskOrder[option.value] ?? 0) >= (riskOrder[finalRiskLevel] ?? 0));
+            option.disabled = shouldDisable;
+            option.checked = selectedLevels.includes(option.value) && !shouldDisable;
+        });
+    };
+
     const syncHiddenInputs = () => {
         hiddenInputsContainer.innerHTML = '';
 
@@ -90,6 +106,16 @@ function initializeCourseRiskRequirements(courseEditPage) {
             validityTypeInput.name = `risk_based_requirement_validity_types[${association.id}]`;
             validityTypeInput.value = association.course_validity_type;
             hiddenInputsContainer.appendChild(validityTypeInput);
+
+            if (association.course_validity_type === 'integrative' && Array.isArray(association.integrative_start_risk_levels)) {
+                association.integrative_start_risk_levels.forEach((riskLevel) => {
+                    const integrativeInput = document.createElement('input');
+                    integrativeInput.type = 'hidden';
+                    integrativeInput.name = `risk_based_requirement_integrative_start_levels[${association.id}][]`;
+                    integrativeInput.value = riskLevel;
+                    hiddenInputsContainer.appendChild(integrativeInput);
+                });
+            }
         });
     };
 
@@ -106,6 +132,9 @@ function initializeCourseRiskRequirements(courseEditPage) {
                         <p class="font-medium text-base-content">${escapeHtml(association.name)}</p>
                         ${association.description ? `<p class="text-sm text-base-content/70">${escapeHtml(association.description)}</p>` : ''}
                         <span class="badge badge-outline badge-sm">${escapeHtml(validityTypeLabels[association.course_validity_type] || association.course_validity_type)}</span>
+                        ${association.course_validity_type === 'integrative' && Array.isArray(association.integrative_start_risk_levels) && association.integrative_start_risk_levels.length > 0
+                            ? `<p class="text-sm text-base-content/70">Livelli iniziali: ${escapeHtml(association.integrative_start_risk_levels.join(', '))}</p>`
+                            : ''}
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <button type="button" class="btn btn-secondary btn-sm" data-action="edit">${escapeHtml('Modifica validità')}</button>
@@ -120,6 +149,7 @@ function initializeCourseRiskRequirements(courseEditPage) {
                 validityModalTitle.textContent = 'Modifica validità del corso';
                 validityModalDescription.textContent = `Imposta come il corso vale per il requisito "${association.name}".`;
                 validitySelect.value = association.course_validity_type;
+                syncIntegrativeFields(association, association.integrative_start_risk_levels || []);
                 validityModal.showModal();
             });
 
@@ -161,6 +191,7 @@ function initializeCourseRiskRequirements(courseEditPage) {
                 validityModalTitle.textContent = 'Imposta validità del corso';
                 validityModalDescription.textContent = `Imposta come il corso vale per il requisito "${requirement.name}".`;
                 validitySelect.value = 'both';
+                syncIntegrativeFields(requirement, []);
                 selectionModal.close();
                 validityModal.showModal();
             });
@@ -174,9 +205,20 @@ function initializeCourseRiskRequirements(courseEditPage) {
             return;
         }
 
+        const selectedIntegrativeLevels = integrativeOptions
+            .filter((option) => option.checked && !option.disabled)
+            .map((option) => option.value);
+
+        if (validitySelect.value === 'integrative' && selectedIntegrativeLevels.length === 0) {
+            window.alert('Seleziona almeno un livello di partenza per il corso integrativo.');
+
+            return;
+        }
+
         const payload = {
             ...state.pendingRequirement,
             course_validity_type: validitySelect.value,
+            integrative_start_risk_levels: validitySelect.value === 'integrative' ? selectedIntegrativeLevels : [],
         };
         const existingIndex = getAssociationIndex(payload.id);
 
@@ -189,6 +231,7 @@ function initializeCourseRiskRequirements(courseEditPage) {
 
         state.pendingRequirement = null;
         state.pendingAction = null;
+        syncIntegrativeFields(null, []);
         validityModal.close();
         renderAssociations();
         renderSelectionOptions();
@@ -225,6 +268,7 @@ function initializeCourseRiskRequirements(courseEditPage) {
         button.addEventListener('click', () => {
             state.pendingRequirement = null;
             state.pendingAction = null;
+            syncIntegrativeFields(null, []);
             validityModal.close();
         });
     });
@@ -234,6 +278,13 @@ function initializeCourseRiskRequirements(courseEditPage) {
             state.pendingRequirement = null;
             deleteModal.close();
         });
+    });
+
+    validitySelect.addEventListener('change', () => {
+        syncIntegrativeFields(
+            state.pendingRequirement,
+            state.pendingRequirement?.integrative_start_risk_levels || [],
+        );
     });
 
     renderAssociations();

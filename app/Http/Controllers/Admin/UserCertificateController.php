@@ -38,6 +38,7 @@ class UserCertificateController extends Controller
             ->with([
                 'riskBasedRequirements:id,name',
                 'internalCourse:id,title',
+                'documentType',
             ]);
 
         if ($search !== '') {
@@ -60,6 +61,9 @@ class UserCertificateController extends Controller
                     'name' => $certificate->name,
                     'description' => $certificate->description,
                     'file_path' => $certificate->file_path,
+                    'document_type_id' => $certificate->document_type_id,
+                    'document_type_name' => $certificate->documentType?->name,
+                    'document_type_is_deleted' => $certificate->documentType?->trashed() ?? false,
                     'internal_course_id' => $certificate->internal_course_id,
                     'issued_at' => $certificate->issued_at?->format('d/m/Y'),
                     'issued_at_iso' => $certificate->issued_at?->toDateString(),
@@ -162,6 +166,7 @@ class UserCertificateController extends Controller
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'file_path' => $validated['file_path'] ?? null,
+            'document_type_id' => $validated['document_type_id'] ?? null,
             'is_internal' => filled($validated['internal_course_id'] ?? null),
             'issued_at' => $validated['issued_at'],
             'expires_at' => $validated['expires_at'] ?? null,
@@ -169,6 +174,6 @@ class UserCertificateController extends Controller
         $certificate->save();
         $certificate->riskBasedRequirements()->sync($validated['risk_based_requirement_ids'] ?? []);
 
-        return $certificate->load(['riskBasedRequirements:id,name', 'internalCourse:id,title']);
+        return $certificate->load(['riskBasedRequirements:id,name', 'internalCourse:id,title', 'documentType']);
     }
 }

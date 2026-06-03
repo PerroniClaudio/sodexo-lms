@@ -4,6 +4,7 @@ use App\Enums\HierarchyLevel;
 use App\Enums\InclusionType;
 use App\Enums\RiskLevel;
 use App\Models\Course;
+use App\Models\DocumentType;
 use App\Models\JobRole;
 use App\Models\JobSector;
 use App\Models\JobTask;
@@ -135,9 +136,11 @@ it('stores a manual certificate and syncs linked risk-based requirements', funct
     $user = makeCertificateWorkerUser();
     [$validRequirement, $expiredRequirement] = prepareRiskContextForUser($user);
     $course = Course::factory()->create(['title' => 'Corso interno']);
+    $documentType = DocumentType::factory()->create(['name' => 'Pronto soccorso']);
 
     $response = $this->postJson(route('admin.api.users.certificates.store', $user), [
         'name' => 'Attestato interno',
+        'document_type_id' => $documentType->getKey(),
         'issued_at' => '2026-05-01',
         'expires_at' => '2027-05-01',
         'internal_course_id' => $course->getKey(),
@@ -151,6 +154,7 @@ it('stores a manual certificate and syncs linked risk-based requirements', funct
 
     expect($certificate->user_id)->toBe($user->getKey())
         ->and($certificate->is_internal)->toBeTrue()
+        ->and($certificate->document_type_id)->toBe($documentType->getKey())
         ->and($certificate->riskBasedRequirements()->pluck('risk_based_requirements.id')->all())
         ->toEqualCanonicalizing([$validRequirement->getKey(), $expiredRequirement->getKey()]);
 });
@@ -158,12 +162,15 @@ it('stores a manual certificate and syncs linked risk-based requirements', funct
 it('updates a user certificate with the same form payload', function () {
     $user = makeCertificateWorkerUser();
     [$validRequirement, $expiredRequirement] = prepareRiskContextForUser($user);
+    $documentType = DocumentType::factory()->create(['name' => 'Parte generale']);
+    $updatedDocumentType = DocumentType::factory()->create(['name' => 'Privacy']);
 
     $certificate = UserCertificate::factory()
         ->for($user)
         ->create([
             'name' => 'Attestato iniziale',
             'description' => 'Descrizione iniziale',
+            'document_type_id' => $documentType->getKey(),
             'expires_at' => '2027-01-10',
         ]);
     $certificate->riskBasedRequirements()->attach($validRequirement->getKey());
@@ -171,6 +178,7 @@ it('updates a user certificate with the same form payload', function () {
     $response = $this->putJson(route('admin.api.users.certificates.update', [$user, $certificate]), [
         'name' => 'Attestato aggiornato',
         'description' => 'Nuova descrizione',
+        'document_type_id' => $updatedDocumentType->getKey(),
         'issued_at' => '2026-05-01',
         'expires_at' => '2028-05-01',
         'risk_based_requirement_ids' => [$expiredRequirement->getKey()],
@@ -181,6 +189,7 @@ it('updates a user certificate with the same form payload', function () {
 
     expect($certificate->fresh()->name)->toBe('Attestato aggiornato')
         ->and($certificate->fresh()->description)->toBe('Nuova descrizione')
+        ->and($certificate->fresh()->document_type_id)->toBe($updatedDocumentType->getKey())
         ->and($certificate->fresh()->riskBasedRequirements()->pluck('risk_based_requirements.id')->all())
         ->toEqualCanonicalizing([$expiredRequirement->getKey()]);
 });
@@ -278,4 +287,107 @@ it('computes satisfied expired and missing risk-based requirements for complianc
         ->and($riskBasedRequirementsCompliance['Formazione aggiuntiva']['status'])->toBe('missing')
         ->and($riskBasedRequirementsCompliance['Formazione aggiuntiva']['required_course_validity_type'])->toBe('first_achievement')
         ->and($riskBasedRequirementsCompliance['Formazione aggiuntiva']['required_course_validity_type_label'])->toBe('Primo conseguimento');
+});
+
+it('treats a higher-risk valid certificate as satisfying a lower-risk requirement in the same progression group', function () {
+    $user = makeCertificateWorkerUser();
+    $naceAteco = NaceAteco::create([
+        'section' => 'Q',
+        'code' => '86',
+        'order' => 1,
+        'hierarchy' => HierarchyLevel::DIVISION->value,
+        'title_it' => 'Assistenza sanitaria',
+        'title_en' => 'Human health',
+        'risk' => RiskLevel::MEDIUM->value,
+    ]);
+    $sector = JobSector::create([
+        'name' => 'Sanita media',
+        'code' => 'SAN_MEDIA',
+        'description' => 'Settore medio',
+    ]);
+    $sector->naceAtecoCodes()->attach($naceAteco->code, [
+        'inclusion_type' => InclusionType::DIVISION->value,
+    ]);
+    $role = JobRole::create([
+        'name' => 'Operatore',
+        'description' => 'Ruolo anagrafico',
+    ]);
+    $task = JobTask::create([
+        'name' => 'Assistente',
+        'description' => 'Mansione media',
+    ]);
+    $task->jobSectors()->attach($sector->getKey(), [
+        'task_risk_level' => RiskLevel::MEDIUM->value,
+    ]);
+    $user->forceFill([
+        'job_sector_id' => $sector->getKey(),
+        'job_role_id' => $role->getKey(),
+        'job_task_id' => $task->getKey(),
+    ])->save();
+    $user->jobTasks()->attach($task->getKey(), [
+        'starts_at' => $user->employment_start_date?->toDateString() ?? now()->toDateString(),
+    ]);
+
+    $mediumRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::MEDIUM)
+        ->progressionGroup('specific-worker-training')
+        ->create(['name' => 'Corso rischio medio']);
+    $highRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::HIGH)
+        ->progressionGroup('specific-worker-training')
+        ->create(['name' => 'Corso rischio alto']);
+
+    $certificate = UserCertificate::factory()
+        ->for($user)
+        ->create([
+            'name' => 'Corso rischio alto valido',
+            'expires_at' => now()->addYear()->toDateString(),
+        ]);
+    $certificate->riskBasedRequirements()->attach($highRequirement->getKey());
+
+    $riskBasedRequirementsCompliance = $user->checkRiskBasedRequirementsCompliance()->keyBy('risk_based_requirement_name');
+
+    expect($riskBasedRequirementsCompliance['Corso rischio medio']['status'])->toBe('satisfied')
+        ->and($riskBasedRequirementsCompliance['Corso rischio medio']['covered_by_higher_risk_certificate'])->toBeTrue();
+});
+
+it('shows the manual course selection page', function () {
+    $user = makeCertificateWorkerUser();
+    prepareRiskContextForUser($user);
+
+    $response = $this->get(route('admin.users.risk-course-selection', $user));
+
+    $response->assertOk()
+        ->assertSeeText('Selezione manuale corso')
+        ->assertSeeText($user->full_name);
+});
+
+it('shows future risk transitions on the manual course selection page', function () {
+    $user = makeCertificateWorkerUser();
+    prepareRiskContextForUser($user);
+
+    $currentTask = $user->jobTasks()->firstOrFail();
+    $sector = $user->jobSector()->firstOrFail();
+    $transitionStartDate = now()->addMonth()->startOfDay();
+
+    $futureTask = JobTask::factory()->create();
+    $futureTask->jobSectors()->attach($sector->getKey(), [
+        'task_risk_level' => RiskLevel::MEDIUM->value,
+        'sector_risk_override' => true,
+    ]);
+    $user->jobTasks()->updateExistingPivot($currentTask->getKey(), [
+        'starts_at' => $user->employment_start_date?->toDateString() ?? now()->subYear()->toDateString(),
+        'ends_at' => $transitionStartDate->copy()->subDay()->toDateString(),
+    ]);
+    $user->jobTasks()->attach($futureTask->getKey(), [
+        'starts_at' => $transitionStartDate->toDateString(),
+        'ends_at' => null,
+    ]);
+
+    $response = $this->get(route('admin.users.risk-course-selection', $user));
+
+    $response->assertOk()
+        ->assertSeeText('Variazioni di rischio future')
+        ->assertSeeText($transitionStartDate->format('d/m/Y'))
+        ->assertSeeText(RiskLevel::MEDIUM->label());
 });

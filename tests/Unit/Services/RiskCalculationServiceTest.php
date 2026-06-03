@@ -77,6 +77,46 @@ test('getSectorRiskLevel returns highest risk when including entire section', fu
     expect($result)->toBe(RiskLevel::HIGH);
 });
 
+test('getSectorRiskLevel falls back to manual risk when no ateco code is linked', function () {
+    $jobSector = JobSector::create([
+        'name' => 'Settore manuale',
+        'code' => 'SETT_MAN',
+        'description' => 'Settore senza ATECO',
+        'manual_risk_level' => RiskLevel::MEDIUM->value,
+    ]);
+
+    $result = $this->service->getSectorRiskLevel($jobSector->id);
+
+    expect($result)->toBe(RiskLevel::MEDIUM);
+});
+
+test('getSectorRiskLevel keeps the highest value between ateco risk and manual fallback risk', function () {
+    $code = NaceAteco::create([
+        'section' => 'Q',
+        'code' => '86',
+        'order' => 1,
+        'hierarchy' => HierarchyLevel::DIVISION->value,
+        'title_it' => 'Assistenza sanitaria',
+        'title_en' => 'Human health',
+        'risk' => RiskLevel::LOW->value,
+    ]);
+
+    $jobSector = JobSector::create([
+        'name' => 'Settore misto',
+        'code' => 'SETT_MIX',
+        'description' => 'Settore con override manuale',
+        'manual_risk_level' => RiskLevel::HIGH->value,
+    ]);
+
+    $jobSector->naceAtecoCodes()->attach($code->code, [
+        'inclusion_type' => InclusionType::DIVISION->value,
+    ]);
+
+    $result = $this->service->getSectorRiskLevel($jobSector->id);
+
+    expect($result)->toBe(RiskLevel::HIGH);
+});
+
 test('getEffectiveWorkerRisk returns highest between sector and task risk', function () {
     $code86 = NaceAteco::create([
         'section' => 'Q',
@@ -265,6 +305,93 @@ test('getEffectiveWorkerRiskForTasks overrides sector risk when all highest task
     $result = $this->service->getEffectiveWorkerRiskForTasks($jobSector->id, [$jobTaskOne->id, $jobTaskTwo->id]);
 
     expect($result)->toBe(RiskLevel::MEDIUM);
+});
+
+test('getEffectiveWorkerRiskForTasks keeps sector risk when one active task has no sector-specific mapping', function () {
+    $code86 = NaceAteco::create([
+        'section' => 'Q',
+        'code' => '86',
+        'order' => 1,
+        'hierarchy' => HierarchyLevel::DIVISION->value,
+        'title_it' => 'Assistenza sanitaria',
+        'title_en' => 'Human health',
+        'risk' => RiskLevel::HIGH->value,
+    ]);
+
+    $jobSector = JobSector::create([
+        'name' => 'Sanita',
+        'code' => 'SANITA',
+        'description' => 'Settore sanitario',
+    ]);
+
+    $jobSector->naceAtecoCodes()->attach($code86->code, [
+        'inclusion_type' => InclusionType::DIVISION->value,
+    ]);
+
+    $jobTaskWithOverride = JobTask::create([
+        'name' => 'Task basso con override',
+        'description' => 'Task con rischio specifico',
+    ]);
+    $jobTaskWithoutMapping = JobTask::create([
+        'name' => 'Task senza associazione',
+        'description' => 'Task senza rischio specifico nel settore',
+    ]);
+
+    $jobTaskWithOverride->jobSectors()->attach($jobSector->id, [
+        'task_risk_level' => RiskLevel::LOW->value,
+        'sector_risk_override' => true,
+    ]);
+
+    $result = $this->service->getEffectiveWorkerRiskForTasks($jobSector->id, [
+        $jobTaskWithOverride->id,
+        $jobTaskWithoutMapping->id,
+    ]);
+
+    expect($result)->toBe(RiskLevel::HIGH);
+});
+
+test('getEffectiveWorkerRiskForTasks keeps sector risk when one active task does not allow override even with lower risk', function () {
+    $code86 = NaceAteco::create([
+        'section' => 'Q',
+        'code' => '86',
+        'order' => 1,
+        'hierarchy' => HierarchyLevel::DIVISION->value,
+        'title_it' => 'Assistenza sanitaria',
+        'title_en' => 'Human health',
+        'risk' => RiskLevel::HIGH->value,
+    ]);
+
+    $jobSector = JobSector::create([
+        'name' => 'Sanita',
+        'code' => 'SANITA',
+        'description' => 'Settore sanitario',
+    ]);
+
+    $jobSector->naceAtecoCodes()->attach($code86->code, [
+        'inclusion_type' => InclusionType::DIVISION->value,
+    ]);
+
+    $jobTaskOne = JobTask::create([
+        'name' => 'Task basso uno',
+        'description' => 'Primo task',
+    ]);
+    $jobTaskTwo = JobTask::create([
+        'name' => 'Task basso due',
+        'description' => 'Secondo task',
+    ]);
+
+    $jobTaskOne->jobSectors()->attach($jobSector->id, [
+        'task_risk_level' => RiskLevel::LOW->value,
+        'sector_risk_override' => true,
+    ]);
+    $jobTaskTwo->jobSectors()->attach($jobSector->id, [
+        'task_risk_level' => RiskLevel::LOW->value,
+        'sector_risk_override' => false,
+    ]);
+
+    $result = $this->service->getEffectiveWorkerRiskForTasks($jobSector->id, [$jobTaskOne->id, $jobTaskTwo->id]);
+
+    expect($result)->toBe(RiskLevel::HIGH);
 });
 
 test('findSectorByAtecoCode finds sector by full code', function () {

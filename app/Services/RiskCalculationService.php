@@ -14,14 +14,18 @@ class RiskCalculationService
 {
     public function getSectorRiskLevel(int $jobSectorId): RiskLevel
     {
-        JobSector::findOrFail($jobSectorId);
+        $jobSector = JobSector::findOrFail($jobSectorId);
 
         $inclusions = DB::table('job_sector_nace_ateco')
             ->where('job_sector_id', $jobSectorId)
             ->get();
 
+        $manualRiskLevel = $jobSector->manual_risk_level instanceof RiskLevel
+            ? $jobSector->manual_risk_level
+            : RiskLevel::tryFrom((string) $jobSector->manual_risk_level);
+
         if ($inclusions->isEmpty()) {
-            return RiskLevel::LOW;
+            return $manualRiskLevel ?? RiskLevel::LOW;
         }
 
         $allRisks = collect();
@@ -40,7 +44,13 @@ class RiskCalculationService
             $allRisks = $allRisks->merge($risks);
         }
 
-        return $this->getHighestRisk($allRisks);
+        $calculatedRisk = $this->getHighestRisk($allRisks);
+
+        if ($manualRiskLevel === null) {
+            return $calculatedRisk;
+        }
+
+        return $calculatedRisk->max($manualRiskLevel);
     }
 
     public function getEffectiveWorkerRisk(int $jobSectorId, int $jobTaskId): RiskLevel
@@ -54,21 +64,27 @@ class RiskCalculationService
     public function getEffectiveWorkerRiskForTasks(int $jobSectorId, iterable $jobTaskIds): RiskLevel
     {
         $sectorRisk = $this->getSectorRiskLevel($jobSectorId);
-        $taskRisks = $this->getTaskRisksInSector($jobSectorId, $jobTaskIds);
+        $normalizedJobTaskIds = collect($jobTaskIds)
+            ->map(fn (mixed $jobTaskId): int => (int) $jobTaskId)
+            ->filter(fn (int $jobTaskId): bool => $jobTaskId > 0)
+            ->unique()
+            ->values();
+        $taskRisks = $this->getTaskRisksInSector($jobSectorId, $normalizedJobTaskIds);
 
         if ($taskRisks->isEmpty()) {
             return $sectorRisk;
         }
 
         $highestTaskRisk = $this->getHighestRisk($taskRisks->pluck('risk_level'));
-        $highestRiskTasks = $taskRisks
-            ->filter(fn (array $taskRisk): bool => $taskRisk['risk_level'] === $highestTaskRisk)
-            ->values();
-        $shouldOverrideSectorRisk = $highestRiskTasks->every(
-            fn (array $taskRisk): bool => $taskRisk['sector_risk_override'] === true
-        );
 
-        return $shouldOverrideSectorRisk
+        // The sector risk can be overridden only when every active task assigned to the user
+        // has an explicit mapping for this sector and every mapping is flagged for override.
+        // If even one task is missing a sector-specific mapping, or has the override flag off,
+        // the native sector risk remains in force for all tasks.
+        $allTasksAllowSectorOverride = $normalizedJobTaskIds->count() === $taskRisks->count()
+            && $taskRisks->every(fn (array $taskRisk): bool => $taskRisk['sector_risk_override'] === true);
+
+        return $allTasksAllowSectorOverride
             ? $highestTaskRisk
             : $sectorRisk->max($highestTaskRisk);
     }

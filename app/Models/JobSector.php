@@ -11,10 +11,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['name', 'description'])]
+#[Fillable(['name', 'description', 'manual_risk_level'])]
 class JobSector extends Model
 {
     use HasFactory, SoftDeletes;
+
+    protected function casts(): array
+    {
+        return [
+            'manual_risk_level' => RiskLevel::class,
+        ];
+    }
 
     public function users(): HasMany
     {

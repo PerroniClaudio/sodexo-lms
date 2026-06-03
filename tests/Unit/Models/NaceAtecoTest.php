@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\HierarchyLevel;
+use App\Enums\InclusionType;
 use App\Enums\RiskLevel;
 use App\Models\JobSector;
 use App\Models\NaceAteco;
@@ -75,20 +76,31 @@ test('job sector can be linked to nace ateco code', function () {
     $jobSector = JobSector::create([
         'name' => 'Test Sector',
         'code' => 'TST',
-        'nace_ateco_code' => 'LINK001',
+        'manual_risk_level' => RiskLevel::LOW,
     ]);
 
-    expect($jobSector->naceAteco)->toBeInstanceOf(NaceAteco::class)
-        ->and($jobSector->naceAteco->code)->toBe('LINK001')
-        ->and($jobSector->naceAteco->risk)->toBe(RiskLevel::HIGH);
+    $jobSector->naceAtecoCodes()->attach($naceAteco->code, [
+        'inclusion_type' => InclusionType::NACE_CLASS->value,
+    ]);
+
+    $linkedCode = $jobSector->fresh()->naceAtecoCodes->first();
+
+    expect($linkedCode)->toBeInstanceOf(NaceAteco::class)
+        ->and($linkedCode->code)->toBe('LINK001')
+        ->and($linkedCode->risk)->toBe(RiskLevel::HIGH);
 });
 
-test('job sector requires nace_ateco_code on creation', function () {
-    JobSector::create([
+test('job sector can be created without linked nace ateco codes', function () {
+    $jobSector = JobSector::create([
         'name' => 'Test Sector',
         'code' => 'TST2',
+        'manual_risk_level' => RiskLevel::MEDIUM,
     ]);
-})->throws(InvalidArgumentException::class, 'Il campo nace_ateco_code è obbligatorio');
+
+    expect($jobSector->exists)->toBeTrue()
+        ->and($jobSector->naceAtecoCodes)->toHaveCount(0)
+        ->and($jobSector->manual_risk_level)->toBe(RiskLevel::MEDIUM);
+});
 
 test('default title attribute returns italian title', function () {
     $naceAteco = NaceAteco::create([

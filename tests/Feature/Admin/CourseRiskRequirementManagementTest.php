@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\CourseRiskRequirementValidityType;
+use App\Enums\RiskLevel;
 use App\Models\Course;
 use App\Models\RiskBasedRequirement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -32,6 +33,7 @@ it('shows the risk requirement association section on the course edit page', fun
         ->assertSeeText('Conferma eliminazione')
         ->assertSeeText('Solo primo conseguimento')
         ->assertSeeText('Solo aggiornamento')
+        ->assertSeeText('Solo integrativo')
         ->assertSeeText('Primo conseguimento e aggiornamento');
 });
 
@@ -73,4 +75,47 @@ it('updates the risk requirement associations for a course', function () {
         $firstRequirement->getKey() => CourseRiskRequirementValidityType::FirstAchievement->value,
         $secondRequirement->getKey() => CourseRiskRequirementValidityType::Refresh->value,
     ]);
+});
+
+it('stores integrative starting risk levels for a course requirement', function () {
+    $course = Course::factory()->create([
+        'title' => 'Corso integrativo',
+        'description' => 'Descrizione',
+        'year' => 2026,
+        'expiry_date' => '2026-12-31',
+        'status' => 'draft',
+    ]);
+    $requirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::HIGH)
+        ->progressionGroup('specific-worker-training')
+        ->create(['name' => 'Formazione specifica rischio alto']);
+
+    $response = $this->put(route('admin.courses.update', $course), [
+        'title' => 'Corso integrativo',
+        'description' => 'Descrizione',
+        'year' => 2026,
+        'expiry_date' => '2026-12-31',
+        'status' => 'draft',
+        'risk_based_requirement_ids' => [$requirement->getKey()],
+        'risk_based_requirement_validity_types' => [
+            $requirement->getKey() => CourseRiskRequirementValidityType::Integrative->value,
+        ],
+        'risk_based_requirement_integrative_start_levels' => [
+            $requirement->getKey() => [
+                RiskLevel::LOW->value,
+                RiskLevel::MEDIUM->value,
+            ],
+        ],
+    ]);
+
+    $response->assertRedirect(route('admin.courses.edit', $course));
+
+    $pivot = $course->riskBasedRequirements()->firstOrFail()->pivot;
+
+    expect($pivot->course_validity_type)->toBe(CourseRiskRequirementValidityType::Integrative->value)
+        ->and(json_decode($pivot->integrative_start_risk_levels, true))
+        ->toEqualCanonicalizing([
+            RiskLevel::LOW->value,
+            RiskLevel::MEDIUM->value,
+        ]);
 });

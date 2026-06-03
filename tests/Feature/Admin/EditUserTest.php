@@ -1,10 +1,12 @@
 <?php
 
+use App\Enums\RiskLevel;
 use App\Models\JobRole;
 use App\Models\JobSector;
 use App\Models\JobTask;
 use App\Models\JobUnit;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
@@ -257,4 +259,62 @@ it('rejects worker updates without active job task coverage', function () {
 
     $response->assertRedirect(route('admin.users.edit', $user));
     $response->assertSessionHasErrors(['job_tasks', 'job_tasks.0.ends_at']);
+});
+
+it('warns when a worker update changes the current and future calculated risk', function () {
+    Carbon::setTestNow('2026-01-15 12:00:00');
+
+    actingAsRole('superadmin');
+
+    $user = makeWorkerUser([
+        'email' => 'worker.risk-change@example.test',
+        'name' => 'Marta',
+        'surname' => 'Blu',
+        'fiscal_code' => 'BLUMRT80A01H501Z',
+    ]);
+
+    $user->jobSector()->update([
+        'manual_risk_level' => RiskLevel::LOW->value,
+    ]);
+
+    $primaryTask = $user->jobTasks->firstWhere('name', 'Mansione primaria');
+    $secondaryTask = $user->jobTasks->firstWhere('name', 'Mansione secondaria');
+
+    $secondaryTask->jobSectors()->attach($user->job_sector_id, [
+        'task_risk_level' => RiskLevel::HIGH->value,
+        'sector_risk_override' => true,
+    ]);
+
+    $response = $this->put(route('admin.users.update', $user), [
+        'account_type' => 'user',
+        'email' => 'worker.risk-change@example.test',
+        'name' => 'Marta',
+        'surname' => 'Blu',
+        'fiscal_code' => 'BLUMRT80A01H501Z',
+        'is_foreigner_or_immigrant' => '0',
+        'employment_start_date' => '2026-01-01',
+        'job_role_id' => $user->job_role_id,
+        'job_sector_id' => $user->job_sector_id,
+        'job_unit_id' => $user->job_unit_id,
+        'job_tasks' => [
+            [
+                'job_task_id' => $primaryTask->getKey(),
+                'starts_at' => '2026-01-01',
+                'ends_at' => null,
+            ],
+            [
+                'job_task_id' => $secondaryTask->getKey(),
+                'starts_at' => '2026-01-15',
+                'ends_at' => null,
+            ],
+        ],
+    ]);
+
+    $response->assertRedirect(route('admin.users.index'));
+    $response->assertSessionHas('warning', function (string $warning): bool {
+        return str_contains($warning, 'è cambiato da Rischio Basso a Rischio Alto')
+            && str_contains($warning, 'modificano anche il rischio futuro');
+    });
+
+    Carbon::setTestNow();
 });

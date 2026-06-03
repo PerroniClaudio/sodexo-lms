@@ -143,6 +143,26 @@
                         @enderror
                     </div>
 
+                    <div class="form-control flex flex-col gap-2">
+                        <label for="risk_progression_group" class="label p-0">
+                            <span class="label-text font-medium">{{ __('Gruppo progressione rischio') }}</span>
+                        </label>
+                        <input
+                            id="risk_progression_group"
+                            name="risk_progression_group"
+                            type="text"
+                            value="{{ old('risk_progression_group') }}"
+                            class="input input-bordered w-full @error('risk_progression_group') input-error @enderror"
+                            placeholder="formazione-specifica-lavoratori"
+                        >
+                        <p class="text-sm text-base-content/70">
+                            {{ __('Non definisce l\'ordine dei livelli: quello arriva già dal rischio basso/medio/alto. Serve solo a collegare tra loro i requisiti della stessa famiglia formativa, così un attestato di livello superiore può coprire fino a scadenza i livelli inferiori dello stesso percorso.') }}
+                        </p>
+                        @error('risk_progression_group')
+                            <p class="text-sm text-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     <div class="flex justify-end gap-3">
                         <a href="{{ route('admin.risk-based-requirements.index') }}" class="btn btn-ghost">
                             {{ __('Cancel') }}
