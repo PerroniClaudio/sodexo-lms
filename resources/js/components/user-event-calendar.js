@@ -81,13 +81,14 @@ function renderDayEvents(dateKey, eventsByDay) {
     const timeRange = formatTimeRange(event);
     const courseTitle = event.extendedProps?.course_title ?? '';
     const className = event.extendedProps?.class_name ?? '';
+    const moduleTitle = event.extendedProps?.module_title ?? event.title;
     const type = typeLabel(event.extendedProps?.type ?? '');
 
     return `
       <article class="rounded-box bg-base-100 px-4 py-3 shadow-sm">
         <div class="flex items-start justify-between gap-4">
           <div class="min-w-0">
-            <h3 class="truncate text-sm font-semibold text-base-content sm:text-base">${event.title}</h3>
+            <h3 class="truncate text-sm font-semibold text-base-content sm:text-base">${moduleTitle}</h3>
             <p class="mt-1 text-xs text-base-content/70 sm:text-sm">${courseTitle}</p>
             <p class="mt-1 text-xs text-base-content/60 sm:text-sm">${className}${timeRange ? ` • ${timeRange}` : ''}</p>
           </div>
@@ -130,7 +131,16 @@ async function bootstrapCalendar() {
     }
 
     const payload = await response.json();
-    const events = Array.isArray(payload.events) ? payload.events : [];
+    const events = Array.isArray(payload.events)
+      ? payload.events.map((event) => ({
+        ...event,
+        title: event.extendedProps?.course_title ?? event.title,
+        extendedProps: {
+          ...event.extendedProps,
+          module_title: event.title,
+        },
+      }))
+      : [];
     const eventsByDay = new Map();
 
     events.forEach((event) => {

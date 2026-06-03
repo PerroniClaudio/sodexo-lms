@@ -12,7 +12,7 @@
         
     </head>
 
-    <body class="antialiased">
+    <body class="antialiased overflow-y-scroll [scrollbar-gutter:stable]">
         <div class="min-h-screen bg-base-100">
             {{ $slot }}
         </div>

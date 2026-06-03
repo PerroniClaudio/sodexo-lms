@@ -1,7 +1,7 @@
 <x-layouts.app>
-    <div class="drawer lg:drawer-open">
+    <div class="drawer lg:drawer-open lg:h-screen lg:overflow-hidden">
         <input id="user-drawer" type="checkbox" class="drawer-toggle" />
-        <div class="drawer-content flex min-h-screen flex-col bg-base-100">
+        <div class="drawer-content flex min-h-screen flex-col bg-base-100 lg:h-screen lg:min-h-0">
             <div class="navbar border-b border-base-300 bg-base-200 px-4 shadow-sm lg:hidden">
                 <div class="navbar-start">
                     <label for="user-drawer" class="btn btn-ghost drawer-button">
@@ -9,7 +9,7 @@
                     </label>
                 </div>
             </div>
-            <main class="flex-1">
+            <main class="flex-1 lg:min-h-0 lg:overflow-y-auto">
                 {{ $slot }}
             </main>
         </div>
@@ -18,7 +18,7 @@
                 $authUserRole = auth()->user()?->getRoleNames()->first() ?? 'user'; // Spatie restituisce una collection
             @endphp
             <label for="user-drawer" aria-label="{{ __('layout.close_sidebar') }}" class="drawer-overlay"></label>
-            <div class="flex min-h-full w-72 flex-col bg-base-200 p-4">
+            <div class="flex min-h-full w-72 flex-col bg-base-200 p-4 lg:h-screen lg:overflow-y-auto">
                 <ul class="menu w-full gap-1">
                     <li class="w-full">
                         <a href="{{ route('user.dashboard') }}" @class([

@@ -178,15 +178,3 @@ function seedLiveAuditFixture(): array
 
     return [$videoReportRequest, $session, $jobSector];
 }
-
-function zipCanOpen(string $path): bool
-{
-    $zip = new ZipArchive;
-    $opened = $zip->open($path) === true;
-
-    if ($opened) {
-        $zip->close();
-    }
-
-    return $opened;
-}

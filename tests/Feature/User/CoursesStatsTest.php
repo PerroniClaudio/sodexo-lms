@@ -78,3 +78,51 @@ test('user dashboard courses stats endpoint requires authentication', function (
     $this->getJson(route('user.dashboard.courses-stats'))
         ->assertUnauthorized();
 });
+
+test('user dashboard shows last four accessed courses ordered by recent access', function () {
+    $user = actingAsRole('user');
+
+    $courses = collect(range(1, 5))->map(function (int $index) {
+        return Course::factory()->create([
+            'title' => "Corso {$index}",
+            'type' => match ($index) {
+                1 => 'fad',
+                2 => 'res',
+                3 => 'blended',
+                4 => 'async',
+                default => 'fsc',
+            },
+        ]);
+    });
+
+    $courses->each(function (Course $course, int $index) use ($user): void {
+        $module = Module::factory()->create([
+            'belongsTo' => (string) $course->getKey(),
+            'order' => 1,
+            'type' => 'video',
+        ]);
+
+        CourseEnrollment::factory()->create([
+            'user_id' => $user->getKey(),
+            'course_id' => $course->getKey(),
+            'current_module_id' => $module->getKey(),
+            'status' => match ($index) {
+                0, 3 => CourseEnrollment::STATUS_COMPLETED,
+                default => CourseEnrollment::STATUS_IN_PROGRESS,
+            },
+            'completion_percentage' => 10 * ($index + 1),
+            'last_accessed_at' => now()->subHours($index),
+        ]);
+    });
+
+    $response = $this->get(route('user.dashboard'));
+
+    $response->assertSuccessful()
+        ->assertSeeInOrder([
+            'Corso 2',
+            'Corso 3',
+            'Corso 1',
+            'Corso 4',
+        ])
+        ->assertDontSee('Corso 5');
+});
