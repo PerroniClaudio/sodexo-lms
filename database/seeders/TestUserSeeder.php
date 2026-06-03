@@ -55,6 +55,14 @@ class TestUserSeeder extends Seeder
 
             $user->save();
             $user->syncRoles([$role]);
+
+            if ($role === 'user' && $user->job_task_id !== null) {
+                $user->jobTasks()->detach();
+                $user->jobTasks()->attach($user->job_task_id, [
+                    'starts_at' => $user->employment_start_date?->toDateString() ?? now()->toDateString(),
+                    'ends_at' => $user->employment_end_date?->toDateString(),
+                ]);
+            }
         }
     }
 
@@ -88,6 +96,7 @@ class TestUserSeeder extends Seeder
             'job_task_id' => $jobTask->id,
             'job_role_id' => $jobRole->id,
             'job_sector_id' => $jobSector->id,
+            'employment_start_date' => now()->subYear()->toDateString(),
             'is_foreigner_or_immigrant' => false,
             'home_country_id' => $jobUnit->country_id,
             'home_region_id' => $jobUnit->region_id,

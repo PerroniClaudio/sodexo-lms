@@ -6,11 +6,14 @@
     'options' => [],
     'label',
     'placeholder' => 'Cerca o seleziona...',
+    'errorKey' => null,
 ])
 
 @php
     $fieldId = $id ?? $name;
-    $selectedOption = collect($options)->firstWhere('value', old($name, $selectedValue));
+    $resolvedErrorKey = $errorKey ?? $name;
+    $resolvedValue = old($resolvedErrorKey, $selectedValue);
+    $selectedOption = collect($options)->firstWhere('value', $resolvedValue);
     $inputValue = $selectedOption['label'] ?? '';
     $uniqueId = $fieldId . '_' . uniqid();
 @endphp
@@ -29,7 +32,7 @@
         <input
             type="text"
             id="{{ $uniqueId }}_input"
-            class="input input-bordered w-full @error($name) input-error @enderror"
+            class="input input-bordered w-full @error($resolvedErrorKey) input-error @enderror"
             placeholder="{{ $placeholder }}"
             autocomplete="off"
             value="{{ old($name.'_display', $inputValue) }}"
@@ -56,7 +59,7 @@
                         data-option-label="{{ $option['label'] }}"
                         data-search-text="{{ $option['search'] ?? $option['label'] }}"
                     >
-                        <a class="flex w-full items-start gap-2">
+                        <a class="flex w-full items-start gap-2" data-option-link>
                             @if (!empty($option['badge']))
                                 <code class="badge badge-sm badge-ghost shrink-0">{{ $option['badge'] }}</code>
                             @endif
@@ -76,12 +79,12 @@
             type="hidden"
             id="{{ $fieldId }}"
             name="{{ $name }}"
-            value="{{ old($name, $selectedValue) }}"
+            value="{{ $resolvedValue }}"
             data-hidden
         >
     </div>
 
-    @error($name)
+    @error($resolvedErrorKey)
         <span class="mt-1 text-sm text-error">{{ $message }}</span>
     @enderror
 </div>
@@ -91,6 +94,10 @@
     <script>
     (function() {
         function initSearchableSelect(root) {
+            if (!root || root.dataset.searchableSelectInitialized === 'true') {
+                return;
+            }
+
             const input = root.querySelector('[data-input]');
             const dropdown = root.querySelector('[data-dropdown]');
             const hiddenInput = root.querySelector('[data-hidden]');
@@ -101,7 +108,58 @@
                 return;
             }
 
+            root.dataset.searchableSelectInitialized = 'true';
+
             let isOpen = false;
+            let activeIndex = -1;
+
+            function visibleOptionItems() {
+                return Array.from(optionItems).filter(function(item) {
+                    return !item.classList.contains('hidden');
+                });
+            }
+
+            function setActiveOption(nextIndex) {
+                const visibleItems = visibleOptionItems();
+
+                activeIndex = visibleItems.length === 0
+                    ? -1
+                    : Math.max(0, Math.min(nextIndex, visibleItems.length - 1));
+
+                optionItems.forEach(function(item) {
+                    const link = item.querySelector('[data-option-link]');
+
+                    item.classList.remove('bg-base-200');
+                    link?.classList.remove('menu-active');
+                });
+
+                if (activeIndex === -1) {
+                    return;
+                }
+
+                const activeItem = visibleItems[activeIndex];
+                const activeLink = activeItem.querySelector('[data-option-link]');
+
+                activeItem.classList.add('bg-base-200');
+                activeLink?.classList.add('menu-active');
+                activeItem.scrollIntoView({ block: 'nearest' });
+            }
+
+            function setInitialActiveOption() {
+                const visibleItems = visibleOptionItems();
+
+                if (visibleItems.length === 0) {
+                    setActiveOption(-1);
+
+                    return;
+                }
+
+                const selectedIndex = visibleItems.findIndex(function(item) {
+                    return item.dataset.optionValue === hiddenInput.value;
+                });
+
+                setActiveOption(selectedIndex >= 0 ? selectedIndex : 0);
+            }
 
             function syncValidity() {
                 if (!isRequired || input.disabled) {
@@ -122,11 +180,19 @@
                 hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
             }
 
+            function selectOption(item) {
+                input.value = item.dataset.optionLabel;
+                setHiddenValue(item.dataset.optionValue);
+                syncValidity();
+                toggleDropdown(false);
+            }
+
             function toggleDropdown(show) {
                 isOpen = show;
 
                 if (show) {
                     dropdown.classList.remove('hidden');
+                    setInitialActiveOption();
 
                     return;
                 }
@@ -134,7 +200,10 @@
                 dropdown.classList.add('hidden');
                 optionItems.forEach(function(item) {
                     item.classList.remove('hidden');
+                    item.classList.remove('bg-base-200');
+                    item.querySelector('[data-option-link]')?.classList.remove('menu-active');
                 });
+                activeIndex = -1;
             }
 
             input.addEventListener('click', function() {
@@ -154,6 +223,7 @@
                 });
 
                 toggleDropdown(true);
+                setInitialActiveOption();
 
                 if (searchTerm !== '') {
                     const exactMatch = Array.from(optionItems).find(function(item) {
@@ -169,13 +239,22 @@
             });
 
             optionItems.forEach(function(item) {
-                item.querySelector('a')?.addEventListener('click', function(event) {
-                    event.preventDefault();
+                item.addEventListener('mouseenter', function() {
+                    const visibleItems = visibleOptionItems();
+                    const hoveredIndex = visibleItems.indexOf(item);
 
-                    input.value = item.dataset.optionLabel;
-                    setHiddenValue(item.dataset.optionValue);
-                    syncValidity();
-                    toggleDropdown(false);
+                    if (hoveredIndex >= 0) {
+                        setActiveOption(hoveredIndex);
+                    }
+                });
+
+                item.querySelector('[data-option-link]')?.addEventListener('mousedown', function(event) {
+                    event.preventDefault();
+                });
+
+                item.querySelector('[data-option-link]')?.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    selectOption(item);
                 });
             });
 
@@ -188,12 +267,37 @@
             input.addEventListener('keydown', function(event) {
                 if (event.key === 'Enter') {
                     event.preventDefault();
-                    syncValidity();
+
+                    const visibleItems = visibleOptionItems();
+
+                    if (isOpen && activeIndex >= 0 && visibleItems[activeIndex]) {
+                        selectOption(visibleItems[activeIndex]);
+                    } else {
+                        syncValidity();
+                    }
                 } else if (event.key === 'Escape') {
                     toggleDropdown(false);
-                } else if (event.key === 'ArrowDown' && !isOpen) {
-                    toggleDropdown(true);
                     event.preventDefault();
+                } else if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+
+                    if (!isOpen) {
+                        toggleDropdown(true);
+
+                        return;
+                    }
+
+                    setActiveOption(activeIndex + 1);
+                } else if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+
+                    if (!isOpen) {
+                        toggleDropdown(true);
+
+                        return;
+                    }
+
+                    setActiveOption(activeIndex - 1);
                 }
             });
 
@@ -202,8 +306,12 @@
             syncValidity();
         }
 
+        window.initSearchableSelects = function(scope = document) {
+            scope.querySelectorAll('[data-searchable-select]').forEach(initSearchableSelect);
+        };
+
         document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('[data-searchable-select]').forEach(initSearchableSelect);
+            window.initSearchableSelects(document);
         });
     })();
     </script>

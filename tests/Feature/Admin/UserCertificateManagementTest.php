@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Hash;
 
 uses(RefreshDatabase::class);
 
-function makeWorkerUser(array $attributes = []): User
+function makeCertificateWorkerUser(array $attributes = []): User
 {
     $user = User::query()->create(array_merge([
         'email' => fake()->unique()->safeEmail(),
@@ -27,6 +27,7 @@ function makeWorkerUser(array $attributes = []): User
         'name' => fake()->firstName(),
         'surname' => fake()->lastName(),
         'fiscal_code' => fake()->unique()->regexify('[A-Z0-9]{16}'),
+        'employment_start_date' => now()->subYear()->toDateString(),
         'is_foreigner_or_immigrant' => false,
     ], $attributes));
 
@@ -73,6 +74,10 @@ function prepareRiskContextForUser(User $user): array
         'job_role_id' => $role->getKey(),
         'job_task_id' => $task->getKey(),
     ])->save();
+    $user->jobTasks()->attach($task->getKey(), [
+        'starts_at' => $user->employment_start_date?->toDateString() ?? now()->toDateString(),
+        'ends_at' => $user->employment_end_date?->toDateString(),
+    ]);
 
     $validRequirement = RiskBasedRequirement::factory()
         ->forRiskLevel(RiskLevel::HIGH)
@@ -94,7 +99,7 @@ beforeEach(function () {
 });
 
 it('lists user certificates with pagination search sorting and risk-based requirements', function () {
-    $user = makeWorkerUser();
+    $user = makeCertificateWorkerUser();
     [$validRequirement] = prepareRiskContextForUser($user);
 
     $certificate = UserCertificate::factory()
@@ -127,7 +132,7 @@ it('lists user certificates with pagination search sorting and risk-based requir
 });
 
 it('stores a manual certificate and syncs linked risk-based requirements', function () {
-    $user = makeWorkerUser();
+    $user = makeCertificateWorkerUser();
     [$validRequirement, $expiredRequirement] = prepareRiskContextForUser($user);
     $course = Course::factory()->create(['title' => 'Corso interno']);
 
@@ -151,7 +156,7 @@ it('stores a manual certificate and syncs linked risk-based requirements', funct
 });
 
 it('updates a user certificate with the same form payload', function () {
-    $user = makeWorkerUser();
+    $user = makeCertificateWorkerUser();
     [$validRequirement, $expiredRequirement] = prepareRiskContextForUser($user);
 
     $certificate = UserCertificate::factory()
@@ -181,7 +186,7 @@ it('updates a user certificate with the same form payload', function () {
 });
 
 it('deletes a user certificate', function () {
-    $user = makeWorkerUser();
+    $user = makeCertificateWorkerUser();
     prepareRiskContextForUser($user);
 
     $certificate = UserCertificate::factory()
@@ -197,7 +202,7 @@ it('deletes a user certificate', function () {
 });
 
 it('returns the current risk summary via api', function () {
-    $user = makeWorkerUser();
+    $user = makeCertificateWorkerUser();
     [$validRequirement] = prepareRiskContextForUser($user);
 
     $certificate = UserCertificate::factory()
@@ -215,7 +220,7 @@ it('returns the current risk summary via api', function () {
 });
 
 it('updates the user through json and keeps the page refresh contract stable', function () {
-    $user = makeWorkerUser([
+    $user = makeCertificateWorkerUser([
         'email' => 'worker@example.test',
         'name' => 'Mario',
         'surname' => 'Rossi',
@@ -239,7 +244,7 @@ it('updates the user through json and keeps the page refresh contract stable', f
 });
 
 it('computes satisfied expired and missing risk-based requirements for compliance', function () {
-    $user = makeWorkerUser();
+    $user = makeCertificateWorkerUser();
     [$validRequirement, $expiredRequirement] = prepareRiskContextForUser($user);
     $missingRequirement = RiskBasedRequirement::factory()
         ->forRiskLevel(RiskLevel::HIGH)

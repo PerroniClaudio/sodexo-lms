@@ -12,11 +12,6 @@ use Illuminate\Support\Facades\DB;
 
 class RiskCalculationService
 {
-    /**
-     * Funzione 1: Calcola il rischio nativo del settore personalizzato
-     * Analizza tutti i codici ATECO inclusi nella pivot per quel settore
-     * (esplodendo le gerarchie se necessario) e restituisce il livello di rischio più alto
-     */
     public function getSectorRiskLevel(int $jobSectorId): RiskLevel
     {
         JobSector::findOrFail($jobSectorId);
@@ -48,21 +43,34 @@ class RiskCalculationService
         return $this->getHighestRisk($allRisks);
     }
 
-    /**
-     * Funzione 2: Calcola il rischio finale effettivo del lavoratore
-     * Prende il rischio del settore e lo paragona al rischio specifico della mansione
-     * Restituisce il rischio più alto tra i due
-     */
     public function getEffectiveWorkerRisk(int $jobSectorId, int $jobTaskId): RiskLevel
     {
-        $sectorRisk = $this->getSectorRiskLevel($jobSectorId);
-        $taskRisk = $this->getTaskRiskInSector($jobSectorId, $jobTaskId);
+        return $this->getEffectiveWorkerRiskForTasks($jobSectorId, [$jobTaskId]);
+    }
 
-        if (! $taskRisk) {
+    /**
+     * @param  iterable<int, int>  $jobTaskIds
+     */
+    public function getEffectiveWorkerRiskForTasks(int $jobSectorId, iterable $jobTaskIds): RiskLevel
+    {
+        $sectorRisk = $this->getSectorRiskLevel($jobSectorId);
+        $taskRisks = $this->getTaskRisksInSector($jobSectorId, $jobTaskIds);
+
+        if ($taskRisks->isEmpty()) {
             return $sectorRisk;
         }
 
-        return $sectorRisk->max($taskRisk);
+        $highestTaskRisk = $this->getHighestRisk($taskRisks->pluck('risk_level'));
+        $highestRiskTasks = $taskRisks
+            ->filter(fn (array $taskRisk): bool => $taskRisk['risk_level'] === $highestTaskRisk)
+            ->values();
+        $shouldOverrideSectorRisk = $highestRiskTasks->every(
+            fn (array $taskRisk): bool => $taskRisk['sector_risk_override'] === true
+        );
+
+        return $shouldOverrideSectorRisk
+            ? $highestTaskRisk
+            : $sectorRisk->max($highestTaskRisk);
     }
 
     /**
@@ -77,13 +85,6 @@ class RiskCalculationService
             ->all();
     }
 
-    /**
-     * Funzione 3: Risalita Gerarchica ed Ereditarietà Sezione
-     * Trova il settore partendo dal codice ATECO a 6 cifre di un'azienda
-     * L'algoritmo verifica la pivot partendo dal full_code e risalendo (category, class... fino a section)
-     *
-     * @param  string  $fullAtecoCode  Codice ATECO completo (es. "86.90.11")
-     */
     public function findSectorByAtecoCode(string $fullAtecoCode): ?JobSector
     {
         $naceAteco = NaceAteco::find($fullAtecoCode);
@@ -108,10 +109,6 @@ class RiskCalculationService
         return null;
     }
 
-    /**
-     * Ottimizzazione: Per trovare la sezione di appartenenza di un qualsiasi codice numerico,
-     * basta leggere direttamente la colonna section della riga di quel codice
-     */
     public function getSectionForCode(string $atecoCode): ?NaceAteco
     {
         $code = NaceAteco::find($atecoCode);
@@ -184,6 +181,44 @@ class RiskCalculationService
         }
 
         return RiskLevel::tryFrom($pivot->task_risk_level);
+    }
+
+    /**
+     * @param  iterable<int, int>  $jobTaskIds
+     * @return Collection<int, array{job_task_id: int, risk_level: RiskLevel, sector_risk_override: bool}>
+     */
+    protected function getTaskRisksInSector(int $jobSectorId, iterable $jobTaskIds): Collection
+    {
+        $normalizedJobTaskIds = collect($jobTaskIds)
+            ->map(fn (mixed $jobTaskId): int => (int) $jobTaskId)
+            ->filter(fn (int $jobTaskId): bool => $jobTaskId > 0)
+            ->unique()
+            ->values();
+
+        if ($normalizedJobTaskIds->isEmpty()) {
+            return collect();
+        }
+
+        return DB::table('job_task_job_sector')
+            ->where('job_sector_id', $jobSectorId)
+            ->whereIn('job_task_id', $normalizedJobTaskIds)
+            ->whereNotNull('task_risk_level')
+            ->get()
+            ->map(function (object $pivot): ?array {
+                $riskLevel = RiskLevel::tryFrom($pivot->task_risk_level);
+
+                if ($riskLevel === null) {
+                    return null;
+                }
+
+                return [
+                    'job_task_id' => (int) $pivot->job_task_id,
+                    'risk_level' => $riskLevel,
+                    'sector_risk_override' => (bool) $pivot->sector_risk_override,
+                ];
+            })
+            ->filter()
+            ->values();
     }
 
     protected function getHighestRisk(Collection $risks): RiskLevel

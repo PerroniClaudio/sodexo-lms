@@ -8,6 +8,8 @@ use App\Enums\RiskLevel;
 use App\Enums\UserStatus;
 use App\Services\CourseRiskRequirementService;
 use App\Services\RiskCalculationService;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Builder;
@@ -39,6 +41,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'surname',
         'fiscal_code',
         'birth_date',
+        'employment_start_date',
+        'employment_end_date',
         'birth_place',
         'gender',
         'phone_prefix',
@@ -76,6 +80,8 @@ class User extends Authenticatable implements MustVerifyEmail
             'profile_completed_at' => 'datetime',
             'last_data_update_request' => 'datetime',
             'birth_date' => 'date',
+            'employment_start_date' => 'date',
+            'employment_end_date' => 'date',
             'is_foreigner_or_immigrant' => 'boolean',
             'account_state' => UserStatus::class,
             'onboarding_step' => OnboardingStep::class,
@@ -112,6 +118,13 @@ class User extends Authenticatable implements MustVerifyEmail
     public function jobTask(): BelongsTo
     {
         return $this->belongsTo(JobTask::class, 'job_task_id');
+    }
+
+    public function jobTasks(): BelongsToMany
+    {
+        return $this->belongsToMany(JobTask::class, 'job_task_user')
+            ->withPivot(['id', 'starts_at', 'ends_at'])
+            ->withTimestamps();
     }
 
     /**
@@ -473,12 +486,64 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function getEffectiveWorkerRisk(): RiskLevel
     {
-        if (! $this->hasRole('user') || ! $this->jobSector || ! $this->jobTask) {
-            throw new \LogicException('Cannot calculate risk level for user without "user" role, job sector or job task');
+        $activeJobTaskIds = $this->activeJobTasks()
+            ->pluck('id')
+            ->map(fn (mixed $jobTaskId): int => (int) $jobTaskId)
+            ->all();
+
+        if (! $this->hasRole('user') || ! $this->jobSector || $activeJobTaskIds === []) {
+            throw new \LogicException('Cannot calculate risk level for user without "user" role, job sector or active job task');
         }
 
         return app(RiskCalculationService::class)
-            ->getEffectiveWorkerRisk($this->jobSector->id, $this->jobTask->id);
+            ->getEffectiveWorkerRiskForTasks($this->jobSector->id, $activeJobTaskIds);
+    }
+
+    /**
+     * @return Collection<int, JobTask>
+     */
+    public function activeJobTasks(?CarbonInterface $referenceDate = null): Collection
+    {
+        $evaluationDate = CarbonImmutable::instance($referenceDate ?? today());
+        $jobTasks = $this->relationLoaded('jobTasks')
+            ? $this->jobTasks
+            : $this->jobTasks()->get();
+
+        return $jobTasks
+            ->filter(fn (JobTask $jobTask): bool => $this->jobTaskIsActiveOnDate($jobTask, $evaluationDate))
+            ->values();
+    }
+
+    public function getCurrentJobTaskAttribute(): ?JobTask
+    {
+        return $this->activeJobTasks()
+            ->sortByDesc(fn (JobTask $jobTask): string => (string) ($jobTask->pivot->starts_at ?? ''))
+            ->first();
+    }
+
+    private function jobTaskIsActiveOnDate(JobTask $jobTask, CarbonImmutable $referenceDate): bool
+    {
+        $startsAt = $this->pivotDate($jobTask->pivot->starts_at ?? null);
+        $endsAt = $this->pivotDate($jobTask->pivot->ends_at ?? null);
+
+        if ($startsAt === null || $startsAt->gt($referenceDate)) {
+            return false;
+        }
+
+        return $endsAt === null || $endsAt->gte($referenceDate);
+    }
+
+    private function pivotDate(mixed $value): ?CarbonImmutable
+    {
+        if ($value instanceof CarbonInterface) {
+            return CarbonImmutable::instance($value);
+        }
+
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        return CarbonImmutable::parse($value);
     }
 
     public function getRiskBasedRequirementsForEffectiveRisk(): array

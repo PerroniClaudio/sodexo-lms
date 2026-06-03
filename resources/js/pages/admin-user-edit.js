@@ -45,10 +45,44 @@ function initializeRiskSummary(page) {
         return 'badge-error badge-soft';
     };
 
+    const updateContainerAppearance = (riskBadgeClass) => {
+        container.classList.remove(
+            'border-base-300',
+            'bg-base-100',
+            'border-success/40',
+            'bg-success/5',
+            'border-warning/40',
+            'bg-warning/5',
+            'border-error/40',
+            'bg-error/5',
+        );
+
+        if (riskBadgeClass === 'badge-success') {
+            container.classList.add('border-success/40', 'bg-success/5');
+
+            return;
+        }
+
+        if (riskBadgeClass === 'badge-warning') {
+            container.classList.add('border-warning/40', 'bg-warning/5');
+
+            return;
+        }
+
+        if (riskBadgeClass === 'badge-error') {
+            container.classList.add('border-error/40', 'bg-error/5');
+
+            return;
+        }
+
+        container.classList.add('border-base-300', 'bg-base-100');
+    };
+
     const render = (summary) => {
         messageElement.textContent = summary.message || '';
         badgeElement.className = `badge badge-lg ${summary.risk_badge_class || 'badge-ghost'}`;
         badgeElement.textContent = summary.risk_label || 'Non applicabile';
+        updateContainerAppearance(summary.risk_badge_class || 'badge-ghost');
         riskBasedRequirementsContainer.innerHTML = '';
 
         if (!Array.isArray(summary.risk_based_requirements) || summary.risk_based_requirements.length === 0) {

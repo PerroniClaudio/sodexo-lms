@@ -143,6 +143,20 @@
                                 <p class="text-sm text-error">{{ $message }}</p>
                             @enderror
                         </div>
+
+                        <div class="form-control col-span-full">
+                            <label class="label cursor-pointer justify-start gap-3 self-end">
+                                <input
+                                    type="checkbox"
+                                    name="sector_risk_override"
+                                    value="1"
+                                    class="checkbox checkbox-primary"
+                                    @checked(old('sector_risk_override'))
+                                >
+                                <span class="label-text whitespace-break-spaces">{{ __('Selezionare per sovrascrivere il rischio del settore (necessario Documento di Valutazione dei Rischi)') }}</span>
+                            </label>
+                        </div>
+
                     </div>
 
                     <div class="flex justify-end">
@@ -161,6 +175,7 @@
                                     <th>{{ __('Settore') }}</th>
                                     <th>{{ __('Rischio settore') }}</th>
                                     <th>{{ __('Rischio mansione') }}</th>
+                                    <th>{{ __('Override settore') }}</th>
                                     <th>{{ __('Rischio effettivo') }}</th>
                                     <th>{{ __('Azioni') }}</th>
                                 </tr>
@@ -170,6 +185,7 @@
                                     @php
                                         $sectorRisk = $sector->getRiskLevel();
                                         $taskRisk = \App\Enums\RiskLevel::from($sector->pivot->task_risk_level);
+                                        $sectorRiskOverride = (bool) $sector->pivot->sector_risk_override;
                                         $effectiveRisk = $sector->getEffectiveWorkerRisk($task->id);
                                     @endphp
                                     <tr>
@@ -190,6 +206,11 @@
                                             </span>
                                         </td>
                                         <td>
+                                            <span class="badge {{ $sectorRiskOverride ? 'badge-info badge-soft' : 'badge-ghost' }}">
+                                                {{ $sectorRiskOverride ? __('Si') : __('No') }}
+                                            </span>
+                                        </td>
+                                        <td>
                                             <span class="badge {{ $effectiveRisk->badgeColor() }}">
                                                 {{ $effectiveRisk->label() }}
                                             </span>
@@ -199,7 +220,7 @@
                                                 <button
                                                     type="button"
                                                     class="btn btn-primary btn-sm"
-                                                    onclick="openEditRiskModal({{ $sector->id }}, '{{ $sector->name }}', '{{ $taskRisk->value }}')"
+                                                    onclick="openEditRiskModal({{ $sector->id }}, '{{ $sector->name }}', '{{ $taskRisk->value }}', {{ $sectorRiskOverride ? 'true' : 'false' }})"
                                                 >
                                                     <x-lucide-edit class="h-4 w-4" />
                                                 </button>
@@ -258,6 +279,11 @@
                     </select>
                 </div>
 
+                <label class="label mt-4 cursor-pointer justify-start gap-3 rounded-box border border-base-300 px-4 py-3">
+                    <input type="checkbox" id="modal_sector_risk_override" name="sector_risk_override" value="1" class="checkbox checkbox-primary">
+                    <span class="label-text font-medium">{{ __('Sovrascrive il rischio del settore anche se inferiore') }}</span>
+                </label>
+
                 <div class="modal-action">
                     <button type="button" class="btn" onclick="document.getElementById('editRiskModal').close()">
                         {{ __('Annulla') }}
@@ -274,15 +300,17 @@
     </dialog>
 
     <script>
-        function openEditRiskModal(sectorId, sectorName, currentRisk) {
+        function openEditRiskModal(sectorId, sectorName, currentRisk, currentOverride) {
             const modal = document.getElementById('editRiskModal');
             const form = document.getElementById('editRiskForm');
             const sectorNameSpan = document.getElementById('modalSectorName');
             const riskSelect = document.getElementById('modal_task_risk_level');
+            const overrideCheckbox = document.getElementById('modal_sector_risk_override');
 
             sectorNameSpan.textContent = sectorName;
             form.action = "{{ route('admin.job-tasks.sectors.update', [$task, ':sectorId']) }}".replace(':sectorId', sectorId);
             riskSelect.value = currentRisk;
+            overrideCheckbox.checked = currentOverride === true;
             modal.showModal();
         }
     </script>

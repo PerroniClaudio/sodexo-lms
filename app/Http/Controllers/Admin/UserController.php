@@ -17,11 +17,13 @@ use App\Models\User;
 use App\Models\WorldCity;
 use App\Models\WorldCountry;
 use App\Models\WorldDivision;
+use App\Services\UserJobAssignmentService;
 use App\Support\UserGeographyMapper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
 use Spatie\Permission\Models\Role;
@@ -34,6 +36,7 @@ class UserController extends Controller
 {
     public function __construct(
         private readonly UserGeographyMapper $userGeographyMapper,
+        private readonly UserJobAssignmentService $userJobAssignmentService,
     ) {}
 
     public function index(Request $request): View
@@ -123,7 +126,9 @@ class UserController extends Controller
     {
         $data = $this->userGeographyMapper->toHomeIds($request->validated());
         $accountType = $this->resolveAccountType($data['account_type'] ?? 'user');
+        $jobTaskAssignments = $data['job_tasks'] ?? [];
         unset($data['account_type']);
+        unset($data['job_tasks']);
 
         // Normalizza i campi opzionali a null se stringa vuota
         foreach (['job_category_id', 'job_level_id'] as $field) {
@@ -145,17 +150,20 @@ class UserController extends Controller
                 ->withErrors(['geography' => 'Attenzione: città, provincia, regione e nazione non sono coerenti tra loro.']);
         }
 
-        // Crea utente
-        $user = User::create($data);
-        // Assegna ruolo Spatie
-        $user->assignRole($accountType);
+        $user = DB::transaction(function () use ($accountType, $data, $jobTaskAssignments): User {
+            $user = User::create($data);
+            $user->assignRole($accountType);
+            $this->userJobAssignmentService->syncAssignments($user, $jobTaskAssignments, $accountType === 'user');
+
+            return $user;
+        });
 
         return redirect()->route('admin.users.index')->with('success', 'Utente creato con successo');
     }
 
     public function edit(User $user): View
     {
-        $user->load('roles', 'homeCountry', 'homeRegion', 'homeProvince', 'homeCity');
+        $user->load('roles', 'homeCountry', 'homeRegion', 'homeProvince', 'homeCity', 'jobTasks');
         $jobCategories = JobCategory::all();
         $jobLevels = JobLevel::all();
         $jobTasks = JobTask::all();
@@ -198,7 +206,9 @@ class UserController extends Controller
     {
         $data = $this->userGeographyMapper->toHomeIds($request->validated());
         $accountType = $this->resolveAccountType($data['account_type'] ?? $user->getRoleNames()->first() ?? 'user');
+        $jobTaskAssignments = $data['job_tasks'] ?? [];
         unset($data['account_type']);
+        unset($data['job_tasks']);
 
         // Normalizza i campi opzionali a null se stringa vuota
         foreach (['job_category_id', 'job_level_id'] as $field) {
@@ -225,8 +235,11 @@ class UserController extends Controller
         } else {
             unset($data['password']);
         }
-        $user->update($data);
-        $user->syncRoles([$accountType]);
+        DB::transaction(function () use ($accountType, $data, $jobTaskAssignments, $user): void {
+            $user->update($data);
+            $user->syncRoles([$accountType]);
+            $this->userJobAssignmentService->syncAssignments($user, $jobTaskAssignments, $accountType === 'user');
+        });
 
         if ($request->expectsJson()) {
             return response()->json([

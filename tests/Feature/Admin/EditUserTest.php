@@ -1,5 +1,9 @@
 <?php
 
+use App\Models\JobRole;
+use App\Models\JobSector;
+use App\Models\JobTask;
+use App\Models\JobUnit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -26,6 +30,39 @@ function makeStaffUser(array $attributes = []): User
     ], $attributes));
 }
 
+function makeWorkerUser(array $attributes = []): User
+{
+    $jobUnit = JobUnit::query()->create([
+        'name' => 'Sede test',
+        'unit_code' => 'UT'.fake()->unique()->numerify('###'),
+    ]);
+    $jobRole = JobRole::factory()->create();
+    $jobSector = JobSector::factory()->create();
+    $primaryTask = JobTask::factory()->create(['name' => 'Mansione primaria']);
+    $secondaryTask = JobTask::factory()->create(['name' => 'Mansione secondaria']);
+
+    $user = makeStaffUser(array_merge([
+        'job_unit_id' => $jobUnit->getKey(),
+        'job_role_id' => $jobRole->getKey(),
+        'job_sector_id' => $jobSector->getKey(),
+        'job_task_id' => $primaryTask->getKey(),
+        'employment_start_date' => '2026-01-01',
+        'is_foreigner_or_immigrant' => false,
+    ], $attributes));
+
+    $user->assignRole('user');
+    $user->jobTasks()->attach($primaryTask->getKey(), [
+        'starts_at' => '2026-01-01',
+        'ends_at' => null,
+    ]);
+    $user->jobTasks()->attach($secondaryTask->getKey(), [
+        'starts_at' => '2026-03-01',
+        'ends_at' => null,
+    ]);
+
+    return $user->fresh('jobTasks');
+}
+
 it('shows the current spatie role in the account type field', function () {
     actingAsRole('superadmin');
 
@@ -47,18 +84,20 @@ it('shows the current spatie role in the account type field', function () {
 it('marks the job unit selector as required for worker users', function () {
     actingAsRole('superadmin');
 
-    $user = makeStaffUser([
+    $user = makeWorkerUser([
         'email' => 'worker@example.test',
         'name' => 'Luca',
         'surname' => 'Verdi',
         'fiscal_code' => 'VRDLCU80A01H501Z',
     ]);
-    $user->assignRole('user');
 
     $response = $this->get(route('admin.users.edit', $user));
 
     $response->assertOk();
     $response->assertSee('data-required="true"', escape: false);
+    $response->assertSee('name="employment_start_date"', escape: false);
+    $response->assertSee('name="job_tasks[0][job_task_id]"', escape: false);
+    $response->assertSee('name="job_tasks[1][job_task_id]"', escape: false);
 });
 
 it('keeps the current role when updating other fields without changing account type', function () {
@@ -182,4 +221,40 @@ it('maps teacher selection to docente when the database only has the legacy role
     $response->assertRedirect(route('admin.users.index'));
 
     expect($user->fresh()->getRoleNames()->all())->toBe(['docente']);
+});
+
+it('rejects worker updates without active job task coverage', function () {
+    actingAsRole('superadmin');
+
+    $user = makeWorkerUser([
+        'email' => 'worker.validation@example.test',
+        'name' => 'Paolo',
+        'surname' => 'Neri',
+        'fiscal_code' => 'NRIPLA80A01H501Z',
+    ]);
+
+    $jobTaskId = $user->jobTasks->first()->getKey();
+
+    $response = $this->from(route('admin.users.edit', $user))->put(route('admin.users.update', $user), [
+        'account_type' => 'user',
+        'email' => 'worker.validation@example.test',
+        'name' => 'Paolo',
+        'surname' => 'Neri',
+        'fiscal_code' => 'NRIPLA80A01H501Z',
+        'is_foreigner_or_immigrant' => '0',
+        'employment_start_date' => '2026-01-01',
+        'job_role_id' => $user->job_role_id,
+        'job_sector_id' => $user->job_sector_id,
+        'job_unit_id' => $user->job_unit_id,
+        'job_tasks' => [
+            [
+                'job_task_id' => $jobTaskId,
+                'starts_at' => '2026-01-01',
+                'ends_at' => '2026-02-01',
+            ],
+        ],
+    ]);
+
+    $response->assertRedirect(route('admin.users.edit', $user));
+    $response->assertSessionHasErrors(['job_tasks', 'job_tasks.0.ends_at']);
 });

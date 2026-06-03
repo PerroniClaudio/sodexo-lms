@@ -113,6 +113,7 @@ class JobTaskController extends Controller
         $validated = $request->validate([
             'job_sector_id' => ['required', 'exists:job_sectors,id'],
             'task_risk_level' => ['required', 'in:low,medium,high'],
+            'sector_risk_override' => ['nullable', 'boolean'],
         ]);
 
         if ($jobTask->jobSectors()->where('job_sector_id', $validated['job_sector_id'])->exists()) {
@@ -123,6 +124,7 @@ class JobTaskController extends Controller
 
         $jobTask->jobSectors()->attach($validated['job_sector_id'], [
             'task_risk_level' => $validated['task_risk_level'],
+            'sector_risk_override' => (bool) ($validated['sector_risk_override'] ?? false),
         ]);
 
         return redirect()
@@ -143,10 +145,12 @@ class JobTaskController extends Controller
     {
         $validated = $request->validate([
             'task_risk_level' => ['required', 'in:low,medium,high'],
+            'sector_risk_override' => ['nullable', 'boolean'],
         ]);
 
         $jobTask->jobSectors()->updateExistingPivot($jobSector->id, [
             'task_risk_level' => $validated['task_risk_level'],
+            'sector_risk_override' => (bool) ($validated['sector_risk_override'] ?? false),
         ]);
 
         return redirect()

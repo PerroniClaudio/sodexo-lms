@@ -34,7 +34,7 @@ class JobSector extends Model
     public function jobTasks(): BelongsToMany
     {
         return $this->belongsToMany(JobTask::class, 'job_task_job_sector')
-            ->withPivot('task_risk_level')
+            ->withPivot(['task_risk_level', 'sector_risk_override'])
             ->withTimestamps();
     }
 
@@ -47,6 +47,13 @@ class JobSector extends Model
         }
 
         return RiskLevel::tryFrom($pivot->task_risk_level);
+    }
+
+    public function shouldTaskOverrideSectorRisk(int $jobTaskId): bool
+    {
+        $pivot = $this->jobTasks()->wherePivot('job_task_id', $jobTaskId)->first()?->pivot;
+
+        return (bool) ($pivot?->sector_risk_override ?? false);
     }
 
     /**

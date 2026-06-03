@@ -65,6 +65,7 @@ test('can attach sector to job task with risk level', function () {
     $response = $this->post(route('admin.job-tasks.sectors.attach', $task), [
         'job_sector_id' => $sector->id,
         'task_risk_level' => RiskLevel::HIGH->value,
+        'sector_risk_override' => 1,
     ]);
 
     $response->assertRedirect(route('admin.job-tasks.edit', $task))
@@ -72,6 +73,7 @@ test('can attach sector to job task with risk level', function () {
 
     expect($task->jobSectors()->count())->toBe(1);
     expect($task->jobSectors()->first()->pivot->task_risk_level)->toBe(RiskLevel::HIGH->value);
+    expect((bool) $task->jobSectors()->first()->pivot->sector_risk_override)->toBeTrue();
 });
 
 test('cannot attach same sector twice', function () {
@@ -115,12 +117,14 @@ test('can update sector risk level for job task', function () {
 
     $response = $this->put(route('admin.job-tasks.sectors.update', [$task, $sector]), [
         'task_risk_level' => RiskLevel::HIGH->value,
+        'sector_risk_override' => 1,
     ]);
 
     $response->assertRedirect(route('admin.job-tasks.edit', $task))
         ->assertSessionHas('status');
 
     expect($task->fresh()->jobSectors()->first()->pivot->task_risk_level)->toBe(RiskLevel::HIGH->value);
+    expect((bool) $task->fresh()->jobSectors()->first()->pivot->sector_risk_override)->toBeTrue();
 });
 
 test('effective risk is calculated correctly for task-sector association', function () {
@@ -163,4 +167,20 @@ test('effective risk uses sector risk when task risk is lower', function () {
     $effectiveRisk = $sector->getEffectiveWorkerRisk($task->id);
 
     expect($effectiveRisk)->toBe(RiskLevel::HIGH);
+});
+
+test('job task edit page shows override controls for sector associations', function () {
+    $task = JobTask::factory()->create(['name' => 'Infermiere']);
+    $sector = JobSector::factory()->create(['name' => 'Test Sector']);
+
+    $task->jobSectors()->attach($sector->id, [
+        'task_risk_level' => RiskLevel::MEDIUM->value,
+        'sector_risk_override' => true,
+    ]);
+
+    $response = $this->get(route('admin.job-tasks.edit', $task));
+
+    $response->assertOk()
+        ->assertSee('Sovrascrive il rischio del settore anche se inferiore')
+        ->assertSee('Override settore');
 });

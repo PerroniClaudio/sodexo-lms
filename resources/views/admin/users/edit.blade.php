@@ -2,57 +2,6 @@
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8" data-admin-user-edit-page>
         <x-page-header :title="__('Modifica utente')" />
 
-        <div
-            class="card border border-base-300 bg-base-100 shadow-sm"
-            data-risk-summary
-            data-risk-summary-url="{{ route('admin.api.users.risk-summary', $user) }}"
-        >
-            <div class="card-body gap-4">
-                <div class="flex items-start justify-between gap-4">
-                    <div>
-                        <h2 class="card-title">{{ __('Rischio attuale') }}</h2>
-                        <p class="text-sm text-base-content/70" data-risk-summary-message>
-                            {{ $riskSummary['message'] }}
-                        </p>
-                    </div>
-                    <span class="badge badge-lg {{ $riskSummary['risk_badge_class'] }}" data-risk-summary-badge>
-                        {{ $riskSummary['risk_label'] ?? __('Non applicabile') }}
-                    </span>
-                </div>
-
-                <div class="grid gap-3" data-risk-based-requirements-items>
-                    @forelse ($riskSummary['risk_based_requirements'] as $riskBasedRequirement)
-                        <div class="rounded-box border border-base-300 bg-base-200/40 p-4">
-                            <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                                <div class="space-y-1">
-                                    <div class="font-semibold text-base-content">{{ $riskBasedRequirement['risk_based_requirement_name'] }}</div>
-                                    @if ($riskBasedRequirement['risk_based_requirement_description'])
-                                        <p class="text-sm text-base-content/70">{{ $riskBasedRequirement['risk_based_requirement_description'] }}</p>
-                                    @endif
-                                </div>
-                                <div class="flex flex-col items-start gap-2 md:items-end">
-                                    <span class="badge {{
-                                        $riskBasedRequirement['status'] === 'satisfied'
-                                            ? 'badge-success badge-soft'
-                                            : ($riskBasedRequirement['status'] === 'expired' ? 'badge-warning badge-soft' : 'badge-error badge-soft')
-                                    }}">
-                                        {{ $riskBasedRequirement['status_label'] }}
-                                    </span>
-                                    @if (in_array($riskBasedRequirement['status'], ['missing', 'expired'], true) && $riskBasedRequirement['required_course_validity_type_label'])
-                                        <p class="text-sm text-base-content/70">
-                                            {{ __('Richiesto: :type', ['type' => \Illuminate\Support\Str::lower($riskBasedRequirement['required_course_validity_type_label'])]) }}
-                                        </p>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                    @empty
-                        <p class="text-sm text-base-content/70">{{ __('Nessun requisito di rischio disponibile.') }}</p>
-                    @endforelse
-                </div>
-            </div>
-        </div>
-
         <div class="card border border-base-300 bg-base-100 shadow-sm">
             <div class="card-body gap-6">
                 <div class="alert alert-success hidden" data-user-form-success></div>
@@ -118,6 +67,66 @@
                         });
                     </script>
                 </form>
+            </div>
+        </div>
+
+        @php
+            $riskSummaryCardClass = match ($riskSummary['risk_badge_class'] ?? 'badge-ghost') {
+                'badge-success' => 'border-success/40 bg-success/5',
+                'badge-warning' => 'border-warning/40 bg-warning/5',
+                'badge-error' => 'border-error/40 bg-error/5',
+                default => 'border-base-300 bg-base-100',
+            };
+        @endphp
+
+        <div
+            class="card border shadow-sm {{ $riskSummaryCardClass }}"
+            data-risk-summary
+            data-risk-summary-url="{{ route('admin.api.users.risk-summary', $user) }}"
+        >
+            <div class="card-body gap-4">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h2 class="card-title">{{ __('Rischio attuale') }}</h2>
+                        <p class="text-sm text-base-content/70" data-risk-summary-message>
+                            {{ $riskSummary['message'] }}
+                        </p>
+                    </div>
+                    <span class="badge badge-lg {{ $riskSummary['risk_badge_class'] }}" data-risk-summary-badge>
+                        {{ $riskSummary['risk_label'] ?? __('Non applicabile') }}
+                    </span>
+                </div>
+
+                <div class="grid gap-3" data-risk-based-requirements-items>
+                    @forelse ($riskSummary['risk_based_requirements'] as $riskBasedRequirement)
+                        <div class="rounded-box border border-base-300 bg-base-200/40 p-4">
+                            <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                <div class="space-y-1">
+                                    <div class="font-semibold text-base-content">{{ $riskBasedRequirement['risk_based_requirement_name'] }}</div>
+                                    @if ($riskBasedRequirement['risk_based_requirement_description'])
+                                        <p class="text-sm text-base-content/70">{{ $riskBasedRequirement['risk_based_requirement_description'] }}</p>
+                                    @endif
+                                </div>
+                                <div class="flex flex-col items-start gap-2 md:items-end">
+                                    <span class="badge {{
+                                        $riskBasedRequirement['status'] === 'satisfied'
+                                            ? 'badge-success badge-soft'
+                                            : ($riskBasedRequirement['status'] === 'expired' ? 'badge-warning badge-soft' : 'badge-error badge-soft')
+                                    }}">
+                                        {{ $riskBasedRequirement['status_label'] }}
+                                    </span>
+                                    @if (in_array($riskBasedRequirement['status'], ['missing', 'expired'], true) && $riskBasedRequirement['required_course_validity_type_label'])
+                                        <p class="text-sm text-base-content/70">
+                                            {{ __('Richiesto: :type', ['type' => \Illuminate\Support\Str::lower($riskBasedRequirement['required_course_validity_type_label'])]) }}
+                                        </p>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-sm text-base-content/70">{{ __('Nessun requisito di rischio disponibile.') }}</p>
+                    @endforelse
+                </div>
             </div>
         </div>
 

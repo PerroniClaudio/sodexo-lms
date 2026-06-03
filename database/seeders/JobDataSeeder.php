@@ -61,15 +61,19 @@ class JobDataSeeder extends Seeder
             ['name' => 'Altro', 'description' => 'Altro è da usare per esempio per docenti che non sono nell’organizzazione di Sodexo.'],
         ];
 
-        // Job Titles (Mansioni)
-        // $titles = [
+        foreach ($roles as $role) {
+            JobRole::create($role);
+        }
+
+        // Job Tasks (Mansioni)
+        // $tasks = [
         //     ['name' => 'Responsabile mensa / direttore di servizio / site manager', 'description' => 'Coordinamento del personale, gestione delle emergenze e organizzazione generale del servizio'],
         //     ['name' => 'Preposto di mensa / capo turno / capo area operativa', 'description' => 'Sorveglianza operativa della cucina e controllo del rispetto delle procedure di lavoro'],
         //     ['name' => 'Titolare / gestore asilo nido', 'description' => 'Responsabilità organizzativa generale, pianificazione gestionale e relazioni con famiglie, fornitori e personale'],
 
         // ];
 
-        $titles = [
+        $tasks = [
             // --- MANAGEMENT & DIREZIONE ---
             ['code' => 'MNG_001', 'name' => 'Responsabile mensa / direttore di servizio / site manager', 'description' => 'Coordinamento del personale, gestione delle emergenze e organizzazione generale del servizio'],
             ['code' => 'MNG_002', 'name' => 'Preposto di mensa / capo turno / capo area operativa', 'description' => 'Sorveglianza operativa della cucina e controllo del rispetto delle procedure di lavoro'],
@@ -161,17 +165,25 @@ class JobDataSeeder extends Seeder
             ['code' => 'SAF_004', 'name' => 'Addetto antincendio / emergenze (asilo)', 'description' => 'Coordinamento delle prove di evacuazione dei bambini, controllo periodico dei presidi antincendio della struttura scolastica'],
         ];
 
-        foreach ($titles as $title) {
-            JobTask::create($title);
-        }
-
-        foreach ($roles as $role) {
-            JobRole::create($role);
+        foreach ($tasks as $task) {
+            JobTask::create($task);
         }
 
         // Job Sectors
         // Crea un settore per ogni sezione NACE/ATECO (lettere A-U)
         $sections = NaceAteco::where('hierarchy', 1)->orderBy('code')->get();
+
+        // Settori sodexò
+        $added_sections = [
+            ['title_it' => "SCUOLE"],
+            ['title_it' => "AZIENDE"],
+            ['title_it' => "SANITÀ"],
+            ['title_it' => "SEDE E FILIALI"],
+        ];
+
+        foreach ($added_sections as $section) {
+            $sections->push((object) $section);
+        }
 
         if ($sections->isEmpty()) {
             $this->command->warn('Nessuna sezione NACE/ATECO trovata. I settori non saranno creati.');
@@ -180,15 +192,17 @@ class JobDataSeeder extends Seeder
                 // Crea il settore usando il titolo italiano della sezione
                 $sector = JobSector::create([
                     'name' => $section->title_it,
-                    'description' => $section->title_en,
+                    'description' => $section->description ?? "",
                 ]);
 
-                // Associa il settore alla sezione ATECO con tipo inclusione SECTION
-                $sector->naceAtecoCodes()->attach($section->code, [
-                    'inclusion_type' => InclusionType::SECTION->value,
-                ]);
+                if(isset($section->code)) {
+                    // Associa il settore alla sezione ATECO con tipo inclusione SECTION
+                    $sector->naceAtecoCodes()->attach($section->code, [
+                        'inclusion_type' => InclusionType::SECTION->value,
+                    ]);
+                }
 
-                $this->command->info("✓ Creato settore '{$sector->name}' collegato alla sezione {$section->code}");
+                $this->command->info("✓ Creato settore '{$sector->name}' collegato alla sezione " . ($section->code ?? 'N/A'));
             }
         }
 

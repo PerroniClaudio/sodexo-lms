@@ -43,6 +43,13 @@ class UserFactory extends Factory
             $roleName = $this->resolveRoleName($this->accountRole);
 
             $user->syncRoles([$roleName]);
+
+            if ($this->accountRole === 'user' && $user->job_task_id !== null) {
+                $user->jobTasks()->attach($user->job_task_id, [
+                    'starts_at' => $user->employment_start_date?->toDateString() ?? now()->toDateString(),
+                    'ends_at' => $user->employment_end_date?->toDateString(),
+                ]);
+            }
         });
     }
 
@@ -73,6 +80,8 @@ class UserFactory extends Factory
 
             // Dati anagrafici opzionali
             'birth_date' => fake()->dateTimeBetween('-65 years', '-18 years'),
+            'employment_start_date' => fake()->dateTimeBetween('-10 years', 'now'),
+            'employment_end_date' => null,
             'birth_place' => fake()->city(),
             'gender' => fake()->randomElement(['M', 'F']),
             'phone_prefix' => fake()->randomElement(['+39', '+1', '+44', '+33', '+49']),
@@ -123,6 +132,8 @@ class UserFactory extends Factory
             'home_region_id' => null,
             'home_province_id' => null,
             'home_city_id' => null,
+            'employment_start_date' => null,
+            'employment_end_date' => null,
             'address' => fake()->optional()->streetAddress(),
             'postal_code' => fake()->optional()->postcode(),
             'job_unit_id' => null,
