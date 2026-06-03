@@ -14,53 +14,42 @@
 
     <body class="antialiased">
         <div class="min-h-screen bg-base-100">
-            @session('status')
-                <div class="pointer-events-none fixed right-4 bottom-4 z-50 sm:right-6 sm:bottom-6">
-                    <input id="flash-status-dismiss" type="checkbox" class="peer sr-only">
-
-                    <div class="alert alert-success pointer-events-auto flex w-full max-w-sm items-center gap-3 pr-3 shadow-lg peer-checked:hidden">
-                        <x-lucide-circle-check class="h-5 w-5 shrink-0" />
-                        <span class="flex-1">{{ __($value) }}</span>
-
-                        <label
-                            for="flash-status-dismiss"
-                            class="cursor-pointer transition-transform hover:scale-110"
-                            aria-label="{{ __('Chiudi notifica') }}"
-                        >
-                            <x-lucide-x class="h-4 w-4" />
-                        </label>
-                    </div>
-                </div>
-            @endsession
-
-            @session('error')
-                <div class="pointer-events-none fixed right-4 bottom-4 z-50 sm:right-6 sm:bottom-6">
-                    <input id="flash-error-dismiss" type="checkbox" class="peer sr-only">
-
-                    <div class="alert alert-error pointer-events-auto flex w-full max-w-sm items-center gap-3 pr-3 shadow-lg peer-checked:hidden">
-                        <x-lucide-circle-alert class="h-5 w-5 shrink-0" />
-                        <span class="flex-1">{{ __($value) }}</span>
-
-                        <label
-                            for="flash-error-dismiss"
-                            class="cursor-pointer transition-transform hover:scale-110"
-                            aria-label="{{ __('Chiudi notifica') }}"
-                        >
-                            <x-lucide-x class="h-4 w-4" />
-                        </label>
-                    </div>
-                </div>
-            @endsession
-
             {{ $slot }}
         </div>
 
         @stack('scripts')
-            <!-- Template per alert dinamici -->
-            <div id="dynamic-flash-container" class="pointer-events-none fixed right-4 bottom-4 z-50 sm:right-6 sm:bottom-6 flex flex-col gap-2"></div>
+            <div id="flash-stack" class="pointer-events-none fixed right-4 bottom-4 z-50 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2 sm:right-6 sm:bottom-6 sm:w-full sm:max-w-sm">
+                @session('status')
+                    <div class="alert alert-success pointer-events-auto flex w-full items-center gap-3 pr-3 shadow-lg" data-flash-item>
+                        <x-lucide-circle-check class="h-5 w-5 shrink-0" />
+                        <span class="flex-1">{{ __($value) }}</span>
+                        <button
+                            type="button"
+                            class="close-btn cursor-pointer transition-transform hover:scale-110"
+                            aria-label="{{ __('Chiudi notifica') }}"
+                        >
+                            <x-lucide-x class="h-4 w-4" />
+                        </button>
+                    </div>
+                @endsession
+
+                @session('error')
+                    <div class="alert alert-error pointer-events-auto flex w-full items-center gap-3 pr-3 shadow-lg" data-flash-item>
+                        <x-lucide-circle-alert class="h-5 w-5 shrink-0" />
+                        <span class="flex-1">{{ __($value) }}</span>
+                        <button
+                            type="button"
+                            class="close-btn cursor-pointer transition-transform hover:scale-110"
+                            aria-label="{{ __('Chiudi notifica') }}"
+                        >
+                            <x-lucide-x class="h-4 w-4" />
+                        </button>
+                    </div>
+                @endsession
+            </div>
 
             <template id="flash-template-success">
-                <div class="alert alert-success pointer-events-auto flex w-full max-w-sm items-center gap-3 pr-3 shadow-lg">
+                <div class="alert alert-success pointer-events-auto flex w-full items-center gap-3 pr-3 shadow-lg" data-flash-item>
                     <x-lucide-circle-check class="h-5 w-5 shrink-0" />
                     <span class="flex-1"></span>
                     <button type="button" class="close-btn cursor-pointer transition-transform hover:scale-110" aria-label="{{ __('flash.close_notification') }}">
@@ -69,7 +58,7 @@
                 </div>
             </template>
             <template id="flash-template-error">
-                <div class="alert alert-error pointer-events-auto flex w-full max-w-sm items-center gap-3 pr-3 shadow-lg">
+                <div class="alert alert-error pointer-events-auto flex w-full items-center gap-3 pr-3 shadow-lg" data-flash-item>
                     <x-lucide-circle-alert class="h-5 w-5 shrink-0" />
                     <span class="flex-1"></span>
                     <button type="button" class="close-btn cursor-pointer transition-transform hover:scale-110" aria-label="{{ __('flash.close_notification') }}">
@@ -78,39 +67,127 @@
                 </div>
             </template>
             <script>
-                // Chiude automaticamente le notifiche flash dopo 3 secondi
                 document.addEventListener('DOMContentLoaded', function () {
-                    setTimeout(function () {
-                        var status = document.getElementById('flash-status-dismiss');
-                        if (status && !status.checked) status.checked = true;
-                        var error = document.getElementById('flash-error-dismiss');
-                        if (error && !error.checked) error.checked = true;
-                    }, 3000);
-                        // Gestione chiusura manuale per alert dinamici
-                        document.getElementById('dynamic-flash-container').addEventListener('click', function(e) {
-                            if (e.target.closest('.close-btn')) {
-                                const alert = e.target.closest('.alert');
-                                if (alert) alert.remove();
-                            }
-                        });
-                });
+                    var flashStack = document.getElementById('flash-stack');
+                    var flashDuration = 3000;
 
-                    // Funzione globale per mostrare alert dinamici
+                    if (!flashStack) {
+                        return;
+                    }
+
+                    var dismissFlash = function (alert) {
+                        if (!alert || !alert.isConnected) {
+                            return;
+                        }
+
+                        alert.remove();
+                    };
+
+                    var clearDismissTimer = function (alert) {
+                        if (alert.dataset.dismissTimeoutId) {
+                            window.clearTimeout(Number(alert.dataset.dismissTimeoutId));
+                            delete alert.dataset.dismissTimeoutId;
+                        }
+                    };
+
+                    var scheduleDismiss = function (alert, delay) {
+                        clearDismissTimer(alert);
+
+                        var remaining = typeof delay === 'number' ? delay : flashDuration;
+                        alert.dataset.dismissRemaining = String(remaining);
+                        alert.dataset.dismissStartedAt = String(Date.now());
+                        alert.dataset.dismissTimeoutId = String(window.setTimeout(function () {
+                            dismissFlash(alert);
+                        }, remaining));
+                    };
+
+                    var pauseDismiss = function (alert) {
+                        if (!alert || !alert.isConnected) {
+                            return;
+                        }
+
+                        var startedAt = Number(alert.dataset.dismissStartedAt || Date.now());
+                        var remaining = Number(alert.dataset.dismissRemaining || flashDuration);
+                        var elapsed = Date.now() - startedAt;
+                        var nextRemaining = Math.max(0, remaining - elapsed);
+
+                        clearDismissTimer(alert);
+                        alert.dataset.dismissRemaining = String(nextRemaining);
+                    };
+
+                    var resumeDismiss = function (alert) {
+                        if (!alert || !alert.isConnected) {
+                            return;
+                        }
+
+                        scheduleDismiss(alert, Number(alert.dataset.dismissRemaining || flashDuration));
+                    };
+
+                    var bindFlashInteractions = function (alert) {
+                        if (!alert || alert.dataset.dismissBound === 'true') {
+                            return;
+                        }
+
+                        alert.dataset.dismissBound = 'true';
+                        alert.addEventListener('mouseenter', function () {
+                            pauseDismiss(alert);
+                        });
+                        alert.addEventListener('mouseleave', function () {
+                            resumeDismiss(alert);
+                        });
+                        alert.addEventListener('focusin', function () {
+                            pauseDismiss(alert);
+                        });
+                        alert.addEventListener('focusout', function (event) {
+                            if (alert.contains(event.relatedTarget)) {
+                                return;
+                            }
+
+                            resumeDismiss(alert);
+                        });
+                    };
+
+                    flashStack.querySelectorAll('[data-flash-item]').forEach(function (alert) {
+                        bindFlashInteractions(alert);
+                        scheduleDismiss(alert);
+                    });
+
+                    flashStack.addEventListener('click', function (event) {
+                        if (!event.target.closest('.close-btn')) {
+                            return;
+                        }
+
+                        dismissFlash(event.target.closest('[data-flash-item]'));
+                    });
+
                     window.showFlash = function(type, message) {
                         var tplId = type === 'error' ? 'flash-template-error' : 'flash-template-success';
                         var tpl = document.getElementById(tplId);
-                        if (!tpl) return;
+                        if (!tpl) {
+                            return;
+                        }
+
                         var clone = tpl.content.cloneNode(true);
                         var span = clone.querySelector('span');
-                        if (span) span.textContent = message;
+                        if (span) {
+                            span.textContent = message;
+                        }
+
                         var alert = clone.querySelector('.alert');
                         if (alert) {
-                            document.getElementById('dynamic-flash-container').appendChild(alert);
-                            setTimeout(function() {
-                                alert.remove();
-                            }, 3000);
+                            bindFlashInteractions(alert);
+                            flashStack.appendChild(alert);
+                            scheduleDismiss(alert);
                         }
-                    }
+                    };
+
+                    @if ($errors->any())
+                        window.showFlash(
+                            'error',
+                            @json($errors->all()[0].(count($errors->all()) > 1 ? ' (+' . (count($errors->all()) - 1) . ' altri errori)' : ''))
+                        );
+                    @endif
+                });
             </script>
     </body>
 </html>

@@ -129,10 +129,8 @@ function initializeRiskSummary(page) {
 
 function initializeUserEditForm(page) {
     const form = page.querySelector('[data-user-edit-form]');
-    const successAlert = page.querySelector('[data-user-form-success]');
-    const errorAlert = page.querySelector('[data-user-form-error]');
 
-    if (!form || !successAlert || !errorAlert) {
+    if (!form) {
         return;
     }
 
@@ -152,10 +150,6 @@ function initializeUserEditForm(page) {
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
 
-        successAlert.classList.add('hidden');
-        successAlert.textContent = '';
-        errorAlert.classList.add('hidden');
-        errorAlert.textContent = '';
         submitButton.disabled = true;
 
         try {
@@ -166,16 +160,14 @@ function initializeUserEditForm(page) {
                 },
             });
 
-            successAlert.textContent = response.data.message || 'Utente aggiornato con successo';
-            successAlert.classList.remove('hidden');
+            window.showFlash?.('success', response.data.message || 'Utente aggiornato con successo');
             await refreshRiskSummarySafely();
         } catch (error) {
             const message = error.response?.data?.message
                 || Object.values(error.response?.data?.errors || {}).flat().join(' ')
                 || 'Errore durante il salvataggio dell\'utente.';
 
-            errorAlert.textContent = message;
-            errorAlert.classList.remove('hidden');
+            window.showFlash?.('error', message);
         } finally {
             submitButton.disabled = false;
         }
@@ -203,13 +195,12 @@ function initializeCertificatesTable(page) {
     const openModalButton = container.querySelector('[data-open-certificate-modal]');
     const closeButtons = container.querySelectorAll('[data-close-certificate-modal]');
     const form = container.querySelector('[data-certificate-form]');
-    const formError = container.querySelector('[data-certificate-form-error]');
     const submitButton = form?.querySelector('button[type="submit"]');
     const riskBasedRequirementsSelect = form?.querySelector('[data-risk-based-requirements-select]');
     const certificateIdInput = form?.elements.namedItem('certificate_id');
     const modalTitle = container.querySelector('[data-certificate-modal] h3');
 
-    if (!apiUrl || !storeUrl || !tableBody || !emptyState || !summary || !pagination || !searchInput || !searchButton || !loadingIndicator || !modal || !openModalButton || closeButtons.length === 0 || !form || !formError || !submitButton || !riskBasedRequirementsSelect || !certificateIdInput || !modalTitle) {
+    if (!apiUrl || !storeUrl || !tableBody || !emptyState || !summary || !pagination || !searchInput || !searchButton || !loadingIndicator || !modal || !openModalButton || closeButtons.length === 0 || !form || !submitButton || !riskBasedRequirementsSelect || !certificateIdInput || !modalTitle) {
         return;
     }
 
@@ -380,8 +371,6 @@ function initializeCertificatesTable(page) {
         certificateIdInput.value = '';
         modalTitle.textContent = 'Aggiungi certificato';
         submitButton.textContent = 'Salva certificato';
-        formError.classList.add('hidden');
-        formError.textContent = '';
         Array.from(riskBasedRequirementsSelect.options).forEach((option) => {
             option.selected = false;
         });
@@ -420,8 +409,9 @@ function initializeCertificatesTable(page) {
 
             await loadCertificates();
             await refreshRiskSummarySafely();
+            window.showFlash?.('success', 'Certificato eliminato con successo');
         } catch (error) {
-            window.alert(error.response?.data?.message || 'Errore durante l\'eliminazione del certificato.');
+            window.showFlash?.('error', error.response?.data?.message || 'Errore durante l\'eliminazione del certificato.');
         }
     };
 
@@ -439,8 +429,6 @@ function initializeCertificatesTable(page) {
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
 
-        formError.classList.add('hidden');
-        formError.textContent = '';
         submitButton.disabled = true;
 
         const formData = new FormData(form);
@@ -469,13 +457,13 @@ function initializeCertificatesTable(page) {
             state.page = 1;
             await loadCertificates();
             await refreshRiskSummarySafely();
+            window.showFlash?.('success', state.editingCertificate ? 'Certificato aggiornato con successo' : 'Certificato salvato con successo');
         } catch (error) {
             const message = error.response?.data?.message
                 || Object.values(error.response?.data?.errors || {}).flat().join(' ')
                 || 'Errore durante il salvataggio del certificato.';
 
-            formError.textContent = message;
-            formError.classList.remove('hidden');
+            window.showFlash?.('error', message);
         } finally {
             submitButton.disabled = false;
         }

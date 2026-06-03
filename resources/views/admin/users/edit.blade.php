@@ -4,9 +4,6 @@
 
         <div class="card border border-base-300 bg-base-100 shadow-sm">
             <div class="card-body gap-6">
-                <div class="alert alert-success hidden" data-user-form-success></div>
-                <div class="alert alert-error hidden" data-user-form-error></div>
-
                 <form method="POST" action="{{ route('admin.users.update', $user) }}" class="flex flex-col gap-6" data-user-edit-form>
                     @csrf
                     @method('PUT')
@@ -208,7 +205,6 @@
 
                     <form class="mt-6 flex flex-col gap-4" data-certificate-form>
                         <input type="hidden" name="certificate_id" value="">
-                        <div class="alert alert-error hidden text-sm" data-certificate-form-error></div>
 
                         <div class="grid gap-4 md:grid-cols-2">
                             <div class="form-control flex flex-col gap-2 md:col-span-2">
