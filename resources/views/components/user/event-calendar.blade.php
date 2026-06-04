@@ -1,4 +1,4 @@
-<div class="user-event-calendar card border border-base-300 w-full bg-base-100 card-sm shadow-sm">
+<div class="user-event-calendar card w-full bg-base-100 card-sm shadow-sm">
     <div class="card-body">
         <h2 class="card-title"><x-lucide-calendar class="w-6 h-6" /> {{ __('Calendario') }}</h2>
         <div
@@ -8,7 +8,7 @@
             data-error-label="{{ __('Impossibile caricare gli eventi del calendario.') }}"
             data-list-title-singular="{{ __(':count evento il :date') }}"
             data-list-title-plural="{{ __(':count eventi il :date') }}"
-            data-type-live="{{ __('Live') }}"
+            data-type-live="{{ __('FAD Asincrona') }}"
             data-type-res="{{ __('RES') }}"
         ></div>
         <div id="user-event-calendar-day-events" class="hidden rounded-box bg-base-100 p-4 sm:p-5">

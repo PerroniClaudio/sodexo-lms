@@ -1,6 +1,6 @@
 @props(['statsUrl'])
 
-<div class="card border border-base-300 w-full bg-base-100 card-sm shadow-sm" data-courses-stats-root data-stats-url="{{ $statsUrl }}">
+<div class="card w-full bg-base-100 card-sm shadow-sm" data-courses-stats-root data-stats-url="{{ $statsUrl }}">
     <div class="card-body">
         <h2 class="card-title"><x-lucide-chart-line class="w-6 h-6"/> {{ __('Progresso Globale') }}</h2>
         <div class="flex items-center gap-6 min-h-32" id="progress-overview">
