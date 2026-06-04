@@ -43,28 +43,32 @@
                     {{ __('Caricamento tipologie documento in corso...') }}
                 </div>
 
-                <div class="overflow-x-auto rounded-box border border-base-300">
+                <div class="overflow-x-auto">
                     <table class="table table-zebra">
                         <thead>
                             <tr>
                                 <th>
                                     <button type="button" class="inline-flex items-center gap-2" data-sort-key="id">
-                                        {{ __('ID') }}
+                                        <span>{{ __('ID') }}</span>
+                                        <span data-sort-icon="id"></span>
                                     </button>
                                 </th>
                                 <th>
                                     <button type="button" class="inline-flex items-center gap-2" data-sort-key="name">
-                                        {{ __('Nome') }}
+                                        <span>{{ __('Nome') }}</span>
+                                        <span data-sort-icon="name"></span>
                                     </button>
                                 </th>
                                 <th>
                                     <button type="button" class="inline-flex items-center gap-2" data-sort-key="description">
-                                        {{ __('Descrizione') }}
+                                        <span>{{ __('Descrizione') }}</span>
+                                        <span data-sort-icon="description"></span>
                                     </button>
                                 </th>
                                 <th>
                                     <button type="button" class="inline-flex items-center gap-2" data-sort-key="status">
-                                        {{ __('Stato') }}
+                                        <span>{{ __('Stato') }}</span>
+                                        <span data-sort-icon="status"></span>
                                     </button>
                                 </th>
                                 <th class="text-right">{{ __('Azioni') }}</th>
@@ -80,7 +84,7 @@
 
                 <div class="flex flex-col gap-4 border-t border-base-300 pt-4 lg:flex-row lg:items-center lg:justify-between">
                     <p class="text-sm text-base-content/70" data-document-types-summary>0 tipologie documento</p>
-                    <div class="join" data-document-types-pagination></div>
+                    <div class="join self-start lg:self-auto" data-document-types-pagination></div>
                 </div>
             </div>
         </div>

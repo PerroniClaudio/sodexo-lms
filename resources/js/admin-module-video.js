@@ -230,46 +230,54 @@ function fetchModuleValidity() {
         .then(data => {
             // Aggiorna il badge nella sezione video
             if (validityElement) {
-                validityElement.innerHTML = '';
-                if (data.isValid) {
-                    const badge = document.createElement('span');
-                    badge.className = 'badge badge-sm badge-success';
-                    badge.textContent = 'Valido';
-                    validityElement.appendChild(badge);
-                } else {
-                    const badge = document.createElement('span');
-                    badge.className = 'badge badge-sm badge-error';
-                    badge.textContent = 'Non valido';
-                    validityElement.appendChild(badge);
-                    
-                    if (data.errors && data.errors.length > 0) {
-                        const errorText = document.createElement('span');
-                        errorText.className = 'text-xs text-error ml-2';
-                        errorText.textContent = data.errors.join(' ');
-                        validityElement.appendChild(errorText);
+                const validBadge = validityElement.querySelector('[data-valid-badge]');
+                const invalidBadge = validityElement.querySelector('[data-invalid-badge]');
+                const selectedVideoValidationErrorsList = document.querySelector('[data-selected-video-validation-errors-list]');
+                
+                if (validBadge && invalidBadge) {
+                    if (data.isValid) {
+                        validBadge.style.display = 'inline-flex';
+                        invalidBadge.style.display = 'none';
+                    } else {
+                        validBadge.style.display = 'none';
+                        invalidBadge.style.display = 'inline-flex';
+                        
+                        // Aggiorna la lista degli errori nel modal della sezione video
+                        if (selectedVideoValidationErrorsList && data.errors && data.errors.length > 0) {
+                            selectedVideoValidationErrorsList.innerHTML = '';
+                            data.errors.forEach(error => {
+                                const li = document.createElement('li');
+                                li.textContent = error;
+                                selectedVideoValidationErrorsList.appendChild(li);
+                            });
+                        }
                     }
                 }
             }
             
             // Aggiorna il badge principale nel dettaglio modulo
             if (mainValidityBadge) {
-                mainValidityBadge.innerHTML = '';
-                if (data.isValid) {
-                    const badge = document.createElement('span');
-                    badge.className = 'badge badge-sm badge-success';
-                    badge.textContent = 'Valido';
-                    mainValidityBadge.appendChild(badge);
-                } else {
-                    const badge = document.createElement('span');
-                    badge.className = 'badge badge-sm badge-error whitespace-nowrap';
-                    badge.textContent = 'Non valido';
-                    mainValidityBadge.appendChild(badge);
-                    
-                    if (data.errors && data.errors.length > 0) {
-                        const errorText = document.createElement('span');
-                        errorText.className = 'text-xs text-error';
-                        errorText.textContent = data.errors.join(' ');
-                        mainValidityBadge.appendChild(errorText);
+                const validBadge = mainValidityBadge.querySelector('[data-valid-badge]');
+                const invalidBadge = mainValidityBadge.querySelector('[data-invalid-badge]');
+                const validationErrorsList = document.querySelector('[data-validation-errors-list]');
+                
+                if (validBadge && invalidBadge) {
+                    if (data.isValid) {
+                        validBadge.style.display = 'inline-flex';
+                        invalidBadge.style.display = 'none';
+                    } else {
+                        validBadge.style.display = 'none';
+                        invalidBadge.style.display = 'inline-flex';
+                        
+                        // Aggiorna la lista degli errori nel modal
+                        if (validationErrorsList && data.errors && data.errors.length > 0) {
+                            validationErrorsList.innerHTML = '';
+                            data.errors.forEach(error => {
+                                const li = document.createElement('li');
+                                li.textContent = error;
+                                validationErrorsList.appendChild(li);
+                            });
+                        }
                     }
                 }
             }
@@ -359,7 +367,35 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     fetchModuleVideos();
     fetchSelectedVideo(moduleVideoState.assignedVideoId);
+    
+    // Inizializza il modal per la validità della sezione video
+    initializeSelectedVideoValidityModal();
 });
+
+function initializeSelectedVideoValidityModal() {
+    const validityContainer = document.getElementById('selected-video-validity');
+    const modal = document.querySelector('[data-selected-video-validity-modal]');
+    
+    if (!validityContainer || !modal) {
+        return;
+    }
+    
+    // Gestisce il click sul badge "Non valido"
+    validityContainer.addEventListener('click', (e) => {
+        const invalidBadge = e.target.closest('[data-invalid-badge]');
+        if (invalidBadge && invalidBadge.closest('[data-open-validity-details-modal]') !== null) {
+            modal.showModal();
+        }
+    });
+    
+    // Gestisce la chiusura del modal
+    const closeButtons = modal.querySelectorAll('[data-close-selected-video-validity-modal]');
+    closeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            modal.close();
+        });
+    });
+}
 
 // Funzione per sincronizzare lo stato dei video Mux
 function syncMuxVideosStatusFromModule() {

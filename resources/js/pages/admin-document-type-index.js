@@ -50,6 +50,27 @@ document.addEventListener('DOMContentLoaded', () => {
         window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
     };
 
+    const updateSortIcons = () => {
+        sortButtons.forEach((button) => {
+            const sortKey = button.dataset.sortKey;
+            const iconElement = page.querySelector(`[data-sort-icon="${sortKey}"]`);
+
+            if (!iconElement) {
+                return;
+            }
+
+            const isActive = state.sort === sortKey;
+
+            if (!isActive) {
+                iconElement.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-base-content/50"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>';
+            } else if (state.direction === 'asc') {
+                iconElement.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>';
+            } else {
+                iconElement.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+            }
+        });
+    };
+
     const setLoading = (isLoading) => {
         state.loading = isLoading;
         loading.classList.toggle('hidden', !isLoading);
@@ -82,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        summary.textContent = `Mostrate ${meta.from}-${meta.to} di ${meta.total} tipologie documento`;
+        summary.textContent = `Visualizzazione di ${meta.from}-${meta.to} su ${meta.total} risultati`;
     };
 
     const renderPagination = (meta) => {
@@ -95,9 +116,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const createButton = (label, pageNumber, active = false, disabled = false) => {
             const button = document.createElement('button');
             button.type = 'button';
-            button.className = `join-item btn btn-sm ${active ? 'btn-primary' : 'btn-ghost'}`;
+            button.className = `join-item btn ${active ? 'btn-active' : ''}`;
             button.textContent = label;
-            button.disabled = disabled;
+
+            if (disabled) {
+                button.classList.add('btn-disabled', 'pointer-events-none');
+            }
 
             if (!disabled) {
                 button.addEventListener('click', () => {
@@ -109,13 +133,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return button;
         };
 
-        pagination.appendChild(createButton('<', Math.max(meta.current_page - 1, 1), false, meta.current_page <= 1));
+        pagination.appendChild(createButton('Precedente', Math.max(meta.current_page - 1, 1), false, meta.current_page <= 1));
 
         for (let pageNumber = 1; pageNumber <= meta.last_page; pageNumber += 1) {
             pagination.appendChild(createButton(String(pageNumber), pageNumber, pageNumber === meta.current_page));
         }
 
-        pagination.appendChild(createButton('>', Math.min(meta.current_page + 1, meta.last_page), false, meta.current_page >= meta.last_page));
+        pagination.appendChild(createButton('Successiva', Math.min(meta.current_page + 1, meta.last_page), false, meta.current_page >= meta.last_page));
     };
 
     const loadDocumentTypes = async () => {
@@ -125,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setLoading(true);
         syncUrl();
+        updateSortIcons();
 
         try {
             const response = await window.axios.get(`${indexUrl}?${buildQueryString()}`, {
@@ -209,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     searchInput.value = state.search;
     showTrashedCheckbox.checked = state.showTrashed;
+    updateSortIcons();
 
     searchButton.addEventListener('click', () => {
         state.search = searchInput.value.trim();

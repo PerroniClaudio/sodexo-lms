@@ -27,7 +27,10 @@
                     </div>
                     <div class="flex flex-col">
                       <span class="font-semibold text-base-content/70 text-sm">{{ __('Validità modulo') }}</span>
-                      <span id="selected-video-validity" class="text-sm"></span>
+                      <div id="selected-video-validity" class="flex items-center gap-2" data-validity-details>
+                        <span data-valid-badge class="badge badge-sm badge-success" style="display: none;">{{ __('Valido') }}</span>
+                        <button type="button" data-invalid-badge data-open-validity-details-modal class="badge badge-sm badge-error whitespace-nowrap cursor-pointer" style="display: none;">{{ __('Non valido') }}</button>
+                      </div>
                     </div>
                     <div class="flex flex-col">
                       <span class="font-semibold text-base-content/70 text-sm">{{ __('Moduli che lo usano') }}</span>
@@ -78,6 +81,35 @@
                 </div>
             </div>
         </template>
+
+        <dialog class="modal" data-selected-video-validity-modal>
+            <div class="modal-box max-w-2xl">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-semibold">{{ __('Dettagli validità modulo') }}</h3>
+                        <p class="text-sm text-base-content/70">
+                            {{ __('Completa i dati richiesti per rendere il modulo valido.') }}
+                        </p>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-sm btn-circle" data-close-selected-video-validity-modal>
+                        <x-lucide-x class="h-4 w-4" />
+                    </button>
+                </div>
+
+                <div class="mt-6 rounded-box border border-error/30 bg-error/5 p-4">
+                    <div class="mb-3 flex items-center gap-2">
+                        <span class="badge badge-error badge-soft">{{ __('Non valido') }}</span>
+                        <span class="font-medium">{{ __('Errori di validità') }}</span>
+                    </div>
+                    <ul class="space-y-2 text-sm text-base-content/80" data-selected-video-validation-errors-list>
+                    </ul>
+                </div>
+            </div>
+
+            <form method="dialog" class="modal-backdrop">
+                <button>{{ __('Chiudi') }}</button>
+            </form>
+        </dialog>
         <div class="relative" id="module-video-table-container">
             <div class="pointer-events-none absolute inset-0 z-10 hidden items-center justify-center bg-base-100/70" id="module-video-table-loader">
                 <span class="loading loading-spinner loading-md"></span>

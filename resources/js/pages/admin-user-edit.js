@@ -300,6 +300,7 @@ function initializeCertificatesTable(page) {
 
     const toggleExistingFilesVisibility = (visible) => {
         existingFilesContainer.classList.toggle('hidden', !visible);
+        existingFilesContainer.classList.toggle('flex', visible);
         filesCreateHint.classList.toggle('hidden', visible);
     };
 
@@ -402,22 +403,12 @@ function initializeCertificatesTable(page) {
                     <div class="ml-auto inline-grid grid-cols-[max-content_max-content] gap-2">
                         <button type="button" class="btn btn-primary btn-sm whitespace-nowrap" data-action="edit">Modifica</button>
                         <button type="button" class="btn btn-error btn-outline btn-sm whitespace-nowrap" data-action="delete">Elimina</button>
-                        <button
-                            type="button"
-                            class="btn btn-primary btn-outline btn-sm whitespace-nowrap"
-                            data-action="preview-latest"
-                            ${row.latest_active_file?.actions?.preview_url ? '' : 'disabled'}
-                        >
-                            Anteprima
-                        </button>
-                        <button
-                            type="button"
-                            class="btn btn-primary btn-outline btn-sm whitespace-nowrap"
-                            data-action="download-latest"
-                            ${row.latest_active_file?.actions?.download_url ? '' : 'disabled'}
-                        >
-                            Scarica
-                        </button>
+                        ${row.latest_active_file?.actions?.preview_url
+                            ? `<button type="button" class="btn btn-primary btn-outline btn-sm whitespace-nowrap" data-action="preview-latest">Anteprima</button>`
+                            : `<span class="tooltip tooltip-left" data-tip="Nessun file attivo da vedere"><button type="button" class="btn btn-primary btn-outline btn-sm whitespace-nowrap" data-action="preview-latest" disabled>Anteprima</button></span>`}
+                        ${row.latest_active_file?.actions?.download_url
+                            ? `<button type="button" class="btn btn-primary btn-outline btn-sm whitespace-nowrap" data-action="download-latest">Scarica</button>`
+                            : `<span class="tooltip tooltip-left" data-tip="Nessun file attivo da scaricare"><button type="button" class="btn btn-primary btn-outline btn-sm whitespace-nowrap" data-action="download-latest" disabled>Scarica</button></span>`}
                     </div>
                 </td>
             `;

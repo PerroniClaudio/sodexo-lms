@@ -35,7 +35,7 @@
                     <div>
                         <h3 class="text-lg font-semibold">{{ __('Dettagli validità corso') }}</h3>
                         <p class="text-sm text-base-content/70">
-                            {{ __('Controlla le informazioni mancanti prima di rendere il corso valido o pubblicabile.') }}
+                            {{ __('Questi sono i motivi per cui il corso non è considerato valido o pubblicabile.') }}
                         </p>
                     </div>
                     <button type="button" class="btn btn-ghost btn-sm btn-circle" data-close-validity-details-modal>
