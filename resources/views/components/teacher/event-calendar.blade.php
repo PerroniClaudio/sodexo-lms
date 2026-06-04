@@ -1,4 +1,14 @@
-<div class="teacher-event-calendar user-event-calendar card h-full w-full bg-base-100 card-sm shadow-sm">
+@php
+    $calendarLegendItems = [
+        ['label' => __('FAD'), 'color' => '--calendar-course-type-fad'],
+        ['label' => __('RES'), 'color' => '--calendar-course-type-res'],
+        ['label' => __('BLENDED'), 'color' => '--calendar-course-type-blended'],
+        ['label' => __('FSC'), 'color' => '--calendar-course-type-fsc'],
+        ['label' => __('FAD Asincrona'), 'color' => '--calendar-course-type-async'],
+    ];
+@endphp
+
+<div class="teacher-event-calendar user-event-calendar card h-full w-full bg-base-100 border border-base-300 card-sm shadow-sm">
     <div class="card-body h-full">
         <h2 class="card-title"><x-lucide-calendar class="w-6 h-6" /> {{ __('Calendario') }}</h2>
         <div
@@ -14,6 +24,21 @@
         <div id="teacher-event-calendar-day-events" class="hidden rounded-box bg-base-100 p-4 sm:p-5">
             <p id="teacher-event-calendar-day-events-title" class="text-sm font-semibold text-base-content/70"></p>
             <div id="teacher-event-calendar-day-events-list" class="mt-3 space-y-3"></div>
+        </div>
+        <div class="rounded-box border border-base-200 p-4 sm:p-5 shadow-sm">
+            <p class="text-sm font-semibold text-base-content/70">Legenda colori</p>
+            <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                @foreach ($calendarLegendItems as $item)
+                    <div class="flex items-center gap-3 rounded-box bg-white px-3 py-2">
+                        <span
+                            class="inline-block h-3 w-3 shrink-0 rounded-full"
+                            style="background-color: var({{ $item['color'] }});"
+                            aria-hidden="true"
+                        ></span>
+                        <span class="text-sm text-base-content/80">{{ $item['label'] }}</span>
+                    </div>
+                @endforeach
+            </div>
         </div>
     </div>
 </div>

@@ -13,6 +13,8 @@ Route::middleware(['auth', 'role:teacher|docente|superadmin'])->group(function (
         Route::get('dashboard/calendar-events', [UserController::class, 'teacherCalendarEvents'])->name('dashboard.calendar-events');
         Route::get('dashboard/calendar-events/fake', [UserController::class, 'fakeTeacherCalendarEvents'])->name('dashboard.calendar-events.fake');
         Route::get('dashboard/next-events/test', [UserController::class, 'testTeacherNextEvents'])->name('dashboard.next-events.test');
+        Route::get('dashboard/your-courses', [UserController::class, 'teacherCourses'])->name('dashboard.your-courses');
+        Route::get('dashboard/your-courses/fake', [UserController::class, 'fakeTeacherCourses'])->name('dashboard.your-courses.fake');
 
         // Corsi teacher
         Route::get('courses', [CourseController::class, 'index'])->name('courses.index');

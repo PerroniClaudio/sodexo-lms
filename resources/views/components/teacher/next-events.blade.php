@@ -25,7 +25,7 @@
     $resolvedAllEventsUrl = $showAllEventsButton ? route('teacher.events', $dashboardRouteParams) : null;
 @endphp
 
-<section class="card h-full w-full bg-base-100 shadow-sm">
+<section class="card h-full w-full bg-base-100 border border-base-300 shadow-sm">
     <div class="card-body h-full gap-5">
         <h2 class="card-title"><x-lucide-calendar class="w-6 h-6" /> {{ __('Prossimi Eventi') }}</h2>
 
@@ -51,7 +51,7 @@
                         };
                     @endphp
 
-                    <div tabindex="0" class="collapse collapse-arrow border border-base-100 bg-base-100 shadow-sm">
+                    <div tabindex="0" class="collapse collapse-arrow border border-base-200 bg-base-100 shadow-sm">
                         <div class="collapse-title min-h-0 px-5 py-4">
                             <div class="flex items-center gap-4 pr-6">
                                 <div class="avatar placeholder shrink-0">

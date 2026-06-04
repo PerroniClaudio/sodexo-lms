@@ -389,6 +389,20 @@ class UserController extends Controller
         ]);
     }
 
+    public function teacherCourses(): JsonResponse
+    {
+        return response()->json([
+            'courses' => $this->teacherCourseCardsFor($this->authUser()),
+        ]);
+    }
+
+    public function fakeTeacherCourses(): JsonResponse
+    {
+        return response()->json([
+            'courses' => $this->fakeTeacherCourseCards(),
+        ]);
+    }
+
     public function testTeacherNextEvents(): View
     {
         return view('teacher.test-next-events', [
@@ -432,6 +446,137 @@ class UserController extends Controller
                 })
                 ->all(),
         ];
+    }
+
+    /**
+     * @return Collection<int, array{
+     *     title: string,
+     *     type: string,
+     *     type_label: string,
+     *     class_name: string,
+     *     participants_count: int,
+     *     participants_label: string,
+     *     occupancy_label: string,
+     *     completion_percentage: int
+     * }>
+     */
+    private function teacherCourseCardsFor(User $user): Collection
+    {
+        $typeLabels = Course::availableTypeLabels();
+
+        $courseClasses = CourseClass::query()
+            ->withCount('users')
+            ->with([
+                'module' => fn ($query) => $query
+                    ->select(['id', 'belongsTo', 'type'])
+                    ->with([
+                        'course' => fn ($courseQuery) => $courseQuery->select(['id', 'title', 'type', 'status']),
+                    ]),
+            ])
+            ->whereHas('teacherAssignments', function ($query) use ($user): void {
+                $query
+                    ->where('user_id', $user->getKey())
+                    ->whereNull('deleted_at');
+            })
+            ->whereHas('module', function ($query): void {
+                $query
+                    ->whereNull('modules.deleted_at')
+                    ->whereHas('course', function ($courseQuery): void {
+                        $courseQuery
+                            ->where('status', 'published')
+                            ->whereNull('courses.deleted_at');
+                    });
+            })
+            ->get();
+
+        $completionPercentages = CourseEnrollment::query()
+            ->select('course_class_users.course_class_id')
+            ->selectRaw('COALESCE(ROUND(AVG(course_user.completion_percentage)), 0) as completion_percentage')
+            ->join('course_class_users', function ($join): void {
+                $join
+                    ->on('course_class_users.user_id', '=', 'course_user.user_id')
+                    ->whereNull('course_class_users.deleted_at');
+            })
+            ->join('course_classes', 'course_classes.id', '=', 'course_class_users.course_class_id')
+            ->join('modules', 'modules.id', '=', 'course_classes.module_id')
+            ->whereIn('course_class_users.course_class_id', $courseClasses->pluck('id'))
+            ->whereNull('course_user.deleted_at')
+            ->whereColumn('course_user.course_id', 'modules.belongsTo')
+            ->groupBy('course_class_users.course_class_id')
+            ->pluck('completion_percentage', 'course_class_users.course_class_id');
+
+        return $courseClasses
+            ->sortBy(function (CourseClass $courseClass): string {
+                return sprintf(
+                    '%s|%s',
+                    mb_strtolower((string) ($courseClass->module?->course?->title ?? '')),
+                    mb_strtolower($courseClass->name)
+                );
+            })
+            ->values()
+            ->map(function (CourseClass $courseClass) use ($completionPercentages, $typeLabels): array {
+                $participantsCount = (int) ($courseClass->users_count ?? 0);
+                $completionPercentage = (int) ($completionPercentages[$courseClass->getKey()] ?? 0);
+
+                return [
+                    'title' => $courseClass->module?->course?->title ?? __('Corso senza titolo'),
+                    'type' => $courseClass->module?->course?->type ?? 'unknown',
+                    'type_label' => $typeLabels[$courseClass->module?->course?->type ?? ''] ?? strtoupper((string) ($courseClass->module?->course?->type ?? __('Corso'))),
+                    'class_name' => $courseClass->name,
+                    'participants_count' => $participantsCount,
+                    'participants_label' => trans_choice('{1} :count partecipante|[2,*] :count partecipanti', $participantsCount, ['count' => $participantsCount]),
+                    'occupancy_label' => __(':count/:max posti', ['count' => $participantsCount, 'max' => CourseClass::MAX_USERS]),
+                    'completion_percentage' => $completionPercentage,
+                ];
+            });
+    }
+
+    /**
+     * @return Collection<int, array{
+     *     title: string,
+     *     type: string,
+     *     type_label: string,
+     *     class_name: string,
+     *     participants_count: int,
+     *     participants_label: string,
+     *     occupancy_label: string,
+     *     completion_percentage: int
+     * }>
+     */
+    private function fakeTeacherCourseCards(): Collection
+    {
+        return collect([
+            [
+                'title' => 'React Avanzato',
+                'type' => 'fad',
+                'type_label' => 'FAD',
+                'class_name' => 'Frontend Pro - Edizione Mattina',
+                'participants_count' => 18,
+                'participants_label' => '18 partecipanti',
+                'occupancy_label' => '18/30 posti',
+                'completion_percentage' => 72,
+            ],
+            [
+                'title' => 'Sicurezza in Negozio',
+                'type' => 'res',
+                'type_label' => 'RES',
+                'class_name' => 'Aula Milano 2',
+                'participants_count' => 24,
+                'participants_label' => '24 partecipanti',
+                'occupancy_label' => '24/30 posti',
+                'completion_percentage' => 46,
+            ],
+            [
+                'title' => 'Onboarding Store Manager',
+                'type' => 'async',
+                'type_label' => 'FAD ASINCRONA',
+                'class_name' => 'Percorso Nazionale Giugno',
+                'participants_count' => 12,
+                'participants_label' => '12 partecipanti',
+                'occupancy_label' => '12/30 posti',
+                'completion_percentage' => 84,
+            ],
+        ]);
     }
 
     /**

@@ -1,6 +1,9 @@
 <?php
 
 use App\Models\Course;
+use App\Models\CourseClass;
+use App\Models\CourseClassTeacher;
+use App\Models\CourseClassUser;
 use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleTeacherEnrollment;
@@ -214,4 +217,123 @@ it('forbids enrollments api for staff not assigned to course', function () {
     $course = Course::factory()->create();
 
     $this->getJson(route('teacher.api.courses.enrollments.index', $course))->assertForbidden();
+});
+
+it('returns published teacher dashboard course classes with participant counts', function () {
+    $teacher = actingAsRole('teacher');
+
+    $publishedCourse = Course::factory()->create([
+        'title' => 'Corso pubblicato docente',
+        'type' => 'res',
+        'status' => 'draft',
+    ]);
+    $draftCourse = Course::factory()->create([
+        'title' => 'Corso bozza docente',
+        'type' => 'res',
+        'status' => 'draft',
+    ]);
+
+    $publishedModule = Module::factory()->create([
+        'belongsTo' => (string) $publishedCourse->getKey(),
+        'type' => Module::TYPE_RESIDENTIAL,
+        'status' => 'published',
+    ]);
+    $draftModule = Module::factory()->create([
+        'belongsTo' => (string) $draftCourse->getKey(),
+        'type' => Module::TYPE_RESIDENTIAL,
+    ]);
+
+    $publishedClass = CourseClass::factory()->forModule($publishedModule)->create([
+        'name' => 'Aula Roma 1',
+    ]);
+    $draftClass = CourseClass::factory()->forModule($draftModule)->create([
+        'name' => 'Aula nascosta',
+    ]);
+
+    CourseClassTeacher::factory()->create([
+        'course_class_id' => $publishedClass->getKey(),
+        'user_id' => $teacher->getKey(),
+    ]);
+    CourseClassTeacher::factory()->create([
+        'course_class_id' => $draftClass->getKey(),
+        'user_id' => $teacher->getKey(),
+    ]);
+
+    foreach ([1 => 40, 2 => 80] as $index => $completionPercentage) {
+        $participant = User::query()->create([
+            'name' => 'Partecipante',
+            'surname' => 'Pubblicato '.$index,
+            'email' => "published-participant-{$index}@example.test",
+            'fiscal_code' => sprintf('PBLCIP80A01H5%03dZ', $index),
+            'password' => Hash::make('password'),
+            'email_verified_at' => now(),
+            'account_state' => 'active',
+            'profile_completed_at' => now(),
+            'is_foreigner_or_immigrant' => false,
+        ]);
+
+        CourseClassUser::query()->create([
+            'course_class_id' => $publishedClass->getKey(),
+            'user_id' => $participant->getKey(),
+            'assigned_at' => now(),
+        ]);
+
+        CourseEnrollment::query()->create([
+            'user_id' => $participant->getKey(),
+            'course_id' => $publishedCourse->getKey(),
+            'status' => CourseEnrollment::STATUS_IN_PROGRESS,
+            'assigned_at' => now(),
+            'completion_percentage' => $completionPercentage,
+        ]);
+    }
+
+    $draftParticipant = User::query()->create([
+        'name' => 'Partecipante',
+        'surname' => 'Bozza',
+        'email' => 'draft-participant@example.test',
+        'fiscal_code' => 'DRFTPT80A01H501Z',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'is_foreigner_or_immigrant' => false,
+    ]);
+
+    CourseClassUser::query()->create([
+        'course_class_id' => $draftClass->getKey(),
+        'user_id' => $draftParticipant->getKey(),
+        'assigned_at' => now(),
+    ]);
+
+    $publishedCourse->update([
+        'status' => 'published',
+    ]);
+
+    $this->getJson(route('teacher.dashboard.your-courses'))
+        ->assertSuccessful()
+        ->assertJsonCount(1, 'courses')
+        ->assertJsonPath('courses.0.title', 'Corso pubblicato docente')
+        ->assertJsonPath('courses.0.class_name', 'Aula Roma 1')
+        ->assertJsonPath('courses.0.participants_count', 2)
+        ->assertJsonPath('courses.0.occupancy_label', '2/30 posti')
+        ->assertJsonPath('courses.0.completion_percentage', 60);
+});
+
+it('uses fake teacher courses endpoint in dashboard when test flag is enabled', function () {
+    actingAsRole('teacher');
+
+    $this->get(route('teacher.dashboard', ['test' => 1]))
+        ->assertSuccessful()
+        ->assertSee(route('teacher.dashboard.your-courses.fake'), escape: false);
+});
+
+it('returns fake teacher dashboard courses payload', function () {
+    actingAsRole('teacher');
+
+    $this->getJson(route('teacher.dashboard.your-courses.fake'))
+        ->assertSuccessful()
+        ->assertJsonCount(3, 'courses')
+        ->assertJsonPath('courses.0.title', 'React Avanzato')
+        ->assertJsonPath('courses.0.participants_count', 18)
+        ->assertJsonPath('courses.0.completion_percentage', 72);
 });
