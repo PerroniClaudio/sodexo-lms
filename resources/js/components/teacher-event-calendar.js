@@ -2,10 +2,10 @@ import { Calendar } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import itLocale from '@fullcalendar/core/locales/it';
 
-const calendarEl = document.getElementById('user-event-calendar');
-const dayEventsContainer = document.getElementById('user-event-calendar-day-events');
-const dayEventsTitle = document.getElementById('user-event-calendar-day-events-title');
-const dayEventsList = document.getElementById('user-event-calendar-day-events-list');
+const calendarEl = document.getElementById('teacher-event-calendar');
+const dayEventsContainer = document.getElementById('teacher-event-calendar-day-events');
+const dayEventsTitle = document.getElementById('teacher-event-calendar-day-events-title');
+const dayEventsList = document.getElementById('teacher-event-calendar-day-events-list');
 const selectedDayClassName = 'is-selected-day';
 const courseTypeColorVarMap = {
   fad: '--calendar-course-type-fad',
@@ -15,14 +15,6 @@ const courseTypeColorVarMap = {
   async: '--calendar-course-type-async',
   unknown: '--calendar-course-type-unknown',
 };
-
-function formatDateKey(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
-}
 
 function formatDayLabel(dateKey) {
   const [year, month, day] = dateKey.split('-').map(Number);
@@ -55,12 +47,12 @@ function formatTimeRange(event) {
 }
 
 function typeLabel(type) {
-  if (type === 'live' || type === 'async') {
-    return calendarEl.dataset.typeLive;
-  }
-
   if (type === 'res') {
     return calendarEl.dataset.typeRes;
+  }
+
+  if (type === 'async') {
+    return calendarEl.dataset.typeAsync;
   }
 
   return type;
@@ -154,13 +146,8 @@ async function bootstrapCalendar() {
     const events = Array.isArray(payload.events)
       ? payload.events.map((event) => ({
         ...event,
-        title: event.extendedProps?.course_title ?? event.title,
         backgroundColor: eventColor(event.extendedProps?.course_type ?? 'unknown'),
         borderColor: eventColor(event.extendedProps?.course_type ?? 'unknown'),
-        extendedProps: {
-          ...event.extendedProps,
-          module_title: event.title,
-        },
       }))
       : [];
     const eventsByDay = new Map();

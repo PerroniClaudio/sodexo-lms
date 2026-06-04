@@ -15,6 +15,12 @@
 @layer components {
     .user-event-calendar {
         --fc-today-bg-color: color-mix(in oklab, var(--color-primary) 14%, white 86%);
+        --calendar-course-type-fad: var(--color-info);
+        --calendar-course-type-res: var(--color-secondary);
+        --calendar-course-type-blended: var(--color-warning);
+        --calendar-course-type-fsc: var(--color-secondary);
+        --calendar-course-type-async: var(--color-primary);
+        --calendar-course-type-unknown: var(--color-neutral);
     }
 
     .homepage-hero-content > :first-child {
@@ -110,18 +116,38 @@
         @apply ml-auto flex items-center gap-3;
     }
 
-    .user-event-calendar .fc .fc-button {
-        @apply border-0 bg-transparent p-0 text-base-content shadow-none;
+    .user-event-calendar .fc .fc-button-primary,
+    .user-event-calendar .fc .fc-prev-button,
+    .user-event-calendar .fc .fc-next-button {
+        @apply flex h-11 w-11 items-center justify-center rounded-xl border-0 bg-primary p-0 text-primary-content shadow-none;
+        background-color: var(--color-primary) !important;
+        border-color: var(--color-primary) !important;
+        color: var(--color-primary-content) !important;
     }
 
-    .user-event-calendar .fc .fc-button:hover,
-    .user-event-calendar .fc .fc-button:focus,
-    .user-event-calendar .fc .fc-button:active {
-        @apply border-0 bg-transparent text-primary shadow-none outline-none;
+    .user-event-calendar .fc .fc-button-primary:not(:disabled).fc-button-active,
+    .user-event-calendar .fc .fc-button-primary:not(:disabled):active,
+    .user-event-calendar .fc .fc-prev-button:hover,
+    .user-event-calendar .fc .fc-prev-button:focus,
+    .user-event-calendar .fc .fc-prev-button:active,
+    .user-event-calendar .fc .fc-next-button:hover,
+    .user-event-calendar .fc .fc-next-button:focus,
+    .user-event-calendar .fc .fc-next-button:active,
+    .user-event-calendar .fc .fc-prev-button:hover,
+    .user-event-calendar .fc .fc-button-primary:hover,
+    .user-event-calendar .fc .fc-button-primary:focus {
+        @apply border-0 bg-primary text-primary-content shadow-none outline-none;
+        background-color: var(--color-primary) !important;
+        border-color: var(--color-primary) !important;
+        color: var(--color-primary-content) !important;
+        filter: brightness(0.96);
     }
 
-    .user-event-calendar .fc .fc-button .fc-icon {
+    .user-event-calendar .fc .fc-button-primary .fc-icon,
+    .user-event-calendar .fc .fc-prev-button .fc-icon,
+    .user-event-calendar .fc .fc-next-button .fc-icon {
         @apply text-base;
+        color: inherit !important;
     }
 
     .user-event-calendar .fc .fc-scrollgrid,
@@ -198,21 +224,43 @@
     }
 
     .user-event-calendar .fc .fc-daygrid-dot-event {
-        @apply mt-0 flex items-center rounded-full border-0 bg-transparent px-0 text-left shadow-none;
+        @apply mt-0 flex w-full items-center rounded-full border-0 bg-transparent px-0 text-left shadow-none;
     }
 
     .user-event-calendar .fc .fc-daygrid-event-dot {
-        @apply m-0 h-2 w-2 rounded-full border-0 bg-primary;
+        @apply m-0 h-2 w-2 rounded-full border-0;
+        background-color: var(--calendar-event-color, var(--color-primary));
     }
 
-    .user-event-calendar .fc .fc-daygrid-body .fc-event-time,
-    .user-event-calendar .fc .fc-daygrid-body .fc-event-title,
-    .user-event-calendar .fc .fc-daygrid-body .fc-daygrid-event-harness-abs {
+    .user-event-calendar .fc .fc-daygrid-body .fc-event-time {
         display: none !important;
     }
 
     .user-event-calendar .fc .fc-daygrid-body .fc-event-main {
-        @apply hidden;
+        @apply flex min-w-0 items-center gap-1.5 overflow-hidden;
+    }
+
+    .user-event-calendar .fc .fc-daygrid-body .fc-event-title {
+        @apply block truncate text-[11px] font-medium text-base-content/75;
+    }
+
+    .user-event-calendar .fc .fc-daygrid-block-event,
+    .user-event-calendar .fc .fc-h-event {
+        @apply border-0 shadow-none;
+        background-color: var(--calendar-event-color, var(--color-primary));
+    }
+
+    .user-event-calendar .fc .fc-daygrid-block-event .fc-event-main,
+    .user-event-calendar .fc .fc-h-event .fc-event-main,
+    .user-event-calendar .fc .fc-daygrid-block-event .fc-event-main-frame,
+    .user-event-calendar .fc .fc-h-event .fc-event-main-frame {
+        @apply min-w-0;
+        color: var(--color-primary-content);
+    }
+
+    .user-event-calendar .fc .fc-daygrid-block-event .fc-event-title,
+    .user-event-calendar .fc .fc-h-event .fc-event-title {
+        @apply text-primary-content;
     }
 
     @media (max-width: 900px) {

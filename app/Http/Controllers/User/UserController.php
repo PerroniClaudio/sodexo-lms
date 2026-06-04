@@ -15,6 +15,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
@@ -35,6 +36,28 @@ class UserController extends Controller
     {
         return view('user.dashboard', [
             'recentCourses' => $this->recentCoursesFor($this->authUser()),
+        ]);
+    }
+
+    public function teacherDashboard(Request $request): View
+    {
+        $events = $request->boolean('test')
+            ? $this->fakeTeacherEvents()
+            : $this->teacherEventsFor();
+
+        return view('teacher.dashboard', [
+            'nextEvents' => $this->formattedTeacherEvents($events, 5),
+        ]);
+    }
+
+    public function teacherAllEvents(Request $request): View
+    {
+        $events = $request->boolean('test')
+            ? $this->fakeTeacherEvents()
+            : $this->teacherEventsFor();
+
+        return view('teacher.events', [
+            'events' => $this->formattedTeacherEvents($events),
         ]);
     }
 
@@ -124,7 +147,7 @@ class UserController extends Controller
                     ->with([
                         'module' => fn ($moduleQuery) => $moduleQuery
                             ->select(['id', 'title', 'type', 'belongsTo'])
-                            ->with('course:id,title'),
+                            ->with('course:id,title,type'),
                         'schedules' => fn ($scheduleQuery) => $scheduleQuery
                             ->select(['id', 'course_class_id', 'starts_at', 'ends_at'])
                             ->orderBy('starts_at'),
@@ -143,11 +166,12 @@ class UserController extends Controller
         $events = $assignedClasses
             ->flatMap(function (CourseClass $courseClass) {
                 $courseTitle = $courseClass->module?->course?->title ?? __('Corso senza titolo');
+                $courseType = $courseClass->module?->course?->type;
                 $moduleTitle = $courseClass->module?->title ?? __('Modulo senza titolo');
                 $eventType = $courseClass->module?->type;
 
                 return $courseClass->schedules
-                    ->map(function (CourseClassSchedule $schedule) use ($courseClass, $courseTitle, $moduleTitle, $eventType): array {
+                    ->map(function (CourseClassSchedule $schedule) use ($courseClass, $courseTitle, $courseType, $moduleTitle, $eventType): array {
                         return [
                             'id' => sprintf('class-%d-schedule-%d', $courseClass->getKey(), $schedule->getKey()),
                             'title' => $moduleTitle,
@@ -157,6 +181,7 @@ class UserController extends Controller
                             'extendedProps' => [
                                 'type' => $eventType,
                                 'course_title' => $courseTitle,
+                                'course_type' => $courseType,
                                 'class_name' => $courseClass->name,
                                 'module_id' => $courseClass->module?->getKey(),
                                 'course_class_id' => $courseClass->getKey(),
@@ -187,6 +212,7 @@ class UserController extends Controller
                     'extendedProps' => [
                         'type' => Module::TYPE_LIVE,
                         'course_title' => 'React & Next.js',
+                        'course_type' => 'fad',
                         'class_name' => 'Classe Live Serale',
                         'module_id' => 101,
                         'course_class_id' => 201,
@@ -201,6 +227,7 @@ class UserController extends Controller
                     'extendedProps' => [
                         'type' => Module::TYPE_LIVE,
                         'course_title' => 'React & Next.js',
+                        'course_type' => 'fad',
                         'class_name' => 'Classe Live Serale',
                         'module_id' => 102,
                         'course_class_id' => 201,
@@ -215,6 +242,7 @@ class UserController extends Controller
                     'extendedProps' => [
                         'type' => Module::TYPE_RESIDENTIAL,
                         'course_title' => 'Formazione Obbligatoria',
+                        'course_type' => 'res',
                         'class_name' => 'Aula Milano 1',
                         'module_id' => 103,
                         'course_class_id' => 202,
@@ -229,6 +257,7 @@ class UserController extends Controller
                     'extendedProps' => [
                         'type' => Module::TYPE_LIVE,
                         'course_title' => 'Aggiornamenti Normativi',
+                        'course_type' => 'fad',
                         'class_name' => 'Webinar Nazionale',
                         'module_id' => 104,
                         'course_class_id' => 203,
@@ -243,12 +272,127 @@ class UserController extends Controller
                     'extendedProps' => [
                         'type' => Module::TYPE_RESIDENTIAL,
                         'course_title' => 'Formazione Presenziale',
+                        'course_type' => 'res',
                         'class_name' => 'Aula Roma 2',
                         'module_id' => 105,
                         'course_class_id' => 204,
                     ],
                 ],
             ],
+        ]);
+    }
+
+    public function teacherCalendarEvents(): JsonResponse
+    {
+        $user = $this->authUser();
+
+        $assignedResidentialClasses = $user->teachingCourseClassAssignments()
+            ->with([
+                'courseClass' => fn ($query) => $query
+                    ->select(['id', 'module_id', 'name'])
+                    ->with([
+                        'module' => fn ($moduleQuery) => $moduleQuery
+                            ->select(['id', 'title', 'type', 'belongsTo'])
+                            ->with('course:id,title,type'),
+                        'schedules' => fn ($scheduleQuery) => $scheduleQuery
+                            ->select(['id', 'course_class_id', 'starts_at', 'ends_at'])
+                            ->orderBy('starts_at'),
+                    ]),
+            ])
+            ->whereHas('courseClass.module', fn ($query) => $query->where('type', Module::TYPE_RESIDENTIAL))
+            ->get()
+            ->pluck('courseClass')
+            ->filter(fn (?CourseClass $courseClass): bool => $courseClass instanceof CourseClass)
+            ->unique(fn (CourseClass $courseClass): int => (int) $courseClass->getKey())
+            ->values();
+
+        $residentialEvents = $assignedResidentialClasses
+            ->flatMap(function (CourseClass $courseClass) {
+                $courseTitle = $courseClass->module?->course?->title ?? __('Corso senza titolo');
+                $courseType = $courseClass->module?->course?->type;
+                $moduleTitle = $courseClass->module?->title ?? __('Modulo senza titolo');
+
+                return $courseClass->schedules
+                    ->map(function (CourseClassSchedule $schedule) use ($courseClass, $courseTitle, $courseType, $moduleTitle): array {
+                        return [
+                            'id' => sprintf('teacher-class-%d-schedule-%d', $courseClass->getKey(), $schedule->getKey()),
+                            'title' => $moduleTitle,
+                            'start' => $schedule->starts_at->toAtomString(),
+                            'end' => $schedule->ends_at->toAtomString(),
+                            'allDay' => false,
+                            'extendedProps' => [
+                                'type' => Module::TYPE_RESIDENTIAL,
+                                'course_title' => $courseTitle,
+                                'course_type' => $courseType,
+                                'class_name' => $courseClass->name,
+                                'module_id' => $courseClass->module?->getKey(),
+                                'course_class_id' => $courseClass->getKey(),
+                            ],
+                        ];
+                    });
+            });
+
+        $assignedAsyncModules = $user->moduleTeacherEnrollments()
+            ->with([
+                'module' => fn ($query) => $query
+                    ->select([
+                        'id',
+                        'title',
+                        'type',
+                        'belongsTo',
+                        'appointment_start_time',
+                        'appointment_end_time',
+                    ])
+                    ->with('course:id,title,type'),
+            ])
+            ->whereHas('module', function ($query): void {
+                $query
+                    ->where('type', Module::TYPE_SCORM)
+                    ->whereHas('course', fn ($courseQuery) => $courseQuery->where('type', 'async'));
+            })
+            ->get()
+            ->pluck('module')
+            ->filter(fn (?Module $module): bool => $module instanceof Module && $module->appointment_start_time !== null)
+            ->unique(fn (Module $module): int => (int) $module->getKey())
+            ->values();
+
+        $asyncEvents = $assignedAsyncModules->map(function (Module $module): array {
+            return [
+                'id' => sprintf('teacher-module-%d', $module->getKey()),
+                'title' => $module->title ?? __('Modulo senza titolo'),
+                'start' => $module->appointment_start_time?->toAtomString(),
+                'end' => $module->appointment_end_time?->toAtomString(),
+                'allDay' => false,
+                'extendedProps' => [
+                    'type' => 'async',
+                    'course_title' => $module->course?->title ?? __('Corso senza titolo'),
+                    'course_type' => $module->course?->type,
+                    'class_name' => $this->asynchronousCourseLabel(),
+                    'module_id' => $module->getKey(),
+                    'course_class_id' => null,
+                ],
+            ];
+        });
+
+        return response()->json([
+            'events' => $residentialEvents
+                ->concat($asyncEvents)
+                ->sortBy('start')
+                ->values(),
+        ]);
+    }
+
+    public function fakeTeacherCalendarEvents(): JsonResponse
+    {
+        return response()->json([
+            'events' => $this->fakeTeacherEvents(),
+        ]);
+    }
+
+    public function testTeacherNextEvents(): View
+    {
+        return view('teacher.test-next-events', [
+            'nextEvents' => $this->formattedTeacherEvents($this->fakeTeacherEvents(), 5),
         ]);
     }
 
@@ -357,6 +501,146 @@ class UserController extends Controller
             ->values();
     }
 
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function teacherEventsFor(): Collection
+    {
+        $events = $this->teacherCalendarEvents()->getData(true)['events'] ?? [];
+
+        return collect($events);
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function fakeTeacherEvents(): Collection
+    {
+        $today = CarbonImmutable::today();
+
+        return collect([
+            [
+                'id' => 'teacher-async-1',
+                'title' => 'Lezione FAD Asincrona: React Hooks',
+                'start' => $today->addDay()->setTime(10, 0)->toAtomString(),
+                'end' => $today->addDay()->setTime(11, 30)->toAtomString(),
+                'allDay' => false,
+                'extendedProps' => [
+                    'type' => 'async',
+                    'course_title' => 'React Avanzato',
+                    'course_type' => 'async',
+                    'class_name' => $this->asynchronousCourseLabel(),
+                    'module_id' => 601,
+                    'course_class_id' => 701,
+                ],
+            ],
+            [
+                'id' => 'teacher-async-1',
+                'title' => 'Scadenza consegna progetto',
+                'start' => $today->addDays(4)->setTime(23, 59)->toAtomString(),
+                'end' => $today->addDays(4)->setTime(23, 59)->toAtomString(),
+                'allDay' => false,
+                'extendedProps' => [
+                    'type' => 'async',
+                    'course_title' => 'Node.js Masterclass',
+                    'course_type' => 'async',
+                    'class_name' => $this->asynchronousCourseLabel(),
+                    'module_id' => 602,
+                    'course_class_id' => null,
+                ],
+            ],
+            [
+                'id' => 'teacher-async-2',
+                'title' => 'Lezione FAD Asincrona: API Testing',
+                'start' => $today->addDays(6)->setTime(14, 0)->toAtomString(),
+                'end' => $today->addDays(6)->setTime(15, 30)->toAtomString(),
+                'allDay' => false,
+                'extendedProps' => [
+                    'type' => 'async',
+                    'course_title' => 'Testing & TDD',
+                    'course_type' => 'async',
+                    'class_name' => $this->asynchronousCourseLabel(),
+                    'module_id' => 603,
+                    'course_class_id' => 702,
+                ],
+            ],
+            [
+                'id' => 'teacher-res-1',
+                'title' => 'Workshop in aula: Leadership',
+                'start' => $today->addDays(8)->setTime(16, 0)->toAtomString(),
+                'end' => $today->addDays(8)->setTime(18, 0)->toAtomString(),
+                'allDay' => false,
+                'extendedProps' => [
+                    'type' => Module::TYPE_RESIDENTIAL,
+                    'course_title' => 'People Management',
+                    'course_type' => 'res',
+                    'class_name' => 'Aula Milano 3',
+                    'module_id' => 604,
+                    'course_class_id' => 703,
+                ],
+            ],
+            [
+                'id' => 'teacher-res-2',
+                'title' => 'Laboratorio: Public Speaking',
+                'start' => $today->addDays(11)->setTime(9, 0)->toAtomString(),
+                'end' => $today->addDays(11)->setTime(10, 0)->toAtomString(),
+                'allDay' => false,
+                'extendedProps' => [
+                    'type' => Module::TYPE_RESIDENTIAL,
+                    'course_title' => 'Soft Skills Sprint',
+                    'course_type' => 'res',
+                    'class_name' => 'Aula Roma 2',
+                    'module_id' => 605,
+                    'course_class_id' => 704,
+                ],
+            ],
+        ])->sortBy('start')->values();
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $events
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function formattedTeacherEvents(Collection $events, ?int $limit = null): Collection
+    {
+        $formattedEvents = $events
+            ->filter(function (array $event): bool {
+                $start = Arr::get($event, 'start');
+
+                return is_string($start) && CarbonImmutable::parse($start)->greaterThanOrEqualTo(CarbonImmutable::now()->startOfDay());
+            })
+            ->sortBy('start')
+            ->values()
+            ->map(function (array $event): array {
+                $start = CarbonImmutable::parse((string) $event['start']);
+                $end = is_string($event['end'] ?? null)
+                    ? CarbonImmutable::parse((string) $event['end'])
+                    : null;
+                $className = Arr::get($event, 'extendedProps.class_name');
+                $timeLabel = $end instanceof CarbonImmutable && ! $start->equalTo($end)
+                    ? $start->format('H:i').' - '.$end->format('H:i')
+                    : $start->format('H:i');
+
+                return [
+                    'id' => (string) $event['id'],
+                    'title' => (string) $event['title'],
+                    'type' => (string) Arr::get($event, 'extendedProps.type', 'unknown'),
+                    'course_type' => (string) Arr::get($event, 'extendedProps.course_type', 'unknown'),
+                    'course_title' => (string) Arr::get($event, 'extendedProps.course_title', __('Corso senza titolo')),
+                    'class_name' => is_string($className) ? $className : null,
+                    'date_label' => $start->isToday()
+                        ? __('Oggi')
+                        : ucfirst($start->locale(app()->getLocale())->translatedFormat('j F')),
+                    'time_label' => $timeLabel,
+                    'is_today' => $start->isToday(),
+                ];
+            });
+
+        return $limit === null
+            ? $formattedEvents
+            : $formattedEvents->take($limit)->values();
+    }
+
     private function dashboardStatusPriority(string $status): int
     {
         return match ($status) {
@@ -365,6 +649,11 @@ class UserController extends Controller
             CourseEnrollment::STATUS_COMPLETED => 1,
             default => 2,
         };
+    }
+
+    private function asynchronousCourseLabel(): string
+    {
+        return __('FAD Asincrona');
     }
 
     private function authUser(): User

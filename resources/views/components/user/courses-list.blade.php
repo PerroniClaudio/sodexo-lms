@@ -9,10 +9,10 @@
             'button' => 'btn-info',
         ],
         'res' => [
-            'dot' => 'bg-success',
-            'type_badge' => 'badge-success badge-soft',
-            'progress' => 'progress-success',
-            'button' => 'btn-success',
+            'dot' => 'bg-secondary',
+            'type_badge' => 'badge-secondary badge-soft',
+            'progress' => 'progress-secondary',
+            'button' => 'btn-secondary',
         ],
         'blended' => [
             'dot' => 'bg-warning',
@@ -27,10 +27,10 @@
             'button' => 'btn-secondary',
         ],
         'async' => [
-            'dot' => 'bg-accent',
-            'type_badge' => 'badge-accent badge-soft',
-            'progress' => 'progress-accent',
-            'button' => 'btn-accent',
+            'dot' => 'bg-primary',
+            'type_badge' => 'badge-primary badge-soft',
+            'progress' => 'progress-primary',
+            'button' => 'btn-primary',
         ],
         'unknown' => [
             'dot' => 'bg-neutral',
@@ -65,7 +65,7 @@
     ];
 @endphp
 
-<section class="card border border-base-300 bg-base-100 shadow-sm" data-courses-list-root>
+<section class="card bg-base-100 shadow-sm" data-courses-list-root>
     <div class="card-body gap-4 p-4 sm:p-5">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div class="min-w-0">
