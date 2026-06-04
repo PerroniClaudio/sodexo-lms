@@ -21,7 +21,6 @@ class StoreUserCertificateRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'file_path' => ['nullable', 'string', 'max:2048'],
             'document_type_id' => [
                 'nullable',
                 'integer',
@@ -46,6 +45,8 @@ class StoreUserCertificateRequest extends FormRequest
             'is_internal' => ['nullable', 'boolean'],
             'risk_based_requirement_ids' => ['nullable', 'array'],
             'risk_based_requirement_ids.*' => ['integer', 'exists:risk_based_requirements,id'],
+            'files' => ['nullable', 'array'],
+            'files.*' => ['file', 'max:51200', 'mimes:pdf,jpg,jpeg,png,webp,doc,docx'],
         ];
     }
 
@@ -57,12 +58,13 @@ class StoreUserCertificateRequest extends FormRequest
         return [
             'name' => __('nome attestato'),
             'description' => __('descrizione'),
-            'file_path' => __('percorso file'),
             'document_type_id' => __('tipologia documento'),
             'issued_at' => __('data conseguimento'),
             'expires_at' => __('data scadenza'),
             'internal_course_id' => __('corso interno'),
             'risk_based_requirement_ids' => __('requisiti di rischio'),
+            'files' => __('file allegati'),
+            'files.*' => __('file allegato'),
         ];
     }
 }

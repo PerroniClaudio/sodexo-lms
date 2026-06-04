@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class UserCertificate extends Model
 {
@@ -19,7 +21,6 @@ class UserCertificate extends Model
         'internal_course_id',
         'name',
         'description',
-        'file_path',
         'document_type_id',
         'is_internal',
         'issued_at',
@@ -63,6 +64,21 @@ class UserCertificate extends Model
             'user_certificate_id',
             'risk_based_requirement_id'
         );
+    }
+
+    public function files(): HasMany
+    {
+        return $this->hasMany(UserCertificateFile::class);
+    }
+
+    public function allFiles(): HasMany
+    {
+        return $this->hasMany(UserCertificateFile::class)->withTrashed();
+    }
+
+    public function latestActiveFile(): HasOne
+    {
+        return $this->hasOne(UserCertificateFile::class)->latestOfMany();
     }
 
     public function scopeValidOn(Builder $query, ?string $date = null): Builder

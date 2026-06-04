@@ -12,8 +12,11 @@ use App\Models\NaceAteco;
 use App\Models\RiskBasedRequirement;
 use App\Models\User;
 use App\Models\UserCertificate;
+use App\Models\UserCertificateFile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
@@ -96,7 +99,8 @@ function prepareRiskContextForUser(User $user): array
 }
 
 beforeEach(function () {
-    actingAsRole('superadmin');
+    $this->adminUser = actingAsRole('superadmin');
+    Storage::fake('s3');
 });
 
 it('lists user certificates with pagination search sorting and risk-based requirements', function () {
@@ -137,29 +141,37 @@ it('stores a manual certificate and syncs linked risk-based requirements', funct
     [$validRequirement, $expiredRequirement] = prepareRiskContextForUser($user);
     $course = Course::factory()->create(['title' => 'Corso interno']);
     $documentType = DocumentType::factory()->create(['name' => 'Pronto soccorso']);
+    $uploadedFile = UploadedFile::fake()->create('attestato.pdf', 120, 'application/pdf');
 
-    $response = $this->postJson(route('admin.api.users.certificates.store', $user), [
+    $response = $this->post(route('admin.api.users.certificates.store', $user), [
         'name' => 'Attestato interno',
         'document_type_id' => $documentType->getKey(),
         'issued_at' => '2026-05-01',
         'expires_at' => '2027-05-01',
         'internal_course_id' => $course->getKey(),
         'risk_based_requirement_ids' => [$validRequirement->getKey(), $expiredRequirement->getKey()],
+        'files' => [$uploadedFile],
+    ], [
+        'Accept' => 'application/json',
     ]);
 
     $response->assertCreated()
         ->assertJsonPath('message', 'Certificato registrato con successo.');
 
     $certificate = UserCertificate::query()->firstOrFail();
+    $storedFile = $certificate->files()->sole();
 
     expect($certificate->user_id)->toBe($user->getKey())
         ->and($certificate->is_internal)->toBeTrue()
         ->and($certificate->document_type_id)->toBe($documentType->getKey())
         ->and($certificate->riskBasedRequirements()->pluck('risk_based_requirements.id')->all())
-        ->toEqualCanonicalizing([$validRequirement->getKey(), $expiredRequirement->getKey()]);
+        ->toEqualCanonicalizing([$validRequirement->getKey(), $expiredRequirement->getKey()])
+        ->and($storedFile->original_name)->toBe('attestato.pdf');
+
+    Storage::disk('s3')->assertExists($storedFile->path);
 });
 
-it('updates a user certificate with the same form payload', function () {
+it('updates a user certificate and soft deletes previously active files when a new one is uploaded', function () {
     $user = makeCertificateWorkerUser();
     [$validRequirement, $expiredRequirement] = prepareRiskContextForUser($user);
     $documentType = DocumentType::factory()->create(['name' => 'Parte generale']);
@@ -174,24 +186,43 @@ it('updates a user certificate with the same form payload', function () {
             'expires_at' => '2027-01-10',
         ]);
     $certificate->riskBasedRequirements()->attach($validRequirement->getKey());
+    $existingFile = UserCertificateFile::factory()->create([
+        'user_certificate_id' => $certificate->getKey(),
+        'uploaded_by' => $this->adminUser->getKey(),
+        'path' => 'users/'.$user->getKey().'/certificates/file/precedente.pdf',
+        'original_name' => 'precedente.pdf',
+    ]);
+    Storage::disk('s3')->put($existingFile->path, 'old file');
+    $replacementFile = UploadedFile::fake()->create('nuovo-attestato.pdf', 220, 'application/pdf');
 
-    $response = $this->putJson(route('admin.api.users.certificates.update', [$user, $certificate]), [
+    $response = $this->put(route('admin.api.users.certificates.update', [$user, $certificate]), [
         'name' => 'Attestato aggiornato',
         'description' => 'Nuova descrizione',
         'document_type_id' => $updatedDocumentType->getKey(),
         'issued_at' => '2026-05-01',
         'expires_at' => '2028-05-01',
         'risk_based_requirement_ids' => [$expiredRequirement->getKey()],
+        'files' => [$replacementFile],
+    ], [
+        'Accept' => 'application/json',
     ]);
 
     $response->assertOk()
         ->assertJsonPath('message', 'Certificato aggiornato con successo.');
 
-    expect($certificate->fresh()->name)->toBe('Attestato aggiornato')
-        ->and($certificate->fresh()->description)->toBe('Nuova descrizione')
-        ->and($certificate->fresh()->document_type_id)->toBe($updatedDocumentType->getKey())
-        ->and($certificate->fresh()->riskBasedRequirements()->pluck('risk_based_requirements.id')->all())
-        ->toEqualCanonicalizing([$expiredRequirement->getKey()]);
+    $certificate->refresh();
+
+    expect($certificate->name)->toBe('Attestato aggiornato')
+        ->and($certificate->description)->toBe('Nuova descrizione')
+        ->and($certificate->document_type_id)->toBe($updatedDocumentType->getKey())
+        ->and($certificate->riskBasedRequirements()->pluck('risk_based_requirements.id')->all())
+        ->toEqualCanonicalizing([$expiredRequirement->getKey()])
+        ->and($certificate->files()->count())->toBe(1)
+        ->and($certificate->allFiles()->count())->toBe(2)
+        ->and($certificate->allFiles()->whereKey($existingFile->getKey())->first()?->trashed())->toBeTrue();
+
+    Storage::disk('s3')->assertExists($existingFile->path);
+    Storage::disk('s3')->assertExists($certificate->files()->sole()->path);
 });
 
 it('deletes a user certificate', function () {
@@ -208,6 +239,70 @@ it('deletes a user certificate', function () {
         ->assertJsonPath('message', 'Certificato eliminato con successo.');
 
     expect(UserCertificate::query()->whereKey($certificate->getKey())->exists())->toBeFalse();
+});
+
+it('lists certificate files and allows soft deleting them via api', function () {
+    $user = makeCertificateWorkerUser();
+    prepareRiskContextForUser($user);
+
+    $certificate = UserCertificate::factory()->for($user)->create();
+    $activeFile = UserCertificateFile::factory()->create([
+        'user_certificate_id' => $certificate->getKey(),
+        'uploaded_by' => $this->adminUser->getKey(),
+        'path' => 'users/'.$user->getKey().'/certificates/file/attivo.pdf',
+        'original_name' => 'attivo.pdf',
+    ]);
+    $deletedFile = UserCertificateFile::factory()->create([
+        'user_certificate_id' => $certificate->getKey(),
+        'uploaded_by' => $this->adminUser->getKey(),
+        'path' => 'users/'.$user->getKey().'/certificates/file/eliminato.pdf',
+        'original_name' => 'eliminato.pdf',
+        'deleted_at' => now(),
+    ]);
+    Storage::disk('s3')->put($activeFile->path, 'active file');
+    Storage::disk('s3')->put($deletedFile->path, 'deleted file');
+
+    $response = $this->getJson(route('admin.api.users.certificates.files.index', [
+        'user' => $user,
+        'userCertificate' => $certificate,
+        'show_deleted_files' => 1,
+    ]));
+
+    $response->assertSuccessful()
+        ->assertJsonPath('meta.active_files_count', 1)
+        ->assertJsonPath('meta.total_files_count', 2)
+        ->assertJsonCount(2, 'data');
+
+    $deleteResponse = $this->deleteJson(route('admin.api.users.certificates.files.delete', [
+        'user' => $user,
+        'userCertificate' => $certificate,
+        'userCertificateFile' => $activeFile,
+    ]));
+
+    $deleteResponse->assertOk()
+        ->assertJsonPath('message', 'File certificato eliminato con successo.');
+
+    expect($activeFile->fresh()->trashed())->toBeTrue();
+});
+
+it('downloads certificate files for admins', function () {
+    $user = makeCertificateWorkerUser();
+    prepareRiskContextForUser($user);
+
+    $certificate = UserCertificate::factory()->for($user)->create();
+    $file = UserCertificateFile::factory()->create([
+        'user_certificate_id' => $certificate->getKey(),
+        'uploaded_by' => $this->adminUser->getKey(),
+        'path' => 'users/'.$user->getKey().'/certificates/file/file.pdf',
+        'original_name' => 'file.pdf',
+    ]);
+    Storage::disk('s3')->put($file->path, 'pdf-content');
+
+    $this->get(route('admin.api.users.certificates.files.download', [
+        'user' => $user,
+        'userCertificate' => $certificate,
+        'userCertificateFile' => $file,
+    ]))->assertOk();
 });
 
 it('returns the current risk summary via api', function () {

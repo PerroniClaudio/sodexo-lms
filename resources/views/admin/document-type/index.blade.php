@@ -1,5 +1,13 @@
 <x-layouts.admin>
-    <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    <div
+        class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8"
+        data-document-types-page
+        data-index-url="{{ route('admin.api.document-types.index') }}"
+        data-initial-search="{{ $tableSearch }}"
+        data-initial-sort="{{ $tableSort }}"
+        data-initial-direction="{{ $tableDirection }}"
+        data-initial-show-trashed="{{ $showTrashed ? '1' : '0' }}"
+    >
         <x-page-header :title="__('Tipologie documento')">
             <x-slot:actions>
                 <a href="{{ route('admin.document-types.create') }}" class="btn btn-primary">{{ __('Nuova tipologia') }}</a>
@@ -8,53 +16,72 @@
 
         <div class="card border border-base-300 bg-base-100 shadow-sm">
             <div class="card-body gap-6">
-                <form method="GET" class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <label class="input input-bordered flex w-full max-w-xl items-center gap-2">
-                        <input type="search" name="search" value="{{ $tableSearch }}" class="grow" placeholder="{{ __('Cerca nome o descrizione') }}">
-                    </label>
-                    <label class="label cursor-pointer justify-start gap-3">
-                        <input type="checkbox" name="show_trashed" value="1" class="checkbox" @checked($showTrashed)>
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <label class="label cursor-pointer justify-start gap-3 p-0">
+                        <input type="checkbox" class="checkbox" data-document-types-show-trashed @checked($showTrashed)>
                         <span class="label-text">{{ __('Mostra eliminati') }}</span>
                     </label>
-                    <button type="submit" class="btn btn-primary">{{ __('Cerca') }}</button>
-                </form>
 
-                <div class="overflow-x-auto">
+                    <div class="flex w-full max-w-xl items-center gap-2">
+                        <label class="input input-bordered flex w-full items-center gap-2">
+                            <x-lucide-search class="h-4 w-4 shrink-0 text-base-content/60" />
+                            <input
+                                type="search"
+                                class="grow"
+                                data-document-types-search
+                                value="{{ $tableSearch }}"
+                                placeholder="{{ __('Cerca nome o descrizione') }}"
+                            >
+                        </label>
+                        <button type="button" class="btn btn-primary" data-document-types-search-button>
+                            {{ __('Cerca') }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="hidden rounded-box border border-base-300 bg-base-200/40 px-4 py-3 text-sm text-base-content/70" data-document-types-loading>
+                    {{ __('Caricamento tipologie documento in corso...') }}
+                </div>
+
+                <div class="overflow-x-auto rounded-box border border-base-300">
                     <table class="table table-zebra">
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>{{ __('Nome') }}</th>
-                                <th>{{ __('Descrizione') }}</th>
-                                <th>{{ __('Stato') }}</th>
+                                <th>
+                                    <button type="button" class="inline-flex items-center gap-2" data-sort-key="id">
+                                        {{ __('ID') }}
+                                    </button>
+                                </th>
+                                <th>
+                                    <button type="button" class="inline-flex items-center gap-2" data-sort-key="name">
+                                        {{ __('Nome') }}
+                                    </button>
+                                </th>
+                                <th>
+                                    <button type="button" class="inline-flex items-center gap-2" data-sort-key="description">
+                                        {{ __('Descrizione') }}
+                                    </button>
+                                </th>
+                                <th>
+                                    <button type="button" class="inline-flex items-center gap-2" data-sort-key="status">
+                                        {{ __('Stato') }}
+                                    </button>
+                                </th>
                                 <th class="text-right">{{ __('Azioni') }}</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            @forelse ($documentTypes as $documentType)
-                                <tr>
-                                    <td>{{ $documentType->id }}</td>
-                                    <td>{{ $documentType->name }}</td>
-                                    <td>{{ $documentType->description ?: '—' }}</td>
-                                    <td>
-                                        <span class="badge {{ $documentType->trashed() ? 'badge-warning' : 'badge-success' }}">
-                                            {{ $documentType->trashed() ? __('Eliminata') : __('Attiva') }}
-                                        </span>
-                                    </td>
-                                    <td class="text-right">
-                                        <a href="{{ route('admin.document-types.edit', $documentType) }}" class="btn btn-sm btn-outline">{{ __('Modifica') }}</a>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="5" class="text-center text-sm text-base-content/70">{{ __('Nessuna tipologia documento trovata.') }}</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
+                        <tbody data-document-types-tbody></tbody>
                     </table>
                 </div>
 
-                <div>{{ $documentTypes->links() }}</div>
+                <div class="rounded-box border border-dashed border-base-300 px-4 py-6 text-center text-sm text-base-content/70" data-document-types-empty>
+                    {{ __('Nessuna tipologia documento trovata.') }}
+                </div>
+
+                <div class="flex flex-col gap-4 border-t border-base-300 pt-4 lg:flex-row lg:items-center lg:justify-between">
+                    <p class="text-sm text-base-content/70" data-document-types-summary>0 tipologie documento</p>
+                    <div class="join" data-document-types-pagination></div>
+                </div>
             </div>
         </div>
     </div>

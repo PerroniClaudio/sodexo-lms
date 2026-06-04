@@ -219,7 +219,20 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::post('/users/{user}/certificates', [UserCertificateController::class, 'storeApi'])->name('users.certificates.store');
             Route::put('/users/{user}/certificates/{userCertificate}', [UserCertificateController::class, 'updateApi'])->name('users.certificates.update');
             Route::delete('/users/{user}/certificates/{userCertificate}', [UserCertificateController::class, 'destroyApi'])->name('users.certificates.destroy');
+            Route::get('/users/{user}/certificates/{userCertificate}/files', [UserCertificateController::class, 'filesIndexApi'])->name('users.certificates.files.index');
+            Route::delete('/users/{user}/certificates/{userCertificate}/files/{userCertificateFile}', [UserCertificateController::class, 'deleteFileApi'])->name('users.certificates.files.delete');
+            Route::get('/users/{user}/certificates/{userCertificate}/files/{userCertificateFile}/preview', [UserCertificateController::class, 'previewFileApi'])->name('users.certificates.files.preview');
+            Route::get('/users/{user}/certificates/{userCertificate}/files/{userCertificateFile}/download', [UserCertificateController::class, 'downloadFileApi'])->name('users.certificates.files.download');
             Route::get('/users/{user}/risk-summary', [UserController::class, 'riskSummaryApi'])->name('users.risk-summary');
+            Route::get('/document-types', [DocumentTypeController::class, 'indexApi'])
+                ->middleware('permission:manage job data')
+                ->name('document-types.index');
+            Route::delete('/document-types/{documentType}', [DocumentTypeController::class, 'destroyApi'])
+                ->middleware('permission:manage job data')
+                ->name('document-types.destroy');
+            Route::post('/document-types/{id}/restore', [DocumentTypeController::class, 'restoreApi'])
+                ->middleware('permission:manage job data')
+                ->name('document-types.restore');
 
             // Lista domande e risposte
             Route::get('/courses/{course}/modules/{module}/quiz/questions', [ModuleQuizController::class, 'questionsWithAnswersApi'])->name('courses.modules.quiz.questions.index');

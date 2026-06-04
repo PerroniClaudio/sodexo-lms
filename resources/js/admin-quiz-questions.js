@@ -15,7 +15,7 @@ async function updateQuizValidityBadge() {
         if (!badgeContainer) return;
         const validBadge = badgeContainer.querySelector('[data-valid-badge]');
         const invalidBadge = badgeContainer.querySelector('[data-invalid-badge]');
-        const invalidReason = badgeContainer.querySelector('[data-invalid-reason]');
+        const invalidReason = document.querySelector('[data-invalid-reason]');
         if (data.is_valid_quiz) {
             if (validBadge) validBadge.style.display = 'inline-flex';
             if (invalidBadge) invalidBadge.style.display = 'none';
@@ -23,7 +23,7 @@ async function updateQuizValidityBadge() {
         } else {
             if (validBadge) validBadge.style.display = 'none';
             if (invalidBadge) invalidBadge.style.display = 'inline-flex';
-            if (invalidReason) invalidReason.style.display = 'inline';
+            if (invalidReason) invalidReason.style.display = 'block';
         }
     } catch (e) {
         // Silenzia errori

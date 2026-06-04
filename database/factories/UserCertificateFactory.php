@@ -36,7 +36,6 @@ class UserCertificateFactory extends Factory
                 'Lavori in quota',
             ]),
             'description' => fake()->optional()->sentence(),
-            'file_path' => fake()->optional()->filePath(),
             'is_internal' => false,
             'issued_at' => $issuedAt,
             'expires_at' => $expiresAt,

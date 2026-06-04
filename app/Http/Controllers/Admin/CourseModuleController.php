@@ -98,33 +98,40 @@ class CourseModuleController extends Controller
             ? $request->validated('title')
             : Module::defaultTitleForType($moduleType);
 
-        $module = DB::transaction(function () use ($course, $moduleTitle, $moduleType, $nextOrder, $satisfactionModule): Module {
-            if ($satisfactionModule !== null) {
-                $course->modules()
-                    ->where('order', '>=', $nextOrder)
-                    ->whereKeyNot($satisfactionModule->getKey())
-                    ->increment('order');
-            }
+        try {
+            $module = DB::transaction(function () use ($course, $moduleTitle, $moduleType, $nextOrder, $satisfactionModule): Module {
+                if ($satisfactionModule !== null) {
+                    $course->modules()
+                        ->where('order', '>=', $nextOrder)
+                        ->whereKeyNot($satisfactionModule->getKey())
+                        ->increment('order');
+                }
 
-            $module = $course->modules()->create([
-                'title' => $moduleTitle,
-                'description' => '',
-                'type' => $moduleType,
-                'order' => $nextOrder,
-                'appointment_date' => now(),
-                'appointment_start_time' => now(),
-                'appointment_end_time' => now()->addHour(),
-                'status' => 'draft',
-                'permitted_submission' => $moduleType === Module::TYPE_LEARNING_QUIZ
-                    ? Module::PERMITTED_SUBMISSION_ONLINE
-                    : null,
-                'belongsTo' => (string) $course->getKey(),
-            ]);
+                $module = $course->modules()->create([
+                    'title' => $moduleTitle,
+                    'description' => '',
+                    'type' => $moduleType,
+                    'order' => $nextOrder,
+                    'appointment_date' => now(),
+                    'appointment_start_time' => now(),
+                    'appointment_end_time' => now()->addHour(),
+                    'status' => 'draft',
+                    'permitted_submission' => $moduleType === Module::TYPE_LEARNING_QUIZ
+                        ? Module::PERMITTED_SUBMISSION_ONLINE
+                        : null,
+                    'belongsTo' => (string) $course->getKey(),
+                ]);
 
-            $this->normalizeSatisfactionModuleOrder($course);
+                $this->normalizeSatisfactionModuleOrder($course);
 
-            return $module->fresh();
-        });
+                return $module->fresh();
+            });
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.edit', $course)
+                ->withInput()
+                ->with('error', $exception->getMessage());
+        }
 
         return redirect()
             ->route('admin.courses.modules.edit', [$course, $module])

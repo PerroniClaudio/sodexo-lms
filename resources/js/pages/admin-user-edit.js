@@ -200,8 +200,18 @@ function initializeCertificatesTable(page) {
     const certificateIdInput = form?.elements.namedItem('certificate_id');
     const modalTitle = container.querySelector('[data-certificate-modal] h3');
     const documentTypeSelect = form?.elements.namedItem('document_type_id');
+    const filesSelection = container.querySelector('[data-certificate-files-selection]');
+    const filesInput = container.querySelector('[data-certificate-files-input]');
+    const filesDropzone = container.querySelector('[data-certificate-files-dropzone]');
+    const filesCreateHint = container.querySelector('[data-certificate-files-create-hint]');
+    const existingFilesContainer = container.querySelector('[data-certificate-existing-files]');
+    const filesSummary = container.querySelector('[data-certificate-files-summary]');
+    const filesLoading = container.querySelector('[data-certificate-files-loading]');
+    const filesTableBody = container.querySelector('[data-certificate-files-tbody]');
+    const filesEmptyState = container.querySelector('[data-certificate-files-empty]');
+    const showDeletedFilesCheckbox = container.querySelector('[data-certificate-files-show-deleted]');
 
-    if (!apiUrl || !storeUrl || !tableBody || !emptyState || !summary || !pagination || !searchInput || !searchButton || !loadingIndicator || !modal || !openModalButton || closeButtons.length === 0 || !form || !submitButton || !riskBasedRequirementsSelect || !certificateIdInput || !modalTitle || !documentTypeSelect) {
+    if (!apiUrl || !storeUrl || !tableBody || !emptyState || !summary || !pagination || !searchInput || !searchButton || !loadingIndicator || !modal || !openModalButton || closeButtons.length === 0 || !form || !submitButton || !riskBasedRequirementsSelect || !certificateIdInput || !modalTitle || !documentTypeSelect || !filesSelection || !filesInput || !filesDropzone || !filesCreateHint || !existingFilesContainer || !filesSummary || !filesLoading || !filesTableBody || !filesEmptyState || !showDeletedFilesCheckbox) {
         return;
     }
 
@@ -211,7 +221,9 @@ function initializeCertificatesTable(page) {
         sort: 'issued_at',
         direction: 'desc',
         loading: false,
+        loadingFiles: false,
         editingCertificate: null,
+        showDeletedFiles: false,
     };
 
     const escapeHtml = (value) => String(value || '')
@@ -230,6 +242,17 @@ function initializeCertificatesTable(page) {
         } catch (error) {
             console.error('Unable to refresh risk summary after certificate mutation.', error);
         }
+    };
+    const formatFilesSummary = (activeCount, totalCount) => {
+        if (totalCount === 0) {
+            return 'Nessun file caricato.';
+        }
+
+        if (activeCount === totalCount) {
+            return `${activeCount} file attivi`;
+        }
+
+        return `${activeCount} file attivi su ${totalCount} totali`;
     };
 
     const ensureDocumentTypeOption = (certificate) => {
@@ -261,6 +284,29 @@ function initializeCertificatesTable(page) {
             : (certificate.document_type_name || 'Tipologia documento');
         option.dataset.dynamicDeleted = 'true';
         documentTypeSelect.appendChild(option);
+    };
+
+    const updateSelectedFilesLabel = () => {
+        const selectedFiles = Array.from(filesInput.files || []);
+
+        if (selectedFiles.length === 0) {
+            filesSelection.textContent = 'Nessun file selezionato';
+
+            return;
+        }
+
+        filesSelection.textContent = selectedFiles.map((file) => file.name).join(', ');
+    };
+
+    const toggleExistingFilesVisibility = (visible) => {
+        existingFilesContainer.classList.toggle('hidden', !visible);
+        filesCreateHint.classList.toggle('hidden', visible);
+    };
+
+    const setFilesLoading = (loading) => {
+        state.loadingFiles = loading;
+        filesLoading.classList.toggle('hidden', !loading);
+        showDeletedFilesCheckbox.disabled = loading;
     };
 
     const setLoading = (loading) => {
@@ -296,6 +342,35 @@ function initializeCertificatesTable(page) {
             .join(' ');
     };
 
+    const openPreview = (url) => {
+        window.open(url, '_blank', 'noopener');
+    };
+
+    const downloadFile = (url) => {
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    };
+
+    const renderLatestFile = (row) => {
+        if (!row.latest_active_file) {
+            return '<span class="text-sm text-base-content/50">-</span>';
+        }
+
+        const file = row.latest_active_file;
+
+        return `
+            <div class="space-y-1">
+                <div class="font-medium">${escapeHtml(file.original_name)}</div>
+                <div class="text-xs text-base-content/60">${escapeHtml(formatFilesSummary(row.active_files_count || 0, row.total_files_count || 0))}</div>
+            </div>
+        `;
+    };
+
     const renderRows = (rows) => {
         tableBody.innerHTML = '';
 
@@ -319,23 +394,120 @@ function initializeCertificatesTable(page) {
                         ? `<span class="badge badge-outline">${escapeHtml(row.document_type_name)}${row.document_type_is_deleted ? ' (eliminata)' : ''}</span>`
                         : '<span class="text-sm text-base-content/50">-</span>'}
                 </td>
+                <td>${renderLatestFile(row)}</td>
                 <td class="max-w-md">
                     <div class="flex flex-wrap gap-1">${renderRiskBasedRequirements(row.risk_based_requirements)}</div>
                 </td>
                 <td>
-                    <div class="flex justify-end gap-2">
-                        <button type="button" class="btn btn-ghost btn-sm" data-action="edit">Modifica</button>
-                        <button type="button" class="btn btn-error btn-outline btn-sm" data-action="delete">Elimina</button>
+                    <div class="ml-auto inline-grid grid-cols-[max-content_max-content] gap-2">
+                        <button type="button" class="btn btn-primary btn-sm whitespace-nowrap" data-action="edit">Modifica</button>
+                        <button type="button" class="btn btn-error btn-outline btn-sm whitespace-nowrap" data-action="delete">Elimina</button>
+                        <button
+                            type="button"
+                            class="btn btn-primary btn-outline btn-sm whitespace-nowrap"
+                            data-action="preview-latest"
+                            ${row.latest_active_file?.actions?.preview_url ? '' : 'disabled'}
+                        >
+                            Anteprima
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-primary btn-outline btn-sm whitespace-nowrap"
+                            data-action="download-latest"
+                            ${row.latest_active_file?.actions?.download_url ? '' : 'disabled'}
+                        >
+                            Scarica
+                        </button>
                     </div>
                 </td>
             `;
+
+            const previewLatestButton = tableRow.querySelector('[data-action="preview-latest"]');
+            const downloadLatestButton = tableRow.querySelector('[data-action="download-latest"]');
+
+            if (previewLatestButton && row.latest_active_file?.actions?.preview_url) {
+                previewLatestButton.addEventListener('click', () => {
+                    openPreview(row.latest_active_file.actions.preview_url);
+                });
+            }
+
+            if (downloadLatestButton && row.latest_active_file?.actions?.download_url) {
+                downloadLatestButton.addEventListener('click', () => {
+                    downloadFile(row.latest_active_file.actions.download_url);
+                });
+            }
+
             tableRow.querySelector('[data-action="edit"]').addEventListener('click', () => {
-                openEditModal(row);
+                void openEditModal(row);
             });
+
             tableRow.querySelector('[data-action="delete"]').addEventListener('click', async () => {
                 await deleteCertificate(row);
             });
+
             tableBody.appendChild(tableRow);
+        });
+    };
+
+    const renderCertificateFiles = (files, meta = null) => {
+        filesTableBody.innerHTML = '';
+        filesSummary.textContent = formatFilesSummary(meta?.active_files_count ?? 0, meta?.total_files_count ?? 0);
+        filesEmptyState.classList.toggle('hidden', files.length > 0);
+
+        files.forEach((file) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <div class="font-medium">${escapeHtml(file.original_name)}</div>
+                    <div class="text-xs text-base-content/60">${escapeHtml(file.size_label || '')}</div>
+                </td>
+                <td>${escapeHtml(file.uploaded_at || '-')}</td>
+                <td>
+                    <span class="badge ${file.is_deleted ? 'badge-outline badge-warning' : 'badge-outline badge-success'}">
+                        ${file.is_deleted ? 'Eliminato' : 'Attivo'}
+                    </span>
+                    ${file.deleted_at ? `<div class="mt-1 text-xs text-base-content/60">Soft delete: ${escapeHtml(file.deleted_at)}</div>` : ''}
+                </td>
+                <td>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" class="btn btn-ghost btn-sm" data-action="preview">Anteprima</button>
+                        <button type="button" class="btn btn-ghost btn-sm" data-action="download">Scarica</button>
+                        ${file.is_deleted ? '' : '<button type="button" class="btn btn-error btn-outline btn-sm" data-action="delete">Elimina</button>'}
+                    </div>
+                </td>
+            `;
+
+            row.querySelector('[data-action="preview"]').addEventListener('click', () => {
+                openPreview(file.actions.preview_url);
+            });
+
+            row.querySelector('[data-action="download"]').addEventListener('click', () => {
+                downloadFile(file.actions.download_url);
+            });
+
+            const deleteButton = row.querySelector('[data-action="delete"]');
+
+            if (deleteButton) {
+                deleteButton.addEventListener('click', async () => {
+                    if (!window.confirm(`Eliminare il file "${file.original_name}"?`)) {
+                        return;
+                    }
+
+                    try {
+                        await window.axios.delete(file.actions.delete_url, {
+                            headers: { Accept: 'application/json' },
+                        });
+
+                        await loadCertificateFiles();
+                        await loadCertificates();
+                        window.showFlash?.('success', 'File certificato eliminato con successo');
+                    } catch (error) {
+                        window.showFlash?.('error', error.response?.data?.message || 'Errore durante l\'eliminazione del file.');
+                    }
+                });
+            }
+
+            filesTableBody.appendChild(row);
         });
     };
 
@@ -367,7 +539,7 @@ function initializeCertificatesTable(page) {
                 }
 
                 state.page = pageNumber;
-                loadCertificates();
+                void loadCertificates();
             });
             pagination.appendChild(button);
         }
@@ -402,12 +574,42 @@ function initializeCertificatesTable(page) {
         }
     };
 
+    const loadCertificateFiles = async () => {
+        if (!state.editingCertificate?.actions?.files_index_url || state.loadingFiles) {
+            return;
+        }
+
+        setFilesLoading(true);
+
+        try {
+            const response = await window.axios.get(state.editingCertificate.actions.files_index_url, {
+                params: {
+                    show_deleted_files: state.showDeletedFiles ? '1' : '0',
+                },
+                headers: { Accept: 'application/json' },
+            });
+
+            renderCertificateFiles(response.data.data ?? [], response.data.meta ?? null);
+        } catch (error) {
+            filesTableBody.innerHTML = '';
+            filesEmptyState.classList.remove('hidden');
+            filesSummary.textContent = 'Errore nel caricamento dei file.';
+        } finally {
+            setFilesLoading(false);
+        }
+    };
+
     const resetForm = () => {
         state.editingCertificate = null;
+        state.showDeletedFiles = false;
         form.reset();
         certificateIdInput.value = '';
         modalTitle.textContent = 'Aggiungi certificato';
         submitButton.textContent = 'Salva certificato';
+        showDeletedFilesCheckbox.checked = false;
+        filesTableBody.innerHTML = '';
+        filesSummary.textContent = 'Nessun file caricato.';
+        filesEmptyState.classList.remove('hidden');
         Array.from(documentTypeSelect.options)
             .filter((option) => option.dataset.dynamicDeleted === 'true')
             .forEach((option) => option.remove());
@@ -415,9 +617,11 @@ function initializeCertificatesTable(page) {
         Array.from(riskBasedRequirementsSelect.options).forEach((option) => {
             option.selected = false;
         });
+        updateSelectedFilesLabel();
+        toggleExistingFilesVisibility(false);
     };
 
-    const openEditModal = (certificate) => {
+    const openEditModal = async (certificate) => {
         resetForm();
         state.editingCertificate = certificate;
         certificateIdInput.value = String(certificate.id);
@@ -425,7 +629,6 @@ function initializeCertificatesTable(page) {
         submitButton.textContent = 'Aggiorna certificato';
         form.elements.namedItem('name').value = certificate.name || '';
         form.elements.namedItem('description').value = certificate.description || '';
-        form.elements.namedItem('file_path').value = certificate.file_path || '';
         ensureDocumentTypeOption(certificate);
         documentTypeSelect.value = certificate.document_type_id || '';
         form.elements.namedItem('issued_at').value = certificate.issued_at_iso || '';
@@ -437,7 +640,9 @@ function initializeCertificatesTable(page) {
             option.selected = riskBasedRequirementIds.has(Number(option.value));
         });
 
+        toggleExistingFilesVisibility(true);
         modal.showModal();
+        await loadCertificateFiles();
     };
 
     const deleteCertificate = async (certificate) => {
@@ -469,30 +674,67 @@ function initializeCertificatesTable(page) {
         });
     });
 
+    filesInput.addEventListener('change', () => {
+        updateSelectedFilesLabel();
+    });
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((eventName) => {
+        filesDropzone.addEventListener(eventName, (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            filesDropzone.classList.toggle('border-primary', eventName === 'dragenter' || eventName === 'dragover');
+        });
+    });
+
+    filesDropzone.addEventListener('drop', (event) => {
+        if (!event.dataTransfer?.files?.length) {
+            return;
+        }
+
+        const transfer = new DataTransfer();
+
+        Array.from(event.dataTransfer.files).forEach((file) => {
+            transfer.items.add(file);
+        });
+
+        filesInput.files = transfer.files;
+        filesInput.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    showDeletedFilesCheckbox.addEventListener('change', async () => {
+        state.showDeletedFiles = showDeletedFilesCheckbox.checked;
+        await loadCertificateFiles();
+    });
+
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
 
         submitButton.disabled = true;
 
-        const formData = new FormData(form);
-        const payload = {
-            name: formData.get('name'),
-            description: formData.get('description') || null,
-            file_path: formData.get('file_path') || null,
-            document_type_id: formData.get('document_type_id') || null,
-            issued_at: formData.get('issued_at'),
-            expires_at: formData.get('expires_at') || null,
-            internal_course_id: formData.get('internal_course_id') || null,
-            risk_based_requirement_ids: Array.from(riskBasedRequirementsSelect.selectedOptions).map((option) => Number(option.value)),
-        };
+        const formData = new FormData();
+        formData.set('name', String(form.elements.namedItem('name').value || ''));
+        formData.set('description', String(form.elements.namedItem('description').value || ''));
+        formData.set('document_type_id', String(documentTypeSelect.value || ''));
+        formData.set('issued_at', String(form.elements.namedItem('issued_at').value || ''));
+        formData.set('expires_at', String(form.elements.namedItem('expires_at').value || ''));
+        formData.set('internal_course_id', String(form.elements.namedItem('internal_course_id').value || ''));
+
+        Array.from(riskBasedRequirementsSelect.selectedOptions).forEach((option) => {
+            formData.append('risk_based_requirement_ids[]', option.value);
+        });
+
+        Array.from(filesInput.files || []).forEach((file) => {
+            formData.append('files[]', file);
+        });
 
         try {
             if (state.editingCertificate?.actions?.update_url) {
-                await window.axios.put(state.editingCertificate.actions.update_url, payload, {
+                formData.set('_method', 'PUT');
+                await window.axios.post(state.editingCertificate.actions.update_url, formData, {
                     headers: { Accept: 'application/json' },
                 });
             } else {
-                await window.axios.post(storeUrl, payload, {
+                await window.axios.post(storeUrl, formData, {
                     headers: { Accept: 'application/json' },
                 });
             }
@@ -516,7 +758,7 @@ function initializeCertificatesTable(page) {
     searchButton.addEventListener('click', () => {
         state.search = searchInput.value.trim();
         state.page = 1;
-        loadCertificates();
+        void loadCertificates();
     });
 
     searchInput.addEventListener('keydown', (event) => {
@@ -527,7 +769,7 @@ function initializeCertificatesTable(page) {
         event.preventDefault();
         state.search = searchInput.value.trim();
         state.page = 1;
-        loadCertificates();
+        void loadCertificates();
     });
 
     sortButtons.forEach((button) => {
@@ -542,9 +784,10 @@ function initializeCertificatesTable(page) {
             }
 
             state.page = 1;
-            loadCertificates();
+            void loadCertificates();
         });
     });
 
-    loadCertificates();
+    updateSelectedFilesLabel();
+    void loadCertificates();
 }

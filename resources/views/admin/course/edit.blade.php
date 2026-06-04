@@ -14,6 +14,7 @@
         class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8"
         data-course-edit-page
         data-has-create-module-errors="{{ $errors->has('type') || $errors->has('title') ? 'true' : 'false' }}"
+        data-course-is-published="{{ $course->status === 'published' ? 'true' : 'false' }}"
     >
         <x-page-header :title="__('Modifica corso')">
             <x-slot:actions>
@@ -429,14 +430,24 @@
                             </p>
                         </div>
 
-                        <button
-                            type="button"
-                            class="btn btn-primary"
-                            data-open-module-modal
+                        <span
+                            @class([
+                                'tooltip tooltip-left' => $course->status === 'published',
+                            ])
+                            @if ($course->status === 'published')
+                                data-tip="{{ __('Non puoi aggiungere nuovi moduli mentre il corso è pubblicato.') }}"
+                            @endif
                         >
-                            <span>{{ __('New module') }}</span>
-                            <x-lucide-plus class="h-4 w-4" />
-                        </button>
+                            <button
+                                type="button"
+                                class="btn btn-primary"
+                                data-open-module-modal
+                                @disabled($course->status === 'published')
+                            >
+                                <span>{{ __('New module') }}</span>
+                                <x-lucide-plus class="h-4 w-4" />
+                            </button>
+                        </span>
                     </div>
 
                     @if ($modules->isEmpty())

@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    initializeValidityIssueDialogs(courseEditPage);
     initializeCreateModuleDialog(courseEditPage);
     initializeDeleteCourseDialog(courseEditPage);
     initializeDeleteModuleDialogs(courseEditPage);
@@ -19,6 +20,34 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeTeacherAssignmentsTable(courseEditPage);
     initializeEnrollmentsTable(courseEditPage);
 });
+
+function initializeValidityIssueDialogs(scope) {
+    const containers = scope.querySelectorAll('[data-validity-details]');
+
+    if (containers.length === 0) {
+        return;
+    }
+
+    containers.forEach((container) => {
+        const modal = container.querySelector('[data-validity-details-modal]') ?? container.nextElementSibling;
+
+        if (!(modal instanceof HTMLDialogElement)) {
+            return;
+        }
+
+        container.querySelectorAll('[data-open-validity-details-modal]').forEach((trigger) => {
+            trigger.addEventListener('click', () => {
+                modal.showModal();
+            });
+        });
+
+        modal.querySelectorAll('[data-close-validity-details-modal]').forEach((button) => {
+            button.addEventListener('click', () => {
+                modal.close();
+            });
+        });
+    });
+}
 
 function initializeCourseRiskRequirements(courseEditPage) {
     const container = courseEditPage.querySelector('[data-course-risk-requirements]');
@@ -771,6 +800,10 @@ function initializeCourseClasses(courseEditPage) {
 }
 
 function initializeCreateModuleDialog(courseEditPage) {
+    if (courseEditPage.dataset.courseIsPublished === 'true') {
+        return;
+    }
+
     const createModuleModal = courseEditPage.querySelector('#create-module-modal');
     const openModalButton = courseEditPage.querySelector('[data-open-module-modal]');
     const closeModalButton = courseEditPage.querySelector('[data-close-module-modal]');

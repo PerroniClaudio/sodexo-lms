@@ -168,6 +168,18 @@ it('allows changing only the status for a published course when other form value
     expect($course->satisfaction_survey_required_for_certificate)->toBeFalse();
 });
 
+it('disables the new module button when the course is published', function () {
+    $course = Course::factory()->create(['status' => 'published']);
+
+    $response = $this->get(route('admin.courses.edit', $course));
+
+    $response->assertOk();
+    $response->assertSee('data-open-module-modal', false);
+    $response->assertSee('disabled', false);
+    $response->assertSee('tooltip tooltip-left', false);
+    $response->assertSee('data-tip="Non puoi aggiungere nuovi moduli mentre il corso è pubblicato."', false);
+});
+
 it('soft deletes a course', function () {
     $course = Course::factory()->create();
 

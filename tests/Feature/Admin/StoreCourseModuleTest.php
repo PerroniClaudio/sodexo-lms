@@ -97,3 +97,19 @@ it('keeps the satisfaction survey at the end when a new module is created', func
     expect($newModule->fresh()->order)->toBe(2);
     expect($surveyModule->fresh()->order)->toBe(3);
 });
+
+it('redirects back with an error flash when trying to create a module for a published course', function () {
+    $course = Course::factory()->create(['status' => 'published']);
+
+    $response = $this
+        ->from(route('admin.courses.edit', $course))
+        ->post(route('admin.courses.modules.store', $course), [
+            'type' => 'live',
+            'title' => 'Modulo bloccato',
+        ]);
+
+    $response->assertRedirect(route('admin.courses.edit', $course));
+    $response->assertSessionHas('error', 'Non è possibile modificare il modulo perché il corso associato è pubblicato.');
+
+    expect(Module::query()->count())->toBe(0);
+});

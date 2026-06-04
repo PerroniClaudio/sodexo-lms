@@ -204,6 +204,7 @@
                                 <th><button type="button" class="inline-flex items-center gap-2" data-sort-key="expires_at">{{ __('Data scadenza') }}</button></th>
                                 <th><button type="button" class="inline-flex items-center gap-2" data-sort-key="is_internal">{{ __('Tipo') }}</button></th>
                                 <th>{{ __('Tipologia documento') }}</th>
+                                <th>{{ __('File') }}</th>
                                 <th>{{ __('Requisiti di rischio') }}</th>
                                 <th class="text-right">{{ __('Azioni') }}</th>
                             </tr>
@@ -269,13 +270,6 @@
                             </div>
 
                             <div class="form-control flex flex-col gap-2">
-                                <label class="label p-0" for="certificate_file_path">
-                                    <span class="label-text font-medium">{{ __('Percorso file') }}</span>
-                                </label>
-                                <input id="certificate_file_path" name="file_path" type="text" class="input input-bordered w-full" placeholder="certificates/user/example.pdf">
-                            </div>
-
-                            <div class="form-control flex flex-col gap-2">
                                 <label class="label p-0" for="certificate_document_type_id">
                                     <span class="label-text font-medium">{{ __('Tipologia documento') }}</span>
                                 </label>
@@ -314,6 +308,67 @@
                                         <option value="{{ $riskBasedRequirement->id }}">{{ $riskBasedRequirement->name }}</option>
                                     @endforeach
                                 </select>
+                            </div>
+
+                            <div class="form-control flex flex-col gap-3 md:col-span-2" data-certificate-files-section>
+                                <div class="flex flex-col gap-1">
+                                    <label class="label p-0" for="certificate_files">
+                                        <span class="label-text font-medium">{{ __('File certificato') }}</span>
+                                    </label>
+                                    <p class="text-sm text-base-content/70">
+                                        {{ __('I nuovi caricamenti sostituiscono quelli attivi: i file precedenti restano nel bucket ma vengono nascosti tramite soft delete.') }}
+                                    </p>
+                                </div>
+
+                                <div class="w-full">
+                                    <label
+                                        for="certificate_files"
+                                        class="flex min-h-36 w-full cursor-pointer flex-col items-center justify-center rounded-box border-2 border-dashed border-base-300 bg-base-100 px-6 py-8 text-center transition hover:border-primary"
+                                        data-certificate-files-dropzone
+                                    >
+                                        <x-lucide-upload class="h-8 w-8 text-base-content/50" />
+                                        <span class="mt-3 text-sm font-medium">{{ __('Trascina qui uno o più file oppure clicca per selezionarli') }}</span>
+                                        <span class="mt-2 text-xs text-base-content/60">{{ __('Formati consentiti: PDF, immagini e documenti Word. Max 50 MB per file.') }}</span>
+                                        <span class="mt-3 text-sm text-primary" data-certificate-files-selection>{{ __('Nessun file selezionato') }}</span>
+                                        <input id="certificate_files" name="files[]" type="file" class="hidden" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" data-certificate-files-input>
+                                    </label>
+                                </div>
+
+                                <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 px-4 py-3 text-sm text-base-content/70" data-certificate-files-create-hint>
+                                    {{ __('Dopo il primo salvataggio potrai vedere l’elenco completo dei file caricati, aprirli in anteprima e scaricarli.') }}
+                                </div>
+
+                                <div class="hidden flex-col gap-3" data-certificate-existing-files>
+                                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <p class="text-sm text-base-content/70" data-certificate-files-summary>{{ __('Nessun file caricato.') }}</p>
+                                        <label class="label cursor-pointer justify-start gap-3 p-0">
+                                            <input type="checkbox" class="checkbox" data-certificate-files-show-deleted>
+                                            <span class="label-text">{{ __('Mostra eliminati') }}</span>
+                                        </label>
+                                    </div>
+
+                                    <div class="hidden rounded-box border border-base-300 bg-base-200/40 px-4 py-3 text-sm text-base-content/70" data-certificate-files-loading>
+                                        {{ __('Caricamento file in corso...') }}
+                                    </div>
+
+                                    <div class="overflow-x-auto rounded-box border border-base-300">
+                                        <table class="table table-zebra">
+                                            <thead>
+                                                <tr>
+                                                    <th>{{ __('Nome file') }}</th>
+                                                    <th>{{ __('Caricato il') }}</th>
+                                                    <th>{{ __('Stato') }}</th>
+                                                    <th class="text-right">{{ __('Azioni') }}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody data-certificate-files-tbody></tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="rounded-box border border-dashed border-base-300 px-4 py-6 text-center text-sm text-base-content/70" data-certificate-files-empty>
+                                        {{ __('Nessun file disponibile per questo certificato.') }}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
