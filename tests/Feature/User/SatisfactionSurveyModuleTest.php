@@ -4,6 +4,7 @@ use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleProgress;
+use App\Models\SatisfactionSurveyQuestion;
 use App\Models\SatisfactionSurveySubmission;
 use App\Models\SatisfactionSurveyTemplate;
 use App\Models\User;
@@ -23,21 +24,30 @@ function createSatisfactionTemplate(): SatisfactionSurveyTemplate
     $firstQuestion = $template->questions()->create([
         'sort_order' => 1,
         'text' => 'Valutazione complessiva',
+        'input_type' => SatisfactionSurveyQuestion::INPUT_TYPE_RADIO,
     ]);
 
-    $firstQuestion->answers()->createMany([
-        ['sort_order' => 1, 'text' => 'Ottimo'],
-        ['sort_order' => 2, 'text' => 'Buono'],
-    ]);
+    $firstQuestion->answers()->createMany(collect(range(1, 5))->map(fn (int $index): array => [
+        'sort_order' => $index,
+        'text' => "Opzione {$index}",
+    ])->all());
 
     $secondQuestion = $template->questions()->create([
         'sort_order' => 2,
-        'text' => 'UtilitÃ  percepita',
+        'text' => 'Valutazione riservata ai corsi RES',
+        'input_type' => SatisfactionSurveyQuestion::INPUT_TYPE_RADIO,
+        'excluded_course_types' => ['fad', 'async'],
     ]);
 
-    $secondQuestion->answers()->createMany([
-        ['sort_order' => 1, 'text' => 'Alta'],
-        ['sort_order' => 2, 'text' => 'Media'],
+    $secondQuestion->answers()->createMany(collect(range(1, 5))->map(fn (int $index): array => [
+        'sort_order' => $index,
+        'text' => "Risposta RES {$index}",
+    ])->all());
+
+    $template->questions()->create([
+        'sort_order' => 3,
+        'text' => 'Suggerimenti finali',
+        'input_type' => SatisfactionSurveyQuestion::INPUT_TYPE_TEXTAREA,
     ]);
 
     return $template->fresh(['questions.answers']);
@@ -62,6 +72,8 @@ function createSurveyEnrollment(bool $required): array
     test()->actingAs($user);
 
     $course = Course::factory()->create([
+        'type' => 'fad',
+        'status' => 'draft',
         'has_satisfaction_survey' => true,
         'satisfaction_survey_required_for_certificate' => $required,
     ]);
@@ -97,17 +109,28 @@ it('marks the enrollment completed after the last required module even if satisf
     expect($surveyProgress->status)->toBe(ModuleProgress::STATUS_AVAILABLE);
 });
 
-it('stores anonymous satisfaction answers and completes the required survey module', function () {
+it('stores anonymous satisfaction answers, skips excluded questions and accepts open text responses', function () {
     $template = createSatisfactionTemplate();
     [$course, $surveyModule, $enrollment] = createSurveyEnrollment(true);
 
     $response = $this->getJson(route('user.courses.modules.satisfaction-survey.show', [$course, $surveyModule]));
     $response->assertOk();
     $response->assertJson(['completed' => false]);
+    $response->assertJsonCount(2, 'questions');
 
     $answers = [];
 
     foreach ($template->questions as $question) {
+        if ($question->usesTextarea()) {
+            $answers[$question->getKey()] = 'Ottima esperienza complessiva.';
+
+            continue;
+        }
+
+        if ($question->isExcludedForCourseType($course->type)) {
+            continue;
+        }
+
         $answers[$question->getKey()] = $question->answers->first()->getKey();
     }
 
@@ -127,4 +150,5 @@ it('stores anonymous satisfaction answers and completes the required survey modu
     expect($submission->course_id)->toBe($course->getKey());
     expect($submission->module_id)->toBe($surveyModule->getKey());
     expect($submission->answers)->toHaveCount(2);
+    expect($submission->answers->firstWhere('open_text', 'Ottima esperienza complessiva.'))->not->toBeNull();
 });

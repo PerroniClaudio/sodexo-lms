@@ -14,6 +14,7 @@ class SatisfactionSurveySubmissionAnswer extends Model
         'satisfaction_survey_submission_id',
         'satisfaction_survey_question_id',
         'satisfaction_survey_answer_id',
+        'open_text',
     ];
 
     public function submission(): BelongsTo

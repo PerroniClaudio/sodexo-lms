@@ -113,22 +113,31 @@ function renderQuizQuestions(questions, container) {
     questions.forEach((question, qIndex) => {
         const questionEl = document.createElement('div');
         questionEl.className = 'flex flex-col gap-3';
-        questionEl.innerHTML = `
-            <p class="font-semibold">${qIndex + 1}. ${escapeHtml(question.text)}</p>
-            <div class="flex flex-col gap-2" id="answers-${question.id}"></div>
-        `;
+        questionEl.innerHTML = `<p class="font-semibold">${qIndex + 1}. ${escapeHtml(question.text)}</p>`;
 
-        const answersContainer = questionEl.querySelector(`#answers-${question.id}`);
+        if (question.input_type === 'textarea') {
+            const textarea = document.createElement('textarea');
+            textarea.name = `answer_${question.id}`;
+            textarea.className = 'textarea textarea-bordered min-h-28 w-full';
+            textarea.placeholder = 'Scrivi qui la tua risposta';
+            questionEl.appendChild(textarea);
+        } else {
+            const answersContainer = document.createElement('div');
+            answersContainer.className = 'flex flex-col gap-2';
+            answersContainer.id = `answers-${question.id}`;
 
-        question.answers.forEach((answer) => {
-            const label = document.createElement('label');
-            label.className = 'flex items-center gap-3 cursor-pointer';
-            label.innerHTML = `
-                <input type="radio" class="radio radio-primary" name="answer_${question.id}" value="${answer.id}" required />
-                <span>${escapeHtml(answer.text)}</span>
-            `;
-            answersContainer.appendChild(label);
-        });
+            question.answers.forEach((answer) => {
+                const label = document.createElement('label');
+                label.className = 'flex cursor-pointer items-center gap-3';
+                label.innerHTML = `
+                    <input type="radio" class="radio radio-primary" name="answer_${question.id}" value="${answer.id}" required />
+                    <span>${escapeHtml(answer.text)}</span>
+                `;
+                answersContainer.appendChild(label);
+            });
+
+            questionEl.appendChild(answersContainer);
+        }
 
         container.appendChild(questionEl);
         
@@ -154,7 +163,13 @@ async function submitQuiz(
 
     quizData.questions.forEach((q) => {
         const val = formData.get(`answer_${q.id}`);
-        if (val !== null) {
+        if (val === null) {
+            return;
+        }
+
+        if (q.input_type === 'textarea') {
+            answers[q.id] = String(val).trim();
+        } else {
             answers[q.id] = parseInt(val, 10);
         }
     });

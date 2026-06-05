@@ -26,12 +26,13 @@ function createValidSatisfactionSurveyTemplate(): SatisfactionSurveyTemplate
     $question = $template->questions()->create([
         'sort_order' => 1,
         'text' => 'Valutazione complessiva',
+        'input_type' => 'radio',
     ]);
 
-    $question->answers()->createMany([
-        ['sort_order' => 1, 'text' => 'Ottimo'],
-        ['sort_order' => 2, 'text' => 'Buono'],
-    ]);
+    $question->answers()->createMany(collect(range(1, 5))->map(fn (int $index): array => [
+        'sort_order' => $index,
+        'text' => "Risposta {$index}",
+    ])->all());
 
     return $template;
 }

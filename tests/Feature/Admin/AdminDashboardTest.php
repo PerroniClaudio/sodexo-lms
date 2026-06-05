@@ -126,6 +126,7 @@ it('renders the admin dashboard with core cards and data', function () {
         'satisfaction_survey_template_id' => $template->getKey(),
         'sort_order' => 1,
         'text' => 'Come valuti il corso?',
+        'input_type' => 'radio',
     ]);
     $answerLow = SatisfactionSurveyAnswer::query()->create([
         'satisfaction_survey_question_id' => $question->getKey(),
@@ -134,9 +135,16 @@ it('renders the admin dashboard with core cards and data', function () {
     ]);
     $answerHigh = SatisfactionSurveyAnswer::query()->create([
         'satisfaction_survey_question_id' => $question->getKey(),
-        'sort_order' => 2,
+        'sort_order' => 5,
         'text' => '5',
     ]);
+    collect([2, 3, 4])->each(function (int $index) use ($question): void {
+        SatisfactionSurveyAnswer::query()->create([
+            'satisfaction_survey_question_id' => $question->getKey(),
+            'sort_order' => $index,
+            'text' => (string) $index,
+        ]);
+    });
     $firstSubmission = SatisfactionSurveySubmission::query()->create([
         'satisfaction_survey_template_id' => $template->getKey(),
         'course_id' => $course->getKey(),

@@ -10,6 +10,7 @@ class TestDataSeeder extends Seeder
     {
         $this->call([
             RiskBasedRequirementSeeder::class,
+            SatisfactionSurveySeeder::class,
             TestCourseCatalogSeeder::class,
             TestUserRiskScenariosSeeder::class,
         ]);

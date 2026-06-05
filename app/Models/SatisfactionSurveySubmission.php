@@ -42,6 +42,7 @@ class SatisfactionSurveySubmission extends Model
 
     public function answers(): HasMany
     {
-        return $this->hasMany(SatisfactionSurveySubmissionAnswer::class);
+        return $this->hasMany(SatisfactionSurveySubmissionAnswer::class)
+            ->with(['question', 'answer']);
     }
 }

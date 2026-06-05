@@ -142,8 +142,6 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
                 ->name('live-stream-logs.download');
             Route::get('/satisfaction-survey', [SatisfactionSurveyController::class, 'edit'])
                 ->name('satisfaction-survey.edit');
-            Route::put('/satisfaction-survey', [SatisfactionSurveyController::class, 'update'])
-                ->name('satisfaction-survey.update');
         });
 
         // Job Management Routes (require 'manage job data' permission)
@@ -249,6 +247,21 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::put('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}', [ModuleQuizController::class, 'updateAnswerApi'])->name('courses.modules.quiz.answers.update');
             Route::delete('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}', [ModuleQuizController::class, 'deleteAnswerApi'])->name('courses.modules.quiz.answers.delete');
             Route::post('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}/set-correct', [ModuleQuizController::class, 'setCorrectAnswerApi'])->name('courses.modules.quiz.answers.set-correct');
+            Route::get('/satisfaction-survey/questions', [SatisfactionSurveyController::class, 'indexApi'])
+                ->middleware('role:superadmin')
+                ->name('satisfaction-survey.questions.index');
+            Route::post('/satisfaction-survey/questions', [SatisfactionSurveyController::class, 'storeApi'])
+                ->middleware('role:superadmin')
+                ->name('satisfaction-survey.questions.store');
+            Route::put('/satisfaction-survey/questions/{question}', [SatisfactionSurveyController::class, 'updateApi'])
+                ->middleware('role:superadmin')
+                ->name('satisfaction-survey.questions.update');
+            Route::delete('/satisfaction-survey/questions/{question}', [SatisfactionSurveyController::class, 'destroyApi'])
+                ->middleware('role:superadmin')
+                ->name('satisfaction-survey.questions.destroy');
+            Route::patch('/satisfaction-survey/questions/reorder', [SatisfactionSurveyController::class, 'reorderApi'])
+                ->middleware('role:superadmin')
+                ->name('satisfaction-survey.questions.reorder');
             Route::get('/courses/{course}/modules/{module}/max-score', function (Course $course, Module $module) {
                 abort_unless($module->belongsTo === (string) $course->getKey(), 404);
 

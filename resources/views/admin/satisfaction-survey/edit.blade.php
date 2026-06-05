@@ -1,101 +1,127 @@
 <x-layouts.admin>
-    @php
-        $questions = old('questions');
+    <div
+        class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8"
+        data-satisfaction-survey-page
+        data-index-url="{{ $indexUrl }}"
+        data-store-url="{{ $storeUrl }}"
+        data-reorder-url="{{ $reorderUrl }}"
+        data-course-type-labels='@json($courseTypeLabels)'
+    >
+        <template data-move-icon-template>
+            <x-lucide-move class="h-3.5 w-3.5" />
+        </template>
 
-        if ($questions === null) {
-            $questions = $activeTemplate?->questions->map(fn ($question) => [
-                'text' => $question->text,
-                'answers' => $question->answers->pluck('text')->all(),
-            ])->all() ?? [[
-                'text' => '',
-                'answers' => ['', ''],
-            ]];
-        }
-    @endphp
-
-    <div class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 sm:p-6 lg:p-8" data-satisfaction-survey-editor>
         <x-page-header :title="__('Questionario di gradimento')">
             <x-slot:actions>
-                <a href="{{ url()->previous() }}" class="btn btn-ghost">
-                    <x-lucide-arrow-left class="h-4 w-4" />
-                    <span>{{ __('Indietro') }}</span>
-                </a>
+                <button type="button" class="btn btn-primary" data-open-create-modal>
+                    {{ __('Nuova domanda') }}
+                </button>
             </x-slot:actions>
         </x-page-header>
 
+        <div class="alert alert-info">
+            <span>{{ __('Le domande a risposta libera vengono sempre mostrate in fondo al questionario. Puoi riordinarle tra loro, ma non supereranno mai le domande a risposta multipla.') }}</span>
+        </div>
+
         <div class="card border border-base-300 bg-base-100 shadow-sm">
-            <div class="card-body gap-6">
-                <div class="space-y-2">
-                    <h2 class="card-title">{{ __('Configurazione globale') }}</h2>
-                    <p class="text-sm text-base-content/70">
-                        {{ __('Tutti i questionari di gradimento dei corsi useranno queste stesse domande e risposte.') }}
-                    </p>
+            <div class="card-body gap-4">
+                <div class="flex items-center justify-between gap-4">
+                    <div>
+                        <h2 class="card-title">{{ __('Domande configurate') }}</h2>
+                        <p class="text-sm text-base-content/70" data-questions-summary>{{ __('Caricamento in corso...') }}</p>
+                    </div>
+                    <span class="loading loading-spinner loading-sm hidden" data-questions-loading></span>
                 </div>
 
-                <form method="POST" action="{{ route('admin.satisfaction-survey.update') }}" class="flex flex-col gap-6">
-                    @csrf
-                    @method('PUT')
+                <div class="hidden rounded-box border border-dashed border-base-300 px-6 py-10 text-center text-sm text-base-content/60" data-empty-state>
+                    {{ __('Nessuna domanda configurata.') }}
+                </div>
 
-                    <div class="flex flex-col gap-4" data-questions-container>
-                        @foreach ($questions as $questionIndex => $question)
-                            <div class="rounded-box border border-base-300 bg-base-100 p-4" data-question-block>
-                                <div class="flex items-center justify-between gap-4">
-                                    <h3 class="font-semibold">{{ __('Domanda') }} {{ $questionIndex + 1 }}</h3>
-                                    <button type="button" class="btn btn-ghost btn-sm" data-remove-question>
-                                        {{ __('Rimuovi') }}
-                                    </button>
-                                </div>
+                <div class="flex flex-col gap-3" data-questions-list></div>
+            </div>
+        </div>
 
-                                <div class="mt-4 flex flex-col gap-4">
-                                    <div class="form-control flex flex-col gap-2">
-                                        <label class="label p-0">
-                                            <span class="label-text font-medium">{{ __('Testo domanda') }}</span>
-                                        </label>
-                                        <textarea
-                                            name="questions[{{ $questionIndex }}][text]"
-                                            class="textarea textarea-bordered min-h-24 w-full"
-                                            required
-                                        >{{ $question['text'] ?? '' }}</textarea>
-                                    </div>
+        <dialog class="modal" data-question-modal>
+            <div class="modal-box max-w-3xl">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-semibold" data-question-modal-title>{{ __('Nuova domanda') }}</h3>
+                        <p class="mt-1 text-sm text-base-content/70">{{ __('Le domande a risposta multipla devono avere esattamente 5 opzioni.') }}</p>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-sm btn-circle" data-close-question-modal>✕</button>
+                </div>
 
-                                    <div class="flex flex-col gap-3" data-answers-container>
-                                        @foreach (($question['answers'] ?? ['', '']) as $answerIndex => $answer)
-                                            <div class="flex items-center gap-3" data-answer-row>
-                                                <input
-                                                    type="text"
-                                                    name="questions[{{ $questionIndex }}][answers][{{ $answerIndex }}]"
-                                                    value="{{ $answer }}"
-                                                    class="input input-bordered w-full"
-                                                    required
-                                                >
-                                                <button type="button" class="btn btn-ghost btn-sm" data-remove-answer>
-                                                    {{ __('Rimuovi') }}
-                                                </button>
-                                            </div>
-                                        @endforeach
-                                    </div>
+                <form class="mt-6 flex flex-col gap-5" data-question-form>
+                    <input type="hidden" name="question_id" value="">
 
-                                    <div>
-                                        <button type="button" class="btn btn-outline btn-sm" data-add-answer>
-                                            {{ __('Aggiungi risposta') }}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        @endforeach
+                    <div class="form-control gap-2">
+                        <label class="label p-0" for="survey-question-text">
+                            <span class="label-text font-medium">{{ __('Domanda') }}</span>
+                        </label>
+                        <textarea id="survey-question-text" name="text" class="textarea textarea-bordered min-h-28 w-full" required></textarea>
                     </div>
 
-                    <div class="flex flex-wrap gap-3">
-                        <button type="button" class="btn btn-outline" data-add-question>
-                            {{ __('Aggiungi domanda') }}
-                        </button>
-                        <button type="submit" class="btn btn-primary">
-                            {{ __('Salva questionario') }}
-                        </button>
+                    <div class="grid gap-5 md:grid-cols-2">
+                        <div class="form-control gap-2">
+                            <label class="label p-0" for="survey-question-input-type">
+                                <span class="label-text font-medium">{{ __('Tipo input') }}</span>
+                            </label>
+                            <select id="survey-question-input-type" name="input_type" class="select select-bordered w-full">
+                                @foreach ($inputTypes as $inputType)
+                                    <option value="{{ $inputType }}">{{ strtoupper($inputType) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="form-control gap-2">
+                            <label class="label p-0">
+                                <span class="label-text font-medium">{{ __('Tipologie che possono saltarla') }}</span>
+                            </label>
+                            <div class="grid gap-2 rounded-box border border-base-300 p-3 sm:grid-cols-2" data-course-type-checkboxes>
+                                @foreach ($courseTypeLabels as $courseType => $label)
+                                    <label class="flex items-center gap-3 text-sm">
+                                        <input type="checkbox" class="checkbox checkbox-sm" name="excluded_course_types[]" value="{{ $courseType }}">
+                                        <span>{{ $label }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-3" data-answers-panel>
+                        <div class="flex items-center justify-between gap-4">
+                            <p class="font-medium">{{ __('Risposte') }}</p>
+                            <span class="text-xs text-base-content/60">{{ __('Esattamente 5 voci') }}</span>
+                        </div>
+                        <div class="grid gap-3" data-answers-fields></div>
+                    </div>
+
+                    <p class="hidden rounded-box border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" data-question-form-error></p>
+
+                    <div class="flex justify-end gap-3">
+                        <button type="button" class="btn btn-ghost" data-close-question-modal>{{ __('Annulla') }}</button>
+                        <button type="submit" class="btn btn-primary" data-question-submit>{{ __('Salva') }}</button>
                     </div>
                 </form>
             </div>
-        </div>
+            <form method="dialog" class="modal-backdrop">
+                <button>{{ __('Close') }}</button>
+            </form>
+        </dialog>
+
+        <dialog class="modal" data-delete-modal>
+            <div class="modal-box max-w-lg">
+                <h3 class="text-lg font-semibold">{{ __('Elimina domanda') }}</h3>
+                <p class="mt-3 text-sm text-base-content/70" data-delete-description></p>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" class="btn btn-ghost" data-close-delete-modal>{{ __('Annulla') }}</button>
+                    <button type="button" class="btn btn-error" data-confirm-delete>{{ __('Elimina') }}</button>
+                </div>
+            </div>
+            <form method="dialog" class="modal-backdrop">
+                <button>{{ __('Close') }}</button>
+            </form>
+        </dialog>
     </div>
 
     @vite('resources/js/pages/admin-satisfaction-survey-edit.js')

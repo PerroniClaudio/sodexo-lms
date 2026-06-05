@@ -1,131 +1,356 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const root = document.querySelector('[data-satisfaction-survey-editor]');
+    const page = document.querySelector('[data-satisfaction-survey-page]');
 
-    if (!root) {
+    if (!page) {
         return;
     }
 
-    const questionsContainer = root.querySelector('[data-questions-container]');
-    const addQuestionButton = root.querySelector('[data-add-question]');
+    const indexUrl = page.dataset.indexUrl;
+    const storeUrl = page.dataset.storeUrl;
+    const reorderUrl = page.dataset.reorderUrl;
+    const courseTypeLabels = JSON.parse(page.dataset.courseTypeLabels || '{}');
+    const list = page.querySelector('[data-questions-list]');
+    const emptyState = page.querySelector('[data-empty-state]');
+    const summary = page.querySelector('[data-questions-summary]');
+    const loading = page.querySelector('[data-questions-loading]');
+    const questionModal = page.querySelector('[data-question-modal]');
+    const questionForm = page.querySelector('[data-question-form]');
+    const questionModalTitle = page.querySelector('[data-question-modal-title]');
+    const closeQuestionModalButtons = page.querySelectorAll('[data-close-question-modal]');
+    const openCreateModalButton = page.querySelector('[data-open-create-modal]');
+    const inputTypeField = questionForm?.querySelector('[name="input_type"]');
+    const answersPanel = page.querySelector('[data-answers-panel]');
+    const answersFields = page.querySelector('[data-answers-fields]');
+    const formError = page.querySelector('[data-question-form-error]');
+    const deleteModal = page.querySelector('[data-delete-modal]');
+    const deleteDescription = page.querySelector('[data-delete-description]');
+    const closeDeleteModalButtons = page.querySelectorAll('[data-close-delete-modal]');
+    const confirmDeleteButton = page.querySelector('[data-confirm-delete]');
 
-    if (!questionsContainer || !addQuestionButton) {
+    if (!indexUrl || !storeUrl || !reorderUrl || !list || !emptyState || !summary || !loading || !(questionModal instanceof HTMLDialogElement) || !questionForm || !questionModalTitle || closeQuestionModalButtons.length === 0 || !(deleteModal instanceof HTMLDialogElement) || !deleteDescription || closeDeleteModalButtons.length === 0 || !confirmDeleteButton || !(inputTypeField instanceof HTMLSelectElement) || !answersPanel || !answersFields || !formError) {
         return;
     }
 
-    const renumberFields = () => {
-        Array.from(questionsContainer.querySelectorAll('[data-question-block]')).forEach((questionBlock, questionIndex) => {
-            const title = questionBlock.querySelector('h3');
+    const state = {
+        questions: [],
+        editingQuestionId: null,
+        deletingQuestionId: null,
+        loading: false,
+        savingOrder: false,
+        draggedId: null,
+    };
 
-            if (title) {
-                title.textContent = `Domanda ${questionIndex + 1}`;
-            }
+    const inputTypeLabels = {
+        radio: 'Risposta multipla',
+        textarea: 'Testo libero',
+    };
+    const moveIcon = page.querySelector('[data-move-icon-template]')?.innerHTML?.trim() || '';
 
-            const questionTextarea = questionBlock.querySelector('textarea');
+    const escapeHtml = (value) => String(value || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
 
-            if (questionTextarea) {
-                questionTextarea.name = `questions[${questionIndex}][text]`;
-            }
+    const createAnswerField = (value = '', index = 0) => `
+        <label class="form-control gap-2">
+            <span class="label-text text-sm">${index + 1}. ${escapeHtml('Risposta')}</span>
+            <input type="text" name="answers[]" value="${escapeHtml(value)}" class="input input-bordered w-full">
+        </label>
+    `;
 
-            Array.from(questionBlock.querySelectorAll('[data-answer-row] input')).forEach((input, answerIndex) => {
-                input.name = `questions[${questionIndex}][answers][${answerIndex}]`;
+    const renderAnswerFields = (answers = []) => {
+        answersFields.innerHTML = '';
+
+        for (let index = 0; index < 5; index += 1) {
+            answersFields.insertAdjacentHTML('beforeend', createAnswerField(answers[index]?.text || answers[index] || '', index));
+        }
+    };
+
+    const toggleAnswerPanel = () => {
+        const usesTextarea = inputTypeField.value === 'textarea';
+        answersPanel.classList.toggle('hidden', usesTextarea);
+        answersFields.querySelectorAll('input').forEach((input) => {
+            input.required = !usesTextarea;
+        });
+    };
+
+    const resetForm = () => {
+        state.editingQuestionId = null;
+        questionForm.reset();
+        questionForm.elements.namedItem('question_id').value = '';
+        questionModalTitle.textContent = 'Nuova domanda';
+        renderAnswerFields();
+        questionForm.querySelectorAll('input[name="excluded_course_types[]"]').forEach((checkbox) => {
+            checkbox.checked = false;
+        });
+        formError.textContent = '';
+        formError.classList.add('hidden');
+        inputTypeField.value = 'radio';
+        toggleAnswerPanel();
+    };
+
+    const setLoading = (isLoading) => {
+        state.loading = isLoading;
+        loading.classList.toggle('hidden', !isLoading);
+    };
+
+    const renderSummary = () => {
+        if (state.questions.length === 0) {
+            summary.textContent = 'Nessuna domanda configurata.';
+
+            return;
+        }
+
+        const textareas = state.questions.filter((question) => question.input_type === 'textarea').length;
+        summary.textContent = `${state.questions.length} domande configurate, di cui ${textareas} aperte sempre in fondo.`;
+    };
+
+    const renderQuestions = () => {
+        list.innerHTML = '';
+        emptyState.classList.toggle('hidden', state.questions.length > 0);
+        renderSummary();
+
+        state.questions.forEach((question, index) => {
+            const excludedTypes = (question.excluded_course_types || [])
+                .map((courseType) => courseTypeLabels[courseType] || courseType.toUpperCase());
+
+            const item = document.createElement('article');
+            item.className = 'rounded-box border border-base-300 bg-base-100 p-4 shadow-sm';
+            item.setAttribute('data-question-item', '');
+            item.setAttribute('data-question-id', String(question.id));
+            item.draggable = true;
+            item.innerHTML = `
+                <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div class="space-y-3">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="badge badge-outline gap-1 cursor-move">
+                                ${moveIcon}
+                                <span>${index + 1}</span>
+                            </span>
+                            <span class="badge ${question.input_type === 'textarea' ? 'badge-accent' : 'badge-primary'}">${escapeHtml(inputTypeLabels[question.input_type] || question.input_type)}</span>
+                            ${question.input_type === 'textarea'
+                                ? '<span class="badge badge-warning badge-outline">Sempre in fondo</span>'
+                                : ''}
+                        </div>
+                        <p class="font-semibold">${escapeHtml(question.text)}</p>
+                        ${question.input_type === 'radio'
+                            ? `<ol class="ml-5 list-decimal space-y-1 text-sm text-base-content/70">${question.answers.map((answer) => `<li>${escapeHtml(answer.text)}</li>`).join('')}</ol>`
+                            : '<p class="text-sm text-base-content/70">Risposta libera tramite textarea.</p>'}
+                        <div class="flex flex-wrap gap-2 text-xs">
+                            ${excludedTypes.length > 0
+                                ? excludedTypes.map((label) => `<span class="badge badge-ghost">${escapeHtml(label)} salta</span>`).join('')
+                                : '<span class="text-base-content/60">Nessuna tipologia esclusa.</span>'}
+                        </div>
+                    </div>
+                    <div class="flex shrink-0 items-center gap-2">
+                        <button type="button" class="btn btn-primary btn-sm" data-action="edit">Modifica</button>
+                        <button type="button" class="btn btn-error btn-outline btn-sm" data-action="delete">Elimina</button>
+                    </div>
+                </div>
+            `;
+
+            item.querySelector('[data-action="edit"]').addEventListener('click', () => openEditModal(question.id));
+            item.querySelector('[data-action="delete"]').addEventListener('click', () => openDeleteModal(question.id));
+
+            item.addEventListener('dragstart', () => {
+                state.draggedId = question.id;
+                item.classList.add('opacity-60', 'ring-2', 'ring-primary/30');
             });
+
+            item.addEventListener('dragend', async () => {
+                item.classList.remove('opacity-60', 'ring-2', 'ring-primary/30');
+
+                if (state.draggedId === null || state.savingOrder) {
+                    state.draggedId = null;
+
+                    return;
+                }
+
+                state.draggedId = null;
+                await persistOrder();
+            });
+
+            list.appendChild(item);
         });
     };
 
-    const createAnswerRow = (value = '') => {
-        const row = document.createElement('div');
-        row.className = 'flex items-center gap-3';
-        row.setAttribute('data-answer-row', '');
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'input input-bordered w-full';
-        input.required = true;
-        input.value = value;
+    const loadQuestions = async () => {
+        setLoading(true);
 
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'btn btn-ghost btn-sm';
-        button.setAttribute('data-remove-answer', '');
-        button.textContent = 'Rimuovi';
+        try {
+            const response = await window.axios.get(indexUrl, {
+                headers: { Accept: 'application/json' },
+            });
 
-        row.appendChild(input);
-        row.appendChild(button);
-
-        return row;
+            state.questions = response.data.data || [];
+            renderQuestions();
+        } catch (error) {
+            window.showFlash?.('error', error.response?.data?.message || 'Errore nel caricamento delle domande.');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const bindQuestionBlock = (questionBlock) => {
-        questionBlock.querySelector('[data-add-answer]')?.addEventListener('click', () => {
-            const answersContainer = questionBlock.querySelector('[data-answers-container]');
+    const openEditModal = (questionId) => {
+        const question = state.questions.find((item) => item.id === questionId);
 
-            if (!answersContainer) {
-                return;
-            }
+        if (!question) {
+            return;
+        }
 
-            answersContainer.appendChild(createAnswerRow());
-            renumberFields();
+        resetForm();
+        state.editingQuestionId = question.id;
+        questionForm.elements.namedItem('question_id').value = String(question.id);
+        questionForm.elements.namedItem('text').value = question.text;
+        inputTypeField.value = question.input_type;
+        renderAnswerFields(question.answers || []);
+        questionForm.querySelectorAll('input[name="excluded_course_types[]"]').forEach((checkbox) => {
+            checkbox.checked = (question.excluded_course_types || []).includes(checkbox.value);
         });
-
-        questionBlock.querySelector('[data-remove-question]')?.addEventListener('click', () => {
-            if (questionsContainer.querySelectorAll('[data-question-block]').length <= 1) {
-                return;
-            }
-
-            questionBlock.remove();
-            renumberFields();
-        });
-
-        questionBlock.addEventListener('click', (event) => {
-            const target = event.target;
-
-            if (!(target instanceof HTMLElement) || !target.matches('[data-remove-answer]')) {
-                return;
-            }
-
-            const answersContainer = questionBlock.querySelector('[data-answers-container]');
-
-            if (!answersContainer || answersContainer.querySelectorAll('[data-answer-row]').length <= 2) {
-                return;
-            }
-
-            target.closest('[data-answer-row]')?.remove();
-            renumberFields();
-        });
+        questionModalTitle.textContent = 'Modifica domanda';
+        toggleAnswerPanel();
+        questionModal.showModal();
     };
 
-    addQuestionButton.addEventListener('click', () => {
-        const questionBlock = document.createElement('div');
-        questionBlock.className = 'rounded-box border border-base-300 bg-base-100 p-4';
-        questionBlock.setAttribute('data-question-block', '');
-        questionBlock.innerHTML = `
-            <div class="flex items-center justify-between gap-4">
-                <h3 class="font-semibold">Domanda</h3>
-                <button type="button" class="btn btn-ghost btn-sm" data-remove-question>Rimuovi</button>
-            </div>
-            <div class="mt-4 flex flex-col gap-4">
-                <div class="form-control flex flex-col gap-2">
-                    <label class="label p-0">
-                        <span class="label-text font-medium">Testo domanda</span>
-                    </label>
-                    <textarea class="textarea textarea-bordered min-h-24 w-full" required></textarea>
-                </div>
-                <div class="flex flex-col gap-3" data-answers-container></div>
-                <div>
-                    <button type="button" class="btn btn-outline btn-sm" data-add-answer>Aggiungi risposta</button>
-                </div>
-            </div>
-        `;
+    const openDeleteModal = (questionId) => {
+        const question = state.questions.find((item) => item.id === questionId);
 
-        const answersContainer = questionBlock.querySelector('[data-answers-container]');
+        if (!question) {
+            return;
+        }
 
-        answersContainer?.appendChild(createAnswerRow());
-        answersContainer?.appendChild(createAnswerRow());
+        state.deletingQuestionId = question.id;
+        deleteDescription.textContent = `Vuoi eliminare la domanda "${question.text}"?`;
+        deleteModal.showModal();
+    };
 
-        questionsContainer.appendChild(questionBlock);
-        bindQuestionBlock(questionBlock);
-        renumberFields();
+    const persistOrder = async () => {
+        const orderedIds = Array.from(list.querySelectorAll('[data-question-item]')).map((item) => Number(item.dataset.questionId));
+
+        state.savingOrder = true;
+
+        try {
+            const response = await window.axios.patch(reorderUrl, {
+                question_ids: orderedIds,
+            }, {
+                headers: { Accept: 'application/json' },
+            });
+
+            state.questions = response.data.questions || [];
+            renderQuestions();
+            window.showFlash?.('success', response.data.message || 'Ordine aggiornato con successo.');
+        } catch (error) {
+            window.showFlash?.('error', error.response?.data?.message || 'Errore durante il salvataggio dell\'ordine.');
+            await loadQuestions();
+        } finally {
+            state.savingOrder = false;
+        }
+    };
+
+    list.addEventListener('dragover', (event) => {
+        event.preventDefault();
+
+        if (state.draggedId === null || state.savingOrder) {
+            return;
+        }
+
+        const target = event.target.closest('[data-question-item]');
+        const dragged = list.querySelector(`[data-question-id="${state.draggedId}"]`);
+
+        if (!target || !dragged || target === dragged) {
+            return;
+        }
+
+        const targetBounds = target.getBoundingClientRect();
+        const shouldInsertAfter = event.clientY > targetBounds.top + (targetBounds.height / 2);
+
+        if (shouldInsertAfter) {
+            list.insertBefore(dragged, target.nextSibling);
+        } else {
+            list.insertBefore(dragged, target);
+        }
     });
 
-    Array.from(questionsContainer.querySelectorAll('[data-question-block]')).forEach(bindQuestionBlock);
-    renumberFields();
+    openCreateModalButton?.addEventListener('click', () => {
+        resetForm();
+        questionModal.showModal();
+    });
+
+    closeQuestionModalButtons.forEach((button) => {
+        button.addEventListener('click', () => questionModal.close());
+    });
+
+    closeDeleteModalButtons.forEach((button) => {
+        button.addEventListener('click', () => deleteModal.close());
+    });
+
+    inputTypeField.addEventListener('change', toggleAnswerPanel);
+
+    questionForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        formError.textContent = '';
+        formError.classList.add('hidden');
+
+        const formData = new FormData(questionForm);
+        const payload = {
+            text: String(formData.get('text') || '').trim(),
+            input_type: String(formData.get('input_type') || 'radio'),
+            excluded_course_types: formData.getAll('excluded_course_types[]').map((value) => String(value)),
+            answers: formData.getAll('answers[]').map((value) => String(value)),
+        };
+
+        const questionId = questionForm.elements.namedItem('question_id').value;
+        const method = questionId ? 'put' : 'post';
+        const url = questionId ? `${indexUrl}/${questionId}` : storeUrl;
+        const submitButton = page.querySelector('[data-question-submit]');
+
+        submitButton?.setAttribute('disabled', 'disabled');
+
+        try {
+            const response = await window.axios[method](url, payload, {
+                headers: { Accept: 'application/json' },
+            });
+
+            state.questions = response.data.questions || state.questions;
+            renderQuestions();
+            questionModal.close();
+            window.showFlash?.('success', response.data.message || 'Operazione completata con successo.');
+        } catch (error) {
+            const firstValidationError = Object.values(error.response?.data?.errors || {})[0]?.[0];
+            const message = firstValidationError || error.response?.data?.message || 'Errore durante il salvataggio della domanda.';
+            formError.textContent = message;
+            formError.classList.remove('hidden');
+        } finally {
+            submitButton?.removeAttribute('disabled');
+        }
+    });
+
+    confirmDeleteButton.addEventListener('click', async () => {
+        if (state.deletingQuestionId === null) {
+            return;
+        }
+
+        confirmDeleteButton.setAttribute('disabled', 'disabled');
+
+        try {
+            const response = await window.axios.delete(`${indexUrl}/${state.deletingQuestionId}`, {
+                headers: { Accept: 'application/json' },
+            });
+
+            state.questions = response.data.questions || [];
+            renderQuestions();
+            deleteModal.close();
+            window.showFlash?.('success', response.data.message || 'Domanda eliminata con successo.');
+        } catch (error) {
+            window.showFlash?.('error', error.response?.data?.message || 'Errore durante l\'eliminazione della domanda.');
+        } finally {
+            state.deletingQuestionId = null;
+            confirmDeleteButton.removeAttribute('disabled');
+        }
+    });
+
+    resetForm();
+    void loadQuestions();
 });

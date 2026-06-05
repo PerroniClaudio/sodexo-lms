@@ -33,6 +33,10 @@ class SatisfactionSurveyTemplate extends Model
     public function questions(): HasMany
     {
         return $this->hasMany(SatisfactionSurveyQuestion::class)
+            ->whereNull('deleted_at')
+            ->orderByRaw(
+                "CASE WHEN input_type = '".SatisfactionSurveyQuestion::INPUT_TYPE_TEXTAREA."' THEN 1 ELSE 0 END"
+            )
             ->orderBy('sort_order')
             ->orderBy('id');
     }
@@ -58,7 +62,8 @@ class SatisfactionSurveyTemplate extends Model
 
         return $this->questions->isNotEmpty()
             && $this->questions->every(
-                fn (SatisfactionSurveyQuestion $question): bool => $question->answers->count() >= 2
+                fn (SatisfactionSurveyQuestion $question): bool => $question->usesTextarea()
+                    || $question->answers->count() === 5
             );
     }
 }

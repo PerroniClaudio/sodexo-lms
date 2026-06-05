@@ -520,34 +520,39 @@ class DashboardController extends Controller
             ])
             ->whereIn(
                 'satisfaction_survey_question_id',
-                $activeTemplate->questions->pluck('id')
+                $activeTemplate->questions
+                    ->filter(fn ($question) => $question->usesRadio())
+                    ->pluck('id')
             )
+            ->whereNotNull('satisfaction_survey_answer_id')
             ->groupBy('satisfaction_survey_question_id', 'satisfaction_survey_answer_id')
             ->get()
             ->groupBy('satisfaction_survey_question_id');
 
-        $questions = $activeTemplate->questions->map(function ($question) use ($distributionRows): array {
-            $rows = $distributionRows->get($question->getKey(), collect());
-            $countsByAnswerId = $rows->pluck('total', 'satisfaction_survey_answer_id');
-            $totalAnswers = (int) $rows->sum('total');
-            $topCount = (int) $rows->max('total');
+        $questions = $activeTemplate->questions
+            ->filter(fn ($question) => $question->usesRadio())
+            ->map(function ($question) use ($distributionRows): array {
+                $rows = $distributionRows->get($question->getKey(), collect());
+                $countsByAnswerId = $rows->pluck('total', 'satisfaction_survey_answer_id');
+                $totalAnswers = (int) $rows->sum('total');
+                $topCount = (int) $rows->max('total');
 
-            return [
-                'question' => $question->text,
-                'answers' => $question->answers->map(function ($answer) use ($countsByAnswerId, $totalAnswers, $topCount): array {
-                    $count = (int) ($countsByAnswerId[$answer->getKey()] ?? 0);
+                return [
+                    'question' => $question->text,
+                    'answers' => $question->answers->map(function ($answer) use ($countsByAnswerId, $totalAnswers, $topCount): array {
+                        $count = (int) ($countsByAnswerId[$answer->getKey()] ?? 0);
 
-                    return [
-                        'label' => $answer->text,
-                        'count' => $count,
-                        'percentage' => $totalAnswers > 0
-                            ? (int) round(($count / $totalAnswers) * 100)
-                            : 0,
-                        'is_top_answer' => $count > 0 && $count === $topCount,
-                    ];
-                })->all(),
-            ];
-        })->all();
+                        return [
+                            'label' => $answer->text,
+                            'count' => $count,
+                            'percentage' => $totalAnswers > 0
+                                ? (int) round(($count / $totalAnswers) * 100)
+                                : 0,
+                            'is_top_answer' => $count > 0 && $count === $topCount,
+                        ];
+                    })->all(),
+                ];
+            })->all();
 
         return [
             'submissions_count' => $activeTemplate->submissions()->count(),

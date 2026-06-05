@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             DocumentTypeSeeder::class,
             RiskBasedRequirementSeeder::class,
             RoleAndPermissionSeeder::class,
+            SatisfactionSurveySeeder::class,
             CourseSeeder::class,
             TestUserSeeder::class,
         ]);

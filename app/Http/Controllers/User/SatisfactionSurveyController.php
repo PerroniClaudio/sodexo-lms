@@ -7,6 +7,7 @@ use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleProgress;
+use App\Models\SatisfactionSurveyQuestion;
 use App\Models\SatisfactionSurveySubmission;
 use App\Models\SatisfactionSurveySubmissionAnswer;
 use App\Models\SatisfactionSurveyTemplate;
@@ -53,14 +54,18 @@ class SatisfactionSurveyController extends Controller
         return response()->json([
             'completed' => false,
             'template_id' => $template->getKey(),
-            'questions' => $template->questions->map(fn ($question) => [
-                'id' => $question->getKey(),
-                'text' => $question->text,
-                'answers' => $question->answers->map(fn ($answer) => [
-                    'id' => $answer->getKey(),
-                    'text' => $answer->text,
+            'questions' => $template->questions
+                ->reject(fn (SatisfactionSurveyQuestion $question): bool => $question->isExcludedForCourseType($course->type))
+                ->values()
+                ->map(fn (SatisfactionSurveyQuestion $question) => [
+                    'id' => $question->getKey(),
+                    'text' => $question->text,
+                    'input_type' => $question->input_type,
+                    'answers' => $question->answers->map(fn ($answer) => [
+                        'id' => $answer->getKey(),
+                        'text' => $answer->text,
+                    ])->values(),
                 ])->values(),
-            ])->values(),
         ]);
     }
 
@@ -78,7 +83,7 @@ class SatisfactionSurveyController extends Controller
         $validated = $request->validate([
             'template_id' => ['required', 'integer', 'exists:satisfaction_survey_templates,id'],
             'answers' => ['required', 'array', 'min:1'],
-            'answers.*' => ['required', 'integer'],
+            'answers.*' => ['nullable'],
         ]);
 
         $enrollment = $this->resolveEnrollment($course);
@@ -98,27 +103,38 @@ class SatisfactionSurveyController extends Controller
             ->with(['questions.answers'])
             ->findOrFail($validated['template_id']);
 
+        $applicableQuestions = $template->questions
+            ->reject(fn (SatisfactionSurveyQuestion $question): bool => $question->isExcludedForCourseType($course->type))
+            ->values();
+
         $answersByQuestionId = collect($validated['answers'])->mapWithKeys(
-            fn (mixed $answerId, mixed $questionId): array => [(int) $questionId => (int) $answerId]
+            fn (mixed $answerValue, mixed $questionId): array => [(int) $questionId => $answerValue]
         );
 
-        $questionIds = $template->questions->pluck('id')->map(fn (mixed $id): int => (int) $id);
+        $requiredQuestionIds = $applicableQuestions
+            ->filter(fn (SatisfactionSurveyQuestion $question): bool => $question->usesRadio())
+            ->pluck('id')
+            ->map(fn (mixed $id): int => (int) $id);
 
-        if ($answersByQuestionId->keys()->sort()->values()->all() !== $questionIds->sort()->values()->all()) {
+        if ($requiredQuestionIds->diff($answersByQuestionId->keys()->map(fn (mixed $id): int => (int) $id))->isNotEmpty()) {
             return response()->json([
                 'error' => __('Devi rispondere a tutte le domande del questionario.'),
             ], 422);
         }
 
-        foreach ($template->questions as $question) {
-            if (! $question->answers->pluck('id')->contains($answersByQuestionId->get((int) $question->getKey()))) {
+        foreach ($applicableQuestions as $question) {
+            if ($question->usesTextarea()) {
+                continue;
+            }
+
+            if (! $question->answers->pluck('id')->contains((int) $answersByQuestionId->get((int) $question->getKey()))) {
                 return response()->json([
                     'error' => __('Una o piu risposte selezionate non sono valide.'),
                 ], 422);
             }
         }
 
-        DB::transaction(function () use ($template, $course, $module, $progress, $answersByQuestionId): void {
+        DB::transaction(function () use ($template, $course, $module, $progress, $answersByQuestionId, $applicableQuestions): void {
             $submission = SatisfactionSurveySubmission::query()->create([
                 'satisfaction_survey_template_id' => $template->getKey(),
                 'course_id' => $course->getKey(),
@@ -126,11 +142,16 @@ class SatisfactionSurveyController extends Controller
                 'submitted_at' => now(),
             ]);
 
-            foreach ($template->questions as $question) {
+            foreach ($applicableQuestions as $question) {
+                $answerValue = $answersByQuestionId->get((int) $question->getKey());
+
                 SatisfactionSurveySubmissionAnswer::query()->create([
                     'satisfaction_survey_submission_id' => $submission->getKey(),
                     'satisfaction_survey_question_id' => $question->getKey(),
-                    'satisfaction_survey_answer_id' => $answersByQuestionId->get((int) $question->getKey()),
+                    'satisfaction_survey_answer_id' => $question->usesRadio() ? (int) $answerValue : null,
+                    'open_text' => $question->usesTextarea()
+                        ? filled($answerValue) ? trim((string) $answerValue) : null
+                        : null,
                 ]);
             }
 
