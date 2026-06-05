@@ -224,6 +224,7 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::get('/users/{user}/certificates/{userCertificate}/files/{userCertificateFile}/preview', [UserCertificateController::class, 'previewFileApi'])->name('users.certificates.files.preview');
             Route::get('/users/{user}/certificates/{userCertificate}/files/{userCertificateFile}/download', [UserCertificateController::class, 'downloadFileApi'])->name('users.certificates.files.download');
             Route::get('/users/{user}/risk-summary', [UserController::class, 'riskSummaryApi'])->name('users.risk-summary');
+            Route::get('/users/{user}/recommended-courses', [UserController::class, 'recommendedCoursesApi'])->name('users.recommended-courses');
             Route::get('/document-types', [DocumentTypeController::class, 'indexApi'])
                 ->middleware('permission:manage job data')
                 ->name('document-types.index');

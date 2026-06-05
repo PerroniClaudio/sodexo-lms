@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\CourseRiskRequirementValidityType;
 use App\Enums\RiskLevel;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UserRequest;
@@ -17,12 +18,15 @@ use App\Models\JobUnit;
 use App\Models\Province;
 use App\Models\RiskBasedRequirement;
 use App\Models\User;
+use App\Models\UserCertificate;
 use App\Models\WorldCity;
 use App\Models\WorldCountry;
 use App\Models\WorldDivision;
 use App\Services\CourseRiskRequirementService;
+use App\Services\RiskCalculationService;
 use App\Services\UserJobAssignmentService;
 use App\Support\UserGeographyMapper;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -357,6 +361,174 @@ class UserController extends Controller
             ->with('status', __('Corso assegnato con successo all\'utente.'));
     }
 
+    public function recommendedCoursesApi(Request $request, User $user): JsonResponse
+    {
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'sort' => ['nullable', 'string', 'in:title,course_type,validity_type'],
+            'direction' => ['nullable', 'string', 'in:asc,desc'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $search = trim((string) ($validated['search'] ?? ''));
+        $sort = $validated['sort'] ?? 'title';
+        $direction = $validated['direction'] ?? 'asc';
+
+        $user->loadMissing(['jobSector', 'jobTasks', 'roles']);
+
+        $riskSummary = $this->buildRiskSummary($user);
+        $requirementNeeds = collect($riskSummary['risk_based_requirements'])
+            ->filter(fn (array $requirement): bool => in_array($requirement['status'], ['missing', 'expired'], true))
+            ->keyBy('risk_based_requirement_id');
+
+        if ($requirementNeeds->isEmpty()) {
+            return response()->json([
+                'data' => [],
+                'meta' => [
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'per_page' => 10,
+                    'total' => 0,
+                    'from' => null,
+                    'to' => null,
+                ],
+                'query' => [
+                    'search' => $search,
+                    'sort' => $sort,
+                    'direction' => $direction,
+                ],
+            ]);
+        }
+
+        $query = Course::query()
+            ->where('status', 'published')
+            ->whereHas('riskBasedRequirements', function ($query) use ($requirementNeeds): void {
+                $query->whereIn('risk_based_requirements.id', $requirementNeeds->keys());
+            })
+            ->with('riskBasedRequirements');
+
+        // Ricerca globale
+        if ($search !== '') {
+            $query->where(function ($q) use ($search): void {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhereHas('riskBasedRequirements', function ($q2) use ($search): void {
+                        $q2->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        // Calcola i dati per ogni corso prima dell'ordinamento
+        $coursesData = $query->get()->map(function (Course $course) use ($requirementNeeds, $user): ?array {
+            $matchingRequirement = $course->riskBasedRequirements
+                ->first(fn (RiskBasedRequirement $requirement): bool => $requirementNeeds->has($requirement->getKey()));
+
+            if ($matchingRequirement === null) {
+                return null;
+            }
+
+            $requiredNeed = $requirementNeeds->get($matchingRequirement->getKey());
+            $courseValidityType = $course->courseValidityTypeForRequirement($matchingRequirement);
+            $integrativeStartRiskLevels = $course->integrativeStartRiskLevelsForRequirement($matchingRequirement);
+            $matchesRequiredNeed = $this->courseRiskRequirementService->courseRequirementMatchesUserNeed(
+                $user,
+                $matchingRequirement,
+                $courseValidityType,
+            );
+
+            if (! $matchesRequiredNeed) {
+                return null;
+            }
+
+            $eligibleToEnroll = $this->courseRiskRequirementService->userCanEnrollInCourse($user, $course);
+
+            // Ottieni tutti i requisiti coperti dal corso
+            $coveredRequirements = $course->riskBasedRequirements
+                ->filter(fn (RiskBasedRequirement $req): bool => $requirementNeeds->has($req->getKey()))
+                ->map(fn (RiskBasedRequirement $req): array => [
+                    'id' => $req->getKey(),
+                    'name' => $req->name,
+                ])
+                ->values()
+                ->all();
+
+            // Determina i prerequisiti necessari
+            $prerequisites = [];
+            if ($courseValidityType?->value === 'integrative' && $integrativeStartRiskLevels->isNotEmpty()) {
+                $prerequisites = $integrativeStartRiskLevels->map(fn ($level) => $level->label())->all();
+            }
+
+            return [
+                'course_id' => $course->getKey(),
+                'title' => $course->title,
+                'description' => $course->description,
+                'course_type' => $course->course_type,
+                'course_type_label' => match ($course->course_type) {
+                    'fad' => 'FAD',
+                    'res' => 'RES',
+                    'webinar' => 'Webinar',
+                    'blended' => 'Blended',
+                    default => $course->course_type,
+                },
+                'validity_type' => $courseValidityType?->value,
+                'validity_type_label' => match ($courseValidityType) {
+                    CourseRiskRequirementValidityType::FirstAchievement => __('Primo conseguimento'),
+                    CourseRiskRequirementValidityType::Refresh => __('Aggiornamento'),
+                    CourseRiskRequirementValidityType::Integrative => __('Integrativo'),
+                    default => '—',
+                },
+                'covered_requirements' => $coveredRequirements,
+                'prerequisites' => $prerequisites,
+                'prerequisites_label' => empty($prerequisites)
+                    ? '—'
+                    : __('Livelli iniziali ammessi: :levels', ['levels' => implode(', ', $prerequisites)]),
+                'eligible_to_enroll' => $eligibleToEnroll,
+                'ineligible_reason' => $eligibleToEnroll
+                    ? null
+                    : __('L\'utente non può essere iscritto perché manca un attestato valido di partenza richiesto dal corso integrativo.'),
+            ];
+        })
+            ->filter()
+            ->values();
+
+        // Ordinamento
+        $coursesData = match ($sort) {
+            'title' => $direction === 'asc'
+                ? $coursesData->sortBy('title')
+                : $coursesData->sortByDesc('title'),
+            'course_type' => $direction === 'asc'
+                ? $coursesData->sortBy('course_type_label')
+                : $coursesData->sortByDesc('course_type_label'),
+            'validity_type' => $direction === 'asc'
+                ? $coursesData->sortBy('validity_type_label')
+                : $coursesData->sortByDesc('validity_type_label'),
+            default => $coursesData,
+        };
+
+        // Paginazione manuale
+        $perPage = 10;
+        $currentPage = (int) ($validated['page'] ?? 1);
+        $total = $coursesData->count();
+        $items = $coursesData->slice(($currentPage - 1) * $perPage, $perPage)->values();
+
+        return response()->json([
+            'data' => $items->all(),
+            'meta' => [
+                'current_page' => $currentPage,
+                'last_page' => (int) ceil($total / $perPage),
+                'per_page' => $perPage,
+                'total' => $total,
+                'from' => $items->isEmpty() ? null : (($currentPage - 1) * $perPage) + 1,
+                'to' => $items->isEmpty() ? null : (($currentPage - 1) * $perPage) + $items->count(),
+            ],
+            'query' => [
+                'search' => $search,
+                'sort' => $sort,
+                'direction' => $direction,
+            ],
+        ]);
+    }
+
     public function destroy(User $user): RedirectResponse
     {
         $user->delete();
@@ -447,7 +619,17 @@ class UserController extends Controller
      *         effective_on_label: string,
      *         risk_level: string,
      *         risk_label: string,
-     *         risk_badge_class: string
+     *         risk_badge_class: string,
+     *         risk_based_requirements: array<int, array{
+     *             risk_based_requirement_id: int,
+     *             risk_based_requirement_name: string,
+     *             risk_based_requirement_description: ?string,
+     *             satisfied: bool,
+     *             status: string,
+     *             status_label: string,
+     *             certificate_expires_at: ?string,
+     *             required_course_validity_type_label: ?string
+     *         }>
      *     }>,
      *     risk_based_requirements: array<int, array{
      *         risk_based_requirement_id: int,
@@ -456,6 +638,7 @@ class UserController extends Controller
      *         satisfied: bool,
      *         status: string,
      *         status_label: string,
+     *         certificate_expires_at: ?string,
      *         expires_at: ?string,
      *         expires_at_label: ?string,
      *         certificate_ids: array<int, int>,
@@ -469,6 +652,65 @@ class UserController extends Controller
             $effectiveRisk = $user->getEffectiveWorkerRisk();
             $riskBasedRequirementsCompliance = $user->checkRiskBasedRequirementsCompliance();
 
+            // Aggiungi certificate_expires_at ai requisiti correnti
+            $enrichedCurrentRequirements = $riskBasedRequirementsCompliance->map(function ($requirement) {
+                $requirement['certificate_expires_at'] = $requirement['expires_at_label'];
+
+                return $requirement;
+            })->all();
+
+            // Ottieni le transizioni future con i requisiti
+            $futureTransitions = $user->futureRiskTransitions()->map(function ($transition) use ($user) {
+                // Per ogni transizione futura, calcola i requisiti a quella data
+                $futureDate = Carbon::parse($transition['effective_on']);
+                $futureRiskLevel = RiskLevel::from($transition['risk_level']);
+
+                // Ottieni i requisiti per quel livello di rischio
+                $riskCalculationService = app(RiskCalculationService::class);
+                $courseRiskRequirementService = app(CourseRiskRequirementService::class);
+                $futureRequirements = collect($riskCalculationService->getRiskBasedRequirementsForRiskLevel($futureRiskLevel))
+                    ->filter(fn ($req) => $req instanceof RiskBasedRequirement)
+                    ->map(function (RiskBasedRequirement $req) use ($user, $courseRiskRequirementService) {
+                        $coverage = $courseRiskRequirementService->bestValidCertificateCoverageForRequirement($user, $req);
+                        $bestValidCertificate = $coverage['certificate'] ?? null;
+                        $matchingExpiredCertificates = $courseRiskRequirementService->expiredCertificatesForRequirement($user, $req);
+                        $isSatisfied = $bestValidCertificate instanceof UserCertificate;
+                        $expiresAt = $bestValidCertificate?->expires_at;
+                        $status = $isSatisfied ? 'satisfied' : ($matchingExpiredCertificates->isNotEmpty() ? 'expired' : 'missing');
+                        $requiredCourseValidityType = in_array($status, ['missing', 'expired'], true)
+                            ? $courseRiskRequirementService->determineRequiredCourseValidityType($user, $req)
+                            : null;
+
+                        return [
+                            'risk_based_requirement_id' => (int) $req->getKey(),
+                            'risk_based_requirement_name' => $req->name,
+                            'risk_based_requirement_description' => $req->description,
+                            'satisfied' => $isSatisfied,
+                            'status' => $status,
+                            'status_label' => match ($status) {
+                                'satisfied' => $expiresAt === null
+                                    ? __('Soddisfatto')
+                                    : __('Soddisfatto fino al :date', ['date' => $expiresAt->format('d/m/Y')]),
+                                'expired' => __('Scaduto'),
+                                default => __('Mancante'),
+                            },
+                            'certificate_expires_at' => $expiresAt?->format('d/m/Y'),
+                            'required_course_validity_type_label' => match ($requiredCourseValidityType) {
+                                CourseRiskRequirementValidityType::FirstAchievement => __('Primo conseguimento'),
+                                CourseRiskRequirementValidityType::Refresh => __('Aggiornamento'),
+                                CourseRiskRequirementValidityType::Integrative => __('Integrativo'),
+                                default => null,
+                            },
+                        ];
+                    })
+                    ->values()
+                    ->all();
+
+                $transition['risk_based_requirements'] = $futureRequirements;
+
+                return $transition;
+            })->all();
+
             return [
                 'risk_label' => $effectiveRisk->label(),
                 'risk_badge_class' => $effectiveRisk->badgeColor(),
@@ -476,8 +718,8 @@ class UserController extends Controller
                 'message' => $riskBasedRequirementsCompliance->isEmpty()
                     ? __('Nessun requisito di rischio disponibile per il rischio corrente.')
                     : __('Requisiti di rischio in base al rischio effettivo dell\'utente.'),
-                'future_risk_transitions' => $user->futureRiskTransitions()->all(),
-                'risk_based_requirements' => $riskBasedRequirementsCompliance->values()->all(),
+                'future_risk_transitions' => $futureTransitions,
+                'risk_based_requirements' => $enrichedCurrentRequirements,
             ];
         } catch (\LogicException) {
             return [
