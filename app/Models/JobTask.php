@@ -2,16 +2,25 @@
 
 namespace App\Models;
 
+use App\Enums\RiskLevel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['name', 'code', 'description'])]
+#[Fillable(['name', 'code', 'description', 'global_risk_level', 'global_sector_risk_override'])]
 class JobTask extends Model
 {
     use HasFactory, SoftDeletes;
+
+    protected function casts(): array
+    {
+        return [
+            'global_risk_level' => RiskLevel::class,
+            'global_sector_risk_override' => 'boolean',
+        ];
+    }
 
     public function users(): BelongsToMany
     {

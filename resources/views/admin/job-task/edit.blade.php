@@ -86,6 +86,52 @@
                         @enderror
                     </div>
 
+                    <div class="divider"></div>
+
+                    <div>
+                        <h3 class="text-base font-medium">{{ __('Rischio globale (opzionale)') }}</h3>
+                        <p class="text-sm text-base-content/70">
+                            {{ __('Questi valori vengono applicati solo ai settori per i quali non esiste un\'associazione diretta mansione-settore. Senza nessun valore nè associazione si considera rischio basso.') }}
+                        </p>
+                    </div>
+
+                    <div class="grid gap-6 md:grid-cols-2 items-end">
+                        <div class="form-control flex flex-col gap-2">
+                            <label for="global_risk_level" class="label p-0">
+                                <span class="label-text font-medium">{{ __('Livello di rischio globale') }}</span>
+                            </label>
+                            <select
+                                id="global_risk_level"
+                                name="global_risk_level"
+                                class="select select-bordered w-full @error('global_risk_level') select-error @enderror"
+                            >
+                                <option value="">{{ __('Nessuno') }}</option>
+                                <option value="low" @selected(old('global_risk_level', $task->global_risk_level?->value) === 'low')>{{ __('Basso') }}</option>
+                                <option value="medium" @selected(old('global_risk_level', $task->global_risk_level?->value) === 'medium')>{{ __('Medio') }}</option>
+                                <option value="high" @selected(old('global_risk_level', $task->global_risk_level?->value) === 'high')>{{ __('Alto') }}</option>
+                            </select>
+                            @error('global_risk_level')
+                                <p class="text-sm text-error">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="form-control flex flex-col gap-2">
+                            <label class="label cursor-pointer justify-start gap-3">
+                                <input
+                                    type="checkbox"
+                                    name="global_sector_risk_override"
+                                    value="1"
+                                    class="checkbox checkbox-primary"
+                                    @checked(old('global_sector_risk_override', $task->global_sector_risk_override))
+                                >
+                                <span class="label-text">{{ __('Consenti override del rischio settore') }}</span>
+                            </label>
+                            <p class="text-xs text-base-content/60">
+                                {{ __('Se attivo, il rischio globale può sovrascrivere il rischio del settore (necessario DVR).') }}
+                            </p>
+                        </div>
+                    </div>
+
                     <div class="flex justify-end gap-3">
                         <a href="{{ route('admin.job-tasks.index') }}" class="btn btn-ghost">
                             {{ __('Annulla') }}

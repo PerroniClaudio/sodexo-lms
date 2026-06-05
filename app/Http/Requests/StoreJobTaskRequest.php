@@ -17,6 +17,8 @@ class StoreJobTaskRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'code' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
+            'global_risk_level' => ['nullable', 'in:low,medium,high'],
+            'global_sector_risk_override' => ['nullable', 'boolean'],
         ];
     }
 
@@ -26,6 +28,8 @@ class StoreJobTaskRequest extends FormRequest
             'name' => __('Nome'),
             'code' => __('Codice'),
             'description' => __('Descrizione'),
+            'global_risk_level' => __('Livello di rischio globale'),
+            'global_sector_risk_override' => __('Override rischio settore'),
         ];
     }
 }

@@ -215,23 +215,54 @@ class RiskCalculationService
             return collect();
         }
 
-        return DB::table('job_task_job_sector')
-            ->where('job_sector_id', $jobSectorId)
-            ->whereIn('job_task_id', $normalizedJobTaskIds)
-            ->whereNotNull('task_risk_level')
+        return DB::table('job_tasks')
+            ->leftJoin('job_task_job_sector', function ($join) use ($jobSectorId) {
+                $join->on('job_tasks.id', '=', 'job_task_job_sector.job_task_id')
+                    ->where('job_task_job_sector.job_sector_id', '=', $jobSectorId);
+            })
+            ->whereIn('job_tasks.id', $normalizedJobTaskIds)
+            ->whereNull('job_tasks.deleted_at')
+            ->select([
+                'job_tasks.id as job_task_id',
+                'job_task_job_sector.task_risk_level as sector_task_risk_level',
+                'job_task_job_sector.sector_risk_override as sector_risk_override',
+                'job_tasks.global_risk_level',
+                'job_tasks.global_sector_risk_override',
+            ])
             ->get()
-            ->map(function (object $pivot): ?array {
-                $riskLevel = RiskLevel::tryFrom($pivot->task_risk_level);
+            ->map(function (object $row): ?array {
+                // Priorità 1: se c'è l'associazione job_task_job_sector, usa quella
+                if ($row->sector_task_risk_level !== null) {
+                    $riskLevel = RiskLevel::tryFrom($row->sector_task_risk_level);
 
-                if ($riskLevel === null) {
-                    return null;
+                    if ($riskLevel === null) {
+                        return null;
+                    }
+
+                    return [
+                        'job_task_id' => (int) $row->job_task_id,
+                        'risk_level' => $riskLevel,
+                        'sector_risk_override' => (bool) $row->sector_risk_override,
+                    ];
                 }
 
-                return [
-                    'job_task_id' => (int) $pivot->job_task_id,
-                    'risk_level' => $riskLevel,
-                    'sector_risk_override' => (bool) $pivot->sector_risk_override,
-                ];
+                // Priorità 2: se sono impostati global_risk_level e global_sector_risk_override, usa quelli
+                if ($row->global_risk_level !== null) {
+                    $riskLevel = RiskLevel::tryFrom($row->global_risk_level);
+
+                    if ($riskLevel === null) {
+                        return null;
+                    }
+
+                    return [
+                        'job_task_id' => (int) $row->job_task_id,
+                        'risk_level' => $riskLevel,
+                        'sector_risk_override' => (bool) $row->global_sector_risk_override,
+                    ];
+                }
+
+                // Priorità 3: nessun rischio definito per questa mansione
+                return null;
             })
             ->filter()
             ->values();
