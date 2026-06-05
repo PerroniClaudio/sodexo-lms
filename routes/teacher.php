@@ -15,6 +15,10 @@ Route::middleware(['auth', 'role:teacher|docente|superadmin'])->group(function (
         Route::get('dashboard/next-events/test', [UserController::class, 'testTeacherNextEvents'])->name('dashboard.next-events.test');
         Route::get('dashboard/your-courses', [UserController::class, 'teacherCourses'])->name('dashboard.your-courses');
         Route::get('dashboard/your-courses/fake', [UserController::class, 'fakeTeacherCourses'])->name('dashboard.your-courses.fake');
+        Route::get('dashboard/user-engagement', [UserController::class, 'teacherUserEngagement'])->name('dashboard.user-engagement');
+        Route::get('dashboard/user-engagement/fake', [UserController::class, 'fakeTeacherUserEngagement'])->name('dashboard.user-engagement.fake');
+        Route::get('dashboard/user-activity', [UserController::class, 'teacherUserActivity'])->name('dashboard.user-activity');
+        Route::get('dashboard/user-activity/fake', [UserController::class, 'fakeTeacherUserActivity'])->name('dashboard.user-activity.fake');
 
         // Corsi teacher
         Route::get('courses', [CourseController::class, 'index'])->name('courses.index');

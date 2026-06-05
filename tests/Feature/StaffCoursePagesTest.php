@@ -5,10 +5,12 @@ use App\Models\CourseClass;
 use App\Models\CourseClassTeacher;
 use App\Models\CourseClassUser;
 use App\Models\CourseEnrollment;
+use App\Models\CourseTeacherEnrollment;
 use App\Models\Module;
 use App\Models\ModuleTeacherEnrollment;
 use App\Models\ModuleTutorEnrollment;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 
@@ -324,7 +326,8 @@ it('uses fake teacher courses endpoint in dashboard when test flag is enabled', 
 
     $this->get(route('teacher.dashboard', ['test' => 1]))
         ->assertSuccessful()
-        ->assertSee(route('teacher.dashboard.your-courses.fake'), escape: false);
+        ->assertSee(route('teacher.dashboard.your-courses.fake'), escape: false)
+        ->assertSee(route('teacher.dashboard.user-engagement.fake'), escape: false);
 });
 
 it('returns fake teacher dashboard courses payload', function () {
@@ -336,4 +339,130 @@ it('returns fake teacher dashboard courses payload', function () {
         ->assertJsonPath('courses.0.title', 'React Avanzato')
         ->assertJsonPath('courses.0.participants_count', 18)
         ->assertJsonPath('courses.0.completion_percentage', 72);
+});
+
+it('returns teacher user engagement for last 7 days on published assigned courses', function () {
+    $teacher = actingAsRole('teacher');
+
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-06-04 10:00:00'));
+
+    try {
+        $publishedCourse = Course::factory()->create([
+            'status' => 'published',
+        ]);
+        $draftCourse = Course::factory()->create([
+            'status' => 'draft',
+        ]);
+
+        CourseTeacherEnrollment::factory()->create([
+            'course_id' => $publishedCourse->getKey(),
+            'user_id' => $teacher->getKey(),
+        ]);
+        CourseTeacherEnrollment::factory()->create([
+            'course_id' => $draftCourse->getKey(),
+            'user_id' => $teacher->getKey(),
+        ]);
+
+        $activeMonday = User::query()->create([
+            'name' => 'Active',
+            'surname' => 'Monday',
+            'email' => 'active-monday@example.test',
+            'fiscal_code' => 'ACTVMN80A01H501Z',
+            'password' => Hash::make('password'),
+            'email_verified_at' => now(),
+            'account_state' => 'active',
+            'profile_completed_at' => now(),
+            'is_foreigner_or_immigrant' => false,
+        ]);
+        $activeThursday = User::query()->create([
+            'name' => 'Active',
+            'surname' => 'Thursday',
+            'email' => 'active-thursday@example.test',
+            'fiscal_code' => 'ACTVTH80A01H501Z',
+            'password' => Hash::make('password'),
+            'email_verified_at' => now(),
+            'account_state' => 'active',
+            'profile_completed_at' => now(),
+            'is_foreigner_or_immigrant' => false,
+        ]);
+        $completedWednesday = User::query()->create([
+            'name' => 'Completed',
+            'surname' => 'Wednesday',
+            'email' => 'completed-wednesday@example.test',
+            'fiscal_code' => 'CMPWDN80A01H501Z',
+            'password' => Hash::make('password'),
+            'email_verified_at' => now(),
+            'account_state' => 'active',
+            'profile_completed_at' => now(),
+            'is_foreigner_or_immigrant' => false,
+        ]);
+        $draftUser = User::query()->create([
+            'name' => 'Draft',
+            'surname' => 'User',
+            'email' => 'draft-user@example.test',
+            'fiscal_code' => 'DRFTSR80A01H501Z',
+            'password' => Hash::make('password'),
+            'email_verified_at' => now(),
+            'account_state' => 'active',
+            'profile_completed_at' => now(),
+            'is_foreigner_or_immigrant' => false,
+        ]);
+
+        CourseEnrollment::query()->create([
+            'user_id' => $activeMonday->getKey(),
+            'course_id' => $publishedCourse->getKey(),
+            'status' => CourseEnrollment::STATUS_IN_PROGRESS,
+            'assigned_at' => now()->subDays(7),
+            'last_accessed_at' => CarbonImmutable::now()->subDays(3)->setTime(9, 0),
+            'completion_percentage' => 45,
+        ]);
+        CourseEnrollment::query()->create([
+            'user_id' => $activeThursday->getKey(),
+            'course_id' => $publishedCourse->getKey(),
+            'status' => CourseEnrollment::STATUS_ASSIGNED,
+            'assigned_at' => now()->subDays(6),
+            'last_accessed_at' => CarbonImmutable::now()->setTime(8, 30),
+            'completion_percentage' => 0,
+        ]);
+        CourseEnrollment::query()->create([
+            'user_id' => $completedWednesday->getKey(),
+            'course_id' => $publishedCourse->getKey(),
+            'status' => CourseEnrollment::STATUS_COMPLETED,
+            'assigned_at' => now()->subDays(8),
+            'completed_at' => CarbonImmutable::now()->subDays(1)->setTime(17, 15),
+            'completion_percentage' => 100,
+        ]);
+        CourseEnrollment::query()->create([
+            'user_id' => $draftUser->getKey(),
+            'course_id' => $draftCourse->getKey(),
+            'status' => CourseEnrollment::STATUS_IN_PROGRESS,
+            'assigned_at' => now()->subDays(2),
+            'last_accessed_at' => CarbonImmutable::now()->subDays(2)->setTime(11, 0),
+            'completion_percentage' => 60,
+        ]);
+
+        $this->getJson(route('teacher.dashboard.user-engagement'))
+            ->assertSuccessful()
+            ->assertJsonPath('labels', ['Ven', 'Sab', 'Dom', 'Lun', 'Mar', 'Mer', 'Gio'])
+            ->assertJsonPath('active_users', [0, 0, 0, 1, 0, 0, 1])
+            ->assertJsonPath('completed_users', [0, 0, 0, 0, 0, 1, 0])
+            ->assertJsonPath('totals.active_week', 2)
+            ->assertJsonPath('totals.completed_week', 1)
+            ->assertJsonPath('totals.active_today', 1)
+            ->assertJsonPath('totals.completed_today', 0);
+    } finally {
+        CarbonImmutable::setTestNow();
+    }
+});
+
+it('returns fake teacher user engagement payload', function () {
+    actingAsRole('teacher');
+
+    $this->getJson(route('teacher.dashboard.user-engagement.fake'))
+        ->assertSuccessful()
+        ->assertJsonPath('labels.0', 'Lun')
+        ->assertJsonPath('active_users.2', 450)
+        ->assertJsonPath('completed_users.4', 78)
+        ->assertJsonPath('totals.active_today', 140)
+        ->assertJsonPath('totals.completed_today', 16);
 });

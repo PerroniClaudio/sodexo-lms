@@ -7,6 +7,7 @@ use App\Models\Course;
 use App\Models\CourseClass;
 use App\Models\CourseClassSchedule;
 use App\Models\CourseEnrollment;
+use App\Models\CourseTeacherEnrollment;
 use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\User;
@@ -16,6 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
@@ -403,6 +405,34 @@ class UserController extends Controller
         ]);
     }
 
+    public function teacherUserEngagement(): JsonResponse
+    {
+        return response()->json(
+            $this->teacherUserEngagementFor($this->authUser())
+        );
+    }
+
+    public function fakeTeacherUserEngagement(): JsonResponse
+    {
+        return response()->json(
+            $this->fakeTeacherUserEngagementData()
+        );
+    }
+
+    public function teacherUserActivity(): JsonResponse
+    {
+        return response()->json([
+            'activities' => $this->teacherUserActivityFor($this->authUser()),
+        ]);
+    }
+
+    public function fakeTeacherUserActivity(): JsonResponse
+    {
+        return response()->json([
+            'activities' => $this->fakeTeacherUserActivityData(),
+        ]);
+    }
+
     public function testTeacherNextEvents(): View
     {
         return view('teacher.test-next-events', [
@@ -446,6 +476,345 @@ class UserController extends Controller
                 })
                 ->all(),
         ];
+    }
+
+    /**
+     * @return array{
+     *     labels: array<int, string>,
+     *     active_users: array<int, int>,
+     *     completed_users: array<int, int>,
+     *     totals: array{
+     *         active_week: int,
+     *         completed_week: int,
+     *         active_today: int,
+     *         completed_today: int
+     *     }
+     * }
+     */
+    private function teacherUserEngagementFor(User $user): array
+    {
+        $today = CarbonImmutable::today();
+        $startDate = $today->subDays(6)->startOfDay();
+
+        $courseIds = CourseTeacherEnrollment::query()
+            ->join('courses', 'courses.id', '=', 'course_teacher_enrollments.course_id')
+            ->where('course_teacher_enrollments.user_id', $user->getKey())
+            ->whereNull('course_teacher_enrollments.deleted_at')
+            ->whereNull('courses.deleted_at')
+            ->where('courses.status', 'published')
+            ->distinct()
+            ->pluck('course_teacher_enrollments.course_id');
+
+        $days = collect(range(0, 6))
+            ->map(fn (int $offset): CarbonImmutable => $startDate->addDays($offset));
+
+        if ($courseIds->isEmpty()) {
+            $zeroSeries = $days->map(fn (): int => 0)->all();
+
+            return [
+                'labels' => $days
+                    ->map(fn (CarbonImmutable $day): string => ucfirst($day->locale(app()->getLocale())->translatedFormat('D')))
+                    ->all(),
+                'active_users' => $zeroSeries,
+                'completed_users' => $zeroSeries,
+                'totals' => [
+                    'active_week' => 0,
+                    'completed_week' => 0,
+                    'active_today' => 0,
+                    'completed_today' => 0,
+                ],
+            ];
+        }
+
+        $activeUsersByDate = CourseEnrollment::query()
+            ->whereIn('course_id', $courseIds)
+            ->whereNull('deleted_at')
+            ->whereIn('status', [
+                CourseEnrollment::STATUS_ASSIGNED,
+                CourseEnrollment::STATUS_IN_PROGRESS,
+            ])
+            ->whereNotNull('last_accessed_at')
+            ->where('last_accessed_at', '>=', $startDate)
+            ->selectRaw('DATE(last_accessed_at) as activity_date')
+            ->selectRaw('COUNT(DISTINCT user_id) as active_users')
+            ->groupBy('activity_date')
+            ->pluck('active_users', 'activity_date');
+
+        $completedUsersByDate = CourseEnrollment::query()
+            ->whereIn('course_id', $courseIds)
+            ->whereNull('deleted_at')
+            ->where('status', CourseEnrollment::STATUS_COMPLETED)
+            ->whereNotNull('completed_at')
+            ->where('completed_at', '>=', $startDate)
+            ->selectRaw('DATE(completed_at) as completion_date')
+            ->selectRaw('COUNT(DISTINCT user_id) as completed_users')
+            ->groupBy('completion_date')
+            ->pluck('completed_users', 'completion_date');
+
+        $activeUsers = $days
+            ->map(fn (CarbonImmutable $day): int => (int) ($activeUsersByDate[$day->toDateString()] ?? 0))
+            ->all();
+
+        $completedUsers = $days
+            ->map(fn (CarbonImmutable $day): int => (int) ($completedUsersByDate[$day->toDateString()] ?? 0))
+            ->all();
+
+        return [
+            'labels' => $days
+                ->map(fn (CarbonImmutable $day): string => ucfirst($day->locale(app()->getLocale())->translatedFormat('D')))
+                ->all(),
+            'active_users' => $activeUsers,
+            'completed_users' => $completedUsers,
+            'totals' => [
+                'active_week' => array_sum($activeUsers),
+                'completed_week' => array_sum($completedUsers),
+                'active_today' => $activeUsers[array_key_last($activeUsers)] ?? 0,
+                'completed_today' => $completedUsers[array_key_last($completedUsers)] ?? 0,
+            ],
+        ];
+    }
+
+    /**
+     * @return array{
+     *     labels: array<int, string>,
+     *     active_users: array<int, int>,
+     *     completed_users: array<int, int>,
+     *     totals: array{
+     *         active_week: int,
+     *         completed_week: int,
+     *         active_today: int,
+     *         completed_today: int
+     *     }
+     * }
+     */
+    private function fakeTeacherUserEngagementData(): array
+    {
+        $labels = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+        $activeUsers = [312, 278, 450, 392, 518, 182, 140];
+        $completedUsers = [46, 39, 62, 55, 78, 21, 16];
+
+        return [
+            'labels' => $labels,
+            'active_users' => $activeUsers,
+            'completed_users' => $completedUsers,
+            'totals' => [
+                'active_week' => array_sum($activeUsers),
+                'completed_week' => array_sum($completedUsers),
+                'active_today' => 140,
+                'completed_today' => 16,
+            ],
+        ];
+    }
+
+    /**
+     * @return Collection<int, array{
+     *     type: string,
+     *     label: string,
+     *     message: string,
+     *     context: string,
+     *     occurred_at: string,
+     *     occurred_at_label: string
+     * }>
+     */
+    private function teacherUserActivityFor(User $user): Collection
+    {
+        $teacherModules = Module::query()
+            ->select(['modules.id', 'modules.belongsTo', 'modules.title'])
+            ->with('course:id,title,status')
+            ->whereNull('modules.deleted_at')
+            ->where(function ($query) use ($user): void {
+                $query
+                    ->whereHas('teacherEnrollments', function ($teacherEnrollmentQuery) use ($user): void {
+                        $teacherEnrollmentQuery
+                            ->where('user_id', $user->getKey())
+                            ->whereNull('deleted_at');
+                    })
+                    ->orWhereHas('classes.teacherAssignments', function ($classTeacherQuery) use ($user): void {
+                        $classTeacherQuery
+                            ->where('user_id', $user->getKey())
+                            ->whereNull('deleted_at');
+                    });
+            })
+            ->get();
+
+        if ($teacherModules->isEmpty()) {
+            return collect();
+        }
+
+        $teacherModuleIds = $teacherModules
+            ->pluck('id')
+            ->map(fn (mixed $moduleId): int => (int) $moduleId)
+            ->values();
+
+        $teacherCourseIds = $teacherModules
+            ->pluck('belongsTo')
+            ->filter()
+            ->map(fn (mixed $courseId): int => (int) $courseId)
+            ->unique()
+            ->values();
+
+        $moduleActivities = ModuleProgress::query()
+            ->join('course_user', 'course_user.id', '=', 'module_user.course_user_id')
+            ->join('users', 'users.id', '=', 'course_user.user_id')
+            ->join('modules', 'modules.id', '=', 'module_user.module_id')
+            ->join('courses', 'courses.id', '=', 'course_user.course_id')
+            ->whereIn('module_user.module_id', $teacherModuleIds)
+            ->where('course_user.user_id', '!=', $user->getKey())
+            ->whereNotNull('module_user.completed_at')
+            ->whereNull('course_user.deleted_at')
+            ->whereNull('courses.deleted_at')
+            ->where('courses.status', 'published')
+            ->orderByDesc('module_user.completed_at')
+            ->limit(5)
+            ->get([
+                'users.name as user_name',
+                'users.surname as user_surname',
+                'modules.title as module_title',
+                'courses.title as course_title',
+                'module_user.completed_at as occurred_at',
+            ])
+            ->map(function (object $activity): array {
+                $occurredAt = Carbon::parse($activity->occurred_at);
+                $displayName = $this->pointedUserName(
+                    (string) $activity->user_name,
+                    (string) $activity->user_surname
+                );
+                $moduleTitle = (string) ($activity->module_title ?: __('Modulo senza titolo'));
+                $courseTitle = (string) ($activity->course_title ?: __('Corso senza titolo'));
+
+                return [
+                    'type' => 'module_completed',
+                    'label' => __('Modulo completato'),
+                    'message' => __(':user ha completato :module', [
+                        'user' => $displayName,
+                        'module' => $moduleTitle,
+                    ]),
+                    'context' => $courseTitle,
+                    'occurred_at' => $occurredAt->toIso8601String(),
+                    'occurred_at_label' => $this->humanizeActivityTimestamp($occurredAt),
+                ];
+            });
+
+        $courseActivities = CourseEnrollment::query()
+            ->join('users', 'users.id', '=', 'course_user.user_id')
+            ->join('courses', 'courses.id', '=', 'course_user.course_id')
+            ->whereIn('course_user.course_id', $teacherCourseIds)
+            ->where('course_user.user_id', '!=', $user->getKey())
+            ->where('course_user.status', CourseEnrollment::STATUS_COMPLETED)
+            ->whereNotNull('course_user.completed_at')
+            ->whereNull('course_user.deleted_at')
+            ->whereNull('courses.deleted_at')
+            ->where('courses.status', 'published')
+            ->orderByDesc('course_user.completed_at')
+            ->limit(5)
+            ->get([
+                'users.name as user_name',
+                'users.surname as user_surname',
+                'courses.title as course_title',
+                'course_user.completed_at as occurred_at',
+            ])
+            ->map(function (object $activity): array {
+                $occurredAt = Carbon::parse($activity->occurred_at);
+                $displayName = $this->pointedUserName(
+                    (string) $activity->user_name,
+                    (string) $activity->user_surname
+                );
+                $courseTitle = (string) ($activity->course_title ?: __('Corso senza titolo'));
+
+                return [
+                    'type' => 'course_completed',
+                    'label' => __('Corso completato'),
+                    'message' => __(':user ha completato il corso', [
+                        'user' => $displayName,
+                    ]),
+                    'context' => $courseTitle,
+                    'occurred_at' => $occurredAt->toIso8601String(),
+                    'occurred_at_label' => $this->humanizeActivityTimestamp($occurredAt),
+                ];
+            });
+
+        return $moduleActivities
+            ->concat($courseActivities)
+            ->sortByDesc('occurred_at')
+            ->take(5)
+            ->values();
+    }
+
+    /**
+     * @return Collection<int, array{
+     *     type: string,
+     *     label: string,
+     *     message: string,
+     *     context: string,
+     *     occurred_at: string,
+     *     occurred_at_label: string
+     * }>
+     */
+    private function fakeTeacherUserActivityData(): Collection
+    {
+        return collect([
+            [
+                'type' => 'module_completed',
+                'label' => 'Modulo completato',
+                'message' => 'Sofia R. ha completato Introduzione a React',
+                'context' => 'React Avanzato',
+                'occurred_at' => now()->subMinutes(4)->toIso8601String(),
+                'occurred_at_label' => '4 min fa',
+            ],
+            [
+                'type' => 'course_completed',
+                'label' => 'Corso completato',
+                'message' => 'Luca B. ha completato il corso',
+                'context' => 'Node.js per Team Leader',
+                'occurred_at' => now()->subMinutes(18)->toIso8601String(),
+                'occurred_at_label' => '18 min fa',
+            ],
+            [
+                'type' => 'module_completed',
+                'label' => 'Modulo completato',
+                'message' => 'Giulia P. ha completato Quiz Finale HACCP',
+                'context' => 'Aggiornamento HACCP 2026',
+                'occurred_at' => now()->subHour()->toIso8601String(),
+                'occurred_at_label' => '1 h fa',
+            ],
+            [
+                'type' => 'module_completed',
+                'label' => 'Modulo completato',
+                'message' => 'Marco T. ha completato Simulazione antincendio',
+                'context' => 'Sicurezza in Negozio',
+                'occurred_at' => now()->subHours(2)->toIso8601String(),
+                'occurred_at_label' => '2 h fa',
+            ],
+            [
+                'type' => 'course_completed',
+                'label' => 'Corso completato',
+                'message' => 'Anna C. ha completato il corso',
+                'context' => 'Onboarding Store Manager',
+                'occurred_at' => now()->subHours(5)->toIso8601String(),
+                'occurred_at_label' => '5 h fa',
+            ],
+        ]);
+    }
+
+    private function pointedUserName(string $name, string $surname): string
+    {
+        $trimmedName = trim($name);
+        $trimmedSurname = trim($surname);
+
+        if ($trimmedSurname === '') {
+            return $trimmedName;
+        }
+
+        $surnameInitial = mb_strtoupper(mb_substr($trimmedSurname, 0, 1));
+
+        return sprintf('%s %s.', $trimmedName, $surnameInitial);
+    }
+
+    private function humanizeActivityTimestamp(Carbon $timestamp): string
+    {
+        return $timestamp
+            ->locale(app()->getLocale())
+            ->diffForHumans(now(), short: true, parts: 1);
     }
 
     /**

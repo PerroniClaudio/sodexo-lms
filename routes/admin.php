@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\CourseEnrollmentController;
 use App\Http\Controllers\Admin\CourseModuleController;
 use App\Http\Controllers\Admin\CourseTeacherEnrollmentController;
 use App\Http\Controllers\Admin\CustomCertificateController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DocumentConversionJobDebugController;
 use App\Http\Controllers\Admin\DocumentTypeController;
 use App\Http\Controllers\Admin\HomepageCustomizationController;
@@ -35,6 +36,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
     Route::group(['prefix' => 'admin', 'as' => 'admin.'], function () {
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard/calendar-events', [DashboardController::class, 'calendarEvents'])->name('dashboard.calendar-events');
+        Route::get('/dashboard/follow-up-users/export', [DashboardController::class, 'exportFollowUpUsers'])->name('dashboard.follow-up-users.export');
+
         // Libreria video Mux
         Route::post('videos', [VideoController::class, 'store'])
             ->middleware('uploadlimit')

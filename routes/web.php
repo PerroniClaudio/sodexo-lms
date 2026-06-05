@@ -13,7 +13,7 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth', 'role:admin|superadmin'])->get('/dashboard', function () {
-    return view('dashboard');
+    return redirect()->route('admin.dashboard');
 })->name('dashboard');
 
 Route::middleware('auth')->get('/area-riservata', function (CourseClassScheduleResolver $scheduleResolver) {
