@@ -150,7 +150,7 @@ class UserJobAssignmentService
 
         while ($coverageEnd !== null && ($employmentEndDate === null || $coverageEnd->lt($employmentEndDate))) {
             $overlappingAssignments = $assignments
-                ->filter(fn (array $assignment): bool => $assignment['starts_at_carbon']->lte($coverageEnd)
+                ->filter(fn (array $assignment): bool => $assignment['starts_at_carbon']->lte($coverageEnd->addDay())
                     && ($assignment['ends_at_carbon'] === null || $assignment['ends_at_carbon']->gte($coverageEnd)))
                 ->values();
 
@@ -190,7 +190,7 @@ class UserJobAssignmentService
                     return false;
                 }
 
-                if ($candidate['starts_at_carbon']->gt($assignment['ends_at_carbon'])) {
+                if ($candidate['starts_at_carbon']->gt($assignment['ends_at_carbon']->addDay())) {
                     return false;
                 }
 
