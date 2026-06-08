@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Module;
+use App\Models\ModuleProgress;
 use App\Models\ModuleQuizSubmission;
 use App\Models\User;
 use App\Services\Certificates\UserCourseCertificateLocator;
@@ -140,12 +141,14 @@ class CourseController extends Controller
             }
         }
 
+        $modules = $this->loadCourseModulesForEnrollment($course, $enrollment, $user);
+
         $nextModule = $course->modules()
             ->where('order', '>', $module->order)
             ->orderBy('order')
             ->first();
 
-        return view('user.courses.module', compact('course', 'module', 'enrollment', 'progress', 'nextModule'));
+        return view('user.courses.module', compact('course', 'module', 'enrollment', 'progress', 'nextModule', 'modules'));
     }
 
     private function userIndex(User $user): View
@@ -174,23 +177,42 @@ class CourseController extends Controller
         $enrollment = $user->courseEnrollments()->where('course_id', $course->id)->first();
         abort_unless($enrollment !== null, 403);
 
-        $modules = $course->modules()->with(['progressRecords' => function ($query) use ($enrollment) {
-            $query->where('course_user_id', $enrollment->id);
-        }])->get();
+        $modules = $this->loadCourseModulesForEnrollment($course, $enrollment, $user);
 
-        foreach ($modules as $module) {
-            $progress = $module->progressRecords->first();
-            $scheduleResolver = app(CourseClassScheduleResolver::class);
+        return view('user.courses.show', compact('course', 'enrollment', 'modules'));
+    }
+
+    /**
+     * @return EloquentCollection<int, Module>
+     */
+    private function loadCourseModulesForEnrollment(Course $course, CourseEnrollment $enrollment, User $user): EloquentCollection
+    {
+        $modules = $course->modules()
+            ->with([
+                'progressRecords' => function ($query) use ($enrollment) {
+                    $query->where('course_user_id', $enrollment->id);
+                },
+                'video:id,duration_seconds',
+            ])
+            ->withCount('quizQuestions')
+            ->orderBy('order')
+            ->get();
+
+        $scheduleResolver = app(CourseClassScheduleResolver::class);
+
+        $modules->each(function (Module $module) use ($scheduleResolver, $user): void {
+            /** @var ModuleProgress|null $moduleProgress */
+            $moduleProgress = $module->progressRecords->first();
 
             $module->pivot = (object) [
-                'status' => $progress?->status ?? 'locked',
-                'quiz_attempts' => $progress?->quiz_attempts ?? 0,
+                'status' => $moduleProgress?->status ?? ModuleProgress::STATUS_LOCKED,
+                'quiz_attempts' => $moduleProgress?->quiz_attempts ?? 0,
             ];
             $module->effective_starts_at = $scheduleResolver->effectiveStartsAt($module, $user);
             $module->effective_ends_at = $scheduleResolver->effectiveEndsAt($module, $user);
-        }
+        });
 
-        return view('user.courses.show', compact('course', 'enrollment', 'modules'));
+        return $modules;
     }
 
     private function teacherShow(User $user, Course $course): View

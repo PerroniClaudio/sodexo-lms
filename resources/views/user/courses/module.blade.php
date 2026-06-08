@@ -1,5 +1,60 @@
-<x-layouts.app>
-    <div class="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6 lg:p-8"
+@php
+    $moduleTypeMeta = [
+        'video' => [
+            'label' => __('Video'),
+            'icon' => 'lucide-clapperboard',
+            'badge' => 'badge-primary',
+        ],
+        'res' => [
+            'label' => __('Sessione in aula'),
+            'icon' => 'lucide-users',
+            'badge' => 'badge-accent',
+        ],
+        'live' => [
+            'label' => __('Live'),
+            'icon' => 'lucide-monitor-play',
+            'badge' => 'badge-secondary',
+        ],
+        'scorm' => [
+            'label' => __('SCORM'),
+            'icon' => 'lucide-package',
+            'badge' => 'badge-info',
+        ],
+        'learning_quiz' => [
+            'label' => __('Quiz'),
+            'icon' => 'lucide-badge-help',
+            'badge' => 'badge-error',
+        ],
+        'satisfaction_quiz' => [
+            'label' => __('Gradimento'),
+            'icon' => 'lucide-message-square-heart',
+            'badge' => 'badge-success',
+        ],
+    ];
+
+    $currentModuleMeta = $moduleTypeMeta[$module->type] ?? [
+        'label' => strtoupper((string) $module->type),
+        'icon' => 'lucide-shapes',
+        'badge' => 'badge-ghost',
+    ];
+@endphp
+
+<x-layouts.course-player
+    :course="$course"
+    :modules="$modules"
+    :current-module="$module"
+    :enrollment="$enrollment"
+    :module-type-meta="$moduleTypeMeta"
+>
+    <x-slot:headerActions>
+        <a href="{{ route('user.courses.show', $course) }}" class="btn btn-outline">
+            <x-lucide-arrow-left class="h-4 w-4" />
+            {{ __('Torna al corso') }}
+        </a>
+    </x-slot:headerActions>
+
+    <div
+        class="space-y-6"
         data-course-id="{{ $course->id }}"
         data-module-id="{{ $module->id }}"
         data-module-type="{{ $module->type }}"
@@ -17,53 +72,56 @@
         data-next-module-title="{{ $nextModule->title ?? '' }}"
         data-csrf="{{ csrf_token() }}"
     >
-        <x-page-header :title="$module->title">
-            <x-slot:actions>
-                <a href="{{ route('user.courses.show', $course) }}" class="btn btn-ghost">
-                    <x-lucide-arrow-left class="h-4 w-4" />
-                    <span>{{ __('Torna al corso') }}</span>
-                </a>
-            </x-slot:actions>
-            <span class="badge badge-ghost">{{ $course->title }}</span>
-        </x-page-header>
+        <div class="card border border-base-300 bg-base-200/40 shadow-sm">
+            <div class="card-body p-4 sm:p-5 lg:p-6">
+                <p class="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-base-content/45">{{ __('Contenuto modulo') }}</p>
 
-        <div id="module-player">
-            {{-- Carica il componente corretto in base al tipo di modulo --}}
-            @switch($module->type)
-                @case('video')
-                    @include('user.courses.modules.video')
-                    @break
+                <div id="module-player">
+                    @switch($module->type)
+                        @case('video')
+                            @include('user.courses.modules.video')
+                            @break
 
-                @case('learning_quiz')
-                    @include('user.courses.modules.learning-quiz')
-                    @break
+                        @case('learning_quiz')
+                            @include('user.courses.modules.learning-quiz')
+                            @break
 
-                @case('satisfaction_quiz')
-                    @include('user.courses.modules.satisfaction-quiz')
-                    @break
+                        @case('satisfaction_quiz')
+                            @include('user.courses.modules.satisfaction-quiz')
+                            @break
 
-                @case('live')
-                    @include('user.courses.modules.live')
-                    @break
+                        @case('live')
+                            @include('user.courses.modules.live')
+                            @break
 
-                @case('scorm')
-                    @include('user.courses.modules.scorm')
-                    @break
+                        @case('scorm')
+                            @include('user.courses.modules.scorm')
+                            @break
 
-                @case('res')
-                    @include('user.courses.modules.res')
-                    @break
+                        @case('res')
+                            @include('user.courses.modules.res')
+                            @break
 
-                @default
-                    <div class="card border border-base-300 bg-base-100 shadow-sm">
-                        <div class="card-body">
-                            <p class="text-base-content/70">{{ __('Gestione :type da implementare', ['type' => $module->type]) }}</p>
-                        </div>
-                    </div>
-            @endswitch
+                        @default
+                            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                                <div class="card-body">
+                                    <p class="text-base-content/70">{{ __('Gestione :type da implementare', ['type' => $module->type]) }}</p>
+                                </div>
+                            </div>
+                    @endswitch
+                </div>
+            </div>
+        </div>
+
+        <div class="card border border-base-300 bg-base-200/40 shadow-sm">
+            <div class="card-body">
+                <p class="text-sm font-semibold uppercase tracking-[0.2em] text-base-content/45">{{ __('Descrizione modulo') }}</p>
+                <p class="mt-1 text-sm leading-7 text-base-content/75 sm:text-base">
+                    {{ $module->description ?: __('Nessuna descrizione disponibile per questo modulo.') }}
+                </p>
+            </div>
         </div>
     </div>
 
-    {{-- Script di inizializzazione del modulo --}}
     @vite('resources/js/modules/module-loader.js')
-</x-layouts.app>
+</x-layouts.course-player>

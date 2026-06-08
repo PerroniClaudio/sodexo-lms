@@ -65,7 +65,7 @@
     ];
 @endphp
 
-<section class="card bg-base-100 shadow-sm" data-courses-list-root>
+<section class="card bg-base-100 border border-base-300 shadow-sm" data-courses-list-root>
     <div class="card-body gap-4 p-4 sm:p-5">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div class="min-w-0">
@@ -88,7 +88,7 @@
                     {{ __('Nessun corso aperto di recente.') }}
                 </div>
             @else
-                <div class="grid max-h-[18rem] gap-3 overflow-y-auto pr-1" data-courses-items>
+                <div class="grid  gap-3 overflow-y-auto pr-1" data-courses-items>
                     @foreach($courses as $course)
                         @php($theme = $themeByType[$course['type']] ?? $themeByType['unknown'])
                         @php($statusGroup = $statusGroups[$course['status']] ?? 'other')
