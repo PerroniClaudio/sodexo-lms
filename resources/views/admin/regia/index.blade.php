@@ -1,12 +1,10 @@
 <x-layouts.admin>
-    <section class="mx-auto max-w-6xl px-6 py-10">
-        <div class="mb-8">
-            <span class="badge badge-neutral badge-outline">{{ __('Admin') }}</span>
-            <h1 class="mt-4 text-3xl font-semibold">{{ __('Regia') }}</h1>
-            <p class="mt-2 text-sm text-base-content/70">
-                {{ __('Live programmate per oggi gestite tramite player MUX.') }}
-            </p>
-        </div>
+    <section class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+
+        <x-page-header
+            :title="__('Regia')"
+        />
+
 
         @if ($modules->isEmpty())
             <div class="rounded-3xl border border-base-300 bg-base-100 p-8 shadow-sm">
