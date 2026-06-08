@@ -2,24 +2,32 @@
     <section class="flex min-h-full w-full flex-col gap-6 p-4 sm:p-6 lg:p-8">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div class="stat rounded-box border border-base-300 bg-base-100 shadow-sm">
-                <div class="stat-title">{{ __('Utenti attivi') }}</div>
+                <div class="stat-title flex items-center gap-2">
+                    <x-lucide-users class="h-4 w-4" />
+                    <span>{{ __('Utenti attivi') }}</span>
+                </div>
                 <div class="stat-value text-primary">{{ $overview['active_learners_count'] }}</div>
-                <div class="stat-desc">{{ __('su :total utenti finali', ['total' => $overview['learners_count']]) }}</div>
             </div>
             <div class="stat rounded-box border border-base-300 bg-base-100 shadow-sm">
-                <div class="stat-title">{{ __('Corsi pubblicati') }}</div>
+                <div class="stat-title flex items-center gap-2">
+                    <x-lucide-book-open class="h-4 w-4" />
+                    <span>{{ __('Corsi pubblicati') }}</span>
+                </div>
                 <div class="stat-value text-secondary">{{ $overview['published_courses_count'] }}</div>
-                <div class="stat-desc">{{ __('catalogo attivo') }}</div>
             </div>
             <div class="stat rounded-box border border-base-300 bg-base-100 shadow-sm">
-                <div class="stat-title">{{ __('Completamenti 30 giorni') }}</div>
+                <div class="stat-title flex items-center gap-2">
+                    <x-lucide-badge-check class="h-4 w-4" />
+                    <span>{{ __('Completamenti 30 giorni') }}</span>
+                </div>
                 <div class="stat-value text-success">{{ $overview['completions_last_30_days'] }}</div>
-                <div class="stat-desc">{{ __('enrollment completati') }}</div>
             </div>
             <div class="stat rounded-box border border-base-300 bg-base-100 shadow-sm">
-                <div class="stat-title">{{ __('Avanzamento medio') }}</div>
+                <div class="stat-title flex items-center gap-2">
+                    <x-lucide-gauge class="h-4 w-4" />
+                    <span>{{ __('Avanzamento medio') }}</span>
+                </div>
                 <div class="stat-value">{{ $overview['course_completion_average'] }}%</div>
-                <div class="stat-desc">{{ __('su tutte le iscrizioni') }}</div>
             </div>
         </div>
 
@@ -27,7 +35,10 @@
             <div class="card border border-base-300 bg-base-100 shadow-sm xl:col-span-2">
                 <div class="card-body gap-6">
                     <div class="flex items-center justify-between gap-4">
-                        <h2 class="card-title">{{ __('Andamento formazione') }}</h2>
+                        <h2 class="card-title">
+                            <x-lucide-chart-column class="h-5 w-5" />
+                            {{ __('Andamento formazione') }}
+                        </h2>
                     </div>
 
                     <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -80,7 +91,10 @@
             <div class="card border border-base-300 bg-base-100 shadow-sm">
                 <div class="card-body gap-5">
                     <div class="flex items-center justify-between gap-4">
-                        <h2 class="card-title">{{ __('Attestati') }}</h2>
+                        <h2 class="card-title">
+                            <x-lucide-award class="h-5 w-5" />
+                            {{ __('Attestati') }}
+                        </h2>
                     </div>
 
                     <div class="space-y-3">
@@ -106,7 +120,10 @@
                 <div class="card-body gap-5">
                     <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div>
-                            <h2 class="card-title">{{ __('Utenti da sollecitare') }}</h2>
+                            <h2 class="card-title">
+                                <x-lucide-bell-ring class="h-5 w-5" />
+                                {{ __('Utenti da sollecitare') }}
+                            </h2>
                             <p class="text-sm text-base-content/70">{{ __('Utenti con corsi iniziati ma non conclusi.') }}</p>
                         </div>
 
@@ -170,7 +187,10 @@
 
             <div class="card border border-base-300 bg-base-100 shadow-sm">
                 <div class="card-body gap-5">
-                    <h2 class="card-title">{{ __('Compliance / rischio') }}</h2>
+                    <h2 class="card-title">
+                        <x-lucide-shield-alert class="h-5 w-5" />
+                        {{ __('Compliance / rischio') }}
+                    </h2>
 
                     <div class="stats stats-vertical border border-base-300 bg-base-100">
                         <div class="stat">
@@ -220,7 +240,10 @@
 
             <div class="card border border-base-300 bg-base-100 shadow-sm">
                 <div class="card-body gap-5">
-                    <h2 class="card-title">{{ __('Da attenzionare oggi') }}</h2>
+                    <h2 class="card-title">
+                        <x-lucide-triangle-alert class="h-5 w-5" />
+                        {{ __('Attività da completare') }}
+                    </h2>
 
                     <div class="space-y-3">
                         <div class="rounded-box bg-base-200 px-4 py-3">
@@ -243,34 +266,48 @@
         <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <div class="card border border-base-300 bg-base-100 shadow-sm">
                 <div class="card-body gap-5">
-                    <h2 class="card-title">{{ __('Valutazione') }}</h2>
+                    <h2 class="card-title">
+                        <x-lucide-clipboard-check class="h-5 w-5" />
+                        {{ __('Valutazione') }}
+                    </h2>
 
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                         <div class="rounded-box bg-base-200 px-4 py-3">
-                            <p class="text-sm text-base-content/70">{{ __('Da revisionare') }}</p>
-                            <p class="mt-1 text-3xl font-semibold">{{ $evaluation['submissions_to_review_count'] }}</p>
+                            <p class="text-sm text-base-content/70">{{ __('Superano il quiz finale senza esaurire i tentativi') }}</p>
+                            <p class="mt-1 text-3xl font-semibold">{{ $evaluation['passed_without_exhausting_attempts_percentage'] }}%</p>
                         </div>
                         <div class="rounded-box bg-base-200 px-4 py-3">
-                            <p class="text-sm text-base-content/70">{{ __('Finalizzati') }}</p>
-                            <p class="mt-1 text-3xl font-semibold">{{ $evaluation['finalized_submissions_count'] }}</p>
+                            <p class="text-sm text-base-content/70">{{ __('Utenti che riescono senza consumare tutti i tentativi') }}</p>
+                            <p class="mt-1 text-3xl font-semibold">{{ $evaluation['passed_without_exhausting_attempts_count'] }}</p>
                         </div>
                         <div class="rounded-box bg-base-200 px-4 py-3">
-                            <p class="text-sm text-base-content/70">{{ __('Tasso superamento') }}</p>
-                            <p class="mt-1 text-3xl font-semibold">{{ $evaluation['pass_rate'] }}%</p>
+                            <p class="text-sm text-base-content/70">{{ __('Totale iscritti con quiz finale') }}</p>
+                            <p class="mt-1 text-3xl font-semibold">{{ $evaluation['final_quiz_enrollments_count'] }}</p>
                         </div>
                     </div>
 
+                    <progress
+                        class="progress progress-primary w-full"
+                        value="{{ $evaluation['passed_without_exhausting_attempts_percentage'] }}"
+                        max="100"
+                    ></progress>
+
                     <div class="space-y-3">
-                        @forelse ($evaluation['recent_modules'] as $module)
+                        @forelse ($evaluation['course_breakdown'] as $course)
                             <div class="flex items-center justify-between gap-4 rounded-box bg-base-200 px-4 py-3">
                                 <div>
-                                    <p class="font-medium">{{ $module['module_title'] }}</p>
-                                    <p class="text-xs text-base-content/60">{{ $module['course_title'] }}</p>
+                                    <p class="font-medium">{{ $course['course_title'] }}</p>
+                                    <p class="text-xs text-base-content/60">
+                                        {{ __(':passed su :total iscritti passano senza esaurire i tentativi', [
+                                            'passed' => $course['passed_without_exhausting_attempts_count'],
+                                            'total' => $course['enrolled_users_count'],
+                                        ]) }}
+                                    </p>
                                 </div>
-                                <span class="badge badge-primary">{{ $module['pending_reviews'] }}</span>
+                                <span class="badge badge-primary">{{ $course['percentage'] }}%</span>
                             </div>
                         @empty
-                            <p class="text-sm text-base-content/60">{{ __('Nessuna submission da revisionare.') }}</p>
+                            <p class="text-sm text-base-content/60">{{ __('Nessun corso con quiz finale disponibile.') }}</p>
                         @endforelse
                     </div>
                 </div>
@@ -278,7 +315,10 @@
 
             <div class="card border border-base-300 bg-base-100 shadow-sm">
                 <div class="card-body gap-5">
-                    <h2 class="card-title">{{ __('RES senza documenti') }}</h2>
+                    <h2 class="card-title">
+                        <x-lucide-file-warning class="h-5 w-5" />
+                        {{ __('RES senza documenti') }}
+                    </h2>
 
                     <div class="space-y-3">
                         @forelse ($recentResidentialWithoutDocuments as $resModule)
@@ -305,7 +345,10 @@
                 <div class="card-body gap-6">
                     <div class="flex items-center justify-between gap-4">
                         <div>
-                            <h2 class="card-title">{{ __('Gradimento') }}</h2>
+                            <h2 class="card-title">
+                                <x-lucide-clipboard-check class="h-5 w-5" />
+                                {{ __('Gradimento') }}
+                            </h2>
                             <p class="text-sm text-base-content/70">{{ __('Distribuzione delle risposte per ogni domanda della survey obbligatoria.') }}</p>
                         </div>
                         <span class="badge badge-outline">{{ __(':count compilazioni', ['count' => $surveySummary['submissions_count']]) }}</span>
@@ -324,11 +367,11 @@
                                                 <span class="text-base-content/70">{{ $answer['count'] }} · {{ $answer['percentage'] }}%</span>
                                             </div>
                                             <progress
-                                                class="@class([
+                                                @class([
                                                     'progress w-full',
                                                     'progress-primary' => $answer['is_top_answer'],
                                                     'progress-neutral' => ! $answer['is_top_answer'],
-                                                ])"
+                                                ])
                                                 value="{{ $answer['percentage'] }}"
                                                 max="100"
                                             ></progress>

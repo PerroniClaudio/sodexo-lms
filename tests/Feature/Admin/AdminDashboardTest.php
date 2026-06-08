@@ -184,7 +184,6 @@ it('renders the admin dashboard with core cards and data', function () {
     $response = $this->get(route('admin.dashboard'));
 
     $response->assertOk();
-    $response->assertSeeText('Dashboard amministrazione');
     $response->assertSeeText('Andamento formazione');
     $response->assertSeeText('Utenti da sollecitare');
     $response->assertSeeText('Compliance / rischio');

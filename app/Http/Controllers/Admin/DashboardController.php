@@ -7,7 +7,7 @@ use App\Models\Course;
 use App\Models\CourseClass;
 use App\Models\CourseEnrollment;
 use App\Models\Module;
-use App\Models\ModuleQuizSubmission;
+use App\Models\ModuleProgress;
 use App\Models\SatisfactionSurveySubmissionAnswer;
 use App\Models\SatisfactionSurveyTemplate;
 use App\Models\User;
@@ -390,53 +390,136 @@ class DashboardController extends Controller
 
     /**
      * @return array{
-     *     submissions_to_review_count: int,
-     *     finalized_submissions_count: int,
-     *     pass_rate: int,
-     *     recent_modules: array<int, array{module_title: string, course_title: string, pending_reviews: int}>
+     *     final_quiz_enrollments_count: int,
+     *     passed_without_exhausting_attempts_count: int,
+     *     passed_without_exhausting_attempts_percentage: int,
+     *     exhausted_attempts_count: int,
+     *     course_breakdown: array<int, array{
+     *         course_title: string,
+     *         enrolled_users_count: int,
+     *         passed_without_exhausting_attempts_count: int,
+     *         percentage: int
+     *     }>
      * }
      */
     private function buildEvaluationSummary(): array
     {
-        $submissionsToReviewCount = ModuleQuizSubmission::query()
-            ->where('status', ModuleQuizSubmission::STATUS_NEEDS_REVIEW)
-            ->count();
-
-        $finalizedSubmissionsCount = ModuleQuizSubmission::query()
-            ->where('status', ModuleQuizSubmission::STATUS_FINALIZED)
-            ->count();
-
-        $passedFinalizedSubmissionsCount = ModuleQuizSubmission::query()
-            ->where('status', ModuleQuizSubmission::STATUS_FINALIZED)
-            ->whereColumn('score', '>=', 'module_quiz_submissions.total_score')
-            ->whereNotNull('total_score')
-            ->count();
-
-        $recentModules = Module::query()
-            ->select(['modules.id', 'modules.title', 'modules.belongsTo'])
+        $finalQuizModulesByCourse = Course::query()
+            ->select(['id', 'title'])
             ->with([
-                'course:id,title',
-                'quizSubmissions' => fn ($query) => $query
-                    ->select(['id', 'module_id', 'status'])
-                    ->where('status', ModuleQuizSubmission::STATUS_NEEDS_REVIEW),
+                'modules' => fn ($query) => $query
+                    ->select(['id', 'belongsTo', 'title', 'order', 'max_attempts'])
+                    ->where('type', Module::TYPE_LEARNING_QUIZ)
+                    ->orderByDesc('order'),
             ])
-            ->whereHas('quizSubmissions', fn ($query) => $query->where('status', ModuleQuizSubmission::STATUS_NEEDS_REVIEW))
-            ->limit(5)
             ->get()
-            ->map(fn (Module $module): array => [
-                'module_title' => $module->title,
-                'course_title' => $module->course?->title ?? __('Corso senza titolo'),
-                'pending_reviews' => $module->quizSubmissions->count(),
-            ])
+            ->mapWithKeys(function (Course $course): array {
+                $finalQuizModule = $course->modules
+                    ->sortByDesc('order')
+                    ->first();
+
+                return $finalQuizModule instanceof Module
+                    ? [(int) $course->getKey() => [
+                        'module' => $finalQuizModule,
+                        'course_title' => $course->title,
+                    ]]
+                    : [];
+            });
+
+        if ($finalQuizModulesByCourse->isEmpty()) {
+            return [
+                'final_quiz_enrollments_count' => 0,
+                'passed_without_exhausting_attempts_count' => 0,
+                'passed_without_exhausting_attempts_percentage' => 0,
+                'exhausted_attempts_count' => 0,
+                'course_breakdown' => [],
+            ];
+        }
+
+        $enrollments = CourseEnrollment::query()
+            ->select(['id', 'course_id'])
+            ->whereIn('course_id', $finalQuizModulesByCourse->keys())
+            ->where('status', '!=', CourseEnrollment::STATUS_CANCELLED)
+            ->get();
+
+        $progresses = ModuleProgress::query()
+            ->select(['course_user_id', 'module_id', 'status', 'quiz_attempts'])
+            ->whereIn('course_user_id', $enrollments->pluck('id'))
+            ->whereIn('module_id', $finalQuizModulesByCourse->pluck('module.id'))
+            ->get()
+            ->keyBy(fn (ModuleProgress $progress): string => $progress->course_user_id.':'.$progress->module_id);
+
+        $passedWithoutExhaustingAttemptsCount = 0;
+        $exhaustedAttemptsCount = 0;
+        $courseBreakdown = $enrollments
+            ->groupBy('course_id')
+            ->map(function (Collection $courseEnrollments, int|string $courseId) use (
+                $finalQuizModulesByCourse,
+                $progresses,
+                &$passedWithoutExhaustingAttemptsCount,
+                &$exhaustedAttemptsCount
+            ): array {
+                /** @var array{module: Module, course_title: string}|null $finalQuizEntry */
+                $finalQuizEntry = $finalQuizModulesByCourse->get((int) $courseId);
+                $finalQuizModule = $finalQuizEntry['module'] ?? null;
+                $coursePassedWithoutExhaustingAttemptsCount = 0;
+
+                foreach ($courseEnrollments as $enrollment) {
+                    $progress = $finalQuizModule instanceof Module
+                        ? $progresses->get($enrollment->getKey().':'.$finalQuizModule->getKey())
+                        : null;
+
+                    if (! $progress instanceof ModuleProgress || ! $finalQuizModule instanceof Module) {
+                        continue;
+                    }
+
+                    $attemptsUsed = $progress->quiz_attempts ?? 0;
+                    $maxAttempts = $finalQuizModule->max_attempts ?? 0;
+
+                    if (
+                        $progress->status === ModuleProgress::STATUS_COMPLETED
+                        && $maxAttempts > 0
+                        && $attemptsUsed < $maxAttempts
+                    ) {
+                        $passedWithoutExhaustingAttemptsCount++;
+                        $coursePassedWithoutExhaustingAttemptsCount++;
+                    }
+
+                    if (
+                        $maxAttempts > 0
+                        && $attemptsUsed >= $maxAttempts
+                        && $progress->status !== ModuleProgress::STATUS_COMPLETED
+                    ) {
+                        $exhaustedAttemptsCount++;
+                    }
+                }
+
+                $enrolledUsersCount = $courseEnrollments->count();
+
+                return [
+                    'course_title' => $finalQuizEntry['course_title'] ?? __('Corso senza titolo'),
+                    'enrolled_users_count' => $enrolledUsersCount,
+                    'passed_without_exhausting_attempts_count' => $coursePassedWithoutExhaustingAttemptsCount,
+                    'percentage' => $enrolledUsersCount > 0
+                        ? (int) round(($coursePassedWithoutExhaustingAttemptsCount / $enrolledUsersCount) * 100)
+                        : 0,
+                ];
+            })
+            ->sortBy('percentage')
+            ->take(5)
+            ->values()
             ->all();
 
+        $finalQuizEnrollmentsCount = $enrollments->count();
+
         return [
-            'submissions_to_review_count' => $submissionsToReviewCount,
-            'finalized_submissions_count' => $finalizedSubmissionsCount,
-            'pass_rate' => $finalizedSubmissionsCount > 0
-                ? (int) round(($passedFinalizedSubmissionsCount / $finalizedSubmissionsCount) * 100)
+            'final_quiz_enrollments_count' => $finalQuizEnrollmentsCount,
+            'passed_without_exhausting_attempts_count' => $passedWithoutExhaustingAttemptsCount,
+            'passed_without_exhausting_attempts_percentage' => $finalQuizEnrollmentsCount > 0
+                ? (int) round(($passedWithoutExhaustingAttemptsCount / $finalQuizEnrollmentsCount) * 100)
                 : 0,
-            'recent_modules' => $recentModules,
+            'exhausted_attempts_count' => $exhaustedAttemptsCount,
+            'course_breakdown' => $courseBreakdown,
         ];
     }
 
