@@ -61,10 +61,10 @@
                                 </td>
                                 <td>
                                     <div class="flex flex-wrap items-center gap-2">
-                                        <span class="badge badge-outline">{{ $progressLabel }}</span>
+                                        <span class="badge badge-outline h-fit">{{ $progressLabel }}</span>
 
                                         @unless ($attendanceRow['is_current_module'])
-                                            <span class="badge badge-ghost">{{ __('Modulo non corrente') }}</span>
+                                            <span class="badge badge-ghost h-fit">{{ __('Modulo non corrente') }}</span>
                                         @endunless
                                     </div>
                                 </td>

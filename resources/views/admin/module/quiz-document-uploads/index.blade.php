@@ -33,15 +33,15 @@
                                         <td>{{ $documentUpload->uploadedBy?->name }} {{ $documentUpload->uploadedBy?->surname }}</td>
                                         <td>
                                             @if ($documentUpload->status === \App\Models\ModuleQuizDocumentUpload::STATUS_UPLOADED)
-                                                <span class="badge badge-info">{{ __('Caricato') }}</span>
+                                                <span class="badge badge-info h-fit">{{ __('Caricato') }}</span>
                                             @elseif ($documentUpload->status === \App\Models\ModuleQuizDocumentUpload::STATUS_PROCESSING)
-                                                <span class="badge badge-warning">{{ __('In elaborazione') }}</span>
+                                                <span class="badge badge-warning h-fit">{{ __('In elaborazione') }}</span>
                                             @elseif ($documentUpload->status === \App\Models\ModuleQuizDocumentUpload::STATUS_PROCESSED)
-                                                <span class="badge badge-success">{{ __('Processato') }}</span>
+                                                <span class="badge badge-success h-fit">{{ __('Processato') }}</span>
                                             @elseif ($documentUpload->status === \App\Models\ModuleQuizDocumentUpload::STATUS_FAILED)
-                                                <span class="badge badge-error">{{ __('Fallito') }}</span>
+                                                <span class="badge badge-error h-fit">{{ __('Fallito') }}</span>
                                             @else
-                                                <span class="badge badge-ghost">{{ $documentUpload->status }}</span>
+                                                <span class="badge badge-ghost h-fit">{{ $documentUpload->status }}</span>
                                             @endif
                                         </td>
                                         <td>{{ $documentUpload->submissions_count ?? $documentUpload->submissions->count() }}</td>

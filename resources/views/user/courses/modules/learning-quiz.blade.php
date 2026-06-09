@@ -102,7 +102,7 @@
         <td data-quiz-attempt-date></td>
         <td data-quiz-attempt-score></td>
         <td>
-            <span class="badge" data-quiz-attempt-result></span>
+            <span class="badge h-fit" data-quiz-attempt-result></span>
         </td>
     </tr>
 </template>

@@ -36,7 +36,7 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <span class="badge badge-outline">
+                                    <span class="badge badge-outline h-fit">
                                         {{ $moduleProgressStatusLabels[$enrollment->status] ?? $enrollment->status }}
                                     </span>
                                 </td>
@@ -48,7 +48,7 @@
                                         @if ($enrollment->quiz_score !== null)
                                             {{ $enrollment->quiz_score }} / {{ $enrollment->quiz_total_score ?? $module->max_score }}
                                             @if ($enrollment->passed)
-                                                <span class="badge badge-xs badge-success ml-2">{{ __('Superato') }}</span>
+                                                <span class="badge badge-xs badge-success ml-2 h-fit">{{ __('Superato') }}</span>
                                             @endif
                                         @else
                                             <span class="text-base-content/50">—</span>

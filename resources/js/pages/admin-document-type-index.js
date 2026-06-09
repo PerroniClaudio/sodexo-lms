@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${row.id}</td>
                     <td>${escapeHtml(row.name)}</td>
                     <td>${escapeHtml(row.description || '-')}</td>
-                    <td><span class="badge ${row.status_badge_class}">${escapeHtml(row.status_label)}</span></td>
+                    <td><span class="badge ${row.status_badge_class} h-fit">${escapeHtml(row.status_label)}</span></td>
                     <td>
                         <div class="flex justify-end gap-2">
                             <a href="${row.actions.edit_url}" class="btn btn-primary btn-sm">Modifica</a>

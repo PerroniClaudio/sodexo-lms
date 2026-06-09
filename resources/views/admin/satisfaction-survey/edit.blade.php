@@ -23,12 +23,12 @@
                 <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div class="space-y-3">
                         <div class="flex flex-wrap items-center gap-2">
-                            <span class="badge badge-outline gap-1 cursor-move" data-question-order-badge>
+                            <span class="badge badge-outline gap-1 cursor-move h-fit" data-question-order-badge>
                                 <span data-question-move-icon></span>
                                 <span data-question-order></span>
                             </span>
-                            <span class="badge" data-question-input-type-badge></span>
-                            <span class="badge badge-warning badge-outline hidden" data-question-textarea-badge>{{ __('Sempre in fondo') }}</span>
+                            <span class="badge h-fit" data-question-input-type-badge></span>
+                            <span class="badge badge-warning badge-outline hidden h-fit" data-question-textarea-badge>{{ __('Sempre in fondo') }}</span>
                         </div>
                         <p class="font-semibold" data-question-text></p>
                         <ol class="ml-5 hidden list-decimal space-y-1 text-sm text-base-content/70" data-question-answers-list></ol>
@@ -48,7 +48,7 @@
         </template>
 
         <template data-question-excluded-type-badge-template>
-            <span class="badge badge-ghost"></span>
+            <span class="badge badge-ghost h-fit"></span>
         </template>
 
         <template data-question-no-excluded-types-template>

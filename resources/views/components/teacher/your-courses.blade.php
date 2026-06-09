@@ -11,7 +11,7 @@
     >
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 class="card-title"><x-lucide-book-open-text class="w-6 h-6" /> {{ __('I tuoi corsi') }}</h2>
-            <div class="badge badge-neutral badge-outline badge-lg" data-teacher-your-courses-count>0 {{ __('classi') }}</div>
+            <div class="badge badge-neutral badge-outline badge-lg h-fit" data-teacher-your-courses-count>0 {{ __('classi') }}</div>
         </div>
 
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3" data-teacher-your-courses-list>
@@ -37,7 +37,7 @@
         <template data-teacher-your-courses-card-template>
             <article class="card overflow-hidden border border-base-300 bg-base-100 shadow-sm">
                 <div class="flex h-36 items-start justify-between p-5" data-course-cover>
-                    <span class="badge badge-lg border-base-100/40 bg-base-100/90 px-4 text-sm font-medium text-base-content shadow-sm backdrop-blur-xs" data-course-class-badge>Classe</span>
+                    <span class="badge badge-lg border-base-100/40 bg-base-100/90 px-4 text-sm font-medium text-base-content shadow-sm backdrop-blur-xs h-fit" data-course-class-badge>Classe</span>
                 </div>
 
                 <div class="card-body gap-4">

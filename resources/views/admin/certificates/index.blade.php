@@ -16,9 +16,9 @@
                         <div class="flex items-center justify-between gap-4">
                             <h2 class="card-title">{{ $label }}</h2>
                             @if ($activeCertificate)
-                                <span class="badge badge-success badge-outline">{{ __('Attivo') }}</span>
+                                <span class="badge badge-success badge-outline h-fit">{{ __('Attivo') }}</span>
                             @else
-                                <span class="badge badge-outline">{{ __('Non configurato') }}</span>
+                                <span class="badge badge-outline h-fit">{{ __('Non configurato') }}</span>
                             @endif
                         </div>
 

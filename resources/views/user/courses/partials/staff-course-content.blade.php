@@ -56,7 +56,7 @@
                         {{ __('Panoramica completa dei moduli del corso. I moduli assegnati a te sono evidenziati.') }}
                     </p>
                 </div>
-                <span class="badge badge-outline">{{ $modules->count() }} {{ __('moduli') }}</span>
+                <span class="badge badge-outline h-fit">{{ $modules->count() }} {{ __('moduli') }}</span>
             </div>
 
             @if ($modules->isEmpty())
@@ -70,12 +70,12 @@
                             <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                 <div class="space-y-3">
                                     <div class="flex flex-wrap items-center gap-2">
-                                        <span class="badge badge-outline">{{ __('Modulo :order', ['order' => $module->order]) }}</span>
-                                        <span class="badge badge-ghost">{{ ModuleModel::availableTypeLabels()[$module->type] ?? $module->type }}</span>
+                                        <span class="badge badge-outline h-fit">{{ __('Modulo :order', ['order' => $module->order]) }}</span>
+                                        <span class="badge badge-ghost h-fit">{{ ModuleModel::availableTypeLabels()[$module->type] ?? $module->type }}</span>
                                         @if ($module->is_assigned_to_staff)
-                                            <span class="badge badge-primary">{{ __('Assegnato a te') }}</span>
+                                            <span class="badge badge-primary h-fit">{{ __('Assegnato a te') }}</span>
                                         @else
-                                            <span class="badge badge-ghost">{{ __('Non assegnato') }}</span>
+                                            <span class="badge badge-ghost h-fit">{{ __('Non assegnato') }}</span>
                                         @endif
                                     </div>
 
@@ -240,7 +240,7 @@
                     <td data-cell="fiscal_code"></td>
                     <td data-cell="email"></td>
                     <td>
-                        <span class="badge badge-outline" data-cell="status"></span>
+                        <span class="badge badge-outline h-fit" data-cell="status"></span>
                     </td>
                     <td data-cell="completion_percentage"></td>
                     <td data-cell="assigned_at"></td>

@@ -76,7 +76,7 @@
                     <td>
                         <div class="flex flex-wrap gap-1">
                             @foreach($riskBasedRequirement->risk_levels as $level)
-                                <span class="badge {{ $level->badgeColor() }} badge-sm">
+                                <span class="badge {{ $level->badgeColor() }} badge-sm h-fit">
                                     {{ $level->label() }}
                                 </span>
                             @endforeach

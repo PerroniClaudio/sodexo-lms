@@ -146,7 +146,7 @@
                         <h2 class="text-lg font-semibold">{{ __('Tipi evento') }}</h2>
                         <div class="flex flex-wrap gap-2">
                             @forelse ($eventTypeCounts as $type => $count)
-                                <span class="badge badge-outline gap-2">{{ $type }} <span>{{ $count }}</span></span>
+                                <span class="badge badge-outline gap-2 h-fit">{{ $type }} <span>{{ $count }}</span></span>
                             @empty
                                 <span class="text-sm text-base-content/60">{{ __('Nessun riepilogo disponibile.') }}</span>
                             @endforelse

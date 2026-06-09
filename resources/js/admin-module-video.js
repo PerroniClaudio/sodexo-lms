@@ -48,7 +48,7 @@ function renderModuleVideoTable(data) {
         img.alt = 'Anteprima video';
         row.querySelector('[data-preview-btn]').onclick = () => openModuleVideoPreview(video.id);
         tds[3].textContent = video.mux_video_status;
-        tds[4].innerHTML = video.trashed_at ? '<span class="badge badge-outline badge-error">Eliminato</span>' : '<span class="badge badge-outline badge-success">Attivo</span>';
+        tds[4].innerHTML = video.trashed_at ? '<span class="badge badge-outline badge-error h-fit">Eliminato</span>' : '<span class="badge badge-outline badge-success h-fit">Attivo</span>';
         // Azioni
         const assignBtn = row.querySelector('[data-assign-btn]');
         const unassignBtn = row.querySelector('[data-unassign-btn]');

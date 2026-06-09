@@ -20,11 +20,11 @@
                     <div class="flex items-center gap-3 flex-1 min-w-0">
                         <div class="flex items-center gap-2">
                             @if($isAteco)
-                                <span class="badge badge-primary badge-sm">ATECO</span>
+                                <span class="badge badge-primary badge-sm h-fit">ATECO</span>
                             @elseif($isNace)
-                                <span class="badge badge-info badge-sm">NACE</span>
+                                <span class="badge badge-info badge-sm h-fit">NACE</span>
                             @else
-                                <span class="badge badge-outline badge-sm">{{ $node->hierarchy->label() }}</span>
+                                <span class="badge badge-outline badge-sm h-fit">{{ $node->hierarchy->label() }}</span>
                             @endif
                             
                             @if($node->isSearchResult ?? false)
@@ -42,12 +42,12 @@
                     
                     <div class="flex items-center gap-2 shrink-0">
                         @if($node->risk)
-                            <span class="badge {{ $node->risk->badgeColor() }} badge-sm">
+                            <span class="badge {{ $node->risk->badgeColor() }} badge-sm h-fit">
                                 {{ $node->risk->label() }}
                             </span>
                         @endif
                         
-                        <span class="badge badge-ghost badge-sm">
+                        <span class="badge badge-ghost badge-sm h-fit">
                             {{ $node->children->count() }} {{ __('sottolivelli') }}
                         </span>
                     </div>
@@ -68,11 +68,11 @@
                 <div class="flex items-center gap-3 flex-1 min-w-0">
                     <div class="flex items-center gap-2">
                         @if($isAteco)
-                            <span class="badge badge-primary badge-sm">ATECO</span>
+                            <span class="badge badge-primary badge-sm h-fit">ATECO</span>
                         @elseif($isNace)
-                            <span class="badge badge-info badge-sm">NACE</span>
+                            <span class="badge badge-info badge-sm h-fit">NACE</span>
                         @else
-                            <span class="badge badge-outline badge-sm">{{ $node->hierarchy->label() }}</span>
+                            <span class="badge badge-outline badge-sm h-fit">{{ $node->hierarchy->label() }}</span>
                         @endif
                         
                         @if($node->isSearchResult ?? false)
@@ -95,7 +95,7 @@
                 
                 <div class="flex items-center gap-2 shrink-0">
                     @if($node->risk)
-                        <span class="badge {{ $node->risk->badgeColor() }} badge-sm">
+                        <span class="badge {{ $node->risk->badgeColor() }} badge-sm h-fit">
                             {{ $node->risk->label() }}
                         </span>
                     @endif

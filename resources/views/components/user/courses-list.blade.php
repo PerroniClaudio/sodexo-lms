@@ -105,10 +105,10 @@
 
                                     <div class="min-w-0 flex-1">
                                         <div class="mb-2 flex flex-wrap items-center gap-2">
-                                            <span class="badge badge-xs {{ $statusBadges[$course['status']] ?? 'badge-ghost' }}">
+                                            <span class="badge badge-xs {{ $statusBadges[$course['status']] ?? 'badge-ghost' }} h-fit">
                                                 {{ $statusLabels[$course['status']] ?? ucfirst(str_replace('_', ' ', $course['status'])) }}
                                             </span>
-                                            <span class="badge badge-xs {{ $theme['type_badge'] }}">
+                                            <span class="badge badge-xs {{ $theme['type_badge'] }} h-fit">
                                                 {{ $course['type_label'] }}
                                             </span>
                                         </div>

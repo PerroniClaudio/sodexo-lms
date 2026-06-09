@@ -118,11 +118,11 @@
                             $sectorRisk = $sector->getRiskLevel();
                         @endphp
                         @if($sectorRisk)
-                            <span class="badge {{ $sectorRisk->badgeColor() }} badge-lg">
+                            <span class="badge {{ $sectorRisk->badgeColor() }} badge-lg h-fit">
                                 {{ __('Rischio') }}: {{ $sectorRisk->label() }}
                             </span>
                         @else
-                            <span class="badge badge-ghost badge-lg">
+                            <span class="badge badge-ghost badge-lg h-fit">
                                 {{ __('Rischio') }}: {{ __('N/D') }}
                             </span>
                         @endif
@@ -198,11 +198,11 @@
                                             @php
                                                 $inclusionType = \App\Enums\InclusionType::from($code->pivot->inclusion_type);
                                             @endphp
-                                            <span class="badge badge-outline">{{ $inclusionType->label() }}</span>
+                                            <span class="badge badge-outline h-fit">{{ $inclusionType->label() }}</span>
                                         </td>
                                         <td>
                                             @if($code->risk)
-                                                <span class="badge {{ $code->risk->badgeColor() }}">
+                                                <span class="badge {{ $code->risk->badgeColor() }} h-fit">
                                                     {{ $code->risk->label() }}
                                                 </span>
                                             @else
@@ -276,9 +276,9 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.risk) {
-                        badgeContainer.innerHTML = `<span class="badge ${data.badgeColor} badge-lg">{{ __('Rischio') }}: ${data.label}</span>`;
+                        badgeContainer.innerHTML = `<span class="badge ${data.badgeColor} badge-lg h-fit">{{ __('Rischio') }}: ${data.label}</span>`;
                     } else {
-                        badgeContainer.innerHTML = `<span class="badge badge-ghost badge-lg">{{ __('Rischio') }}: {{ __('N/D') }}</span>`;
+                        badgeContainer.innerHTML = `<span class="badge badge-ghost badge-lg h-fit">{{ __('Rischio') }}: {{ __('N/D') }}</span>`;
                     }
                 })
                 .catch(error => {

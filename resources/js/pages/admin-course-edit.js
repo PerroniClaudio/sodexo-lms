@@ -177,7 +177,7 @@ function initializeCourseRiskRequirements(courseEditPage) {
                 ? association.course_validity_types
                 : [];
             const validityBadges = associationValidityTypes
-                .map((validityType) => `<span class="badge badge-outline badge-sm">${escapeHtml(validityTypeLabels[validityType] || validityType)}</span>`)
+                .map((validityType) => `<span class="badge badge-outline badge-sm h-fit">${escapeHtml(validityTypeLabels[validityType] || validityType)}</span>`)
                 .join(' ');
             const item = document.createElement('div');
             item.className = 'rounded-box border border-base-300 bg-base-100 p-4';

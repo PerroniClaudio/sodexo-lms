@@ -28,8 +28,8 @@
                     <div class="flex flex-col">
                       <span class="font-semibold text-base-content/70 text-sm">{{ __('Validità modulo') }}</span>
                       <div id="selected-video-validity" class="flex items-center gap-2" data-validity-details>
-                        <span data-valid-badge class="badge badge-sm badge-success" style="display: none;">{{ __('Valido') }}</span>
-                        <button type="button" data-invalid-badge data-open-validity-details-modal class="badge badge-sm badge-error whitespace-nowrap cursor-pointer" style="display: none;">{{ __('Non valido') }}</button>
+                        <span data-valid-badge class="badge badge-sm badge-success h-fit" style="display: none;">{{ __('Valido') }}</span>
+                        <button type="button" data-invalid-badge data-open-validity-details-modal class="badge badge-sm badge-error whitespace-nowrap cursor-pointer h-fit" style="display: none;">{{ __('Non valido') }}</button>
                       </div>
                     </div>
                     <div class="flex flex-col">
@@ -40,7 +40,7 @@
                       <span class="font-semibold text-base-content/70 text-sm">{{ __('Descrizione') }}</span>
                       <span id="selected-video-description" class="textarea textarea-xs w-full text-sm"></span>
                     </div>
-                    <span id="selected-video-trashed" class="badge badge-error hidden">{{ __('Eliminato') }}</span>
+                    <span id="selected-video-trashed" class="badge badge-error hidden h-fit">{{ __('Eliminato') }}</span>
                 </div>
             </div>
         </div>
@@ -98,7 +98,7 @@
 
                 <div class="mt-6 rounded-box border border-error/30 bg-error/5 p-4">
                     <div class="mb-3 flex items-center gap-2">
-                        <span class="badge badge-error badge-soft">{{ __('Non valido') }}</span>
+                        <span class="badge badge-error badge-soft h-fit">{{ __('Non valido') }}</span>
                         <span class="font-medium">{{ __('Errori di validità') }}</span>
                     </div>
                     <ul class="space-y-2 text-sm text-base-content/80" data-selected-video-validation-errors-list>

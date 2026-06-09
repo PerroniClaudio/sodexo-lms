@@ -48,11 +48,11 @@
                     
                     <div class="flex gap-4 text-xs">
                         <div class="flex items-center gap-2">
-                            <span class="badge badge-sm badge-primary"></span>
+                            <span class="badge badge-sm badge-primary h-fit"></span>
                             <span class="text-base-content/60">{{ __('ATECO') }}</span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="badge badge-sm badge-info"></span>
+                            <span class="badge badge-sm badge-info h-fit"></span>
                             <span class="text-base-content/60">{{ __('NACE') }}</span>
                         </div>
                     </div>

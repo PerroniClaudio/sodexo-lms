@@ -100,7 +100,7 @@
                                             </div>
 
                                             <div class="flex flex-wrap items-center gap-2">
-                                                <span class="badge badge-ghost">
+                                                <span class="badge badge-ghost h-fit">
                                                     {{ __('SCORM :version', ['version' => strtoupper($package->version ?? 'N/D')]) }}
                                                 </span>
                                                 <span class="badge @class([
@@ -108,9 +108,9 @@
                                                 'badge-warning' => $package->status === 'processing',
                                                 'badge-error' => $package->status === 'error',
                                                 'badge-ghost' => ! in_array($package->status, ['ready', 'processing', 'error'], true),
-                                            ])">{{ $statusLabel }}</span>
+                                            ]) h-fit">{{ $statusLabel }}</span>
                                                 @if ($package->isReady())
-                                                    <span class="badge badge-outline">{{ __('Pronto per l\'apertura') }}</span>
+                                                    <span class="badge badge-outline h-fit">{{ __('Pronto per l\'apertura') }}</span>
                                                 @endif
                                             </div>
                                         </div>

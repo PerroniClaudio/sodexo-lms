@@ -81,8 +81,8 @@
     <template id="quiz-question-template">
         <div class="mb-6 p-4 border border-base-300 rounded-lg flex flex-col gap-2" data-question-id>
             <div class="flex items-center gap-2">
-                <span class="badge badge-sm badge-success whitespace-nowrap" data-valid-badge-valid hidden>{{ __('Valid') }}</span>
-                <span class="badge badge-sm badge-error whitespace-nowrap" data-valid-badge-invalid hidden>{{ __('Not valid') }}</span>
+                <span class="badge badge-sm badge-success whitespace-nowrap h-fit" data-valid-badge-valid hidden>{{ __('Valid') }}</span>
+                <span class="badge badge-sm badge-error whitespace-nowrap h-fit" data-valid-badge-invalid hidden>{{ __('Not valid') }}</span>
                 <span class="text-xs text-error" data-invalid-reason-empty style="display:none"></span>
                 <span class="text-xs text-error" data-invalid-reason-answers style="display:none">{{ __('A quiz question must have 4 answers and one correct answer.') }}</span>
             </div>
@@ -119,8 +119,8 @@
                         <span data-toggle-correct-label-correct hidden>{{ __('Change to wrong') }}</span>
                         <span data-toggle-correct-label-wrong hidden>{{ __('Change to correct') }}</span>
                     </button>
-                    <span class="badge badge-sm badge-success whitespace-nowrap" data-correct-badge-correct hidden>{{ __('Correct') }}</span>
-                    <span class="badge badge-sm badge-error whitespace-nowrap" data-correct-badge-wrong hidden>{{ __('Wrong') }}</span>
+                    <span class="badge badge-sm badge-success whitespace-nowrap h-fit" data-correct-badge-correct hidden>{{ __('Correct') }}</span>
+                    <span class="badge badge-sm badge-error whitespace-nowrap h-fit" data-correct-badge-wrong hidden>{{ __('Wrong') }}</span>
                 </div>
                 <input type="text" class="input input-sm text-sm input-bordered w-full md:mb-0" data-answer-text required>
             </div>

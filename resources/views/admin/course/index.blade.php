@@ -34,7 +34,7 @@
                     <td>{{ $course->title }}</td>
                     <td>{{ $course->type }}</td>
                     <td>
-                        <span class="badge badge-ghost">
+                        <span class="badge badge-ghost h-fit">
                             {{ $course->status }}
                         </span>
                     </td>

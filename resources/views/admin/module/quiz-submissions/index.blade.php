@@ -42,11 +42,11 @@
                                         <td>{{ $submission->user?->name ? $submission->user->name.' '.$submission->user->surname : __('Utente non rilevato') }}</td>
                                         <td>
                                             @if ($submission->source_type === 'online')
-                                                <span class="badge badge-primary">{{ __('Online') }}</span>
+                                                <span class="badge badge-primary h-fit">{{ __('Online') }}</span>
                                             @elseif ($submission->source_type === 'upload')
-                                                <span class="badge badge-secondary">{{ __('Upload') }}</span>
+                                                <span class="badge badge-secondary h-fit">{{ __('Upload') }}</span>
                                             @else
-                                                <span class="badge badge-ghost">{{ $submission->source_type }}</span>
+                                                <span class="badge badge-ghost h-fit">{{ $submission->source_type }}</span>
                                             @endif
                                         </td>
                                         <td>{{ __(ucfirst($submission->status)) }}</td>

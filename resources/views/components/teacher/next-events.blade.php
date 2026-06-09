@@ -86,7 +86,7 @@
                                         <h3 class="truncate text-lg font-semibold text-base-content">{{ $event['title'] }}</h3>
 
                                         @if ($event['is_today'])
-                                            <span class="badge badge-info badge-soft badge-sm">{{ __('Oggi') }}</span>
+                                            <span class="badge badge-info badge-soft badge-sm h-fit">{{ __('Oggi') }}</span>
                                         @endif
                                     </div>
 

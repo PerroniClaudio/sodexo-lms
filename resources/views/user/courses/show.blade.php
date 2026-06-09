@@ -68,7 +68,7 @@
         <section class="space-y-4">
             <div class="flex items-center justify-between gap-4">
                 <h2 class="text-3xl font-semibold text-base-content">{{ __('Contenuti del corso') }}</h2>
-                <span class="badge badge-lg badge-outline">{{ $totalModules }} {{ __('moduli') }}</span>
+                <span class="badge badge-lg badge-outline h-fit">{{ $totalModules }} {{ __('moduli') }}</span>
             </div>
 
             <div class="space-y-4">
@@ -132,7 +132,7 @@
                                     </div>
 
                                     <div class="flex flex-wrap items-center gap-2 text-sm text-base-content/70">
-                                        <span class="badge {{ $meta['badge'] }} badge-outline gap-1.5">
+                                        <span class="badge {{ $meta['badge'] }} badge-outline gap-1.5 h-fit">
                                             <x-dynamic-component :component="$meta['icon']" class="h-3.5 w-3.5" />
                                             {{ $meta['label'] }}
                                         </span>

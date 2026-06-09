@@ -1,6 +1,6 @@
 <div id="quiz-validity-badge" class="flex items-center gap-3" data-validity-details data-validity-modal-target="#quiz-validity-details-modal">
-    <span data-valid-badge class="badge badge-sm badge-success" style="display: {{ $module->isValidQuiz() ? 'inline-flex' : 'none' }};">{{ __('Valido') }}</span>
-    <button type="button" data-invalid-badge data-open-validity-details-modal class="badge badge-sm badge-error whitespace-nowrap cursor-pointer" style="display: {{ $module->isValidQuiz() ? 'none' : 'inline-flex' }};">{{ __('Non valido') }}</button>
+    <span data-valid-badge class="badge badge-sm badge-success h-fit" style="display: {{ $module->isValidQuiz() ? 'inline-flex' : 'none' }};">{{ __('Valido') }}</span>
+    <button type="button" data-invalid-badge data-open-validity-details-modal class="badge badge-sm badge-error whitespace-nowrap cursor-pointer h-fit" style="display: {{ $module->isValidQuiz() ? 'none' : 'inline-flex' }};">{{ __('Non valido') }}</button>
 </div>
 
 @push('after-form')
@@ -20,7 +20,7 @@
 
             <div class="mt-6 rounded-box border border-error/30 bg-error/5 p-4">
                 <div class="mb-3 flex items-center gap-2">
-                    <span class="badge badge-error badge-soft">{{ __('Non valido') }}</span>
+                    <span class="badge badge-error badge-soft h-fit">{{ __('Non valido') }}</span>
                     <span class="font-medium">{{ __('Errori di validità') }}</span>
                 </div>
                 <p data-invalid-reason class="text-sm text-base-content/80">

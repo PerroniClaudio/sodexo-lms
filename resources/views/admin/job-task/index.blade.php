@@ -72,9 +72,9 @@
                     <td>{{ $task->code ?: '-' }}</td>
                     <td>
                         @if($task->trashed())
-                            <span class="badge badge-outline badge-error">{{ __('Eliminato') }}</span>
+                            <span class="badge badge-outline badge-error h-fit">{{ __('Eliminato') }}</span>
                         @else
-                            <span class="badge badge-outline badge-success">{{ __('Attivo') }}</span>
+                            <span class="badge badge-outline badge-success h-fit">{{ __('Attivo') }}</span>
                         @endif
                     </td>
                     <td>

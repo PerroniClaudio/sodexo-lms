@@ -19,7 +19,7 @@
             @foreach ($statuses as $status)
                 <div class="card border border-base-300 bg-base-100 shadow-sm">
                     <div class="card-body gap-2 p-4">
-                        <span class="badge badge-outline {{ $status->badgeClass() }}">{{ $status->label() }}</span>
+                        <span class="badge badge-outline {{ $status->badgeClass() }} h-fit">{{ $status->label() }}</span>
                         <p class="text-3xl font-semibold text-base-content">{{ $statusCounts[$status->value] ?? 0 }}</p>
                     </div>
                 </div>
@@ -84,7 +84,7 @@
                     </td>
                     <td class="align-top">
                         <div class="flex flex-col gap-2">
-                            <span class="badge badge-outline {{ $job->status->badgeClass() }}">
+                            <span class="badge badge-outline {{ $job->status->badgeClass() }} h-fit">
                                 {{ $job->status->label() }}
                             </span>
 

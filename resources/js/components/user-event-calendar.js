@@ -112,7 +112,7 @@ function renderDayEvents(dateKey, eventsByDay) {
               <p class="mt-1 text-xs text-base-content/60 sm:text-sm">${className}${timeRange ? ` • ${timeRange}` : ''}</p>
             </div>
           </div>
-          <span class="badge badge-primary badge-outline shrink-0">${type}</span>
+          <span class="badge badge-primary badge-outline shrink-0 h-fit">${type}</span>
         </div>
       </article>
     `;

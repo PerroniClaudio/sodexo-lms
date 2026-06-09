@@ -47,15 +47,15 @@
                                     </td>
                                     <td>
                                         @if ($submission->source_type === 'online')
-                                            <span class="badge badge-primary badge-sm">{{ __('Online') }}</span>
+                                            <span class="badge badge-primary badge-sm h-fit">{{ __('Online') }}</span>
                                         @elseif ($submission->source_type === 'upload')
-                                            <span class="badge badge-secondary badge-sm">{{ __('Upload') }}</span>
+                                            <span class="badge badge-secondary badge-sm h-fit">{{ __('Upload') }}</span>
                                         @else
-                                            <span class="badge badge-ghost badge-sm">{{ $submission->source_type }}</span>
+                                            <span class="badge badge-ghost badge-sm h-fit">{{ $submission->source_type }}</span>
                                         @endif
                                     </td>
                                     <td>
-                                        <span class="badge badge-outline badge-sm">
+                                        <span class="badge badge-outline badge-sm h-fit">
                                             {{ __($submission->status) }}
                                         </span>
                                     </td>
@@ -63,9 +63,9 @@
                                         @if ($submission->score !== null)
                                             {{ $submission->score }} / {{ $submission->total_score }}
                                             @if ($submission->score >= $module->passing_score)
-                                                <span class="badge badge-xs badge-success ml-1">{{ __('Superato') }}</span>
+                                                <span class="badge badge-xs badge-success ml-1 h-fit">{{ __('Superato') }}</span>
                                             @else
-                                                <span class="badge badge-xs badge-error ml-1">{{ __('Non superato') }}</span>
+                                                <span class="badge badge-xs badge-error ml-1 h-fit">{{ __('Non superato') }}</span>
                                             @endif
                                         @else
                                             <span class="text-base-content/50">—</span>

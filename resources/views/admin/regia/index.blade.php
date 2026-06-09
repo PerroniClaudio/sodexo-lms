@@ -20,7 +20,7 @@
                                 <p class="mt-2 text-sm text-base-content/70">{{ $module->course?->title ?? __('Corso non disponibile') }}</p>
                             </div>
 
-                            <span class="badge badge-outline">
+                            <span class="badge badge-outline h-fit">
                                 {{ $module->appointment_start_time?->format('H:i') ?? __('Orario n/d') }}
                             </span>
                         </div>

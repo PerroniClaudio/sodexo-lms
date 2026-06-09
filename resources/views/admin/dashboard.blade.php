@@ -241,8 +241,8 @@
                             <div class="rounded-box bg-base-200 px-4 py-3">
                                 <div class="font-medium">{{ $criticalUser['full_name'] }}</div>
                                 <div class="mt-1 flex flex-wrap gap-2 text-xs">
-                                    <span class="badge badge-warning">{{ __('Mancanti: :count', ['count' => $criticalUser['missing_count']]) }}</span>
-                                    <span class="badge badge-error">{{ __('Scaduti: :count', ['count' => $criticalUser['expired_count']]) }}</span>
+                                    <span class="badge badge-warning h-fit">{{ __('Mancanti: :count', ['count' => $criticalUser['missing_count']]) }}</span>
+                                    <span class="badge badge-error h-fit">{{ __('Scaduti: :count', ['count' => $criticalUser['expired_count']]) }}</span>
                                 </div>
                             </div>
                         @empty
@@ -255,7 +255,7 @@
                         @forelse ($compliance['top_requirements'] as $requirement)
                             <div class="flex items-center justify-between gap-4 rounded-box bg-base-200 px-4 py-3">
                                 <span class="text-sm">{{ $requirement['name'] }}</span>
-                                <span class="badge badge-outline">{{ $requirement['affected_users_count'] }}</span>
+                                <span class="badge badge-outline h-fit">{{ $requirement['affected_users_count'] }}</span>
                             </div>
                         @empty
                             <p class="text-sm text-base-content/60">{{ __('Nessun requisito scoperto.') }}</p>
@@ -308,7 +308,7 @@
                                         ]) }}
                                     </p>
                                 </div>
-                                <span class="badge badge-primary">{{ $course['percentage'] }}%</span>
+                                <span class="badge badge-primary h-fit">{{ $course['percentage'] }}%</span>
                             </div>
                         @empty
                             <p class="text-sm text-base-content/60">{{ __('Nessun corso con quiz finale disponibile.') }}</p>
@@ -332,7 +332,7 @@
                                         <p class="font-medium">{{ $resModule['module_title'] }}</p>
                                         <p class="text-sm text-base-content/70">{{ $resModule['course_title'] }}</p>
                                     </div>
-                                    <span class="badge badge-warning">{{ __(':count partecipanti', ['count' => $resModule['participants_count']]) }}</span>
+                                    <span class="badge badge-warning h-fit">{{ __(':count partecipanti', ['count' => $resModule['participants_count']]) }}</span>
                                 </div>
                                 <p class="mt-2 text-xs text-base-content/60">{{ __('Ultima sessione conclusa: :date', ['date' => $resModule['latest_schedule_end_label']]) }}</p>
                             </div>
@@ -355,7 +355,7 @@
                             </h2>
                             <p class="text-sm text-base-content/70">{{ __('Distribuzione delle risposte per ogni domanda della survey obbligatoria.') }}</p>
                         </div>
-                        <span class="badge badge-outline">{{ __(':count compilazioni', ['count' => $surveySummary['submissions_count']]) }}</span>
+                        <span class="badge badge-outline h-fit">{{ __(':count compilazioni', ['count' => $surveySummary['submissions_count']]) }}</span>
                     </div>
 
                     <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">

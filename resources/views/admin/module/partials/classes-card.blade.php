@@ -111,7 +111,7 @@
                     <h3 class="text-lg font-semibold" data-course-class-people-title></h3>
                     <p class="text-sm text-base-content/70" data-course-class-people-subtitle></p>
                 </div>
-                <span class="badge badge-outline" data-course-class-people-count></span>
+                <span class="badge badge-outline h-fit" data-course-class-people-count></span>
             </div>
 
             <div class="mt-6 grid gap-6 lg:grid-cols-2">
@@ -160,9 +160,9 @@
             <td class="font-medium" data-class-name></td>
             <td data-class-starts></td>
             <td data-class-ends></td>
-            <td><span class="badge badge-outline" data-class-schedules-count></span></td>
-            <td><span class="badge badge-primary badge-outline" data-class-users></span></td>
-            <td><span class="badge badge-secondary badge-outline" data-class-teachers></span></td>
+            <td><span class="badge badge-outline h-fit" data-class-schedules-count></span></td>
+            <td><span class="badge badge-primary badge-outline h-fit" data-class-users></span></td>
+            <td><span class="badge badge-secondary badge-outline h-fit" data-class-teachers></span></td>
             <td>
                 <div class="flex justify-end gap-2">
                     <button type="button" class="btn btn-ghost btn-sm" data-edit-class>

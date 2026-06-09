@@ -1,7 +1,7 @@
 <x-layouts.admin>
     <section class="mx-auto max-w-5xl px-6 py-16">
         <div class="rounded-3xl border border-base-300 bg-base-200 p-8 shadow-sm">
-            <span class="badge badge-neutral badge-outline mb-4">{{ __('Admin') }}</span>
+            <span class="badge badge-neutral badge-outline mb-4 h-fit">{{ __('Admin') }}</span>
             <h1 class="text-3xl font-semibold">{{ $module->title }}</h1>
             <p class="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">
                 {{ __('Corso') }}

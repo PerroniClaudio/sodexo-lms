@@ -19,15 +19,15 @@
                         <dt class="font-medium">{{ __('Stato') }}</dt>
                         <dd>
                             @if ($documentUpload->status === \App\Models\ModuleQuizDocumentUpload::STATUS_UPLOADED)
-                                <span class="badge badge-info">{{ __('Caricato') }}</span>
+                                <span class="badge badge-info h-fit">{{ __('Caricato') }}</span>
                             @elseif ($documentUpload->status === \App\Models\ModuleQuizDocumentUpload::STATUS_PROCESSING)
-                                <span class="badge badge-warning">{{ __('In elaborazione') }}</span>
+                                <span class="badge badge-warning h-fit">{{ __('In elaborazione') }}</span>
                             @elseif ($documentUpload->status === \App\Models\ModuleQuizDocumentUpload::STATUS_PROCESSED)
-                                <span class="badge badge-success">{{ __('Processato') }}</span>
+                                <span class="badge badge-success h-fit">{{ __('Processato') }}</span>
                             @elseif ($documentUpload->status === \App\Models\ModuleQuizDocumentUpload::STATUS_FAILED)
-                                <span class="badge badge-error">{{ __('Fallito') }}</span>
+                                <span class="badge badge-error h-fit">{{ __('Fallito') }}</span>
                             @else
-                                <span class="badge badge-ghost">{{ $documentUpload->status }}</span>
+                                <span class="badge badge-ghost h-fit">{{ $documentUpload->status }}</span>
                             @endif
                         </dd>
                     </div>
@@ -82,11 +82,11 @@
                                         <td>{{ $submission->user?->name }} {{ $submission->user?->surname }}</td>
                                         <td>
                                             @if ($submission->status === \App\Models\ModuleQuizSubmission::STATUS_NEEDS_REVIEW)
-                                                <span class="badge badge-warning">{{ __('Da revisionare') }}</span>
+                                                <span class="badge badge-warning h-fit">{{ __('Da revisionare') }}</span>
                                             @elseif ($submission->status === \App\Models\ModuleQuizSubmission::STATUS_FINALIZED)
-                                                <span class="badge badge-success">{{ __('Finalizzato') }}</span>
+                                                <span class="badge badge-success h-fit">{{ __('Finalizzato') }}</span>
                                             @else
-                                                <span class="badge badge-ghost">{{ __(ucfirst($submission->status)) }}</span>
+                                                <span class="badge badge-ghost h-fit">{{ __(ucfirst($submission->status)) }}</span>
                                             @endif
                                         </td>
                                         <td>

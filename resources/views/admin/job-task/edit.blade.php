@@ -245,22 +245,22 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <span class="badge {{ $sectorRisk->badgeColor() }}">
+                                            <span class="badge {{ $sectorRisk->badgeColor() }} h-fit">
                                                 {{ $sectorRisk->label() }}
                                             </span>
                                         </td>
                                         <td>
-                                            <span class="badge {{ $taskRisk->badgeColor() }}">
+                                            <span class="badge {{ $taskRisk->badgeColor() }} h-fit">
                                                 {{ $taskRisk->label() }}
                                             </span>
                                         </td>
                                         <td>
-                                            <span class="badge {{ $sectorRiskOverride ? 'badge-info badge-soft' : 'badge-ghost' }}">
+                                            <span class="badge {{ $sectorRiskOverride ? 'badge-info badge-soft' : 'badge-ghost' }} h-fit">
                                                 {{ $sectorRiskOverride ? __('Si') : __('No') }}
                                             </span>
                                         </td>
                                         <td>
-                                            <span class="badge {{ $effectiveRisk->badgeColor() }}">
+                                            <span class="badge {{ $effectiveRisk->badgeColor() }} h-fit">
                                                 {{ $effectiveRisk->label() }}
                                             </span>
                                         </td>

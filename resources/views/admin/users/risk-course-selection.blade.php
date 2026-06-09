@@ -30,7 +30,7 @@
                         </p>
                     </div>
                     <div class="flex flex-col items-end gap-2">
-                        <span class="badge badge-lg {{ $riskSummary['risk_badge_class'] }}">
+                        <span class="badge badge-lg {{ $riskSummary['risk_badge_class'] }} h-fit">
                             {{ $riskSummary['risk_label'] ?? __('Non applicabile') }}
                         </span>
                     </div>
@@ -51,7 +51,7 @@
                                         $riskBasedRequirement['status'] === 'satisfied'
                                             ? 'badge-success badge-soft'
                                             : ($riskBasedRequirement['status'] === 'expired' ? 'badge-warning badge-soft' : 'badge-error badge-soft')
-                                    }}">
+                                    }} h-fit">
                                         {{ $riskBasedRequirement['status_label'] }}
                                     </span>
                                     @if ($riskBasedRequirement['certificate_expires_at'])
@@ -95,7 +95,7 @@
                             <div class="flex items-start justify-between gap-4 mb-3">
                                 <div>
                                     <div class="text-sm text-base-content/70">{{ $futureRiskTransition['effective_on_label'] }}</div>
-                                    <span class="mt-2 inline-flex badge {{ $futureRiskTransition['risk_badge_class'] }}">
+                                    <span class="mt-2 inline-flex badge {{ $futureRiskTransition['risk_badge_class'] }} h-fit">
                                         {{ $futureRiskTransition['risk_label'] }}
                                     </span>
                                 </div>
@@ -117,7 +117,7 @@
                                                         $requirement['status'] === 'satisfied'
                                                             ? 'badge-success badge-soft'
                                                             : ($requirement['status'] === 'expired' ? 'badge-warning badge-soft' : 'badge-error badge-soft')
-                                                    }}">
+                                                    }} h-fit">
                                                         {{ $requirement['status_label'] }}
                                                     </span>
                                                     @if ($requirement['certificate_expires_at'])

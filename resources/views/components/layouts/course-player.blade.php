@@ -53,12 +53,12 @@
                                     <div class="flex flex-wrap items-start justify-between gap-4">
                                         <div class="space-y-3">
                                             <div class="flex flex-wrap items-center gap-2">
-                                                <span class="badge {{ $currentModuleMeta['badge'] }} badge-outline gap-1.5">
+                                                <span class="badge {{ $currentModuleMeta['badge'] }} badge-outline gap-1.5 h-fit">
                                                     <x-dynamic-component :component="$currentModuleMeta['icon']" class="h-3.5 w-3.5" />
                                                     {{ $currentModuleMeta['label'] }}
                                                 </span>
-                                                <span class="badge badge-outline">{{ __('Modulo :order', ['order' => $currentModule->order]) }}</span>
-                                                <span class="badge badge-outline">{{ $completedModules }}/{{ $totalModules }}</span>
+                                                <span class="badge badge-outline h-fit">{{ __('Modulo :order', ['order' => $currentModule->order]) }}</span>
+                                                <span class="badge badge-outline h-fit">{{ $completedModules }}/{{ $totalModules }}</span>
                                             </div>
 
                                             <div>

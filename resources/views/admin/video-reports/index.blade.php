@@ -51,7 +51,7 @@
                                 >
                                     <td>#{{ $videoReportRequest->id }}</td>
                                     <td>
-                                        <span class="badge badge-outline">{{ $videoReportRequest->reportTypeLabel() }}</span>
+                                        <span class="badge badge-outline h-fit">{{ $videoReportRequest->reportTypeLabel() }}</span>
                                     </td>
                                     <td>
                                         <div class="space-y-1">
@@ -66,7 +66,7 @@
                                     <td>{{ $videoReportRequest->date_from?->format('d/m/Y') }} - {{ $videoReportRequest->date_to?->format('d/m/Y') }}</td>
                                     <td>{{ $videoReportRequest->requester?->full_name ?? '-' }}</td>
                                     <td>
-                                        <span class="badge {{ $videoReportRequest->statusBadgeClass() }}" data-video-report-status-badge>
+                                        <span class="badge {{ $videoReportRequest->statusBadgeClass() }} h-fit" data-video-report-status-badge>
                                             {{ $videoReportRequest->statusLabel() }}
                                         </span>
                                     </td>

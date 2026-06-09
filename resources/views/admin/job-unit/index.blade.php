@@ -74,7 +74,7 @@
                     <td>{{ $unit->name }}</td>
                     <td>
                         @if($unit->unit_code)
-                            <code class="badge badge-sm badge-ghost">{{ $unit->unit_code }}</code>
+                            <code class="badge badge-sm badge-ghost h-fit">{{ $unit->unit_code }}</code>
                         @else
                             <span class="text-base-content/40">-</span>
                         @endif
@@ -84,9 +84,9 @@
                     <td>{{ $unit->country?->name }}</td>
                     <td>
                         @if($unit->trashed())
-                            <span class="badge badge-outline badge-error">{{ __('Eliminato') }}</span>
+                            <span class="badge badge-outline badge-error h-fit">{{ __('Eliminato') }}</span>
                         @else
-                            <span class="badge badge-outline badge-success">{{ __('Attivo') }}</span>
+                            <span class="badge badge-outline badge-success h-fit">{{ __('Attivo') }}</span>
                         @endif
                     </td>
                     <td>

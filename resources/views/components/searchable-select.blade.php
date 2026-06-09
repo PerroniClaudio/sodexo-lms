@@ -61,7 +61,7 @@
                     >
                         <a class="flex w-full items-start gap-2" data-option-link>
                             @if (!empty($option['badge']))
-                                <code class="badge badge-sm badge-ghost shrink-0">{{ $option['badge'] }}</code>
+                                <code class="badge badge-sm badge-ghost shrink-0 h-fit">{{ $option['badge'] }}</code>
                             @endif
                             <span class="flex-1">
                                 <span class="block truncate">{{ $option['label'] }}</span>

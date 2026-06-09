@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         tableBody.innerHTML = courses.map(course => {
             const requirementsBadges = course.covered_requirements
-                .map(req => `<span class="badge badge-sm badge-outline">${escapeHtml(req.name)}</span>`)
+                .map(req => `<span class="badge badge-sm badge-outline h-fit">${escapeHtml(req.name)}</span>`)
                 .join(' ');
 
             const enrollButton = course.eligible_to_enroll
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${course.description ? `<div class="text-sm text-base-content/70 mt-1">${escapeHtml(course.description)}</div>` : ''}
                     </td>
                     <td>
-                        <span class="badge badge-outline">${escapeHtml(course.course_type_label)}</span>
+                        <span class="badge badge-outline h-fit">${escapeHtml(course.course_type_label)}</span>
                     </td>
                     <td>
                         <div class="flex flex-wrap gap-1">
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </td>
                     <td>
-                        <span class="badge badge-soft">${escapeHtml(course.validity_type_label)}</span>
+                        <span class="badge badge-soft h-fit">${escapeHtml(course.validity_type_label)}</span>
                     </td>
                     <td>
                         <div class="text-sm">${escapeHtml(course.prerequisites_label)}</div>

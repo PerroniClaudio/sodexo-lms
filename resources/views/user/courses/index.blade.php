@@ -23,7 +23,7 @@
                                     <tr>
                                         <td class="font-semibold">{{ $enrollment->course?->title ?? __('Corso non disponibile') }}</td>
                                         <td>
-                                            <span class="badge badge-ghost">{{ __($enrollment->status) }}</span>
+                                            <span class="badge badge-ghost h-fit">{{ __($enrollment->status) }}</span>
                                         </td>
                                         <td>
                                             <div class="w-40">

@@ -48,10 +48,10 @@
                             </div>
 
                             <div class="flex flex-wrap items-center gap-2">
-                                <span class="badge badge-outline" data-scorm-package-version></span>
-                                <span class="badge badge-ghost" data-scorm-package-status></span>
-                                <span class="badge badge-primary badge-outline" data-scorm-package-learner-status></span>
-                                <span class="badge badge-success hidden" data-scorm-package-completed>{{ __('Completato') }}</span>
+                                <span class="badge badge-outline h-fit" data-scorm-package-version></span>
+                                <span class="badge badge-ghost h-fit" data-scorm-package-status></span>
+                                <span class="badge badge-primary badge-outline h-fit" data-scorm-package-learner-status></span>
+                                <span class="badge badge-success hidden h-fit" data-scorm-package-completed>{{ __('Completato') }}</span>
                             </div>
                         </div>
 

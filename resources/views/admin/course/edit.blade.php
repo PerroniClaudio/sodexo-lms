@@ -35,7 +35,7 @@
                                 {{ __('Gestisci le informazioni principali del corso.') }}
                             </p>
                             <div class="mt-3">
-                                <span class="text-base-content/70">{{ __('Tipologia:') }}</span> <span class="badge badge-outline">{{ $courseTypeLabels[$course->type] ?? $course->type }}</span>
+                                <span class="text-base-content/70">{{ __('Tipologia:') }}</span> <span class="badge badge-outline h-fit">{{ $courseTypeLabels[$course->type] ?? $course->type }}</span>
                             </div>
                         </div>
                         <div>
@@ -370,7 +370,7 @@
                                                                     class="checkbox"
                                                                     data-integrative-start-level-option
                                                                 >
-                                                                <span class="badge {{ $riskLevel->badgeColor() }}">{{ $riskLevel->label() }}</span>
+                                                                <span class="badge {{ $riskLevel->badgeColor() }} h-fit">{{ $riskLevel->label() }}</span>
                                                             </label>
                                                         @endforeach
                                                     </div>
@@ -506,16 +506,16 @@
                                                         $moduleIsValid = $moduleValidator->validate($module);
                                                     @endphp
                                                     @if ($moduleIsValid)
-                                                        <span class="badge badge-xs badge-success">{{ __('Valido') }}</span>
+                                                        <span class="badge badge-xs badge-success h-fit">{{ __('Valido') }}</span>
                                                     @else
-                                                        <span class="badge badge-xs badge-error">{{ __('Non valido') }}</span>
+                                                        <span class="badge badge-xs badge-error h-fit">{{ __('Non valido') }}</span>
                                                     @endif
                                                 </div>
                                             </div>
                                         </div>
 
                                         <div class="flex items-center gap-2">
-                                            <span class="badge badge-ghost">
+                                            <span class="badge badge-ghost h-fit">
                                                 {{ $moduleStatusLabels[$module->status] ?? $module->status }}
                                             </span>
                                             <a href="{{ route('admin.courses.modules.edit', [$course, $module]) }}" class="btn btn-secondary btn-sm">
@@ -826,7 +826,7 @@
                             <td data-cell="fiscal_code"></td>
                             <td data-cell="email"></td>
                             <td>
-                                <span class="badge badge-outline" data-cell="status"></span>
+                                <span class="badge badge-outline h-fit" data-cell="status"></span>
                             </td>
                             <td data-cell="completion_percentage"></td>
                             <td data-cell="assigned_at"></td>

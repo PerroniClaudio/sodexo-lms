@@ -8,21 +8,21 @@
 <div class="flex flex-col gap-2" data-validity-details data-validity-modal-target="#course-validity-details-modal">
     <div class="flex items-center gap-3">
         @if ($courseIsValid)
-            <span class="badge badge-sm badge-success">{{ __('Valido') }}</span>
+            <span class="badge badge-sm badge-success h-fit">{{ __('Valido') }}</span>
         @else
-            <button type="button" class="badge badge-sm badge-error whitespace-nowrap cursor-pointer" data-open-validity-details-modal>
+            <button type="button" class="badge badge-sm badge-error whitespace-nowrap cursor-pointer h-fit" data-open-validity-details-modal>
                 {{ __('Non valido') }}
             </button>
         @endif
 
         @if ($courseIsPublishable)
             @if ($course->status === 'published')
-                <span class="badge badge-sm badge-success">{{ __('Pubblicato') }}</span>
+                <span class="badge badge-sm badge-success h-fit">{{ __('Pubblicato') }}</span>
             @else
-                <span class="badge badge-sm badge-info">{{ __('Pubblicabile') }}</span>
+                <span class="badge badge-sm badge-info h-fit">{{ __('Pubblicabile') }}</span>
             @endif
         @elseif ($courseIsValid)
-            <button type="button" class="badge badge-sm badge-warning cursor-pointer" data-open-validity-details-modal>
+            <button type="button" class="badge badge-sm badge-warning cursor-pointer h-fit" data-open-validity-details-modal>
                 {{ __('Non pubblicabile') }}
             </button>
         @endif
@@ -47,7 +47,7 @@
                     @if (! $courseIsValid && ! empty($courseValidationErrors))
                         <div class="rounded-box border border-error/30 bg-error/5 p-4">
                             <div class="mb-3 flex items-center gap-2">
-                                <span class="badge badge-error badge-soft">{{ __('Non valido') }}</span>
+                                <span class="badge badge-error badge-soft h-fit">{{ __('Non valido') }}</span>
                                 <span class="font-medium">{{ __('Errori di validità') }}</span>
                             </div>
                             <ul class="space-y-2 text-sm text-base-content/80">
@@ -61,7 +61,7 @@
                     @if ($courseIsValid && ! $courseIsPublishable && ! empty($coursePublishabilityErrors))
                         <div class="rounded-box border border-warning/30 bg-warning/5 p-4">
                             <div class="mb-3 flex items-center gap-2">
-                                <span class="badge badge-warning badge-soft">{{ __('Non pubblicabile') }}</span>
+                                <span class="badge badge-warning badge-soft h-fit">{{ __('Non pubblicabile') }}</span>
                                 <span class="font-medium">{{ __('Errori di pubblicabilità') }}</span>
                             </div>
                             <ul class="space-y-2 text-sm text-base-content/80">

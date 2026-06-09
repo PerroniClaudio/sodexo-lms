@@ -67,7 +67,7 @@
                                         class="checkbox"
                                         @checked(in_array($level->value, old('risk_levels', $riskBasedRequirement->risk_levels->pluck('value')->toArray())))
                                     >
-                                    <span class="badge {{ $level->badgeColor() }}">{{ $level->label() }}</span>
+                                    <span class="badge {{ $level->badgeColor() }} h-fit">{{ $level->label() }}</span>
                                 </label>
                             @endforeach
                         </div>

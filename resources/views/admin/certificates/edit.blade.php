@@ -20,9 +20,9 @@
                             <p class="text-sm text-base-content/70">{{ __('Stato') }}</p>
                             <p class="mt-1 font-semibold">
                                 @if ($certificate->is_active)
-                                    <span class="badge badge-success badge-outline">{{ __('Attivo') }}</span>
+                                    <span class="badge badge-success badge-outline h-fit">{{ __('Attivo') }}</span>
                                 @else
-                                    <span class="badge badge-outline">{{ __('Versione storica') }}</span>
+                                    <span class="badge badge-outline h-fit">{{ __('Versione storica') }}</span>
                                 @endif
                             </p>
                         </div>

@@ -90,7 +90,7 @@
                         </p>
                     </div>
                     <div class="flex flex-col items-end gap-2">
-                        <span class="badge badge-lg {{ $riskSummary['risk_badge_class'] }}" data-risk-summary-badge>
+                        <span class="badge badge-lg {{ $riskSummary['risk_badge_class'] }} h-fit" data-risk-summary-badge>
                             {{ $riskSummary['risk_label'] ?? __('Non applicabile') }}
                         </span>
                         <a href="{{ route('admin.users.risk-course-selection', $user) }}" class="btn btn-primary btn-sm">
@@ -114,7 +114,7 @@
                                         $riskBasedRequirement['status'] === 'satisfied'
                                             ? 'badge-success badge-soft'
                                             : ($riskBasedRequirement['status'] === 'expired' ? 'badge-warning badge-soft' : 'badge-error badge-soft')
-                                    }}">
+                                    }} h-fit">
                                         {{ $riskBasedRequirement['status_label'] }}
                                     </span>
                                     @if (($riskBasedRequirement['covered_by_higher_risk_certificate'] ?? false) && ($riskBasedRequirement['covering_risk_label'] ?? null))
@@ -148,7 +148,7 @@
                             @foreach ($riskSummary['future_risk_transitions'] as $futureRiskTransition)
                                 <div class="rounded-box border border-base-300 bg-base-100 px-4 py-3">
                                     <div class="text-sm text-base-content/70">{{ $futureRiskTransition['effective_on_label'] }}</div>
-                                    <span class="mt-2 inline-flex badge {{ $futureRiskTransition['risk_badge_class'] }}">
+                                    <span class="mt-2 inline-flex badge {{ $futureRiskTransition['risk_badge_class'] }} h-fit">
                                         {{ $futureRiskTransition['risk_label'] }}
                                     </span>
                                 </div>
@@ -396,7 +396,7 @@
                         <p class="hidden text-sm text-base-content/70" data-risk-requirement-description></p>
                     </div>
                     <div class="flex flex-col items-start gap-2 md:items-end">
-                        <span class="badge" data-risk-requirement-status></span>
+                        <span class="badge h-fit" data-risk-requirement-status></span>
                         <p class="hidden text-sm text-base-content/70" data-risk-requirement-covering-risk></p>
                         <p class="hidden text-sm text-base-content/70" data-risk-requirement-required-type></p>
                     </div>
@@ -412,7 +412,7 @@
                 <td data-certificate-issued-at></td>
                 <td data-certificate-expires-at></td>
                 <td>
-                    <span class="badge" data-certificate-type-badge></span>
+                    <span class="badge h-fit" data-certificate-type-badge></span>
                 </td>
                 <td>
                     <span class="hidden text-sm text-base-content/50" data-certificate-document-type-empty>-</span>
@@ -446,7 +446,7 @@
         </template>
 
         <template data-certificate-risk-requirement-badge-template>
-            <span class="badge badge-outline h-fit badge-sm"></span>
+            <span class="badge badge-outline badge-sm h-fit"></span>
         </template>
 
         <template data-certificate-risk-requirement-empty-template>
@@ -461,7 +461,7 @@
                 </td>
                 <td data-certificate-file-uploaded-at></td>
                 <td>
-                    <span class="badge badge-outline" data-certificate-file-status></span>
+                    <span class="badge badge-outline h-fit" data-certificate-file-status></span>
                     <div class="mt-1 hidden text-xs text-base-content/60" data-certificate-file-deleted-at></div>
                 </td>
                 <td>

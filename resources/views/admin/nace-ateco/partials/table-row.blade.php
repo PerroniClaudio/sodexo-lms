@@ -8,7 +8,7 @@
 <tr class="hover:bg-base-200 {{ $isSearchResult ? 'bg-primary/5' : '' }}">
     {{-- Livello --}}
     <td class="text-center">
-        <span class="badge badge-ghost badge-xs">{{ $level }}</span>
+        <span class="badge badge-ghost badge-xs h-fit">{{ $level }}</span>
     </td>
     
     {{-- Codice e Titolo con indentazione --}}
@@ -27,11 +27,11 @@
             
             {{-- Badge tipo --}}
             @if($isAteco)
-                <span class="badge badge-primary badge-xs">ATECO</span>
+                <span class="badge badge-primary badge-xs h-fit">ATECO</span>
             @elseif($isNace)
-                <span class="badge badge-info badge-xs">NACE</span>
+                <span class="badge badge-info badge-xs h-fit">NACE</span>
             @else
-                <span class="badge badge-ghost badge-xs opacity-50">{{ $node->hierarchy->label() }}</span>
+                <span class="badge badge-ghost badge-xs opacity-50 h-fit">{{ $node->hierarchy->label() }}</span>
             @endif
             
             {{-- Icona ricerca --}}
@@ -47,7 +47,7 @@
             
             {{-- Contatore figli --}}
             @if($hasChildren)
-                <span class="badge badge-ghost badge-xs opacity-60">{{ $node->children->count() }}</span>
+                <span class="badge badge-ghost badge-xs opacity-60 h-fit">{{ $node->children->count() }}</span>
             @endif
         </div>
     </td>
@@ -55,7 +55,7 @@
     {{-- Rischio --}}
     <td>
         @if($node->risk)
-            <span class="badge {{ $node->risk->badgeColor() }} badge-xs">
+            <span class="badge {{ $node->risk->badgeColor() }} badge-xs h-fit">
                 {{ $node->risk->label() }}
             </span>
         @else

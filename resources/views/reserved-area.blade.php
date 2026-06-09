@@ -48,7 +48,7 @@
                                 <p class="text-sm text-base-content/70">{{ __('Card temporanea per verificare corsi live, orari e accesso rapido.') }}</p>
                             </div>
 
-                            <div class="badge badge-warning badge-outline">{{ $teacherLiveAssignments->count() }}</div>
+                            <div class="badge badge-warning badge-outline h-fit">{{ $teacherLiveAssignments->count() }}</div>
                         </div>
 
                         <div class="grid gap-4">

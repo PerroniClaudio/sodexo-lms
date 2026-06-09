@@ -43,12 +43,12 @@
                                                 <td>
                                                     @if ($answer->module_quiz_answer_id !== null)
                                                         @if ($isCorrect)
-                                                            <span class="badge badge-success badge-sm">{{ __('Corretta') }}</span>
+                                                            <span class="badge badge-success badge-sm h-fit">{{ __('Corretta') }}</span>
                                                         @else
-                                                            <span class="badge badge-error badge-sm">{{ __('Sbagliata') }}</span>
+                                                            <span class="badge badge-error badge-sm h-fit">{{ __('Sbagliata') }}</span>
                                                         @endif
                                                     @else
-                                                        <span class="badge badge-ghost badge-sm">{{ __('Non risposta') }}</span>
+                                                        <span class="badge badge-ghost badge-sm h-fit">{{ __('Non risposta') }}</span>
                                                     @endif
                                                 </td>
                                             </tr>
@@ -97,9 +97,9 @@
                             <dt class="font-medium">{{ __('Modalità') }}</dt>
                             <dd>
                                 @if ($submission->source_type === 'online')
-                                    <span class="badge badge-primary">{{ __('Online') }}</span>
+                                    <span class="badge badge-primary h-fit">{{ __('Online') }}</span>
                                 @elseif ($submission->source_type === 'upload')
-                                    <span class="badge badge-secondary">{{ __('Upload') }}</span>
+                                    <span class="badge badge-secondary h-fit">{{ __('Upload') }}</span>
                                 @else
                                     {{ $submission->source_type }}
                                 @endif
@@ -169,7 +169,7 @@
                                 <div class="mb-3 flex items-start justify-between gap-4">
                                     <div class="flex-1">
                                         <div class="mb-1 flex items-center gap-2">
-                                            <span class="badge badge-neutral badge-sm">{{ __('Domanda') }} {{ $submission->source_type === 'online' ? ($index + 1) : $answer->question_number }}</span>
+                                            <span class="badge badge-neutral badge-sm h-fit">{{ __('Domanda') }} {{ $submission->source_type === 'online' ? ($index + 1) : $answer->question_number }}</span>
                                             @if ($submission->source_type === 'online' && $answer->question)
                                                 <span class="font-mono text-xs text-base-content/50">ID: {{ $answer->module_quiz_question_id }}</span>
                                             @endif
@@ -202,12 +202,12 @@
                                             <div>
                                                 @if ($answer->module_quiz_answer_id !== null)
                                                     @if ($isCorrect)
-                                                        <span class="badge badge-success">{{ __('Corretta') }}</span>
+                                                        <span class="badge badge-success h-fit">{{ __('Corretta') }}</span>
                                                     @else
-                                                        <span class="badge badge-error">{{ __('Sbagliata') }}</span>
+                                                        <span class="badge badge-error h-fit">{{ __('Sbagliata') }}</span>
                                                     @endif
                                                 @else
-                                                    <span class="badge badge-ghost">{{ __('Non risposta') }}</span>
+                                                    <span class="badge badge-ghost h-fit">{{ __('Non risposta') }}</span>
                                                 @endif
                                             </div>
                                         </div>
