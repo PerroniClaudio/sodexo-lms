@@ -11,13 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('module_quiz_document_uploads', function (Blueprint $table) {
-            $table->foreignId('document_type_id')
-                ->nullable()
-                ->after('uploaded_by')
-                ->constrained()
-                ->nullOnDelete();
-        });
+        if (! Schema::hasColumn('module_quiz_document_uploads', 'document_type_id')) {
+            Schema::table('module_quiz_document_uploads', function (Blueprint $table): void {
+                $table->foreignId('document_type_id')
+                    ->nullable()
+                    ->after('uploaded_by')
+                    ->constrained('document_types')
+                    ->nullOnDelete();
+            });
+        }
     }
 
     /**
@@ -25,8 +27,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('module_quiz_document_uploads', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('document_type_id');
-        });
+        if (Schema::hasColumn('module_quiz_document_uploads', 'document_type_id')) {
+            Schema::table('module_quiz_document_uploads', function (Blueprint $table): void {
+                $table->dropConstrainedForeignId('document_type_id');
+            });
+        }
     }
 };
