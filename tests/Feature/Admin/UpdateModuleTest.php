@@ -2,6 +2,8 @@
 
 use App\Models\Course;
 use App\Models\Module;
+use App\Models\ModuleQuizAnswer;
+use App\Models\ModuleQuizQuestion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -209,4 +211,48 @@ it('requires quiz scoring thresholds when updating quiz modules', function () {
 
     $response->assertRedirect(route('admin.courses.modules.edit', [$course, $module]));
     $response->assertSessionHasErrors(['passing_score', 'max_attempts', 'permitted_submission']);
+});
+
+it('syncs the automatic max score when updating a learning quiz module', function () {
+    $course = Course::factory()->create([
+        'status' => 'draft',
+    ]);
+    $module = Module::factory()->create([
+        'type' => 'learning_quiz',
+        'passing_score' => 1,
+        'max_score' => 999,
+        'max_attempts' => 5,
+        'permitted_submission' => Module::PERMITTED_SUBMISSION_ONLINE,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    foreach ([1, 1] as $points) {
+        $question = ModuleQuizQuestion::query()->create([
+            'module_id' => $module->id,
+            'text' => 'Domanda di test',
+            'points' => $points,
+        ]);
+
+        $answers = collect(range(1, 4))->map(fn (int $index) => ModuleQuizAnswer::query()->create([
+            'question_id' => $question->id,
+            'text' => "Risposta {$index}",
+        ]));
+
+        $question->update(['correct_answer_id' => $answers->first()->id]);
+    }
+
+    $response = $this->put(route('admin.courses.modules.update', [$course, $module]), [
+        'description' => 'Quiz aggiornato',
+        'passing_score' => 1,
+        'max_attempts' => 5,
+        'permitted_submission' => Module::PERMITTED_SUBMISSION_ONLINE,
+        'status' => 'draft',
+    ]);
+
+    $response->assertRedirect(route('admin.courses.edit', $course));
+
+    $module->refresh();
+
+    expect($module->max_score)->toBe(2)
+        ->and($module->isValidQuiz())->toBeTrue();
 });

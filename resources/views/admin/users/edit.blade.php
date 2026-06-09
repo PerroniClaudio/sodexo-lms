@@ -200,8 +200,8 @@
                         <thead>
                             <tr>
                                 <th><button type="button" class="inline-flex items-center gap-2" data-sort-key="name">{{ __('Nome') }}</button></th>
-                                <th><button type="button" class="inline-flex items-center gap-2" data-sort-key="issued_at">{{ __('Data conseguimento') }}</button></th>
-                                <th><button type="button" class="inline-flex items-center gap-2" data-sort-key="expires_at">{{ __('Data scadenza') }}</button></th>
+                                <th><button type="button" class="inline-flex items-center gap-2" data-sort-key="issued_at">{{ __('Conseguimento') }}</button></th>
+                                <th><button type="button" class="inline-flex items-center gap-2" data-sort-key="expires_at">{{ __('Scadenza') }}</button></th>
                                 <th><button type="button" class="inline-flex items-center gap-2" data-sort-key="is_internal">{{ __('Tipo') }}</button></th>
                                 <th>{{ __('Tipologia documento') }}</th>
                                 <th>{{ __('File') }}</th>
@@ -383,5 +383,99 @@
                 </form>
             </dialog>
         </div>
+
+        <template data-risk-requirement-empty-template>
+            <p class="text-sm text-base-content/70">{{ __('Nessun requisito di rischio disponibile.') }}</p>
+        </template>
+
+        <template data-risk-requirement-template>
+            <div class="rounded-box border border-base-300 bg-base-200/40 p-4">
+                <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div class="space-y-1">
+                        <div class="font-semibold text-base-content" data-risk-requirement-name></div>
+                        <p class="hidden text-sm text-base-content/70" data-risk-requirement-description></p>
+                    </div>
+                    <div class="flex flex-col items-start gap-2 md:items-end">
+                        <span class="badge" data-risk-requirement-status></span>
+                        <p class="hidden text-sm text-base-content/70" data-risk-requirement-covering-risk></p>
+                        <p class="hidden text-sm text-base-content/70" data-risk-requirement-required-type></p>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <template data-certificate-row-template>
+            <tr>
+                <td>
+                    <div class="font-medium" data-certificate-name></div>
+                </td>
+                <td data-certificate-issued-at></td>
+                <td data-certificate-expires-at></td>
+                <td>
+                    <span class="badge" data-certificate-type-badge></span>
+                </td>
+                <td>
+                    <span class="hidden text-sm text-base-content/50" data-certificate-document-type-empty>-</span>
+                    <span class="badge badge-outline h-fit hidden" data-certificate-document-type-badge></span>
+                </td>
+                <td>
+                    <span class="text-sm text-base-content/50" data-certificate-latest-file-empty>-</span>
+                    <div class="hidden space-y-1" data-certificate-latest-file>
+                        <div class="font-medium" data-certificate-latest-file-name></div>
+                        <div class="text-xs text-base-content/60" data-certificate-latest-file-summary></div>
+                    </div>
+                </td>
+                <td class="max-w-md">
+                    <div class="flex flex-wrap gap-1" data-certificate-risk-requirements></div>
+                </td>
+                <td>
+                    <div class="ml-auto inline-grid grid-cols-[max-content_max-content] gap-2">
+                        <button type="button" class="btn btn-primary btn-sm whitespace-nowrap" data-action="edit">{{ __('Modifica') }}</button>
+                        <button type="button" class="btn btn-error btn-outline btn-sm whitespace-nowrap" data-action="delete">{{ __('Elimina') }}</button>
+                        <button type="button" class="btn btn-primary btn-outline btn-sm whitespace-nowrap hidden" data-action="preview-latest">{{ __('Anteprima') }}</button>
+                        <span class="tooltip tooltip-left hidden" data-certificate-preview-disabled data-tip="{{ __('Nessun file attivo da vedere') }}">
+                            <button type="button" class="btn btn-primary btn-outline btn-sm whitespace-nowrap" disabled>{{ __('Anteprima') }}</button>
+                        </span>
+                        <button type="button" class="btn btn-primary btn-outline btn-sm whitespace-nowrap hidden" data-action="download-latest">{{ __('Scarica') }}</button>
+                        <span class="tooltip tooltip-left hidden" data-certificate-download-disabled data-tip="{{ __('Nessun file attivo da scaricare') }}">
+                            <button type="button" class="btn btn-primary btn-outline btn-sm whitespace-nowrap" disabled>{{ __('Scarica') }}</button>
+                        </span>
+                    </div>
+                </td>
+            </tr>
+        </template>
+
+        <template data-certificate-risk-requirement-badge-template>
+            <span class="badge badge-outline h-fit badge-sm"></span>
+        </template>
+
+        <template data-certificate-risk-requirement-empty-template>
+            <span class="text-sm text-base-content/50">-</span>
+        </template>
+
+        <template data-certificate-file-row-template>
+            <tr>
+                <td>
+                    <div class="font-medium" data-certificate-file-name></div>
+                    <div class="text-xs text-base-content/60" data-certificate-file-size></div>
+                </td>
+                <td data-certificate-file-uploaded-at></td>
+                <td>
+                    <span class="badge badge-outline" data-certificate-file-status></span>
+                    <div class="mt-1 hidden text-xs text-base-content/60" data-certificate-file-deleted-at></div>
+                </td>
+                <td>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" class="btn btn-ghost btn-sm" data-action="preview">{{ __('Anteprima') }}</button>
+                        <button type="button" class="btn btn-ghost btn-sm" data-action="download">{{ __('Scarica') }}</button>
+                        <button type="button" class="btn btn-error btn-outline btn-sm hidden" data-action="delete">{{ __('Elimina') }}</button>
+                    </div>
+                </td>
+            </tr>
+        </template>
+
+        <template data-certificate-pagination-button-template>
+            <button type="button" class="join-item btn btn-sm"></button>
+        </template>
     </div>
 </x-layouts.admin>

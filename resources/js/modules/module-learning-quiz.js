@@ -3,7 +3,23 @@
  * Gestisce i quiz di apprendimento con flow step-by-step.
  */
 
-import { getModuleRoot, getModuleData, escapeHtml } from './module-base.js';
+import { getModuleRoot, getModuleData } from './module-base.js';
+
+function cloneTemplateElement(root, selector) {
+    const template = root.querySelector(selector);
+
+    if (!(template instanceof HTMLTemplateElement)) {
+        return null;
+    }
+
+    const element = template.content.firstElementChild;
+
+    if (!element) {
+        return null;
+    }
+
+    return element.cloneNode(true);
+}
 
 /**
  * Inizializza il modulo quiz di apprendimento
@@ -59,31 +75,57 @@ async function loadQuizStatus(moduleData) {
  * Renderizza lo stato del quiz
  */
 function renderQuizStatus(data, moduleData) {
+    const root = getModuleRoot();
     const statusContainer = document.getElementById('quiz-status');
     const cardBody = statusContainer.querySelector('.card-body');
+    const statusContent = cloneTemplateElement(root, '[data-learning-quiz-status-template]');
 
-    let html = '<div class="flex flex-col gap-4">';
-
-    // Informazioni sul quiz
-    html += `<div><h3 class="text-lg font-semibold">${escapeHtml(data.module.title)}</h3></div>`;
-
-    // Statistiche
-    html += '<div class="stats shadow">';
-    html += `<div class="stat"><div class="stat-title">Tentativi usati</div><div class="stat-value">${data.progress.attempts_used}${data.module.max_attempts ? ' / ' + data.module.max_attempts : ''}</div></div>`;
-    
-    if (data.progress.best_score !== null) {
-        html += `<div class="stat"><div class="stat-title">Miglior punteggio</div><div class="stat-value">${data.progress.best_score} / ${data.module.max_score}</div></div>`;
+    if (!statusContent) {
+        return;
     }
 
-    html += `<div class="stat"><div class="stat-title">Punteggio minimo</div><div class="stat-value">${data.module.passing_score} / ${data.module.max_score}</div></div>`;
-    html += '</div>';
+    const titleElement = statusContent.querySelector('[data-quiz-status-title]');
+    const statsContainer = statusContent.querySelector('[data-quiz-status-stats]');
+    const pastAttemptsSection = statusContent.querySelector('[data-quiz-past-attempts]');
+    const pastAttemptsBody = statusContent.querySelector('[data-quiz-past-attempts-body]');
+    const passedAlert = statusContent.querySelector('[data-quiz-passed-alert]');
+    const exhaustedAlert = statusContent.querySelector('[data-quiz-exhausted-alert]');
+    const startAction = statusContent.querySelector('[data-quiz-start-action]');
 
-    // Tentativi passati
+    titleElement.textContent = data.module.title || '';
+    statsContainer.replaceChildren();
+
+    const appendStat = (title, value) => {
+        const stat = cloneTemplateElement(root, '[data-learning-quiz-stat-template]');
+
+        if (!stat) {
+            return;
+        }
+
+        stat.querySelector('[data-quiz-stat-title]').textContent = title;
+        stat.querySelector('[data-quiz-stat-value]').textContent = value;
+        statsContainer.appendChild(stat);
+    };
+
+    appendStat('Tentativi usati', `${data.progress.attempts_used}${data.module.max_attempts ? ` / ${data.module.max_attempts}` : ''}`);
+
+    if (data.progress.best_score !== null) {
+        appendStat('Miglior punteggio', `${data.progress.best_score} / ${data.module.max_score}`);
+    }
+
+    appendStat('Punteggio minimo', `${data.module.passing_score} / ${data.module.max_score}`);
+
     if (data.past_attempts.length > 0) {
-        html += '<div class="divider">Tentativi precedenti</div>';
-        html += '<div class="overflow-x-auto"><table class="table table-sm"><thead><tr><th>Data</th><th>Punteggio</th><th>Risultato</th></tr></thead><tbody>';
-        
-        data.past_attempts.forEach(attempt => {
+        pastAttemptsSection.classList.remove('hidden');
+        pastAttemptsBody.replaceChildren();
+
+        data.past_attempts.forEach((attempt) => {
+            const row = cloneTemplateElement(root, '[data-learning-quiz-attempt-row-template]');
+
+            if (!row) {
+                return;
+            }
+
             const date = new Date(attempt.submitted_at).toLocaleString('it-IT');
             const attemptWasAbandoned = attempt.status === 'abandoned';
             const resultClass = attemptWasAbandoned ? 'badge-warning' : (attempt.passed ? 'badge-success' : 'badge-error');
@@ -92,24 +134,25 @@ function renderQuizStatus(data, moduleData) {
                 ? '-'
                 : `${attempt.score} / ${attempt.total_score}`;
 
-            html += `<tr><td>${date}</td><td>${scoreText}</td><td><span class="badge ${resultClass}">${resultText}</span></td></tr>`;
+            row.querySelector('[data-quiz-attempt-date]').textContent = date;
+            row.querySelector('[data-quiz-attempt-score]').textContent = scoreText;
+
+            const resultBadge = row.querySelector('[data-quiz-attempt-result]');
+            resultBadge.classList.add(resultClass);
+            resultBadge.textContent = resultText;
+            pastAttemptsBody.appendChild(row);
         });
-        
-        html += '</tbody></table></div>';
     }
 
-    // Bottone per iniziare
     if (data.progress.passed) {
-        html += '<div class="alert alert-success"><span>Quiz completato con successo!</span></div>';
+        passedAlert.classList.remove('hidden');
     } else if (data.progress.can_start_new_attempt) {
-        html += '<div class="flex justify-end mt-4"><button type="button" id="start-quiz-btn" class="btn btn-primary">Inizia il test</button></div>';
+        startAction.classList.remove('hidden');
     } else {
-        html += '<div class="alert alert-error"><span>Hai esaurito i tentativi disponibili.</span></div>';
+        exhaustedAlert.classList.remove('hidden');
     }
 
-    html += '</div>';
-
-    cardBody.innerHTML = html;
+    cardBody.replaceChildren(statusContent);
 
     // Aggiungi event listener al bottone
     const startBtn = document.getElementById('start-quiz-btn');
@@ -217,20 +260,23 @@ async function loadNextQuestion(moduleData) {
  * Renderizza una domanda
  */
 function renderQuestion(data, moduleData) {
+    const root = getModuleRoot();
     document.getElementById('current-question').textContent = data.question_number;
     document.getElementById('total-questions').textContent = data.total_questions;
     document.getElementById('question-text').textContent = data.question.text;
 
     const answersContainer = document.getElementById('question-answers');
-    answersContainer.innerHTML = '';
+    answersContainer.replaceChildren();
 
-    data.question.answers.forEach(answer => {
-        const label = document.createElement('label');
-        label.className = 'flex items-center gap-3 cursor-pointer p-4 border border-base-300 rounded-lg hover:bg-base-200';
-        label.innerHTML = `
-            <input type="radio" class="radio radio-primary" name="answer" value="${answer.id}" required />
-            <span>${escapeHtml(answer.text)}</span>
-        `;
+    data.question.answers.forEach((answer) => {
+        const label = cloneTemplateElement(root, '[data-learning-quiz-answer-template]');
+
+        if (!label) {
+            return;
+        }
+
+        label.querySelector('input[name="answer"]').value = String(answer.id);
+        label.querySelector('[data-quiz-answer-text]').textContent = answer.text || '';
         answersContainer.appendChild(label);
     });
 
@@ -260,9 +306,18 @@ async function submitAnswer(questionId, moduleData) {
         return;
     }
 
+    const root = getModuleRoot();
     const submitBtn = document.querySelector('#question-form button[type="submit"]');
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="loading loading-spinner loading-sm"></span> Salvataggio...';
+    submitBtn.replaceChildren();
+
+    const loadingContent = cloneTemplateElement(root, '[data-learning-quiz-submit-loading-template]');
+
+    if (loadingContent) {
+        submitBtn.appendChild(loadingContent);
+    } else {
+        submitBtn.textContent = 'Salvataggio...';
+    }
 
     try {
         const response = await fetch(
@@ -337,37 +392,48 @@ function showQuizResult(data) {
     const moduleData = getModuleData(root);
     const resultContainer = document.getElementById('quiz-result');
     const resultContent = document.getElementById('result-content');
+    const resultAlert = cloneTemplateElement(root, '[data-learning-quiz-result-alert-template]');
 
-    const alertClass = data.passed ? 'alert-success' : 'alert-error';
-    const icon = data.passed ? 'check-circle' : 'x-circle';
+    if (!resultAlert) {
+        return;
+    }
 
-    resultContent.innerHTML = `
-        <div class="alert ${alertClass}">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="${data.passed ? 'M9 12l2 2 4-4' : 'M15 9l-6 6M9 9l6 6'}"/></svg>
-            <div>
-                <div class="font-semibold">${escapeHtml(data.message)}</div>
-                <div class="text-sm">Punteggio: ${data.score} / ${data.total_score} (minimo richiesto: ${data.passing_score})</div>
-            </div>
-        </div>
-    `;
+    const resultIcon = resultAlert.querySelector('[data-quiz-result-icon]');
+    const resultMessage = resultAlert.querySelector('[data-quiz-result-message]');
+    const resultScore = resultAlert.querySelector('[data-quiz-result-score]');
+    resultContent.replaceChildren();
+    resultAlert.classList.add(data.passed ? 'alert-success' : 'alert-error');
+    resultMessage.textContent = data.message || '';
+    resultScore.textContent = `Punteggio: ${data.score} / ${data.total_score} (minimo richiesto: ${data.passing_score})`;
+
+    if (data.passed) {
+        resultIcon.innerHTML = '<circle cx="12" cy="12" r="10"></circle><path d="M9 12l2 2 4-4"></path>';
+    } else {
+        resultIcon.innerHTML = '<circle cx="12" cy="12" r="10"></circle><path d="M15 9l-6 6"></path><path d="M9 9l6 6"></path>';
+    }
+
+    resultContent.appendChild(resultAlert);
 
     if (data.passed && moduleData.nextModuleUrl) {
-        // Quiz superato: mostra bottone per modulo successivo
-        resultContent.innerHTML += `
-            <div class="flex justify-end gap-4 mt-4">
-                <a href="${moduleData.nextModuleUrl}" class="btn btn-primary">
-                    ${escapeHtml(moduleData.nextModuleTitle || 'Modulo successivo')}
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-                </a>
-            </div>
-        `;
+        const nextModuleAction = cloneTemplateElement(root, '[data-learning-quiz-next-module-template]');
+
+        if (nextModuleAction) {
+            const nextModuleLink = nextModuleAction.querySelector('[data-quiz-next-module-link]');
+            const nextModuleTitle = nextModuleAction.querySelector('[data-quiz-next-module-title]');
+
+            nextModuleLink.href = moduleData.nextModuleUrl;
+            nextModuleTitle.textContent = moduleData.nextModuleTitle || 'Modulo successivo';
+            resultContent.appendChild(nextModuleAction);
+        }
     } else if (!data.passed) {
-        // Quiz non superato: mostra bottone per riprovare
-        resultContent.innerHTML += `
-            <div class="flex justify-center gap-4 mt-4">
-                <button onclick="window.location.reload()" class="btn btn-primary">Riprova</button>
-            </div>
-        `;
+        const retryAction = cloneTemplateElement(root, '[data-learning-quiz-retry-template]');
+
+        if (retryAction) {
+            retryAction.querySelector('[data-quiz-retry-button]').addEventListener('click', () => {
+                window.location.reload();
+            });
+            resultContent.appendChild(retryAction);
+        }
     }
 
     resultContainer.classList.remove('hidden');

@@ -10,6 +10,22 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeCertificatesTable(page);
 });
 
+function cloneTemplateElement(root, selector) {
+    const template = root.querySelector(selector);
+
+    if (!(template instanceof HTMLTemplateElement)) {
+        return null;
+    }
+
+    const element = template.content.firstElementChild;
+
+    if (!element) {
+        return null;
+    }
+
+    return element.cloneNode(true);
+}
+
 function initializeRiskSummary(page) {
     const container = page.querySelector('[data-risk-summary]');
 
@@ -21,17 +37,19 @@ function initializeRiskSummary(page) {
     const messageElement = container.querySelector('[data-risk-summary-message]');
     const badgeElement = container.querySelector('[data-risk-summary-badge]');
     const riskBasedRequirementsContainer = container.querySelector('[data-risk-based-requirements-items]');
+    const riskRequirementTemplate = page.querySelector('[data-risk-requirement-template]');
+    const riskRequirementEmptyTemplate = page.querySelector('[data-risk-requirement-empty-template]');
 
-    if (!summaryUrl || !messageElement || !badgeElement || !riskBasedRequirementsContainer) {
+    if (
+        !summaryUrl
+        || !messageElement
+        || !badgeElement
+        || !riskBasedRequirementsContainer
+        || !(riskRequirementTemplate instanceof HTMLTemplateElement)
+        || !(riskRequirementEmptyTemplate instanceof HTMLTemplateElement)
+    ) {
         return;
     }
-
-    const escapeHtml = (value) => String(value || '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
 
     const requirementBadgeClass = (status) => {
         if (status === 'satisfied') {
@@ -83,13 +101,14 @@ function initializeRiskSummary(page) {
         badgeElement.className = `badge badge-lg ${summary.risk_badge_class || 'badge-ghost'}`;
         badgeElement.textContent = summary.risk_label || 'Non applicabile';
         updateContainerAppearance(summary.risk_badge_class || 'badge-ghost');
-        riskBasedRequirementsContainer.innerHTML = '';
+        riskBasedRequirementsContainer.replaceChildren();
 
         if (!Array.isArray(summary.risk_based_requirements) || summary.risk_based_requirements.length === 0) {
-            const empty = document.createElement('p');
-            empty.className = 'text-sm text-base-content/70';
-            empty.textContent = 'Nessun requisito di rischio disponibile.';
-            riskBasedRequirementsContainer.appendChild(empty);
+            const empty = cloneTemplateElement(page, '[data-risk-requirement-empty-template]');
+
+            if (empty) {
+                riskBasedRequirementsContainer.appendChild(empty);
+            }
 
             return;
         }
@@ -98,22 +117,37 @@ function initializeRiskSummary(page) {
             const requiredTypeLabel = riskBasedRequirement.required_course_validity_type_label
                 ? String(riskBasedRequirement.required_course_validity_type_label).toLowerCase()
                 : '';
-            const item = document.createElement('div');
-            item.className = 'rounded-box border border-base-300 bg-base-200/40 p-4';
-            item.innerHTML = `
-                <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                    <div class="space-y-1">
-                        <div class="font-semibold text-base-content">${escapeHtml(riskBasedRequirement.risk_based_requirement_name)}</div>
-                        ${riskBasedRequirement.risk_based_requirement_description ? `<p class="text-sm text-base-content/70">${escapeHtml(riskBasedRequirement.risk_based_requirement_description)}</p>` : ''}
-                    </div>
-                    <div class="flex flex-col items-start gap-2 md:items-end">
-                        <span class="badge ${requirementBadgeClass(riskBasedRequirement.status)}">${escapeHtml(riskBasedRequirement.status_label)}</span>
-                        ${['missing', 'expired'].includes(riskBasedRequirement.status) && requiredTypeLabel !== ''
-                            ? `<p class="text-sm text-base-content/70">Richiesto: ${escapeHtml(requiredTypeLabel)}</p>`
-                            : ''}
-                    </div>
-                </div>
-            `;
+            const item = cloneTemplateElement(page, '[data-risk-requirement-template]');
+
+            if (!item) {
+                return;
+            }
+
+            const nameElement = item.querySelector('[data-risk-requirement-name]');
+            const descriptionElement = item.querySelector('[data-risk-requirement-description]');
+            const statusElement = item.querySelector('[data-risk-requirement-status]');
+            const coveringRiskElement = item.querySelector('[data-risk-requirement-covering-risk]');
+            const requiredTypeElement = item.querySelector('[data-risk-requirement-required-type]');
+
+            nameElement.textContent = riskBasedRequirement.risk_based_requirement_name || '';
+            statusElement.classList.add(...requirementBadgeClass(riskBasedRequirement.status).split(' '));
+            statusElement.textContent = riskBasedRequirement.status_label || '';
+
+            if (riskBasedRequirement.risk_based_requirement_description) {
+                descriptionElement.textContent = riskBasedRequirement.risk_based_requirement_description;
+                descriptionElement.classList.remove('hidden');
+            }
+
+            if (riskBasedRequirement.covered_by_higher_risk_certificate && riskBasedRequirement.covering_risk_label) {
+                coveringRiskElement.textContent = `Coperto da attestato valido di livello superiore: ${riskBasedRequirement.covering_risk_label}`;
+                coveringRiskElement.classList.remove('hidden');
+            }
+
+            if (['missing', 'expired'].includes(riskBasedRequirement.status) && requiredTypeLabel !== '') {
+                requiredTypeElement.textContent = `Richiesto: ${requiredTypeLabel}`;
+                requiredTypeElement.classList.remove('hidden');
+            }
+
             riskBasedRequirementsContainer.appendChild(item);
         });
     };
@@ -210,8 +244,13 @@ function initializeCertificatesTable(page) {
     const filesTableBody = container.querySelector('[data-certificate-files-tbody]');
     const filesEmptyState = container.querySelector('[data-certificate-files-empty]');
     const showDeletedFilesCheckbox = container.querySelector('[data-certificate-files-show-deleted]');
+    const certificateRowTemplate = page.querySelector('[data-certificate-row-template]');
+    const certificateRiskRequirementBadgeTemplate = page.querySelector('[data-certificate-risk-requirement-badge-template]');
+    const certificateRiskRequirementEmptyTemplate = page.querySelector('[data-certificate-risk-requirement-empty-template]');
+    const certificateFileRowTemplate = page.querySelector('[data-certificate-file-row-template]');
+    const certificatePaginationButtonTemplate = page.querySelector('[data-certificate-pagination-button-template]');
 
-    if (!apiUrl || !storeUrl || !tableBody || !emptyState || !summary || !pagination || !searchInput || !searchButton || !loadingIndicator || !modal || !openModalButton || closeButtons.length === 0 || !form || !submitButton || !riskBasedRequirementsSelect || !certificateIdInput || !modalTitle || !documentTypeSelect || !filesSelection || !filesInput || !filesDropzone || !filesCreateHint || !existingFilesContainer || !filesSummary || !filesLoading || !filesTableBody || !filesEmptyState || !showDeletedFilesCheckbox) {
+    if (!apiUrl || !storeUrl || !tableBody || !emptyState || !summary || !pagination || !searchInput || !searchButton || !loadingIndicator || !modal || !openModalButton || closeButtons.length === 0 || !form || !submitButton || !riskBasedRequirementsSelect || !certificateIdInput || !modalTitle || !documentTypeSelect || !filesSelection || !filesInput || !filesDropzone || !filesCreateHint || !existingFilesContainer || !filesSummary || !filesLoading || !filesTableBody || !filesEmptyState || !showDeletedFilesCheckbox || !(certificateRowTemplate instanceof HTMLTemplateElement) || !(certificateRiskRequirementBadgeTemplate instanceof HTMLTemplateElement) || !(certificateRiskRequirementEmptyTemplate instanceof HTMLTemplateElement) || !(certificateFileRowTemplate instanceof HTMLTemplateElement) || !(certificatePaginationButtonTemplate instanceof HTMLTemplateElement)) {
         return;
     }
 
@@ -226,12 +265,6 @@ function initializeCertificatesTable(page) {
         showDeletedFiles: false,
     };
 
-    const escapeHtml = (value) => String(value || '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
     const refreshRiskSummarySafely = async () => {
         if (typeof page.refreshRiskSummary !== 'function') {
             return;
@@ -333,14 +366,29 @@ function initializeCertificatesTable(page) {
         return params.toString();
     };
 
-    const renderRiskBasedRequirements = (riskBasedRequirements) => {
+    const renderRiskBasedRequirements = (target, riskBasedRequirements) => {
+        target.replaceChildren();
+
         if (!Array.isArray(riskBasedRequirements) || riskBasedRequirements.length === 0) {
-            return '<span class="text-sm text-base-content/50">-</span>';
+            const empty = cloneTemplateElement(page, '[data-certificate-risk-requirement-empty-template]');
+
+            if (empty) {
+                target.appendChild(empty);
+            }
+
+            return;
         }
 
-        return riskBasedRequirements
-            .map((riskBasedRequirement) => `<span class="badge badge-outline badge-sm">${escapeHtml(riskBasedRequirement.name)}</span>`)
-            .join(' ');
+        riskBasedRequirements.forEach((riskBasedRequirement) => {
+            const badge = cloneTemplateElement(page, '[data-certificate-risk-requirement-badge-template]');
+
+            if (!badge) {
+                return;
+            }
+
+            badge.textContent = riskBasedRequirement.name || '';
+            target.appendChild(badge);
+        });
     };
 
     const openPreview = (url) => {
@@ -357,75 +405,86 @@ function initializeCertificatesTable(page) {
         link.remove();
     };
 
-    const renderLatestFile = (row) => {
+    const renderLatestFile = (row, tableRow) => {
+        const emptyElement = tableRow.querySelector('[data-certificate-latest-file-empty]');
+        const latestFileElement = tableRow.querySelector('[data-certificate-latest-file]');
+        const latestFileNameElement = tableRow.querySelector('[data-certificate-latest-file-name]');
+        const latestFileSummaryElement = tableRow.querySelector('[data-certificate-latest-file-summary]');
+
         if (!row.latest_active_file) {
-            return '<span class="text-sm text-base-content/50">-</span>';
+            emptyElement.classList.remove('hidden');
+            latestFileElement.classList.add('hidden');
+
+            return;
         }
 
         const file = row.latest_active_file;
-
-        return `
-            <div class="space-y-1">
-                <div class="font-medium">${escapeHtml(file.original_name)}</div>
-                <div class="text-xs text-base-content/60">${escapeHtml(formatFilesSummary(row.active_files_count || 0, row.total_files_count || 0))}</div>
-            </div>
-        `;
+        emptyElement.classList.add('hidden');
+        latestFileElement.classList.remove('hidden');
+        latestFileNameElement.textContent = file.original_name || '';
+        latestFileSummaryElement.textContent = formatFilesSummary(row.active_files_count || 0, row.total_files_count || 0);
     };
 
     const renderRows = (rows) => {
-        tableBody.innerHTML = '';
+        tableBody.replaceChildren();
 
         rows.forEach((row) => {
-            const tableRow = document.createElement('tr');
-            tableRow.innerHTML = `
-                <td>
-                    <div class="font-medium">${escapeHtml(row.name)}</div>
-                    <div class="text-xs text-base-content/60">${escapeHtml(row.description || '')}</div>
-                </td>
-                <td>${escapeHtml(row.issued_at || '-')}</td>
-                <td>${escapeHtml(row.expires_at || '-')}</td>
-                <td>
-                    <span class="badge ${row.is_internal ? 'badge-success badge-soft' : 'badge-neutral badge-soft'}">
-                        ${escapeHtml(row.type_label)}
-                    </span>
-                    ${row.internal_course ? `<div class="mt-1 text-xs text-base-content/60">${escapeHtml(row.internal_course)}</div>` : ''}
-                </td>
-                <td>
-                    ${row.document_type_name
-                        ? `<span class="badge badge-outline">${escapeHtml(row.document_type_name)}${row.document_type_is_deleted ? ' (eliminata)' : ''}</span>`
-                        : '<span class="text-sm text-base-content/50">-</span>'}
-                </td>
-                <td>${renderLatestFile(row)}</td>
-                <td class="max-w-md">
-                    <div class="flex flex-wrap gap-1">${renderRiskBasedRequirements(row.risk_based_requirements)}</div>
-                </td>
-                <td>
-                    <div class="ml-auto inline-grid grid-cols-[max-content_max-content] gap-2">
-                        <button type="button" class="btn btn-primary btn-sm whitespace-nowrap" data-action="edit">Modifica</button>
-                        <button type="button" class="btn btn-error btn-outline btn-sm whitespace-nowrap" data-action="delete">Elimina</button>
-                        ${row.latest_active_file?.actions?.preview_url
-                            ? `<button type="button" class="btn btn-primary btn-outline btn-sm whitespace-nowrap" data-action="preview-latest">Anteprima</button>`
-                            : `<span class="tooltip tooltip-left" data-tip="Nessun file attivo da vedere"><button type="button" class="btn btn-primary btn-outline btn-sm whitespace-nowrap" data-action="preview-latest" disabled>Anteprima</button></span>`}
-                        ${row.latest_active_file?.actions?.download_url
-                            ? `<button type="button" class="btn btn-primary btn-outline btn-sm whitespace-nowrap" data-action="download-latest">Scarica</button>`
-                            : `<span class="tooltip tooltip-left" data-tip="Nessun file attivo da scaricare"><button type="button" class="btn btn-primary btn-outline btn-sm whitespace-nowrap" data-action="download-latest" disabled>Scarica</button></span>`}
-                    </div>
-                </td>
-            `;
+            const tableRow = cloneTemplateElement(page, '[data-certificate-row-template]');
 
+            if (!tableRow) {
+                return;
+            }
+
+            const nameElement = tableRow.querySelector('[data-certificate-name]');
+            const issuedAtElement = tableRow.querySelector('[data-certificate-issued-at]');
+            const expiresAtElement = tableRow.querySelector('[data-certificate-expires-at]');
+            const typeBadgeElement = tableRow.querySelector('[data-certificate-type-badge]');
+            const documentTypeEmptyElement = tableRow.querySelector('[data-certificate-document-type-empty]');
+            const documentTypeBadgeElement = tableRow.querySelector('[data-certificate-document-type-badge]');
+            const riskRequirementsElement = tableRow.querySelector('[data-certificate-risk-requirements]');
+            const previewDisabledElement = tableRow.querySelector('[data-certificate-preview-disabled]');
+            const downloadDisabledElement = tableRow.querySelector('[data-certificate-download-disabled]');
             const previewLatestButton = tableRow.querySelector('[data-action="preview-latest"]');
             const downloadLatestButton = tableRow.querySelector('[data-action="download-latest"]');
 
-            if (previewLatestButton && row.latest_active_file?.actions?.preview_url) {
+            nameElement.textContent = row.name || '';
+            issuedAtElement.textContent = row.issued_at || '-';
+            expiresAtElement.textContent = row.expires_at || '-';
+            typeBadgeElement.classList.add(...(row.is_internal ? ['badge-success', 'badge-soft'] : ['badge-neutral', 'badge-soft']));
+            typeBadgeElement.textContent = row.type_label || '';
+
+            if (row.document_type_name) {
+                documentTypeBadgeElement.textContent = `${row.document_type_name}${row.document_type_is_deleted ? ' (eliminata)' : ''}`;
+                documentTypeBadgeElement.classList.remove('hidden');
+                documentTypeEmptyElement.classList.add('hidden');
+            } else {
+                documentTypeBadgeElement.classList.add('hidden');
+                documentTypeEmptyElement.classList.remove('hidden');
+            }
+
+            renderLatestFile(row, tableRow);
+            renderRiskBasedRequirements(riskRequirementsElement, row.risk_based_requirements);
+
+            if (row.latest_active_file?.actions?.preview_url) {
+                previewLatestButton.classList.remove('hidden');
+                previewDisabledElement.classList.add('hidden');
                 previewLatestButton.addEventListener('click', () => {
                     openPreview(row.latest_active_file.actions.preview_url);
                 });
+            } else {
+                previewLatestButton.classList.add('hidden');
+                previewDisabledElement.classList.remove('hidden');
             }
 
-            if (downloadLatestButton && row.latest_active_file?.actions?.download_url) {
+            if (row.latest_active_file?.actions?.download_url) {
+                downloadLatestButton.classList.remove('hidden');
+                downloadDisabledElement.classList.add('hidden');
                 downloadLatestButton.addEventListener('click', () => {
                     downloadFile(row.latest_active_file.actions.download_url);
                 });
+            } else {
+                downloadLatestButton.classList.add('hidden');
+                downloadDisabledElement.classList.remove('hidden');
             }
 
             tableRow.querySelector('[data-action="edit"]').addEventListener('click', () => {
@@ -441,44 +500,50 @@ function initializeCertificatesTable(page) {
     };
 
     const renderCertificateFiles = (files, meta = null) => {
-        filesTableBody.innerHTML = '';
+        filesTableBody.replaceChildren();
         filesSummary.textContent = formatFilesSummary(meta?.active_files_count ?? 0, meta?.total_files_count ?? 0);
         filesEmptyState.classList.toggle('hidden', files.length > 0);
 
         files.forEach((file) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>
-                    <div class="font-medium">${escapeHtml(file.original_name)}</div>
-                    <div class="text-xs text-base-content/60">${escapeHtml(file.size_label || '')}</div>
-                </td>
-                <td>${escapeHtml(file.uploaded_at || '-')}</td>
-                <td>
-                    <span class="badge ${file.is_deleted ? 'badge-outline badge-warning' : 'badge-outline badge-success'}">
-                        ${file.is_deleted ? 'Eliminato' : 'Attivo'}
-                    </span>
-                    ${file.deleted_at ? `<div class="mt-1 text-xs text-base-content/60">Soft delete: ${escapeHtml(file.deleted_at)}</div>` : ''}
-                </td>
-                <td>
-                    <div class="flex justify-end gap-2">
-                        <button type="button" class="btn btn-ghost btn-sm" data-action="preview">Anteprima</button>
-                        <button type="button" class="btn btn-ghost btn-sm" data-action="download">Scarica</button>
-                        ${file.is_deleted ? '' : '<button type="button" class="btn btn-error btn-outline btn-sm" data-action="delete">Elimina</button>'}
-                    </div>
-                </td>
-            `;
+            const rowElement = cloneTemplateElement(page, '[data-certificate-file-row-template]');
 
-            row.querySelector('[data-action="preview"]').addEventListener('click', () => {
+            if (!rowElement) {
+                return;
+            }
+
+            const nameElement = rowElement.querySelector('[data-certificate-file-name]');
+            const sizeElement = rowElement.querySelector('[data-certificate-file-size]');
+            const uploadedAtElement = rowElement.querySelector('[data-certificate-file-uploaded-at]');
+            const statusElement = rowElement.querySelector('[data-certificate-file-status]');
+            const deletedAtElement = rowElement.querySelector('[data-certificate-file-deleted-at]');
+            const deleteButton = rowElement.querySelector('[data-action="delete"]');
+
+            nameElement.textContent = file.original_name || '';
+            sizeElement.textContent = file.size_label || '';
+            uploadedAtElement.textContent = file.uploaded_at || '-';
+            statusElement.classList.add(file.is_deleted ? 'badge-warning' : 'badge-success');
+            statusElement.textContent = file.is_deleted ? 'Eliminato' : 'Attivo';
+
+            if (file.deleted_at) {
+                deletedAtElement.textContent = `Soft delete: ${file.deleted_at}`;
+                deletedAtElement.classList.remove('hidden');
+            }
+
+            rowElement.querySelector('[data-action="preview"]').addEventListener('click', () => {
                 openPreview(file.actions.preview_url);
             });
 
-            row.querySelector('[data-action="download"]').addEventListener('click', () => {
+            rowElement.querySelector('[data-action="download"]').addEventListener('click', () => {
                 downloadFile(file.actions.download_url);
             });
 
-            const deleteButton = row.querySelector('[data-action="delete"]');
-
             if (deleteButton) {
+                if (file.is_deleted) {
+                    deleteButton.classList.add('hidden');
+                } else {
+                    deleteButton.classList.remove('hidden');
+                }
+
                 deleteButton.addEventListener('click', async () => {
                     if (!window.confirm(`Eliminare il file "${file.original_name}"?`)) {
                         return;
@@ -498,7 +563,7 @@ function initializeCertificatesTable(page) {
                 });
             }
 
-            filesTableBody.appendChild(row);
+            filesTableBody.appendChild(rowElement);
         });
     };
 
@@ -513,17 +578,25 @@ function initializeCertificatesTable(page) {
     };
 
     const renderPagination = (meta) => {
-        pagination.innerHTML = '';
+        pagination.replaceChildren();
 
         if (!meta || meta.last_page <= 1) {
             return;
         }
 
         for (let pageNumber = 1; pageNumber <= meta.last_page; pageNumber += 1) {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = `join-item btn btn-sm ${pageNumber === meta.current_page ? 'btn-active' : ''}`;
+            const button = cloneTemplateElement(page, '[data-certificate-pagination-button-template]');
+
+            if (!button) {
+                continue;
+            }
+
             button.textContent = String(pageNumber);
+
+            if (pageNumber === meta.current_page) {
+                button.classList.add('btn-active');
+            }
+
             button.addEventListener('click', () => {
                 if (state.page === pageNumber) {
                     return;
@@ -556,10 +629,10 @@ function initializeCertificatesTable(page) {
             renderPagination(meta);
             emptyState.classList.toggle('hidden', rows.length > 0);
         } catch (error) {
-            tableBody.innerHTML = '';
+            tableBody.replaceChildren();
             emptyState.classList.remove('hidden');
             summary.textContent = 'Errore nel caricamento dei certificati.';
-            pagination.innerHTML = '';
+            pagination.replaceChildren();
         } finally {
             setLoading(false);
         }
@@ -582,7 +655,7 @@ function initializeCertificatesTable(page) {
 
             renderCertificateFiles(response.data.data ?? [], response.data.meta ?? null);
         } catch (error) {
-            filesTableBody.innerHTML = '';
+            filesTableBody.replaceChildren();
             filesEmptyState.classList.remove('hidden');
             filesSummary.textContent = 'Errore nel caricamento dei file.';
         } finally {
@@ -598,7 +671,7 @@ function initializeCertificatesTable(page) {
         modalTitle.textContent = 'Aggiungi certificato';
         submitButton.textContent = 'Salva certificato';
         showDeletedFilesCheckbox.checked = false;
-        filesTableBody.innerHTML = '';
+        filesTableBody.replaceChildren();
         filesSummary.textContent = 'Nessun file caricato.';
         filesEmptyState.classList.remove('hidden');
         Array.from(documentTypeSelect.options)

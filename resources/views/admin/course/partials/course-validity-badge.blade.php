@@ -5,7 +5,7 @@
     $coursePublishabilityErrors = $courseValidator->getPublishabilityErrors($course);
 @endphp
 
-<div class="flex flex-col gap-2" data-validity-details>
+<div class="flex flex-col gap-2" data-validity-details data-validity-modal-target="#course-validity-details-modal">
     <div class="flex items-center gap-3">
         @if ($courseIsValid)
             <span class="badge badge-sm badge-success">{{ __('Valido') }}</span>
@@ -29,7 +29,7 @@
     </div>
 
     @if ((! $courseIsValid && ! empty($courseValidationErrors)) || ($courseIsValid && ! $courseIsPublishable && ! empty($coursePublishabilityErrors)))
-        <dialog class="modal" data-validity-details-modal>
+        <dialog id="course-validity-details-modal" class="modal" data-validity-details-modal>
             <div class="modal-box max-w-2xl">
                 <div class="flex items-start justify-between gap-4">
                     <div>

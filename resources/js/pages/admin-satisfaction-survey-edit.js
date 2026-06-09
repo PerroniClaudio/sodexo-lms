@@ -26,8 +26,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteDescription = page.querySelector('[data-delete-description]');
     const closeDeleteModalButtons = page.querySelectorAll('[data-close-delete-modal]');
     const confirmDeleteButton = page.querySelector('[data-confirm-delete]');
+    const answerFieldTemplate = page.querySelector('[data-answer-field-template]');
+    const questionItemTemplate = page.querySelector('[data-question-item-template]');
+    const questionAnswerItemTemplate = page.querySelector('[data-question-answer-item-template]');
+    const questionExcludedTypeBadgeTemplate = page.querySelector('[data-question-excluded-type-badge-template]');
+    const questionNoExcludedTypesTemplate = page.querySelector('[data-question-no-excluded-types-template]');
 
-    if (!indexUrl || !storeUrl || !reorderUrl || !list || !emptyState || !summary || !loading || !(questionModal instanceof HTMLDialogElement) || !questionForm || !questionModalTitle || closeQuestionModalButtons.length === 0 || !(deleteModal instanceof HTMLDialogElement) || !deleteDescription || closeDeleteModalButtons.length === 0 || !confirmDeleteButton || !(inputTypeField instanceof HTMLSelectElement) || !answersPanel || !answersFields || !formError) {
+    if (!indexUrl || !storeUrl || !reorderUrl || !list || !emptyState || !summary || !loading || !(questionModal instanceof HTMLDialogElement) || !questionForm || !questionModalTitle || closeQuestionModalButtons.length === 0 || !(deleteModal instanceof HTMLDialogElement) || !deleteDescription || closeDeleteModalButtons.length === 0 || !confirmDeleteButton || !(inputTypeField instanceof HTMLSelectElement) || !answersPanel || !answersFields || !formError || !(answerFieldTemplate instanceof HTMLTemplateElement) || !(questionItemTemplate instanceof HTMLTemplateElement) || !(questionAnswerItemTemplate instanceof HTMLTemplateElement) || !(questionExcludedTypeBadgeTemplate instanceof HTMLTemplateElement) || !(questionNoExcludedTypesTemplate instanceof HTMLTemplateElement)) {
         return;
     }
 
@@ -44,27 +49,40 @@ document.addEventListener('DOMContentLoaded', () => {
         radio: 'Risposta multipla',
         textarea: 'Testo libero',
     };
-    const moveIcon = page.querySelector('[data-move-icon-template]')?.innerHTML?.trim() || '';
+    const moveIconTemplate = page.querySelector('[data-move-icon-template]');
 
-    const escapeHtml = (value) => String(value || '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
+    const cloneTemplateElement = (selector) => {
+        const template = page.querySelector(selector);
 
-    const createAnswerField = (value = '', index = 0) => `
-        <label class="form-control gap-2">
-            <span class="label-text text-sm">${index + 1}. ${escapeHtml('Risposta')}</span>
-            <input type="text" name="answers[]" value="${escapeHtml(value)}" class="input input-bordered w-full">
-        </label>
-    `;
+        if (!(template instanceof HTMLTemplateElement)) {
+            return null;
+        }
+
+        const element = template.content.firstElementChild;
+
+        if (!element) {
+            return null;
+        }
+
+        return element.cloneNode(true);
+    };
 
     const renderAnswerFields = (answers = []) => {
-        answersFields.innerHTML = '';
+        answersFields.replaceChildren();
 
         for (let index = 0; index < 5; index += 1) {
-            answersFields.insertAdjacentHTML('beforeend', createAnswerField(answers[index]?.text || answers[index] || '', index));
+            const field = cloneTemplateElement('[data-answer-field-template]');
+
+            if (!field) {
+                continue;
+            }
+
+            const labelElement = field.querySelector('[data-answer-field-label]');
+            const inputElement = field.querySelector('input[name="answers[]"]');
+
+            labelElement.textContent = `${index + 1}. Risposta`;
+            inputElement.value = answers[index]?.text || answers[index] || '';
+            answersFields.appendChild(field);
         }
     };
 
@@ -108,48 +126,82 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderQuestions = () => {
-        list.innerHTML = '';
+        list.replaceChildren();
         emptyState.classList.toggle('hidden', state.questions.length > 0);
         renderSummary();
 
         state.questions.forEach((question, index) => {
             const excludedTypes = (question.excluded_course_types || [])
                 .map((courseType) => courseTypeLabels[courseType] || courseType.toUpperCase());
+            const item = cloneTemplateElement('[data-question-item-template]');
 
-            const item = document.createElement('article');
-            item.className = 'rounded-box border border-base-300 bg-base-100 p-4 shadow-sm';
-            item.setAttribute('data-question-item', '');
-            item.setAttribute('data-question-id', String(question.id));
+            if (!item) {
+                return;
+            }
+
+            item.dataset.questionId = String(question.id);
             item.draggable = true;
-            item.innerHTML = `
-                <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div class="space-y-3">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <span class="badge badge-outline gap-1 cursor-move">
-                                ${moveIcon}
-                                <span>${index + 1}</span>
-                            </span>
-                            <span class="badge ${question.input_type === 'textarea' ? 'badge-accent' : 'badge-primary'}">${escapeHtml(inputTypeLabels[question.input_type] || question.input_type)}</span>
-                            ${question.input_type === 'textarea'
-                                ? '<span class="badge badge-warning badge-outline">Sempre in fondo</span>'
-                                : ''}
-                        </div>
-                        <p class="font-semibold">${escapeHtml(question.text)}</p>
-                        ${question.input_type === 'radio'
-                            ? `<ol class="ml-5 list-decimal space-y-1 text-sm text-base-content/70">${question.answers.map((answer) => `<li>${escapeHtml(answer.text)}</li>`).join('')}</ol>`
-                            : '<p class="text-sm text-base-content/70">Risposta libera tramite textarea.</p>'}
-                        <div class="flex flex-wrap gap-2 text-xs">
-                            ${excludedTypes.length > 0
-                                ? excludedTypes.map((label) => `<span class="badge badge-ghost">${escapeHtml(label)} salta</span>`).join('')
-                                : '<span class="text-base-content/60">Nessuna tipologia esclusa.</span>'}
-                        </div>
-                    </div>
-                    <div class="flex shrink-0 items-center gap-2">
-                        <button type="button" class="btn btn-primary btn-sm" data-action="edit">Modifica</button>
-                        <button type="button" class="btn btn-error btn-outline btn-sm" data-action="delete">Elimina</button>
-                    </div>
-                </div>
-            `;
+
+            const moveIconTarget = item.querySelector('[data-question-move-icon]');
+            const orderElement = item.querySelector('[data-question-order]');
+            const inputTypeBadge = item.querySelector('[data-question-input-type-badge]');
+            const textareaBadge = item.querySelector('[data-question-textarea-badge]');
+            const textElement = item.querySelector('[data-question-text]');
+            const answersList = item.querySelector('[data-question-answers-list]');
+            const textareaNote = item.querySelector('[data-question-textarea-note]');
+            const excludedTypesContainer = item.querySelector('[data-question-excluded-types]');
+
+            if (moveIconTarget && moveIconTemplate instanceof HTMLTemplateElement) {
+                moveIconTarget.replaceChildren(moveIconTemplate.content.cloneNode(true));
+            }
+
+            orderElement.textContent = String(index + 1);
+            inputTypeBadge.classList.add(question.input_type === 'textarea' ? 'badge-accent' : 'badge-primary');
+            inputTypeBadge.textContent = inputTypeLabels[question.input_type] || question.input_type;
+            textareaBadge.classList.toggle('hidden', question.input_type !== 'textarea');
+            textElement.textContent = question.text || '';
+
+            if (question.input_type === 'radio') {
+                answersList.classList.remove('hidden');
+                textareaNote.classList.add('hidden');
+                answersList.replaceChildren();
+
+                (question.answers || []).forEach((answer) => {
+                    const answerItem = cloneTemplateElement('[data-question-answer-item-template]');
+
+                    if (!answerItem) {
+                        return;
+                    }
+
+                    answerItem.textContent = answer.text || '';
+                    answersList.appendChild(answerItem);
+                });
+            } else {
+                answersList.classList.add('hidden');
+                textareaNote.classList.remove('hidden');
+                answersList.replaceChildren();
+            }
+
+            excludedTypesContainer.replaceChildren();
+
+            if (excludedTypes.length > 0) {
+                excludedTypes.forEach((label) => {
+                    const badge = cloneTemplateElement('[data-question-excluded-type-badge-template]');
+
+                    if (!badge) {
+                        return;
+                    }
+
+                    badge.textContent = `${label} salta`;
+                    excludedTypesContainer.appendChild(badge);
+                });
+            } else {
+                const empty = cloneTemplateElement('[data-question-no-excluded-types-template]');
+
+                if (empty) {
+                    excludedTypesContainer.appendChild(empty);
+                }
+            }
 
             item.querySelector('[data-action="edit"]').addEventListener('click', () => openEditModal(question.id));
             item.querySelector('[data-action="delete"]').addEventListener('click', () => openDeleteModal(question.id));

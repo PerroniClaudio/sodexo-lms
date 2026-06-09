@@ -29,7 +29,10 @@ function initializeValidityIssueDialogs(scope) {
     }
 
     containers.forEach((container) => {
-        const modal = container.querySelector('[data-validity-details-modal]') ?? container.nextElementSibling;
+        const modalSelector = container.dataset.validityModalTarget;
+        const modal = (modalSelector ? scope.querySelector(modalSelector) : null)
+            ?? container.querySelector('[data-validity-details-modal]')
+            ?? container.nextElementSibling;
 
         if (!(modal instanceof HTMLDialogElement)) {
             return;

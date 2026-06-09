@@ -11,6 +11,50 @@
             <x-lucide-move class="h-3.5 w-3.5" />
         </template>
 
+        <template data-answer-field-template>
+            <label class="form-control gap-2">
+                <span class="label-text text-sm" data-answer-field-label></span>
+                <input type="text" name="answers[]" value="" class="input input-bordered w-full">
+            </label>
+        </template>
+
+        <template data-question-item-template>
+            <article class="rounded-box border border-base-300 bg-base-100 p-4 shadow-sm" data-question-item>
+                <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div class="space-y-3">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="badge badge-outline gap-1 cursor-move" data-question-order-badge>
+                                <span data-question-move-icon></span>
+                                <span data-question-order></span>
+                            </span>
+                            <span class="badge" data-question-input-type-badge></span>
+                            <span class="badge badge-warning badge-outline hidden" data-question-textarea-badge>{{ __('Sempre in fondo') }}</span>
+                        </div>
+                        <p class="font-semibold" data-question-text></p>
+                        <ol class="ml-5 hidden list-decimal space-y-1 text-sm text-base-content/70" data-question-answers-list></ol>
+                        <p class="hidden text-sm text-base-content/70" data-question-textarea-note>{{ __('Risposta libera tramite textarea.') }}</p>
+                        <div class="flex flex-wrap gap-2 text-xs" data-question-excluded-types></div>
+                    </div>
+                    <div class="flex shrink-0 items-center gap-2">
+                        <button type="button" class="btn btn-primary btn-sm" data-action="edit">{{ __('Modifica') }}</button>
+                        <button type="button" class="btn btn-error btn-outline btn-sm" data-action="delete">{{ __('Elimina') }}</button>
+                    </div>
+                </div>
+            </article>
+        </template>
+
+        <template data-question-answer-item-template>
+            <li></li>
+        </template>
+
+        <template data-question-excluded-type-badge-template>
+            <span class="badge badge-ghost"></span>
+        </template>
+
+        <template data-question-no-excluded-types-template>
+            <span class="text-base-content/60">{{ __('Nessuna tipologia esclusa.') }}</span>
+        </template>
+
         <x-page-header :title="__('Questionario di gradimento')">
             <x-slot:actions>
                 <button type="button" class="btn btn-primary" data-open-create-modal>

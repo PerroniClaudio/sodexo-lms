@@ -431,6 +431,10 @@ class CourseModuleController extends Controller
         try {
             $module->update($moduleAttributes);
 
+            if ($module->isLearningQuiz()) {
+                $module->updateQuizMaxScore();
+            }
+
             return redirect()
                 ->route('admin.courses.edit', $course)
                 ->with('status', __('Module updated successfully.'));

@@ -10,6 +10,7 @@ async function updateQuizValidityBadge() {
         const moduleId = quizList.dataset.moduleId;
         const validityUrl = `${baseUrl}/${encodeURIComponent(courseId)}/modules/${encodeURIComponent(moduleId)}/quiz/validity`;
         const res = await fetch(validityUrl);
+        if (!res.ok) return;
         const data = await res.json();
         const badgeContainer = document.getElementById('quiz-validity-badge');
         if (!badgeContainer) return;
@@ -19,11 +20,19 @@ async function updateQuizValidityBadge() {
         if (data.is_valid_quiz) {
             if (validBadge) validBadge.style.display = 'inline-flex';
             if (invalidBadge) invalidBadge.style.display = 'none';
-            if (invalidReason) invalidReason.style.display = 'none';
+            if (invalidReason) {
+                invalidReason.style.display = 'none';
+                invalidReason.textContent = '';
+            }
         } else {
             if (validBadge) validBadge.style.display = 'none';
             if (invalidBadge) invalidBadge.style.display = 'inline-flex';
-            if (invalidReason) invalidReason.style.display = 'block';
+            if (invalidReason) {
+                invalidReason.textContent = Array.isArray(data.errors) && data.errors.length > 0
+                    ? data.errors.join(' ')
+                    : 'Deve avere almeno una domanda valida, il punteggio di superamento non può essere più alto del punteggio massimo e i tentativi devono essere maggiori di zero.';
+                invalidReason.style.display = 'block';
+            }
         }
     } catch (e) {
         // Silenzia errori
@@ -42,8 +51,10 @@ function isQuizEditable() {
 async function updateMaxScoreInput() {
     try {
         const quizList = document.getElementById('quiz-questions-list');
+        if (!quizList) return;
         const maxScoreUrl = quizList.dataset.maxScoreUrl;
         const res = await fetch(maxScoreUrl);
+        if (!res.ok) return;
         const data = await res.json();
         if (typeof data.max_score !== 'undefined') {
             // Cerca l'input max_score nel form principale
@@ -56,6 +67,12 @@ async function updateMaxScoreInput() {
         // Silenzia errori
     }
 }
+
+async function refreshQuizDerivedState() {
+    await updateMaxScoreInput();
+    await updateQuizValidityBadge();
+}
+
 function renderQuestions(questions) {
     const container = document.getElementById('quiz-questions-list');
     const questionTemplate = document.getElementById('quiz-question-template');
@@ -158,6 +175,7 @@ async function loadQuestions() {
         const data = await res.json();
         if (data.success) {
             renderQuestions(data.questions);
+            await refreshQuizDerivedState();
         } else {
             window.showFlash('error', 'Errore nel caricamento domande');
         }
@@ -206,8 +224,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.success) {
                     window.showFlash('success', data.message || 'Domanda aggiornata');
                     loadQuestions();
-                    updateMaxScoreInput();
-                        updateQuizValidityBadge();
                 } else {
                     window.showFlash('error', data.message || 'Errore');
                 }
@@ -242,8 +258,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.success) {
                     window.showFlash('success', data.message || 'Risposta aggiornata');
                     loadQuestions();
-                    updateMaxScoreInput();
-                        updateQuizValidityBadge();
                 } else {
                     window.showFlash('error', data.message || 'Errore');
                 }
@@ -273,8 +287,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 form.reset();
                 document.getElementById('add-question-modal').close();
                 await loadQuestions();
-                updateMaxScoreInput();
-                    updateQuizValidityBadge();
             } else {
                 window.showFlash('error', data.message || 'Errore');
             }
@@ -309,8 +321,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.success) {
                     window.showFlash('success', data.message || 'Domanda aggiornata');
                     await loadQuestions();
-                    updateMaxScoreInput();
-                        updateQuizValidityBadge();
                 } else {
                     window.showFlash('error', data.message || 'Errore');
                 }
@@ -340,8 +350,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.success) {
                     window.showFlash('success', data.message || 'Domanda eliminata');
                     loadQuestions();
-                    updateMaxScoreInput();
-                        updateQuizValidityBadge();
                 } else {
                     window.showFlash('error', data.message || 'Errore');
                 }
@@ -391,8 +399,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.showFlash('success', data.message || 'Risposta aggiunta');
                 document.getElementById('add-answer-modal').close();
                 await loadQuestions();
-                updateMaxScoreInput();
-                updateQuizValidityBadge();
             } else {
                 window.showFlash('error', data.message || 'Errore');
             }
@@ -429,8 +435,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.success) {
                     window.showFlash('success', data.message || 'Risposta aggiornata');
                     await loadQuestions();
-                    updateMaxScoreInput();
-                    updateQuizValidityBadge();
                 } else {
                     window.showFlash('error', data.message || 'Errore');
                 }
@@ -461,8 +465,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.success) {
                     window.showFlash('success', data.message || 'Risposta eliminata');
                     loadQuestions();
-                    updateMaxScoreInput();
-                        updateQuizValidityBadge();
                 } else {
                     window.showFlash('error', data.message || 'Errore');
                 }
@@ -495,8 +497,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.success) {
                     window.showFlash('success', data.message || 'Risposta corretta aggiornata');
                     loadQuestions();
-                    updateMaxScoreInput();
-                        updateQuizValidityBadge();
                 } else {
                     window.showFlash('error', data.message || 'Errore');
                 }

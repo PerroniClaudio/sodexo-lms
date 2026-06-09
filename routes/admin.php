@@ -32,6 +32,7 @@ use App\Http\Controllers\Admin\VideoReportController;
 use App\Http\Controllers\LiveStreamController;
 use App\Models\Course;
 use App\Models\Module;
+use App\Services\ModuleValidation\ModuleValidatorService;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
@@ -265,6 +266,13 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::get('/courses/{course}/modules/{module}/max-score', function (Course $course, Module $module) {
                 abort_unless($module->belongsTo === (string) $course->getKey(), 404);
 
+                $computedMaxScore = $module->getValidQuizQuestionsTotalPoints();
+
+                if ($module->isLearningQuiz() && $module->max_score !== $computedMaxScore) {
+                    $module->forceFill(['max_score' => $computedMaxScore])->save();
+                    $module->refresh();
+                }
+
                 return response()->json(['max_score' => $module->max_score]);
             })->name('courses.modules.max_score');
 
@@ -272,8 +280,18 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::get('/courses/{course}/modules/{module}/quiz/validity', function (Course $course, Module $module) {
                 abort_unless($module->belongsTo === (string) $course->getKey(), 404);
 
+                $computedMaxScore = $module->getValidQuizQuestionsTotalPoints();
+
+                if ($module->isLearningQuiz() && $module->max_score !== $computedMaxScore) {
+                    $module->forceFill(['max_score' => $computedMaxScore])->save();
+                    $module->refresh();
+                }
+
+                $validator = app(ModuleValidatorService::class);
+
                 return response()->json([
                     'is_valid_quiz' => $module->isValidQuiz(),
+                    'errors' => $validator->getValidationErrors($module),
                 ]);
             })->name('courses.modules.quiz_validity');
 
