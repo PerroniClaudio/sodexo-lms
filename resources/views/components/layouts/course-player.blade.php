@@ -132,7 +132,7 @@
                                                 ])
                                             >
                                                 <div @class([
-                                                    'flex size-9 items-center justify-center rounded-box bg-base-200',
+                                                    'flex size-9 shrink-0 aspect-square items-center justify-center rounded-full bg-base-200',
                                                     'bg-accent text-accent-content' => $isCurrent,
                                                 ])>
                                                     @if(! $isAccessible)

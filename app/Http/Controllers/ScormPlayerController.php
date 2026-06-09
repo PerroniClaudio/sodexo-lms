@@ -46,14 +46,17 @@ class ScormPlayerController extends Controller
             $scormPackage,
             $request->query('sco')
         );
+        $modules = $this->loadCourseModulesForEnrollment($course, $enrollment);
 
         return view('scorm.player', [
             'course' => $course,
             'module' => $module,
             'package' => $scormPackage,
             'launchSco' => $launchSco,
+            'modules' => $modules,
             'enrollment' => $enrollment,
             'moduleProgress' => $moduleProgress,
+            'moduleTypeMeta' => $this->moduleTypeMeta(),
             'scormPlayerConfig' => [
                 'version' => $scormPackage->version,
                 'entryPointUrl' => route('user.courses.modules.scorm.asset', [
@@ -102,9 +105,9 @@ class ScormPlayerController extends Controller
 
         abort_unless($disk->exists($storagePath), Response::HTTP_NOT_FOUND);
 
-        $mimeType = $disk->mimeType($storagePath) ?: 'application/octet-stream';
+        $mimeType = $this->resolveAssetMimeType($normalizedPath, $disk->mimeType($storagePath) ?: null);
 
-        if ($this->isHtmlAsset($normalizedPath, $mimeType)) {
+        if ($this->isHtmlAsset($normalizedPath)) {
             return $this->streamHtmlAsset($disk, $storagePath, $mimeType);
         }
 
@@ -132,8 +135,6 @@ class ScormPlayerController extends Controller
             ->whereNull('deleted_at')
             ->firstOrFail();
 
-        abort_unless((int) $enrollment->current_module_id === (int) $module->getKey(), Response::HTTP_FORBIDDEN);
-
         $moduleProgress = $enrollment->moduleProgresses()
             ->where('module_id', $module->getKey())
             ->firstOrFail();
@@ -141,6 +142,66 @@ class ScormPlayerController extends Controller
         abort_unless($moduleProgress->status !== ModuleProgress::STATUS_LOCKED, Response::HTTP_FORBIDDEN);
 
         return [$enrollment, $moduleProgress];
+    }
+
+    private function moduleTypeMeta(): array
+    {
+        return [
+            'video' => [
+                'label' => __('Video'),
+                'icon' => 'lucide-clapperboard',
+                'badge' => 'badge-primary',
+            ],
+            'res' => [
+                'label' => __('Sessione in aula'),
+                'icon' => 'lucide-users',
+                'badge' => 'badge-accent',
+            ],
+            'live' => [
+                'label' => __('Live'),
+                'icon' => 'lucide-monitor-play',
+                'badge' => 'badge-secondary',
+            ],
+            'scorm' => [
+                'label' => __('SCORM'),
+                'icon' => 'lucide-package',
+                'badge' => 'badge-info',
+            ],
+            'learning_quiz' => [
+                'label' => __('Quiz'),
+                'icon' => 'lucide-badge-help',
+                'badge' => 'badge-error',
+            ],
+            'satisfaction_quiz' => [
+                'label' => __('Gradimento'),
+                'icon' => 'lucide-message-square-heart',
+                'badge' => 'badge-success',
+            ],
+        ];
+    }
+
+    private function loadCourseModulesForEnrollment(Course $course, CourseEnrollment $enrollment)
+    {
+        $modules = $course->modules()
+            ->with([
+                'progressRecords' => function ($query) use ($enrollment) {
+                    $query->where('course_user_id', $enrollment->id);
+                },
+            ])
+            ->orderBy('order')
+            ->get();
+
+        $modules->each(function (Module $courseModule): void {
+            /** @var ModuleProgress|null $moduleProgress */
+            $moduleProgress = $courseModule->progressRecords->first();
+
+            $courseModule->pivot = (object) [
+                'status' => $moduleProgress?->status ?? ModuleProgress::STATUS_LOCKED,
+                'quiz_attempts' => $moduleProgress?->quiz_attempts ?? 0,
+            ];
+        });
+
+        return $modules;
     }
 
     private function normalizeAssetPath(string $path): string
@@ -151,10 +212,35 @@ class ScormPlayerController extends Controller
         return $normalizedPath;
     }
 
-    private function isHtmlAsset(string $path, string $mimeType): bool
+    private function isHtmlAsset(string $path): bool
     {
-        return Str::endsWith(Str::lower($path), ['.html', '.htm', '.xhtml'])
-            || Str::contains(Str::lower($mimeType), ['text/html', 'application/xhtml']);
+        return Str::endsWith(Str::lower($path), ['.html', '.htm', '.xhtml']);
+    }
+
+    private function resolveAssetMimeType(string $path, ?string $detectedMimeType): string
+    {
+        $extension = Str::lower(pathinfo($path, PATHINFO_EXTENSION));
+
+        return match ($extension) {
+            'css' => 'text/css',
+            'gif' => 'image/gif',
+            'htm', 'html' => 'text/html',
+            'jpeg', 'jpg' => 'image/jpeg',
+            'js' => 'application/javascript',
+            'json' => 'application/json',
+            'm4a' => 'audio/mp4',
+            'm4v', 'mp4' => 'video/mp4',
+            'png' => 'image/png',
+            'svg' => 'image/svg+xml',
+            'txt' => 'text/plain',
+            'webm' => 'video/webm',
+            'webp' => 'image/webp',
+            'woff' => 'font/woff',
+            'woff2' => 'font/woff2',
+            'xhtml' => 'application/xhtml+xml',
+            'xml' => 'application/xml',
+            default => $detectedMimeType ?: 'application/octet-stream',
+        };
     }
 
     private function streamHtmlAsset(FilesystemAdapter $disk, string $storagePath, string $mimeType): StreamedResponse

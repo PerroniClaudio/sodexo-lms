@@ -51,8 +51,6 @@ class ScormModulePackageController extends Controller
             ->whereNull('deleted_at')
             ->firstOrFail();
 
-        abort_unless((int) $enrollment->current_module_id === (int) $module->getKey(), Response::HTTP_FORBIDDEN);
-
         $moduleProgress = $enrollment->moduleProgresses()
             ->where('module_id', $module->getKey())
             ->firstOrFail();

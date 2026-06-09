@@ -282,6 +282,13 @@ class ScormService
     ): array {
         $snapshot = $this->commitRuntime($user, $package, $moduleProgress, $scoIdentifier, $sessionId, $values);
 
+        $moduleProgress->refresh();
+
+        if ($moduleProgress->status !== ModuleProgress::STATUS_COMPLETED
+            && $moduleProgress->status !== ModuleProgress::STATUS_FAILED) {
+            $moduleProgress->markCompleted();
+        }
+
         ScormSession::query()
             ->where('session_id', $sessionId)
             ->where('user_id', $user->getKey())
