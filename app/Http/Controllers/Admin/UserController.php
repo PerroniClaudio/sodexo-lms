@@ -338,6 +338,8 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'course_id' => ['required', 'integer', 'exists:courses,id'],
+            'course_validity_type' => ['nullable', 'string', 'in:'.implode(',', array_map(fn ($case) => $case->value, CourseRiskRequirementValidityType::cases()))],
+            'is_integrative_enrollment' => ['nullable', 'boolean'],
         ]);
 
         $course = Course::query()->with('riskBasedRequirements')->findOrFail($validated['course_id']);
@@ -349,7 +351,12 @@ class UserController extends Controller
         }
 
         try {
-            CourseEnrollment::enroll($user, $course);
+            CourseEnrollment::enroll(
+                $user,
+                $course,
+                $validated['course_validity_type'] ?? null,
+                (bool) ($validated['is_integrative_enrollment'] ?? false),
+            );
         } catch (\DomainException $exception) {
             return redirect()
                 ->route('admin.users.risk-course-selection', $user)

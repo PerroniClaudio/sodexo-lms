@@ -8,6 +8,12 @@ use Illuminate\Validation\Rule;
 
 class StoreRiskBasedRequirementRequest extends FormRequest
 {
+    private const GENERAL_TRAINING = 'general';
+
+    private const SPECIFIC_TRAINING = 'specific';
+
+    private const SPECIFIC_PROGRESS_GROUP = 'worker_specific_training';
+
     public function authorize(): bool
     {
         return true;
@@ -16,6 +22,7 @@ class StoreRiskBasedRequirementRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $isLimitedValidity = $this->boolean('is_limited_validity');
+        $riskProgressionGroup = $this->mappedRiskProgressionGroup();
 
         if ($isLimitedValidity) {
             $years = (int) $this->input('validity_years', 0);
@@ -25,6 +32,7 @@ class StoreRiskBasedRequirementRequest extends FormRequest
             $this->merge([
                 'is_limited_validity' => true,
                 'validity_months' => $totalMonths > 0 ? $totalMonths : null,
+                'risk_progression_group' => $riskProgressionGroup,
             ]);
 
             return;
@@ -33,7 +41,14 @@ class StoreRiskBasedRequirementRequest extends FormRequest
         $this->merge([
             'is_limited_validity' => false,
             'validity_months' => null,
+            'risk_progression_group' => $riskProgressionGroup,
         ]);
+    }
+
+    public function validatedPayload(): array
+    {
+        return $this->safe()
+            ->except('training_family');
     }
 
     public function rules(): array
@@ -41,7 +56,8 @@ class StoreRiskBasedRequirementRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
-            'risk_progression_group' => ['nullable', 'string', 'max:100'],
+            'training_family' => ['required', 'string', Rule::in([self::GENERAL_TRAINING, self::SPECIFIC_TRAINING])],
+            'risk_progression_group' => ['nullable', 'string', 'max:100', Rule::in([self::SPECIFIC_PROGRESS_GROUP])],
             'is_limited_validity' => ['required', 'boolean'],
             'risk_levels' => ['required', 'array', 'min:1'],
             'risk_levels.*' => [Rule::enum(RiskLevel::class)],
@@ -62,6 +78,7 @@ class StoreRiskBasedRequirementRequest extends FormRequest
         return [
             'name' => __('Nome'),
             'description' => __('Descrizione'),
+            'training_family' => __('Famiglia formativa'),
             'risk_progression_group' => __('Gruppo progressione rischio'),
             'is_limited_validity' => __('Validita limitata'),
             'risk_levels' => __('Livelli di rischio'),
@@ -79,6 +96,16 @@ class StoreRiskBasedRequirementRequest extends FormRequest
             'validity_months.min' => 'La validita deve essere di almeno 1 mese.',
             'risk_levels.required' => 'Devi selezionare almeno un livello di rischio.',
             'risk_levels.min' => 'Devi selezionare almeno un livello di rischio.',
+            'training_family.required' => 'Devi selezionare la famiglia formativa.',
+            'training_family.in' => 'La famiglia formativa selezionata non e valida.',
         ];
+    }
+
+    private function mappedRiskProgressionGroup(): ?string
+    {
+        return match ($this->input('training_family')) {
+            self::SPECIFIC_TRAINING => self::SPECIFIC_PROGRESS_GROUP,
+            default => null,
+        };
     }
 }

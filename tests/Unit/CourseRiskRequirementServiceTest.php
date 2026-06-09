@@ -5,6 +5,7 @@ use App\Enums\RiskLevel;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Module;
+use App\Models\ModuleProgress;
 use App\Models\RiskBasedRequirement;
 use App\Models\User;
 use App\Models\UserCertificate;
@@ -172,6 +173,31 @@ it('uses a higher-risk valid certificate to satisfy a lower-risk requirement unt
         ->and($coverage['requirement']?->is($highRequirement))->toBeTrue();
 });
 
+it('treats a valid unlimited certificate as coverage for a general multi-level requirement', function () {
+    $user = makeTestUser();
+    $generalRequirement = RiskBasedRequirement::factory()->unlimited()->create([
+        'name' => 'Formazione generale',
+        'risk_levels' => [RiskLevel::LOW, RiskLevel::MEDIUM, RiskLevel::HIGH],
+        'risk_progression_group' => null,
+    ]);
+
+    $certificate = UserCertificate::factory()
+        ->for($user)
+        ->create([
+            'issued_at' => now()->subMonths(2)->toDateString(),
+            'expires_at' => null,
+        ]);
+    $certificate->riskBasedRequirements()->attach($generalRequirement->getKey());
+
+    $coverage = app(CourseRiskRequirementService::class)
+        ->bestValidCertificateCoverageForRequirement($user, $generalRequirement, now());
+
+    expect($coverage['certificate'])
+        ->not->toBeNull()
+        ->and($coverage['certificate']?->is($certificate))->toBeTrue()
+        ->and($coverage['requirement']?->is($generalRequirement))->toBeTrue();
+});
+
 it('requires a valid starting certificate to enroll in an integrative course', function () {
     $user = makeTestUser();
     $lowRequirement = RiskBasedRequirement::factory()
@@ -250,7 +276,7 @@ it('creates an internal risk certificate when an enrollment completes', function
     expect($certificate->internal_course_id)->toBe($course->getKey())
         ->and($certificate->is_internal)->toBeTrue()
         ->and($certificate->name)->toBe('Corso spazi confinati')
-        ->and($certificate->description)->toBe('Corso '.$course->getKey().' (Corso spazi confinati) che risponde al requisito Spazi confinati')
+        ->and($certificate->description)->toBe('Conseguito partecipando al corso interno "Corso spazi confinati" ('.$course->getKey().') come conseguimento iniziale')
         ->and($certificate->issued_at?->toDateString())->toBe($enrollment->fresh()->completed_at?->toDateString())
         ->and($certificate->expires_at?->toDateString())->toBe($enrollment->fresh()->completed_at?->copy()->addMonthsNoOverflow(24)->toDateString())
         ->and($certificate->riskBasedRequirements()->pluck('risk_based_requirements.id')->all())
@@ -333,4 +359,129 @@ it('backfills certificates for enrollments completed outside the observer flow',
     expect($certificate->internal_course_id)->toBe($course->getKey())
         ->and($certificate->riskBasedRequirements()->pluck('risk_based_requirements.id')->all())
         ->toEqualCanonicalizing([$requirement->getKey()]);
+});
+
+it('does not create a certificate if integrative prerequisites are not met', function () {
+    $user = makeTestUser();
+    $progressionGroup = 'test_progression_group';
+
+    $highRiskRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::HIGH)
+        ->limited(24)
+        ->progressionGroup($progressionGroup)
+        ->create(['name' => 'Rischio Alto']);
+
+    $lowRiskRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::LOW)
+        ->limited(24)
+        ->progressionGroup($progressionGroup)
+        ->create(['name' => 'Rischio Basso']);
+
+    $integrativeCourse = Course::factory()->create([
+        'title' => 'Corso Integrativo',
+        'status' => 'draft',
+    ]);
+
+    $integrativeCourse->riskBasedRequirements()->attach($highRiskRequirement->getKey(), [
+        'course_validity_types' => json_encode([CourseRiskRequirementValidityType::Integrative->value]),
+        'integrative_start_risk_levels' => json_encode([RiskLevel::LOW->value]),
+    ]);
+
+    // User has no valid certificate for the required participation level
+    // Even if enrolled (e.g., by admin), the certificate should not be generated
+    $module = Module::factory()->create([
+        'type' => Module::TYPE_VIDEO,
+        'order' => 1,
+        'belongsTo' => (string) $integrativeCourse->getKey(),
+    ]);
+
+    // Force enrollment bypass using withoutEvents
+    $enrollment = CourseEnrollment::withoutEvents(fn (): CourseEnrollment => CourseEnrollment::factory()->create([
+        'user_id' => $user->getKey(),
+        'course_id' => $integrativeCourse->getKey(),
+        'status' => CourseEnrollment::STATUS_IN_PROGRESS,
+        'course_validity_type' => CourseRiskRequirementValidityType::Integrative->value,
+        'is_integrative_enrollment' => true,
+    ]));
+    $enrollment->moduleProgresses()->create([
+        'module_id' => $module->getKey(),
+        'status' => ModuleProgress::STATUS_COMPLETED,
+    ]);
+    $enrollment->forceFill([
+        'status' => CourseEnrollment::STATUS_COMPLETED,
+        'completed_at' => now(),
+        'completion_percentage' => 100,
+    ])->save();
+
+    app(CourseRiskRequirementService::class)->syncCertificatesForEnrollment($enrollment->fresh());
+
+    expect(UserCertificate::query()->count())->toBe(0)
+        ->and($enrollment->fresh()->certificate_generation_error)->not()->toBeNull()
+        ->and($enrollment->fresh()->certificate_generation_error)->toContain('integrative_prerequisites_not_met');
+});
+
+it('does not create a certificate if participation certificate is expired', function () {
+    $user = makeTestUser();
+    $progressionGroup = 'test_progression_group_expired';
+
+    $highRiskRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::HIGH)
+        ->limited(24)
+        ->progressionGroup($progressionGroup)
+        ->create(['name' => 'Rischio Alto']);
+
+    $lowRiskRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::LOW)
+        ->limited(24)
+        ->progressionGroup($progressionGroup)
+        ->create(['name' => 'Rischio Basso']);
+
+    $integrativeCourse = Course::factory()->create([
+        'title' => 'Corso Integrativo',
+        'status' => 'draft',
+    ]);
+
+    $integrativeCourse->riskBasedRequirements()->attach($highRiskRequirement->getKey(), [
+        'course_validity_types' => json_encode([CourseRiskRequirementValidityType::Integrative->value]),
+        'integrative_start_risk_levels' => json_encode([RiskLevel::LOW->value]),
+    ]);
+
+    // Create an expired certificate for the user
+    $expiredCertificate = $user->userCertificates()->create([
+        'name' => 'Certificato Scaduto',
+        'is_internal' => false,
+        'issued_at' => now()->subYears(2),
+        'expires_at' => now()->subMonths(6),
+    ]);
+    $expiredCertificate->riskBasedRequirements()->attach($lowRiskRequirement->getKey());
+
+    $module = Module::factory()->create([
+        'type' => Module::TYPE_VIDEO,
+        'order' => 1,
+        'belongsTo' => (string) $integrativeCourse->getKey(),
+    ]);
+
+    // Force enrollment bypass using withoutEvents
+    $enrollment = CourseEnrollment::withoutEvents(fn (): CourseEnrollment => CourseEnrollment::factory()->create([
+        'user_id' => $user->getKey(),
+        'course_id' => $integrativeCourse->getKey(),
+        'status' => CourseEnrollment::STATUS_IN_PROGRESS,
+        'course_validity_type' => CourseRiskRequirementValidityType::Integrative->value,
+        'is_integrative_enrollment' => true,
+    ]));
+    $enrollment->moduleProgresses()->create([
+        'module_id' => $module->getKey(),
+        'status' => ModuleProgress::STATUS_COMPLETED,
+    ]);
+    $enrollment->forceFill([
+        'status' => CourseEnrollment::STATUS_COMPLETED,
+        'completed_at' => now(),
+        'completion_percentage' => 100,
+    ])->save();
+
+    app(CourseRiskRequirementService::class)->syncCertificatesForEnrollment($enrollment->fresh());
+
+    expect(UserCertificate::where('is_internal', true)->count())->toBe(0)
+        ->and($enrollment->fresh()->certificate_generation_error)->not()->toBeNull()
+        ->and($enrollment->fresh()->certificate_generation_error)->toContain('participation_certificate_expired');
 });

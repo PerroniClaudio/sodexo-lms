@@ -155,22 +155,40 @@
                         @enderror
                     </div>
 
-                    <div class="form-control flex flex-col gap-2">
-                        <label for="risk_progression_group" class="label p-0">
-                            <span class="label-text font-medium">{{ __('Gruppo progressione rischio') }}</span>
-                        </label>
-                        <input
-                            id="risk_progression_group"
-                            name="risk_progression_group"
-                            type="text"
-                            value="{{ old('risk_progression_group', $riskBasedRequirement->risk_progression_group) }}"
-                            class="input input-bordered w-full @error('risk_progression_group') input-error @enderror"
-                            placeholder="formazione-specifica-lavoratori"
-                        >
-                        <p class="text-sm text-base-content/70">
-                            {{ __('Non definisce l\'ordine dei livelli: quello arriva già dal rischio basso/medio/alto. Serve solo a collegare tra loro i requisiti della stessa famiglia formativa, così un attestato di livello superiore può coprire fino a scadenza i livelli inferiori dello stesso percorso.') }}
-                        </p>
-                        @error('risk_progression_group')
+                    <div class="form-control flex flex-col gap-3">
+                        <div>
+                            <label class="label p-0">
+                                <span class="label-text font-medium">{{ __('Famiglia formativa') }} <span class="text-error">*</span></span>
+                            </label>
+                            <p class="text-xs text-base-content/70">
+                                {{ __('Dato necessario per logiche interne alla formazione specifica dei lavoratori.') }}
+                            </p>
+                        </div>
+                        <div class="flex flex-col gap-3">
+                            <label for="training_family_general" class="label cursor-pointer justify-start gap-3">
+                                <input
+                                    id="training_family_general"
+                                    name="training_family"
+                                    type="radio"
+                                    value="general"
+                                    class="radio"
+                                    @checked(old('training_family', $riskBasedRequirement->risk_progression_group === 'worker_specific_training' ? 'specific' : 'general') === 'general')
+                                >
+                                <span class="label-text">{{ __('Formazione generale') }}</span>
+                            </label>
+                            <label for="training_family_specific" class="label cursor-pointer justify-start gap-3">
+                                <input
+                                    id="training_family_specific"
+                                    name="training_family"
+                                    type="radio"
+                                    value="specific"
+                                    class="radio"
+                                    @checked(old('training_family', $riskBasedRequirement->risk_progression_group === 'worker_specific_training' ? 'specific' : 'general') === 'specific')
+                                >
+                                <span class="label-text">{{ __('Formazione specifica') }}</span>
+                            </label>
+                        </div>
+                        @error('training_family')
                             <p class="text-sm text-error">{{ $message }}</p>
                         @enderror
                     </div>

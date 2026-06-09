@@ -55,6 +55,7 @@ class CourseController extends Controller
 
         $completedEnrollments = $user->courseEnrollments()
             ->with('course')
+            ->whereHas('course')
             ->where('status', CourseEnrollment::STATUS_COMPLETED)
             ->orderByDesc('completed_at')
             ->get()
@@ -153,7 +154,10 @@ class CourseController extends Controller
 
     private function userIndex(User $user): View
     {
-        $enrollments = $user->courseEnrollments()->with('course')->get();
+        $enrollments = $user->courseEnrollments()
+            ->with('course')
+            ->whereHas('course')
+            ->get();
 
         return view('user.courses.index', compact('enrollments'));
     }

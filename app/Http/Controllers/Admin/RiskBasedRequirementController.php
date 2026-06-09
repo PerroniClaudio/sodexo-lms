@@ -57,7 +57,7 @@ class RiskBasedRequirementController extends Controller
 
     public function store(StoreRiskBasedRequirementRequest $request): RedirectResponse
     {
-        $riskBasedRequirement = RiskBasedRequirement::create($request->validated());
+        $riskBasedRequirement = RiskBasedRequirement::create($request->validatedPayload());
 
         return redirect()
             ->route('admin.risk-based-requirements.edit', $riskBasedRequirement)
@@ -74,7 +74,7 @@ class RiskBasedRequirementController extends Controller
 
     public function update(UpdateRiskBasedRequirementRequest $request, RiskBasedRequirement $riskBasedRequirement): RedirectResponse
     {
-        $riskBasedRequirement->update($request->validated());
+        $riskBasedRequirement->update($request->validatedPayload());
 
         return redirect()
             ->route('admin.risk-based-requirements.edit', $riskBasedRequirement)

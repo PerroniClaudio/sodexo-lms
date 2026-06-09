@@ -21,7 +21,7 @@
                             <tbody>
                                 @foreach($enrollments as $enrollment)
                                     <tr>
-                                        <td class="font-semibold">{{ $enrollment->course->title }}</td>
+                                        <td class="font-semibold">{{ $enrollment->course?->title ?? __('Corso non disponibile') }}</td>
                                         <td>
                                             <span class="badge badge-ghost">{{ __($enrollment->status) }}</span>
                                         </td>
@@ -32,9 +32,11 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <a href="{{ route('user.courses.show', $enrollment->course) }}" class="btn btn-sm btn-primary">
-                                                {{ __('Dettaglio') }}
-                                            </a>
+                                            @if($enrollment->course !== null)
+                                                <a href="{{ route('user.courses.show', $enrollment->course) }}" class="btn btn-sm btn-primary">
+                                                    {{ __('Dettaglio') }}
+                                                </a>
+                                            @endif
                                         </td>
                                     </tr>
                                 @endforeach

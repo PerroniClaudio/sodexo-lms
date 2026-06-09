@@ -40,6 +40,9 @@ class CourseEnrollment extends Model
         'expires_at',
         'last_accessed_at',
         'completion_percentage',
+        'course_validity_type',
+        'is_integrative_enrollment',
+        'certificate_generation_error',
     ];
 
     protected function casts(): array
@@ -51,6 +54,7 @@ class CourseEnrollment extends Model
             'expires_at' => 'datetime',
             'last_accessed_at' => 'datetime',
             'completion_percentage' => 'integer',
+            'is_integrative_enrollment' => 'boolean',
         ];
     }
 
@@ -88,9 +92,13 @@ class CourseEnrollment extends Model
         });
     }
 
-    public static function enroll(User $user, Course $course): self
-    {
-        return DB::transaction(function () use ($user, $course): self {
+    public static function enroll(
+        User $user,
+        Course $course,
+        ?string $courseValidityType = null,
+        bool $isIntegrativeEnrollment = false,
+    ): self {
+        return DB::transaction(function () use ($user, $course, $courseValidityType, $isIntegrativeEnrollment): self {
             $existingEnrollment = static::withTrashed()
                 ->where('user_id', $user->getKey())
                 ->where('course_id', $course->getKey())
@@ -119,6 +127,8 @@ class CourseEnrollment extends Model
                 'assigned_at' => $assignedAt,
                 'completed_at' => $firstModule === null ? $assignedAt : null,
                 'completion_percentage' => $firstModule === null ? 100 : 0,
+                'course_validity_type' => $courseValidityType,
+                'is_integrative_enrollment' => $isIntegrativeEnrollment,
             ]);
 
             $modules->each(function (Module $module, int $index) use ($enrollment): void {
