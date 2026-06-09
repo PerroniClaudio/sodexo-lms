@@ -185,7 +185,7 @@ class CourseController extends Controller
 
     /**
      * @param  array<string, mixed>  $validated
-     * @return array<int, array{course_validity_type: string, integrative_start_risk_levels: ?string}>
+     * @return array<int, array{course_validity_types: string, integrative_start_risk_levels: ?string}>
      */
     private function buildRiskBasedRequirementSyncPayload(array $validated): array
     {
@@ -198,20 +198,27 @@ class CourseController extends Controller
 
         return $selectedRequirementIds
             ->mapWithKeys(function (int $riskBasedRequirementId) use ($integrativeStartLevels, $validityTypes): array {
-                $courseValidityType = CourseRiskRequirementValidityType::tryFrom(
-                    (string) $validityTypes->get((string) $riskBasedRequirementId)
-                )?->value ?? CourseRiskRequirementValidityType::Both->value;
+                $courseValidityTypes = array_map(
+                    static fn (CourseRiskRequirementValidityType $validityType): string => $validityType->value,
+                    CourseRiskRequirementValidityType::normalizeMany(
+                        collect($validityTypes->get((string) $riskBasedRequirementId, []))
+                            ->filter()
+                            ->values()
+                            ->all()
+                    )
+                );
 
                 $startRiskLevels = collect($integrativeStartLevels->get((string) $riskBasedRequirementId, []))
                     ->filter()
                     ->unique()
                     ->values()
                     ->all();
+                $hasIntegrativeValidity = in_array(CourseRiskRequirementValidityType::Integrative->value, $courseValidityTypes, true);
 
                 return [
                     $riskBasedRequirementId => [
-                        'course_validity_type' => $courseValidityType,
-                        'integrative_start_risk_levels' => $courseValidityType === CourseRiskRequirementValidityType::Integrative->value
+                        'course_validity_types' => json_encode($courseValidityTypes),
+                        'integrative_start_risk_levels' => $hasIntegrativeValidity
                             ? json_encode($startRiskLevels)
                             : null,
                     ],

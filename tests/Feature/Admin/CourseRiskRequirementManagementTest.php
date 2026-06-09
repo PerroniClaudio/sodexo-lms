@@ -19,22 +19,24 @@ it('shows the risk requirement association section on the course edit page', fun
     ]);
     $course->riskBasedRequirements()->attach(
         RiskBasedRequirement::factory()->create(['name' => 'Antincendio'])->getKey(),
-        ['course_validity_type' => CourseRiskRequirementValidityType::Both->value],
+        ['course_validity_types' => json_encode([
+            CourseRiskRequirementValidityType::FirstAchievement->value,
+            CourseRiskRequirementValidityType::Refresh->value,
+        ])],
     );
 
     $response = $this->get(route('admin.courses.edit', $course));
 
     $response->assertOk()
-        ->assertSeeText('Requisiti di rischio coperti dal corso')
+        ->assertSeeText('Abilitazioni di rischio acquisite')
         ->assertSeeText('Antincendio')
         ->assertSeeText('Aggiungi requisito')
         ->assertSeeText('Seleziona requisito di rischio')
         ->assertSeeText('Imposta validità del corso')
         ->assertSeeText('Conferma eliminazione')
-        ->assertSeeText('Solo primo conseguimento')
-        ->assertSeeText('Solo aggiornamento')
-        ->assertSeeText('Solo integrativo')
-        ->assertSeeText('Primo conseguimento e aggiornamento');
+        ->assertSeeText('Primo conseguimento')
+        ->assertSeeText('Aggiornamento')
+        ->assertSeeText('Integrativo');
 });
 
 it('updates the risk requirement associations for a course', function () {
@@ -59,8 +61,8 @@ it('updates the risk requirement associations for a course', function () {
             $secondRequirement->getKey(),
         ],
         'risk_based_requirement_validity_types' => [
-            $firstRequirement->getKey() => CourseRiskRequirementValidityType::FirstAchievement->value,
-            $secondRequirement->getKey() => CourseRiskRequirementValidityType::Refresh->value,
+            $firstRequirement->getKey() => [CourseRiskRequirementValidityType::FirstAchievement->value],
+            $secondRequirement->getKey() => [CourseRiskRequirementValidityType::Refresh->value],
         ],
     ]);
 
@@ -68,12 +70,15 @@ it('updates the risk requirement associations for a course', function () {
 
     $course->refresh();
     $associations = $course->riskBasedRequirements()
-        ->pluck('course_risk_based_requirement.course_validity_type', 'risk_based_requirements.id')
+        ->get()
+        ->mapWithKeys(fn (RiskBasedRequirement $requirement): array => [
+            $requirement->getKey() => $requirement->pivot->course_validity_types,
+        ])
         ->all();
 
     expect($associations)->toBe([
-        $firstRequirement->getKey() => CourseRiskRequirementValidityType::FirstAchievement->value,
-        $secondRequirement->getKey() => CourseRiskRequirementValidityType::Refresh->value,
+        $firstRequirement->getKey() => [CourseRiskRequirementValidityType::FirstAchievement->value],
+        $secondRequirement->getKey() => [CourseRiskRequirementValidityType::Refresh->value],
     ]);
 });
 
@@ -98,7 +103,10 @@ it('stores integrative starting risk levels for a course requirement', function 
         'status' => 'draft',
         'risk_based_requirement_ids' => [$requirement->getKey()],
         'risk_based_requirement_validity_types' => [
-            $requirement->getKey() => CourseRiskRequirementValidityType::Integrative->value,
+            $requirement->getKey() => [
+                CourseRiskRequirementValidityType::Refresh->value,
+                CourseRiskRequirementValidityType::Integrative->value,
+            ],
         ],
         'risk_based_requirement_integrative_start_levels' => [
             $requirement->getKey() => [
@@ -112,8 +120,11 @@ it('stores integrative starting risk levels for a course requirement', function 
 
     $pivot = $course->riskBasedRequirements()->firstOrFail()->pivot;
 
-    expect($pivot->course_validity_type)->toBe(CourseRiskRequirementValidityType::Integrative->value)
-        ->and(json_decode($pivot->integrative_start_risk_levels, true))
+    expect($pivot->course_validity_types)->toEqualCanonicalizing([
+        CourseRiskRequirementValidityType::Refresh->value,
+        CourseRiskRequirementValidityType::Integrative->value,
+    ])
+        ->and($pivot->integrative_start_risk_levels)
         ->toEqualCanonicalizing([
             RiskLevel::LOW->value,
             RiskLevel::MEDIUM->value,

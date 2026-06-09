@@ -138,7 +138,7 @@ class TestCourseCatalogSeeder extends Seeder
     }
 
     /**
-     * @param  array<int, array{requirement: RiskBasedRequirement, course_validity_type: CourseRiskRequirementValidityType, integrative_start_risk_levels?: array<int, RiskLevel>}>  $requirementPayloads
+     * @param  array<int, array{requirement: RiskBasedRequirement, course_validity_types: array<int, CourseRiskRequirementValidityType>, integrative_start_risk_levels?: array<int, RiskLevel>}>  $requirementPayloads
      */
     private function upsertCourse(
         string $title,
@@ -174,7 +174,10 @@ class TestCourseCatalogSeeder extends Seeder
         $course->riskBasedRequirements()->sync(
             collect($requirementPayloads)->mapWithKeys(function (array $payload): array {
                 $requirement = $payload['requirement'];
-                $validityType = $payload['course_validity_type'];
+                $validityTypes = collect($payload['course_validity_types'])
+                    ->map(fn (CourseRiskRequirementValidityType $validityType): string => $validityType->value)
+                    ->values()
+                    ->all();
                 $integrativeStartLevels = collect($payload['integrative_start_risk_levels'] ?? [])
                     ->map(fn (RiskLevel $riskLevel): string => $riskLevel->value)
                     ->values()
@@ -182,8 +185,8 @@ class TestCourseCatalogSeeder extends Seeder
 
                 return [
                     $requirement->getKey() => [
-                        'course_validity_type' => $validityType->value,
-                        'integrative_start_risk_levels' => $validityType === CourseRiskRequirementValidityType::Integrative
+                        'course_validity_types' => json_encode($validityTypes),
+                        'integrative_start_risk_levels' => in_array(CourseRiskRequirementValidityType::Integrative->value, $validityTypes, true)
                             ? json_encode($integrativeStartLevels)
                             : null,
                     ],
@@ -241,7 +244,7 @@ class TestCourseCatalogSeeder extends Seeder
      *     description: string,
      *     requirements: array<int, array{
      *         requirement: RiskBasedRequirement,
-     *         course_validity_type: CourseRiskRequirementValidityType,
+     *         course_validity_types: array<int, CourseRiskRequirementValidityType>,
      *         integrative_start_risk_levels?: array<int, RiskLevel>
      *     }>
      * }>
@@ -249,21 +252,21 @@ class TestCourseCatalogSeeder extends Seeder
     private function requirementProfiles(array $requirements): array
     {
         return [
-            'req-general-both' => [
-                'description' => 'Corso demo associato alla formazione generale, valido sia per primo conseguimento sia per aggiornamento.',
+            'req-general-first-refresh' => [
+                'description' => 'Corso demo associato alla formazione generale, valido per primo conseguimento e aggiornamento.',
                 'requirements' => [
                     [
                         'requirement' => $requirements['general'],
-                        'course_validity_type' => CourseRiskRequirementValidityType::Both,
+                        'course_validity_types' => [CourseRiskRequirementValidityType::FirstAchievement, CourseRiskRequirementValidityType::Refresh],
                     ],
                 ],
             ],
-            'req-low-both' => [
-                'description' => 'Corso demo per rischio basso utilizzabile sia per primo conseguimento sia per aggiornamento.',
+            'req-low-first-refresh' => [
+                'description' => 'Corso demo per rischio basso utilizzabile per primo conseguimento e aggiornamento.',
                 'requirements' => [
                     [
                         'requirement' => $requirements['low'],
-                        'course_validity_type' => CourseRiskRequirementValidityType::Both,
+                        'course_validity_types' => [CourseRiskRequirementValidityType::FirstAchievement, CourseRiskRequirementValidityType::Refresh],
                     ],
                 ],
             ],
@@ -272,7 +275,7 @@ class TestCourseCatalogSeeder extends Seeder
                 'requirements' => [
                     [
                         'requirement' => $requirements['low'],
-                        'course_validity_type' => CourseRiskRequirementValidityType::FirstAchievement,
+                        'course_validity_types' => [CourseRiskRequirementValidityType::FirstAchievement],
                     ],
                 ],
             ],
@@ -281,16 +284,16 @@ class TestCourseCatalogSeeder extends Seeder
                 'requirements' => [
                     [
                         'requirement' => $requirements['low'],
-                        'course_validity_type' => CourseRiskRequirementValidityType::Refresh,
+                        'course_validity_types' => [CourseRiskRequirementValidityType::Refresh],
                     ],
                 ],
             ],
-            'req-medium-both' => [
-                'description' => 'Corso demo per rischio medio utilizzabile sia per primo conseguimento sia per aggiornamento.',
+            'req-medium-first-refresh' => [
+                'description' => 'Corso demo per rischio medio utilizzabile per primo conseguimento e aggiornamento.',
                 'requirements' => [
                     [
                         'requirement' => $requirements['medium'],
-                        'course_validity_type' => CourseRiskRequirementValidityType::Both,
+                        'course_validity_types' => [CourseRiskRequirementValidityType::FirstAchievement, CourseRiskRequirementValidityType::Refresh],
                     ],
                 ],
             ],
@@ -299,7 +302,7 @@ class TestCourseCatalogSeeder extends Seeder
                 'requirements' => [
                     [
                         'requirement' => $requirements['medium'],
-                        'course_validity_type' => CourseRiskRequirementValidityType::FirstAchievement,
+                        'course_validity_types' => [CourseRiskRequirementValidityType::FirstAchievement],
                     ],
                 ],
             ],
@@ -308,7 +311,7 @@ class TestCourseCatalogSeeder extends Seeder
                 'requirements' => [
                     [
                         'requirement' => $requirements['medium'],
-                        'course_validity_type' => CourseRiskRequirementValidityType::Refresh,
+                        'course_validity_types' => [CourseRiskRequirementValidityType::Refresh],
                     ],
                 ],
             ],
@@ -317,17 +320,17 @@ class TestCourseCatalogSeeder extends Seeder
                 'requirements' => [
                     [
                         'requirement' => $requirements['medium'],
-                        'course_validity_type' => CourseRiskRequirementValidityType::Integrative,
+                        'course_validity_types' => [CourseRiskRequirementValidityType::Integrative],
                         'integrative_start_risk_levels' => [RiskLevel::LOW],
                     ],
                 ],
             ],
-            'req-high-both' => [
-                'description' => 'Corso demo per rischio alto utilizzabile sia per primo conseguimento sia per aggiornamento.',
+            'req-high-first-refresh' => [
+                'description' => 'Corso demo per rischio alto utilizzabile per primo conseguimento e aggiornamento.',
                 'requirements' => [
                     [
                         'requirement' => $requirements['high'],
-                        'course_validity_type' => CourseRiskRequirementValidityType::Both,
+                        'course_validity_types' => [CourseRiskRequirementValidityType::FirstAchievement, CourseRiskRequirementValidityType::Refresh],
                     ],
                 ],
             ],
@@ -336,7 +339,7 @@ class TestCourseCatalogSeeder extends Seeder
                 'requirements' => [
                     [
                         'requirement' => $requirements['high'],
-                        'course_validity_type' => CourseRiskRequirementValidityType::FirstAchievement,
+                        'course_validity_types' => [CourseRiskRequirementValidityType::FirstAchievement],
                     ],
                 ],
             ],
@@ -345,7 +348,7 @@ class TestCourseCatalogSeeder extends Seeder
                 'requirements' => [
                     [
                         'requirement' => $requirements['high'],
-                        'course_validity_type' => CourseRiskRequirementValidityType::Refresh,
+                        'course_validity_types' => [CourseRiskRequirementValidityType::Refresh],
                     ],
                 ],
             ],
@@ -354,7 +357,7 @@ class TestCourseCatalogSeeder extends Seeder
                 'requirements' => [
                     [
                         'requirement' => $requirements['high'],
-                        'course_validity_type' => CourseRiskRequirementValidityType::Integrative,
+                        'course_validity_types' => [CourseRiskRequirementValidityType::Integrative],
                         'integrative_start_risk_levels' => [RiskLevel::LOW, RiskLevel::MEDIUM],
                     ],
                 ],
@@ -597,15 +600,15 @@ class TestCourseCatalogSeeder extends Seeder
     private static function requirementProfileLabel(string $profileCode): string
     {
         return match ($profileCode) {
-            'req-general-both' => 'Requisito generale both',
-            'req-low-both' => 'Requisito rischio basso both',
+            'req-general-first-refresh' => 'Requisito generale primo conseguimento e aggiornamento',
+            'req-low-first-refresh' => 'Requisito rischio basso primo conseguimento e aggiornamento',
             'req-low-first' => 'Requisito rischio basso first achievement',
             'req-low-refresh' => 'Requisito rischio basso refresh',
-            'req-medium-both' => 'Requisito rischio medio both',
+            'req-medium-first-refresh' => 'Requisito rischio medio primo conseguimento e aggiornamento',
             'req-medium-first' => 'Requisito rischio medio first achievement',
             'req-medium-refresh' => 'Requisito rischio medio refresh',
             'req-medium-integrative-from-low' => 'Requisito rischio medio integrative da basso',
-            'req-high-both' => 'Requisito rischio alto both',
+            'req-high-first-refresh' => 'Requisito rischio alto primo conseguimento e aggiornamento',
             'req-high-first' => 'Requisito rischio alto first achievement',
             'req-high-refresh' => 'Requisito rischio alto refresh',
             'req-high-integrative-from-low-medium' => 'Requisito rischio alto integrative da basso o medio',

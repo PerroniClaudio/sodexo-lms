@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\RiskLevel;
+use App\Models\Pivots\CourseRiskBasedRequirement;
 use Illuminate\Database\Eloquent\Casts\AsEnumCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -108,7 +109,8 @@ class RiskBasedRequirement extends Model
     public function courses(): BelongsToMany
     {
         return $this->belongsToMany(Course::class)
-            ->withPivot(['course_validity_type', 'integrative_start_risk_levels'])
+            ->using(CourseRiskBasedRequirement::class)
+            ->withPivot(['course_validity_types', 'integrative_start_risk_levels'])
             ->withTimestamps();
     }
 

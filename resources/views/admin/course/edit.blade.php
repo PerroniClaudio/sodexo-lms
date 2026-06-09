@@ -203,7 +203,10 @@
                                         'risk_based_requirement_validity_types',
                                         $course->riskBasedRequirements
                                             ->mapWithKeys(fn ($riskBasedRequirement) => [
-                                                (string) $riskBasedRequirement->getKey() => $riskBasedRequirement->pivot->course_validity_type,
+                                                (string) $riskBasedRequirement->getKey() => $course
+                                                    ->courseValidityTypesForRequirement($riskBasedRequirement)
+                                                    ->pluck('value')
+                                                    ->all(),
                                             ])
                                             ->all(),
                                     )
@@ -225,10 +228,10 @@
                                         'description' => $riskBasedRequirement->description,
                                         'risk_levels' => $riskBasedRequirement->risk_levels->pluck('value')->values()->all(),
                                         'single_risk_level' => $riskBasedRequirement->singleRiskLevel()?->value,
-                                        'course_validity_type' => $selectedRiskBasedRequirementValidityTypes->get(
+                                        'course_validity_types' => collect($selectedRiskBasedRequirementValidityTypes->get(
                                             (string) $riskBasedRequirement->getKey(),
-                                            \App\Enums\CourseRiskRequirementValidityType::Both->value,
-                                        ),
+                                            [],
+                                        ))->filter()->values()->all(),
                                         'integrative_start_risk_levels' => collect(old(
                                             'risk_based_requirement_integrative_start_levels.'.(string) $riskBasedRequirement->getKey(),
                                             $course->integrativeStartRiskLevelsForRequirement($riskBasedRequirement)->pluck('value')->all(),
@@ -244,29 +247,29 @@
                                 <div class="flex flex-col gap-4">
                                     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                                         <div>
-                                            <h3 class="text-sm font-semibold text-base-content">{{ __('Abilitazioni di rischio acquisite') }}</h3>
+                                            <h3 class="text-sm font-semibold text-base-content">{{ __('Certificati ottenibili') }}</h3>
                                             <p class="text-sm text-base-content/70">
-                                                {{ __('Seleziona i rischi certificati da questo corso e definisci la tipologia di percorso (conseguimento, aggiornamento o integrazione).') }}
+                                                {{ __('Seleziona i certificati ottenibili con questo corso e definisci una o più tipologie di validità per ciascuno.') }}
                                             </p>
                                         </div>
 
                                         @if ($riskBasedRequirements->isNotEmpty())
                                             <button type="button" class="btn btn-primary btn-sm" data-open-risk-requirement-selection-modal>
+                                                <span>{{ __('Aggiungi') }}</span>
                                                 <x-lucide-plus class="h-4 w-4" />
-                                                <span>{{ __('Aggiungi requisito') }}</span>
                                             </button>
                                         @endif
                                     </div>
 
                                     @if ($riskBasedRequirements->isEmpty())
                                         <div class="rounded-box border border-dashed border-base-300 bg-base-100/70 p-4 text-sm text-base-content/70">
-                                            {{ __('Non ci sono ancora requisiti di rischio configurati.') }}
+                                            {{ __('Non ci sono ancora abilitazioni configurate.') }}
                                         </div>
                                     @else
                                         <div class="grid gap-3" data-course-risk-requirements-list></div>
 
                                         <div class="rounded-box border border-dashed border-base-300 bg-base-100/70 p-4 text-sm text-base-content/70 hidden" data-course-risk-requirements-empty>
-                                            {{ __('Nessun requisito di rischio associato al corso.') }}
+                                            {{ __('Nessuna abilitazione associata al corso.') }}
                                         </div>
 
                                         <div data-course-risk-requirements-hidden-inputs></div>
@@ -327,15 +330,27 @@
                                                     <p class="text-sm text-base-content/70" data-course-risk-requirement-validity-modal-description></p>
                                                 </div>
 
-                                                <div class="mt-6 form-control flex flex-col gap-2">
-                                                    <label class="label p-0" for="course_risk_requirement_validity_type">
-                                                        <span class="label-text font-medium">{{ __('Validità del corso') }}</span>
-                                                    </label>
-                                                    <select id="course_risk_requirement_validity_type" class="select select-bordered w-full" data-course-risk-requirement-validity-select>
+                                                <div class="mt-6 rounded-box border border-base-300 bg-base-200/40 p-4">
+                                                    <div class="space-y-2">
+                                                        <div class="font-medium text-base-content">{{ __('Validità del corso') }}</div>
+                                                        <p class="text-sm text-base-content/70">
+                                                            {{ __('Puoi selezionare una o più tipologie di validità per lo stesso requisito.') }}
+                                                        </p>
+                                                    </div>
+
+                                                    <div class="mt-4 flex flex-col gap-3" data-course-risk-requirement-validity-options>
                                                         @foreach ($courseRiskRequirementValidityTypeLabels as $value => $label)
-                                                            <option value="{{ $value }}">{{ $label }}</option>
+                                                            <label class="label cursor-pointer justify-start gap-3 rounded-box border border-base-300 bg-base-100 px-4 py-3">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    value="{{ $value }}"
+                                                                    class="checkbox"
+                                                                    data-course-risk-requirement-validity-option
+                                                                >
+                                                                <span class="label-text font-medium">{{ $label }}</span>
+                                                            </label>
                                                         @endforeach
-                                                    </select>
+                                                    </div>
                                                 </div>
 
                                                 <div class="mt-4 hidden rounded-box border border-base-300 bg-base-200/40 p-4" data-course-risk-requirement-integrative-fields>

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CourseRiskRequirementValidityType;
 use App\Enums\RiskLevel;
+use App\Models\Pivots\CourseRiskBasedRequirement;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -168,19 +169,36 @@ class Course extends Model
     public function riskBasedRequirements(): BelongsToMany
     {
         return $this->belongsToMany(RiskBasedRequirement::class)
-            ->withPivot(['course_validity_type', 'integrative_start_risk_levels'])
+            ->using(CourseRiskBasedRequirement::class)
+            ->withPivot(['course_validity_types', 'integrative_start_risk_levels'])
             ->withTimestamps();
     }
 
-    public function courseValidityTypeForRequirement(RiskBasedRequirement $riskBasedRequirement): CourseRiskRequirementValidityType
+    /**
+     * @return Collection<int, CourseRiskRequirementValidityType>
+     */
+    public function courseValidityTypesForRequirement(RiskBasedRequirement $riskBasedRequirement): Collection
     {
-        $type = $this->riskBasedRequirements
+        $types = $this->riskBasedRequirements
             ->firstWhere('id', $riskBasedRequirement->getKey())
             ?->pivot
-            ?->course_validity_type;
+            ?->course_validity_types;
 
-        return CourseRiskRequirementValidityType::tryFrom((string) $type)
-            ?? CourseRiskRequirementValidityType::Both;
+        $normalizedTypes = is_string($types)
+            ? json_decode($types, true)
+            : $types;
+
+        return collect(CourseRiskRequirementValidityType::normalizeMany(
+            is_array($normalizedTypes) ? $normalizedTypes : []
+        ));
+    }
+
+    public function courseHasValidityTypeForRequirement(
+        RiskBasedRequirement $riskBasedRequirement,
+        CourseRiskRequirementValidityType $validityType,
+    ): bool {
+        return $this->courseValidityTypesForRequirement($riskBasedRequirement)
+            ->contains(fn (CourseRiskRequirementValidityType $type): bool => $type === $validityType);
     }
 
     /**

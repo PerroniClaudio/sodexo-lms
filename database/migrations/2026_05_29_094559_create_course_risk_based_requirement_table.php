@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\CourseRiskRequirementValidityType;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -16,7 +15,7 @@ return new class extends Migration
             $table->foreignId('course_id')->constrained()->cascadeOnDelete();
             $table->foreignId('risk_based_requirement_id')->constrained()->cascadeOnDelete();
             $table->string('course_validity_type')
-                ->default(CourseRiskRequirementValidityType::Both->value);
+                ->default('first_achievement');
             $table->timestamps();
 
             $table->primary(

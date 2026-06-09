@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\CourseRiskRequirementValidityType;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -20,7 +19,7 @@ return new class extends Migration
 
         Schema::table('course_risk_based_requirement', function (Blueprint $table) {
             $table->string('course_validity_type')
-                ->default(CourseRiskRequirementValidityType::Both->value)
+                ->default('first_achievement')
                 ->change();
         });
     }

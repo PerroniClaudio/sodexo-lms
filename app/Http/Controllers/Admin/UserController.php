@@ -307,8 +307,8 @@ class UserController extends Controller
                     'course' => $course,
                     'matching_requirement' => $matchingRequirement,
                     'required_need' => $requiredNeed,
-                    'course_validity_type' => $matchingRequirement !== null
-                        ? $course->courseValidityTypeForRequirement($matchingRequirement)
+                    'course_validity_types' => $matchingRequirement !== null
+                        ? $course->courseValidityTypesForRequirement($matchingRequirement)
                         : null,
                     'integrative_start_risk_levels' => $matchingRequirement !== null
                         ? $course->integrativeStartRiskLevelsForRequirement($matchingRequirement)
@@ -318,7 +318,7 @@ class UserController extends Controller
                         && $this->courseRiskRequirementService->courseRequirementMatchesUserNeed(
                             $user,
                             $matchingRequirement,
-                            $course->courseValidityTypeForRequirement($matchingRequirement),
+                            $course->courseValidityTypesForRequirement($matchingRequirement)->all(),
                         ),
                     'eligible_to_enroll' => $this->courseRiskRequirementService->userCanEnrollInCourse($user, $course),
                 ];
@@ -428,12 +428,12 @@ class UserController extends Controller
             }
 
             $requiredNeed = $requirementNeeds->get($matchingRequirement->getKey());
-            $courseValidityType = $course->courseValidityTypeForRequirement($matchingRequirement);
+            $courseValidityTypes = $course->courseValidityTypesForRequirement($matchingRequirement);
             $integrativeStartRiskLevels = $course->integrativeStartRiskLevelsForRequirement($matchingRequirement);
             $matchesRequiredNeed = $this->courseRiskRequirementService->courseRequirementMatchesUserNeed(
                 $user,
                 $matchingRequirement,
-                $courseValidityType,
+                $courseValidityTypes->all(),
             );
 
             if (! $matchesRequiredNeed) {
@@ -454,7 +454,10 @@ class UserController extends Controller
 
             // Determina i prerequisiti necessari
             $prerequisites = [];
-            if ($courseValidityType?->value === 'integrative' && $integrativeStartRiskLevels->isNotEmpty()) {
+            if (
+                $courseValidityTypes->contains(fn (CourseRiskRequirementValidityType $validityType): bool => $validityType === CourseRiskRequirementValidityType::Integrative)
+                && $integrativeStartRiskLevels->isNotEmpty()
+            ) {
                 $prerequisites = $integrativeStartRiskLevels->map(fn ($level) => $level->label())->all();
             }
 
@@ -470,13 +473,10 @@ class UserController extends Controller
                     'blended' => 'Blended',
                     default => $course->course_type,
                 },
-                'validity_type' => $courseValidityType?->value,
-                'validity_type_label' => match ($courseValidityType) {
-                    CourseRiskRequirementValidityType::FirstAchievement => __('Primo conseguimento'),
-                    CourseRiskRequirementValidityType::Refresh => __('Aggiornamento'),
-                    CourseRiskRequirementValidityType::Integrative => __('Integrativo'),
-                    default => '—',
-                },
+                'validity_types' => $courseValidityTypes->pluck('value')->all(),
+                'validity_type_label' => $courseValidityTypes->isEmpty()
+                    ? '—'
+                    : CourseRiskRequirementValidityType::labelsText($courseValidityTypes->all()),
                 'covered_requirements' => $coveredRequirements,
                 'prerequisites' => $prerequisites,
                 'prerequisites_label' => empty($prerequisites)
@@ -695,12 +695,7 @@ class UserController extends Controller
                                 default => __('Mancante'),
                             },
                             'certificate_expires_at' => $expiresAt?->format('d/m/Y'),
-                            'required_course_validity_type_label' => match ($requiredCourseValidityType) {
-                                CourseRiskRequirementValidityType::FirstAchievement => __('Primo conseguimento'),
-                                CourseRiskRequirementValidityType::Refresh => __('Aggiornamento'),
-                                CourseRiskRequirementValidityType::Integrative => __('Integrativo'),
-                                default => null,
-                            },
+                            'required_course_validity_type_label' => $requiredCourseValidityType?->label(),
                         ];
                     })
                     ->values()

@@ -101,17 +101,19 @@ class CourseRiskRequirementService
     public function courseRequirementMatchesUserNeed(
         User $user,
         RiskBasedRequirement $riskBasedRequirement,
-        CourseRiskRequirementValidityType|string $courseValidityType,
+        CourseRiskRequirementValidityType|array|string|null $courseValidityTypes,
         ?CarbonInterface $referenceDate = null,
     ): bool {
-        $normalizedCourseValidityType = $courseValidityType instanceof CourseRiskRequirementValidityType
-            ? $courseValidityType
-            : (CourseRiskRequirementValidityType::tryFrom($courseValidityType)
-                ?? CourseRiskRequirementValidityType::Both);
-
-        return $normalizedCourseValidityType->matchesRequirementNeed(
-            $this->determineRequiredCourseValidityType($user, $riskBasedRequirement, $referenceDate)
+        $normalizedCourseValidityTypes = CourseRiskRequirementValidityType::normalizeMany(
+            is_array($courseValidityTypes)
+                ? $courseValidityTypes
+                : [$courseValidityTypes]
         );
+
+        $requiredType = $this->determineRequiredCourseValidityType($user, $riskBasedRequirement, $referenceDate);
+
+        return collect($normalizedCourseValidityTypes)
+            ->contains(fn (CourseRiskRequirementValidityType $courseValidityType): bool => $courseValidityType === $requiredType);
     }
 
     /**
@@ -182,7 +184,7 @@ class CourseRiskRequirementService
                 if (! $this->courseRequirementMatchesUserNeed(
                     $user,
                     $riskBasedRequirement,
-                    $course->courseValidityTypeForRequirement($riskBasedRequirement),
+                    $course->courseValidityTypesForRequirement($riskBasedRequirement)->all(),
                     $issuedAt,
                 )) {
                     return false;
@@ -249,9 +251,14 @@ class CourseRiskRequirementService
         $referenceDate ??= now();
         $course->loadMissing('riskBasedRequirements');
 
-        return $course->riskBasedRequirements->every(
-            fn (RiskBasedRequirement $requirement): bool => $this->userSatisfiesCoursePrerequisiteAtDate($user, $course, $requirement, $referenceDate)
-        );
+        return $course->riskBasedRequirements->every(function (RiskBasedRequirement $requirement) use ($course, $referenceDate, $user): bool {
+            return $this->courseRequirementMatchesUserNeed(
+                $user,
+                $requirement,
+                $course->courseValidityTypesForRequirement($requirement)->all(),
+                $referenceDate,
+            ) && $this->userSatisfiesCoursePrerequisiteAtDate($user, $course, $requirement, $referenceDate);
+        });
     }
 
     public function userSatisfiesCoursePrerequisiteAtDate(
@@ -260,8 +267,14 @@ class CourseRiskRequirementService
         RiskBasedRequirement $riskBasedRequirement,
         CarbonInterface $referenceDate,
     ): bool {
-        if ($course->courseValidityTypeForRequirement($riskBasedRequirement) !== CourseRiskRequirementValidityType::Integrative) {
+        $requiredCourseValidityType = $this->determineRequiredCourseValidityType($user, $riskBasedRequirement, $referenceDate);
+
+        if ($requiredCourseValidityType !== CourseRiskRequirementValidityType::Integrative) {
             return true;
+        }
+
+        if (! $course->courseHasValidityTypeForRequirement($riskBasedRequirement, CourseRiskRequirementValidityType::Integrative)) {
+            return false;
         }
 
         $allowedStartRiskLevels = $course->integrativeStartRiskLevelsForRequirement($riskBasedRequirement);

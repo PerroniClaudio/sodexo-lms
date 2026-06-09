@@ -109,7 +109,10 @@ it('matches the course requirement validity type against the current user need',
     expect($service->courseRequirementMatchesUserNeed(
         $user,
         $requirement,
-        CourseRiskRequirementValidityType::Both,
+        [
+            CourseRiskRequirementValidityType::FirstAchievement,
+            CourseRiskRequirementValidityType::Refresh,
+        ],
         now(),
     ))->toBeTrue();
 });
@@ -183,7 +186,7 @@ it('requires a valid starting certificate to enroll in an integrative course', f
         ->create();
     $course = Course::factory()->create();
     $course->riskBasedRequirements()->attach($highRequirement->getKey(), [
-        'course_validity_type' => CourseRiskRequirementValidityType::Integrative->value,
+        'course_validity_types' => json_encode([CourseRiskRequirementValidityType::Integrative->value]),
         'integrative_start_risk_levels' => json_encode([RiskLevel::LOW->value]),
     ]);
 
@@ -199,9 +202,31 @@ it('requires a valid starting certificate to enroll in an integrative course', f
     expect(app(CourseRiskRequirementService::class)->userCanEnrollInCourse($user, $course))->toBeTrue();
 });
 
+it('does not require an integrative prerequisite when the same course also covers first achievement', function () {
+    $user = makeTestUser();
+    $highRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::HIGH)
+        ->progressionGroup('specific-worker-training')
+        ->limited(60)
+        ->create();
+    $course = Course::factory()->create();
+    $course->riskBasedRequirements()->attach($highRequirement->getKey(), [
+        'course_validity_types' => json_encode([
+            CourseRiskRequirementValidityType::FirstAchievement->value,
+            CourseRiskRequirementValidityType::Integrative->value,
+        ]),
+        'integrative_start_risk_levels' => json_encode([RiskLevel::LOW->value]),
+    ]);
+
+    expect(app(CourseRiskRequirementService::class)->userCanEnrollInCourse($user, $course))->toBeTrue();
+});
+
 it('creates an internal risk certificate when an enrollment completes', function () {
     $user = makeTestUser();
-    $course = Course::factory()->create(['title' => 'Corso spazi confinati']);
+    $course = Course::factory()->create([
+        'title' => 'Corso spazi confinati',
+        'status' => 'draft',
+    ]);
     $module = Module::factory()->create([
         'type' => Module::TYPE_VIDEO,
         'order' => 1,
@@ -211,7 +236,10 @@ it('creates an internal risk certificate when an enrollment completes', function
         'name' => 'Spazi confinati',
     ]);
     $course->riskBasedRequirements()->attach($requirement->getKey(), [
-        'course_validity_type' => CourseRiskRequirementValidityType::Both->value,
+        'course_validity_types' => json_encode([
+            CourseRiskRequirementValidityType::FirstAchievement->value,
+            CourseRiskRequirementValidityType::Refresh->value,
+        ]),
     ]);
 
     $enrollment = CourseEnrollment::enroll($user, $course);
@@ -231,10 +259,16 @@ it('creates an internal risk certificate when an enrollment completes', function
 
 it('does not create a duplicate valid certificate for the same course and requirement', function () {
     $user = makeTestUser();
-    $course = Course::factory()->create(['title' => 'Corso aggiornamento']);
+    $course = Course::factory()->create([
+        'title' => 'Corso aggiornamento',
+        'status' => 'draft',
+    ]);
     $requirement = RiskBasedRequirement::factory()->limited(24)->create();
     $course->riskBasedRequirements()->attach($requirement->getKey(), [
-        'course_validity_type' => CourseRiskRequirementValidityType::Both->value,
+        'course_validity_types' => json_encode([
+            CourseRiskRequirementValidityType::FirstAchievement->value,
+            CourseRiskRequirementValidityType::Refresh->value,
+        ]),
     ]);
 
     $enrollment = CourseEnrollment::withoutEvents(fn (): CourseEnrollment => CourseEnrollment::factory()->create([
@@ -262,12 +296,18 @@ it('does not create a duplicate valid certificate for the same course and requir
 
 it('backfills certificates for enrollments completed outside the observer flow', function () {
     $user = makeTestUser();
-    $course = Course::factory()->create(['title' => 'Corso manuale']);
+    $course = Course::factory()->create([
+        'title' => 'Corso manuale',
+        'status' => 'draft',
+    ]);
     $requirement = RiskBasedRequirement::factory()->create([
         'name' => 'Manuale',
     ]);
     $course->riskBasedRequirements()->attach($requirement->getKey(), [
-        'course_validity_type' => CourseRiskRequirementValidityType::Both->value,
+        'course_validity_types' => json_encode([
+            CourseRiskRequirementValidityType::FirstAchievement->value,
+            CourseRiskRequirementValidityType::Refresh->value,
+        ]),
     ]);
 
     $enrollment = CourseEnrollment::factory()->create([

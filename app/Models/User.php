@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\CourseRiskRequirementValidityType;
 use App\Enums\OnboardingStep;
 use App\Enums\RiskLevel;
 use App\Enums\UserStatus;
@@ -698,12 +697,7 @@ class User extends Authenticatable implements MustVerifyEmail
                     default => __('Mancante'),
                 },
                 'required_course_validity_type' => $requiredCourseValidityType?->value,
-                'required_course_validity_type_label' => match ($requiredCourseValidityType) {
-                    CourseRiskRequirementValidityType::FirstAchievement => __('Primo conseguimento'),
-                    CourseRiskRequirementValidityType::Refresh => __('Aggiornamento'),
-                    CourseRiskRequirementValidityType::Integrative => __('Integrativo'),
-                    default => null,
-                },
+                'required_course_validity_type_label' => $requiredCourseValidityType?->label(),
                 'covered_by_higher_risk_certificate' => $coveringRiskLevel?->isHigherThan($riskBasedRequirement->singleRiskLevel() ?? $coveringRiskLevel) ?? false,
                 'covering_risk_label' => $coveringRiskLevel?->label(),
                 'expires_at' => $expiresAt?->toDateString(),

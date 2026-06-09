@@ -39,7 +39,8 @@ class UpdateCourseRequest extends FormRequest
             'risk_based_requirement_ids' => ['nullable', 'array'],
             'risk_based_requirement_ids.*' => ['integer', 'exists:risk_based_requirements,id'],
             'risk_based_requirement_validity_types' => ['nullable', 'array'],
-            'risk_based_requirement_validity_types.*' => ['nullable', 'string', Rule::in(CourseRiskRequirementValidityType::values())],
+            'risk_based_requirement_validity_types.*' => ['nullable', 'array'],
+            'risk_based_requirement_validity_types.*.*' => ['nullable', 'string', Rule::in(CourseRiskRequirementValidityType::values())],
             'risk_based_requirement_integrative_start_levels' => ['nullable', 'array'],
             'risk_based_requirement_integrative_start_levels.*' => ['nullable', 'array'],
             'risk_based_requirement_integrative_start_levels.*.*' => ['nullable', 'string', Rule::in(RiskLevel::values())],
@@ -71,11 +72,25 @@ class UpdateCourseRequest extends FormRequest
 
                 $selectedRequirementIds->each(function (int $requirementId) use ($requirements, $validityTypes, $integrativeStartLevels, $validator): void {
                     $requirement = $requirements->get($requirementId);
-                    $validityType = CourseRiskRequirementValidityType::tryFrom(
-                        (string) $validityTypes->get((string) $requirementId, CourseRiskRequirementValidityType::Both->value)
-                    ) ?? CourseRiskRequirementValidityType::Both;
+                    $selectedValidityTypes = CourseRiskRequirementValidityType::normalizeMany(
+                        collect($validityTypes->get((string) $requirementId, []))
+                            ->filter()
+                            ->values()
+                            ->all()
+                    );
 
-                    if (! $requirement instanceof RiskBasedRequirement || $validityType !== CourseRiskRequirementValidityType::Integrative) {
+                    if ($selectedValidityTypes === []) {
+                        $validator->errors()->add(
+                            "risk_based_requirement_validity_types.$requirementId",
+                            __('Seleziona almeno una tipologia di validità per ogni requisito associato al corso.')
+                        );
+
+                        return;
+                    }
+
+                    if (! $requirement instanceof RiskBasedRequirement || ! collect($selectedValidityTypes)->contains(
+                        fn (CourseRiskRequirementValidityType $validityType): bool => $validityType === CourseRiskRequirementValidityType::Integrative
+                    )) {
                         return;
                     }
 

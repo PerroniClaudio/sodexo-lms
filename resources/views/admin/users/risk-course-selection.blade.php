@@ -8,6 +8,8 @@
             </x-slot:actions>
         </x-page-header>
 
+        <p class="text-sm text-base-content/70">{{ $user->full_name }}</p>
+
         @php
             $riskSummaryCardClass = match ($riskSummary['risk_badge_class'] ?? 'badge-ghost') {
                 'badge-success' => 'border-success/40 bg-success/5',
