@@ -7,6 +7,7 @@ if (root) {
 
     if (configElement instanceof HTMLScriptElement && iframe instanceof HTMLIFrameElement) {
         const config = JSON.parse(configElement.textContent ?? '{}');
+        const debugScormPlayer = new URLSearchParams(window.location.search).get('test') === '1';
         const sessionId = window.crypto?.randomUUID?.() ?? `scorm-${Date.now()}`;
         const localState = {};
         const dirtyState = {};
@@ -104,7 +105,7 @@ if (root) {
                     mergeState(response.state ?? {});
                     clearDirtyValues(values);
                     lastError = response.error ?? '0';
-                    updateStatus('Progresso SCORM salvato');
+                    updateStatus('I tuoi progressi sono stati salvati.');
                 } catch (error) {
                     console.warn('[scorm] Flush runtime fallito:', error);
                 } finally {
@@ -129,12 +130,12 @@ if (root) {
                 mergeState(response.state ?? {});
                 initialized = true;
                 lastError = response.error ?? '0';
-                updateStatus('Runtime SCORM inizializzato');
+                updateStatus('Contenuto pronto.');
 
                 return 'true';
             } catch (error) {
                 console.error('[scorm] Inizializzazione runtime fallita:', error);
-                updateStatus('Errore durante inizializzazione runtime SCORM');
+                updateStatus('Non siamo riusciti ad avviare il contenuto.');
 
                 return 'false';
             }
@@ -204,13 +205,13 @@ if (root) {
                 mergeState(response.state ?? {});
                 clearDirtyValues(values);
                 lastError = response.error ?? '0';
-                updateStatus('Progresso SCORM salvato');
+                updateStatus('I tuoi progressi sono stati salvati.');
 
                 return 'true';
             } catch (error) {
                 console.error('[scorm] Commit runtime fallito:', error);
                 lastError = '391';
-                updateStatus('Errore durante salvataggio progresso SCORM');
+                updateStatus('Non siamo riusciti a salvare i progressi.');
 
                 return 'false';
             }
@@ -230,7 +231,7 @@ if (root) {
                 clearDirtyValues(values);
                 terminated = true;
                 lastError = response.error ?? '0';
-                updateStatus('Sessione SCORM terminata');
+                updateStatus('Attività completata. Ti stiamo portando al prossimo modulo.');
 
                 if (autosaveTimer !== null) {
                     window.clearInterval(autosaveTimer);
@@ -240,8 +241,10 @@ if (root) {
                     window.clearTimeout(flushTimer);
                 }
 
-                if (response.navigation?.url) {
-                    window.location.assign(response.navigation.url);
+                const redirectUrl = response.navigation?.url ?? response.redirect_url;
+
+                if (redirectUrl) {
+                    window.location.assign(redirectUrl);
                 }
 
                 return 'true';
@@ -396,6 +399,14 @@ if (root) {
 
         installBridgeOnWindow(window);
 
+        if (debugScormPlayer) {
+            console.log('[scorm-player]', {
+                version: normalizedVersion,
+                sco: config.defaultScoIdentifier,
+                entryPoint: config.entryPointUrl,
+            });
+        }
+
         iframe.addEventListener('load', () => {
             try {
                 installBridgeOnWindow(iframe.contentWindow);
@@ -418,7 +429,7 @@ if (root) {
 
         initialize();
         iframe.src = config.entryPointUrl;
-        updateStatus('Player SCORM pronto');
+        updateStatus('Stiamo caricando il contenuto...');
     }
 }
 

@@ -136,11 +136,17 @@ class ScormRuntimeController extends Controller
             $scormPackage,
             $request->input('values.adl.nav.request')
         );
+        $moduleProgress->refresh();
+        $enrollment = $moduleProgress->courseEnrollment()->with('currentModule')->firstOrFail();
+        $redirectUrl = $enrollment->currentModule === null
+            ? route('user.courses.show', $course)
+            : route('user.courses.modules.player', [$course, $enrollment->currentModule]);
 
         return response()->json([
             'success' => true,
             'error' => '0',
             'state' => $snapshot,
+            'redirect_url' => $redirectUrl,
             'navigation' => $navigation === null ? null : [
                 'sco_identifier' => $navigation['sco_identifier'],
                 'url' => route('user.courses.modules.scorm.player', [
@@ -224,8 +230,6 @@ class ScormRuntimeController extends Controller
             ->where('user_id', $request->user()->getKey())
             ->whereNull('deleted_at')
             ->firstOrFail();
-
-        abort_unless((int) $enrollment->current_module_id === (int) $module->getKey(), Response::HTTP_FORBIDDEN);
 
         $moduleProgress = $enrollment->moduleProgresses()
             ->where('module_id', $module->getKey())

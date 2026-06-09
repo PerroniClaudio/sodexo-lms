@@ -342,6 +342,44 @@ it('serves scorm json assets without truncating the payload', function () {
         ->assertContent($expectedJson);
 });
 
+it('serves scorm javascript assets without injecting the html bridge', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+    $user = User::factory()->create();
+    $user->assignRole('user');
+    $this->actingAs($user);
+
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => 'scorm',
+        'title' => 'Modulo SCORM JS',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $expectedJavascript = 'function AddTagLine(){document.write("<div class=\"salespitch\">SCORM</div>");}';
+
+    Storage::fake('local');
+
+    $package = app(ScormService::class)->storeUploadedPackage($module, scormZipUpload([
+        'imsmanifest.xml' => validScormManifest(),
+        'lesson/index.html' => '<html><body>SCORM lesson</body></html>',
+        'shared/contentfunctions.js' => $expectedJavascript,
+    ]));
+
+    CourseEnrollment::enroll($user, $course);
+
+    $response = $this->get(route('user.courses.modules.scorm.asset', [
+        $course,
+        $module,
+        $package,
+        'path' => 'shared/contentfunctions.js',
+    ]));
+
+    $response
+        ->assertOk()
+        ->assertHeader('Content-Type', 'application/javascript')
+        ->assertContent($expectedJavascript);
+});
+
 it('injects the scorm bridge into html assets without truncating the document', function () {
     $this->seed(RoleAndPermissionSeeder::class);
     $user = User::factory()->create();
@@ -401,4 +439,115 @@ it('blocks SCORM access for non enrolled users', function () {
     ]);
 
     $response->assertNotFound();
+});
+
+it('keeps scorm runtime and player reachable after module completion advances current module', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+    $user = User::factory()->create();
+    $user->assignRole('user');
+    $this->actingAs($user);
+
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => 'scorm',
+        'title' => 'Modulo SCORM',
+        'belongsTo' => (string) $course->getKey(),
+        'order' => 1,
+    ]);
+    $nextModule = Module::factory()->create([
+        'type' => 'video',
+        'title' => 'Modulo successivo',
+        'belongsTo' => (string) $course->getKey(),
+        'order' => 2,
+    ]);
+
+    $package = createReadyScormPackage($module);
+    $enrollment = CourseEnrollment::enroll($user, $course);
+
+    $this->postJson(route('user.courses.modules.scorm.runtime.initialize', [$course, $module, $package]), [
+        'session_id' => 'session-completed',
+        'sco_identifier' => 'ITEM-DEFAULT',
+        'version' => '1.2',
+    ])->assertOk();
+
+    $this->postJson(route('user.courses.modules.scorm.runtime.commit', [$course, $module, $package]), [
+        'session_id' => 'session-completed',
+        'sco_identifier' => 'ITEM-DEFAULT',
+        'values' => [
+            'cmi.core.lesson_status' => 'completed',
+            'cmi.core.session_time' => '0000:00:30',
+        ],
+    ])->assertOk();
+
+    $enrollment->refresh();
+
+    expect((int) $enrollment->current_module_id)->toBe($nextModule->getKey());
+
+    $this->postJson(route('user.courses.modules.scorm.runtime.commit', [$course, $module, $package]), [
+        'session_id' => 'session-completed',
+        'sco_identifier' => 'ITEM-DEFAULT',
+        'values' => [
+            'cmi.suspend_data' => '{"final":true}',
+        ],
+    ])->assertOk()->assertJsonPath('state.cmi.suspend_data', '{"final":true}');
+
+    $this->postJson(route('user.courses.modules.scorm.runtime.terminate', [$course, $module, $package]), [
+        'session_id' => 'session-completed',
+        'sco_identifier' => 'ITEM-DEFAULT',
+        'values' => [
+            'cmi.core.session_time' => '0000:00:35',
+        ],
+    ])->assertOk();
+
+    $this->get(route('user.courses.modules.scorm.player', [$course, $module, $package]))
+        ->assertOk();
+});
+
+it('advances the course when scorm runtime is terminated without an explicit completion status', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+    $user = User::factory()->create();
+    $user->assignRole('user');
+    $this->actingAs($user);
+
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => 'scorm',
+        'title' => 'Modulo SCORM',
+        'belongsTo' => (string) $course->getKey(),
+        'order' => 1,
+    ]);
+    $nextModule = Module::factory()->create([
+        'type' => 'video',
+        'title' => 'Modulo successivo',
+        'belongsTo' => (string) $course->getKey(),
+        'order' => 2,
+    ]);
+
+    $package = createReadyScormPackage($module);
+    $enrollment = CourseEnrollment::enroll($user, $course);
+    $moduleProgress = $enrollment->moduleProgresses()->where('module_id', $module->getKey())->firstOrFail();
+
+    $this->postJson(route('user.courses.modules.scorm.runtime.initialize', [$course, $module, $package]), [
+        'session_id' => 'session-exit',
+        'sco_identifier' => 'ITEM-DEFAULT',
+        'version' => '1.2',
+    ])->assertOk();
+
+    $terminateResponse = $this->postJson(route('user.courses.modules.scorm.runtime.terminate', [$course, $module, $package]), [
+        'session_id' => 'session-exit',
+        'sco_identifier' => 'ITEM-DEFAULT',
+        'values' => [
+            'cmi.core.lesson_location' => 'exit-button',
+        ],
+    ])->assertOk();
+
+    $enrollment->refresh();
+    $moduleProgress->refresh();
+    $nextProgress = $enrollment->moduleProgresses()->where('module_id', $nextModule->getKey())->firstOrFail();
+
+    expect($moduleProgress->status)->toBe(ModuleProgress::STATUS_COMPLETED);
+    expect((int) $enrollment->current_module_id)->toBe($nextModule->getKey());
+    expect($nextProgress->status)->toBe(ModuleProgress::STATUS_AVAILABLE);
+    expect($terminateResponse->json('redirect_url'))->toBe(route('user.courses.modules.player', [$course, $nextModule]));
+    expect(ScormSession::query()->where('session_id', 'session-exit')->value('status'))->toBe(ScormSession::STATUS_TERMINATED);
 });
