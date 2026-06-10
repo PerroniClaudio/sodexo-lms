@@ -967,7 +967,7 @@ class UserController extends Controller
         return $user->courseEnrollments()
             ->with([
                 'course' => fn ($query) => $query
-                    ->select(['id', 'title', 'type'])
+                    ->select(['id', 'title', 'type', 'expiry_date'])
                     ->withCount('modules'),
                 'currentModule:id,title,belongsTo',
             ])
@@ -1004,6 +1004,7 @@ class UserController extends Controller
                     'status' => (string) $enrollment->status,
                     'progress' => (int) ($enrollment->completion_percentage ?? 0),
                     'last_accessed_at' => $enrollment->last_accessed_at?->format('d/m/Y H:i'),
+                    'expiry_date' => $course?->expiry_date?->format('d/m/Y'),
                     'modules_count' => (int) ($course?->modules_count ?? 0),
                     'open_url' => $course === null
                         ? route('user.courses.index')

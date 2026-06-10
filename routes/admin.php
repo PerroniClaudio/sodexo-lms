@@ -124,6 +124,9 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::get('/video-reports/{videoReportRequest}', [VideoReportController::class, 'show'])->name('video-reports.show');
         Route::get('/video-reports/{videoReportRequest}/download', [VideoReportController::class, 'download'])->name('video-reports.download');
         Route::resource('users', UserController::class)->except(['show']);
+        Route::put('users/{user}/user-section', [UserController::class, 'updateUserSection'])->name('users.user-section.update');
+        Route::put('users/{user}/residence-section', [UserController::class, 'updateResidenceSection'])->name('users.residence-section.update');
+        Route::put('users/{user}/work-section', [UserController::class, 'updateWorkSection'])->name('users.work-section.update');
         Route::post('users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
         Route::get('users/{user}/risk-course-selection', [UserController::class, 'riskCourseSelection'])->name('users.risk-course-selection');
         Route::post('users/{user}/risk-course-selection/enroll', [UserController::class, 'enrollRiskCourse'])->name('users.risk-course-selection.enroll');

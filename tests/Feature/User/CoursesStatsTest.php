@@ -92,6 +92,7 @@ test('user dashboard shows last four accessed courses ordered by recent access',
                 4 => 'async',
                 default => 'fsc',
             },
+            'expiry_date' => now()->addDays($index + 1)->startOfDay(),
         ]);
     });
 
@@ -124,5 +125,7 @@ test('user dashboard shows last four accessed courses ordered by recent access',
             'Corso 1',
             'Corso 4',
         ])
+        ->assertSee('Scadenza')
+        ->assertSee(now()->addDays(2)->format('d/m/Y'))
         ->assertDontSee('Corso 5');
 });

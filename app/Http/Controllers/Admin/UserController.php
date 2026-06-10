@@ -34,6 +34,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 use Spatie\Permission\Models\Role;
 
@@ -274,6 +275,112 @@ class UserController extends Controller
         }
 
         return $redirect;
+    }
+
+    public function updateUserSection(Request $request, User $user): RedirectResponse|JsonResponse
+    {
+        $beforeRiskSnapshot = $this->captureRiskSnapshot($user->fresh(['jobSector', 'jobTasks', 'roles']));
+        $data = $request->validate($this->userSectionRules($request, $user));
+        $accountType = $this->resolveAccountType($data['account_type'] ?? $user->getRoleNames()->first() ?? 'user');
+        unset($data['account_type']);
+
+        DB::transaction(function () use ($accountType, $data, $user): void {
+            $user->update($data);
+            $user->syncRoles([$accountType]);
+
+            if ($accountType !== 'user') {
+                $this->userJobAssignmentService->syncAssignments($user, [], false);
+            }
+        });
+
+        $afterRiskSnapshot = $this->captureRiskSnapshot($user->fresh(['jobSector', 'jobTasks', 'roles']));
+        $riskWarnings = $this->buildRiskChangeWarnings($beforeRiskSnapshot, $afterRiskSnapshot, $user);
+
+        return $this->userSectionResponse($request, $user, 'user', 'Dati utente aggiornati con successo', $riskWarnings);
+    }
+
+    public function updateResidenceSection(Request $request, User $user): RedirectResponse|JsonResponse
+    {
+        $validated = $request->validate([
+            'country' => ['nullable', 'string', 'max:100'],
+            'region' => ['nullable', 'string', 'max:100'],
+            'province' => ['nullable', 'string', 'max:100'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'postal_code' => ['nullable', 'string', 'max:16'],
+        ]);
+
+        $data = $this->userGeographyMapper->toHomeIds($validated);
+
+        $geoConsistent = $this->checkGeographicConsistency(
+            $data['home_city_id'] ?? null,
+            $data['home_province_id'] ?? null,
+            $data['home_region_id'] ?? null,
+            $data['home_country_id'] ?? null
+        );
+
+        if ($geoConsistent === false) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['geography' => 'Attenzione: città, provincia, regione e nazione non sono coerenti tra loro.']);
+        }
+
+        $user->update($data);
+
+        return $this->userSectionResponse($request, $user, 'residence', 'Residenza aggiornata con successo');
+    }
+
+    public function updateWorkSection(Request $request, User $user): RedirectResponse|JsonResponse
+    {
+        $beforeRiskSnapshot = $this->captureRiskSnapshot($user->fresh(['jobSector', 'jobTasks', 'roles']));
+        $isWorkerAccount = $user->hasRole('user');
+        $validator = Validator::make($request->all(), $this->workSectionRules($isWorkerAccount));
+
+        $validator->after(function ($validator) use ($request, $isWorkerAccount): void {
+            if ($validator->errors()->isNotEmpty() || ! $isWorkerAccount) {
+                return;
+            }
+
+            $assignments = collect($request->input('job_tasks', []))
+                ->filter(fn (mixed $assignment): bool => is_array($assignment))
+                ->values();
+
+            if ($assignments->isEmpty()) {
+                return;
+            }
+
+            $duplicateDefinitions = $assignments
+                ->groupBy(fn (array $assignment): string => implode('|', [
+                    (string) ($assignment['job_task_id'] ?? ''),
+                    (string) ($assignment['starts_at'] ?? ''),
+                    (string) ($assignment['ends_at'] ?? ''),
+                ]))
+                ->contains(fn ($group): bool => $group->count() > 1);
+
+            if ($duplicateDefinitions) {
+                $validator->errors()->add('job_tasks', __('Non puoi inserire due volte la stessa mansione con le stesse date.'));
+            }
+        });
+
+        $data = $validator->validate();
+        $jobTaskAssignments = $data['job_tasks'] ?? [];
+        unset($data['job_tasks']);
+
+        foreach (['job_category_id', 'job_level_id'] as $field) {
+            if (array_key_exists($field, $data) && ($data[$field] === '' || $data[$field] === null)) {
+                $data[$field] = null;
+            }
+        }
+
+        DB::transaction(function () use ($data, $jobTaskAssignments, $user, $isWorkerAccount): void {
+            $user->update($data);
+            $this->userJobAssignmentService->syncAssignments($user, $jobTaskAssignments, $isWorkerAccount);
+        });
+
+        $afterRiskSnapshot = $this->captureRiskSnapshot($user->fresh(['jobSector', 'jobTasks', 'roles']));
+        $riskWarnings = $this->buildRiskChangeWarnings($beforeRiskSnapshot, $afterRiskSnapshot, $user);
+
+        return $this->userSectionResponse($request, $user, 'work', 'Dati lavoro aggiornati con successo', $riskWarnings);
     }
 
     public function riskSummaryApi(User $user): JsonResponse
@@ -616,6 +723,81 @@ class UserController extends Controller
         }
 
         return $availableTeacherRoles->first() ?? $accountType;
+    }
+
+    /**
+     * @return array<string, array<int, string>>
+     */
+    private function userSectionRules(Request $request, User $routeUser): array
+    {
+        $authenticatedUser = $request->user();
+        $accountTypes = ['user', 'admin', 'teacher', 'docente', 'tutor'];
+
+        if (! $authenticatedUser?->hasRole('superadmin')) {
+            $accountTypes = [$routeUser->getRoleNames()->first() ?? 'user'];
+        }
+
+        if ($authenticatedUser?->hasRole('superadmin') && $routeUser->hasRole('superadmin')) {
+            $accountTypes[] = 'superadmin';
+        }
+
+        return [
+            'account_type' => ['required', 'string', 'in:'.implode(',', $accountTypes)],
+            'email' => ['required', 'email', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
+            'surname' => ['required', 'string', 'max:255'],
+            'fiscal_code' => ['required', 'string', 'max:16'],
+            'phone_prefix' => ['nullable', 'string', 'max:8'],
+            'phone' => ['nullable', 'string', 'max:32'],
+            'birth_date' => ['nullable', 'date'],
+            'birth_place' => ['nullable', 'string', 'max:255'],
+            'gender' => ['nullable', 'string', 'max:1'],
+            'is_foreigner_or_immigrant' => ['required_if:account_type,user', 'boolean'],
+        ];
+    }
+
+    /**
+     * @return array<string, array<int, string>>
+     */
+    private function workSectionRules(bool $isWorkerAccount): array
+    {
+        return [
+            'employment_start_date' => [$isWorkerAccount ? 'required' : 'nullable', 'date'],
+            'employment_end_date' => ['nullable', 'date', 'after_or_equal:employment_start_date'],
+            'job_role_id' => [$isWorkerAccount ? 'required' : 'nullable', 'exists:job_roles,id'],
+            'job_sector_id' => [$isWorkerAccount ? 'required' : 'nullable', 'exists:job_sectors,id'],
+            'job_unit_id' => [$isWorkerAccount ? 'required' : 'nullable', 'exists:job_units,id'],
+            'job_tasks' => [$isWorkerAccount ? 'required' : 'nullable', 'array', 'min:1'],
+            'job_tasks.*.job_task_id' => ['required_with:job_tasks', 'exists:job_tasks,id'],
+            'job_tasks.*.starts_at' => ['required_with:job_tasks', 'date'],
+            'job_tasks.*.ends_at' => ['nullable', 'date'],
+            'job_category_id' => ['nullable', 'exists:job_categories,id'],
+            'job_level_id' => ['nullable', 'exists:job_levels,id'],
+        ];
+    }
+
+    /**
+     * @param  array<int, string>  $riskWarnings
+     */
+    private function userSectionResponse(Request $request, User $user, string $section, string $message, array $riskWarnings = []): RedirectResponse|JsonResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'warnings' => $riskWarnings,
+            ]);
+        }
+
+        $redirect = redirect()
+            ->route('admin.users.edit', ['user' => $user, 'section' => $section])
+            ->with('success', $message);
+
+        if ($riskWarnings !== []) {
+            $redirect->with('warning', collect($riskWarnings)->implode(' '));
+        }
+
+        return $redirect;
     }
 
     /**

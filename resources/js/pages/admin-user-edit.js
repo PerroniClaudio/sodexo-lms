@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    initializeSectionNavigation(page);
     initializeRiskSummary(page);
     initializeUserEditForm(page);
     initializeCertificatesTable(page);
@@ -24,6 +25,96 @@ function cloneTemplateElement(root, selector) {
     }
 
     return element.cloneNode(true);
+}
+
+function initializeSectionNavigation(page) {
+    const drawerToggle = page.querySelector('#admin-user-edit-sections-drawer');
+    const navLinks = Array.from(page.querySelectorAll('[data-user-edit-nav-link]'));
+    const sections = Array.from(page.querySelectorAll('[data-user-edit-section]'));
+
+    if (navLinks.length === 0 || sections.length === 0) {
+        return;
+    }
+
+    const setActiveLink = (sectionId) => {
+        navLinks.forEach((link) => {
+            const isActive = link.dataset.target === sectionId;
+
+            link.classList.toggle('bg-primary', isActive);
+            link.classList.toggle('text-primary-content', isActive);
+            link.classList.toggle('shadow-sm', isActive);
+            link.classList.toggle('text-base-content/70', !isActive);
+        });
+    };
+
+    const getVisibleSections = () => sections.filter((section) => section.offsetParent !== null);
+
+    const syncVisibleLinks = () => {
+        const visibleIds = new Set(getVisibleSections().map((section) => section.id));
+
+        navLinks.forEach((link) => {
+            const isVisible = visibleIds.has(link.dataset.target || '');
+
+            link.classList.toggle('hidden', !isVisible);
+        });
+    };
+
+    const updateActiveSection = () => {
+        const visibleSections = getVisibleSections();
+
+        if (visibleSections.length === 0) {
+            return;
+        }
+
+        let activeSection = visibleSections[0];
+        const offset = window.innerHeight * 0.3;
+
+        visibleSections.forEach((section) => {
+            const { top } = section.getBoundingClientRect();
+
+            if (top <= offset) {
+                activeSection = section;
+            }
+        });
+
+        setActiveLink(activeSection.id);
+    };
+
+    navLinks.forEach((link) => {
+        link.addEventListener('click', (event) => {
+            const sectionId = link.dataset.target;
+            const targetSection = sectionId ? page.querySelector(`#${sectionId}`) : null;
+
+            if (!targetSection) {
+                return;
+            }
+
+            event.preventDefault();
+            targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setActiveLink(sectionId);
+
+            if (drawerToggle instanceof HTMLInputElement) {
+                drawerToggle.checked = false;
+            }
+        });
+    });
+
+    const observer = new MutationObserver(() => {
+        syncVisibleLinks();
+        updateActiveSection();
+    });
+
+    sections.forEach((section) => {
+        observer.observe(section, {
+            attributes: true,
+            attributeFilter: ['style', 'class'],
+        });
+    });
+
+    syncVisibleLinks();
+    updateActiveSection();
+    window.addEventListener('scroll', updateActiveSection, { passive: true });
+    window.addEventListener('resize', updateActiveSection);
 }
 
 function initializeRiskSummary(page) {

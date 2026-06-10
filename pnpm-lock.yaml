@@ -58,8 +58,8 @@ importers:
         specifier: ^9.0.1
         version: 9.2.1
       daisyui:
-        specifier: ^5.5.19
-        version: 5.5.19
+        specifier: ^5.5.23
+        version: 5.5.23
       laravel-vite-plugin:
         specifier: ^3.0.0
         version: 3.0.1(vite@8.0.8(jiti@2.6.1))
@@ -508,8 +508,8 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  daisyui@5.5.19:
-    resolution: {integrity: sha512-pbFAkl1VCEh/MPCeclKL61I/MqRIFFhNU7yiXoDDRapXN4/qNCoMxeCCswyxEEhqL5eiTTfwHvucFtOE71C9sA==}
+  daisyui@5.5.23:
+    resolution: {integrity: sha512-xuheNUSL4T6ZVtWXoioqcNkjoyGX85QTDz4HTw2aBPfqk4fuMjax5HDo8qCmpV6M1YN8bGvfx5BpYCoDeRlt+A==}
 
   define-data-property@1.1.4:
     resolution: {integrity: sha512-rBMvIzlpA8v6E+SJZoo++HAYqsLrkg7MSfIinMPFhmkorw7X+dOXVJQs+QT69zGkzMyfDnIMN2Wid1+NbL3T+A==}
@@ -1396,7 +1396,7 @@ snapshots:
       tree-kill: 1.2.2
       yargs: 17.7.2
 
-  daisyui@5.5.19: {}
+  daisyui@5.5.23: {}
 
   define-data-property@1.1.4:
     dependencies:

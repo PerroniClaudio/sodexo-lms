@@ -126,6 +126,9 @@
                                             @if($course['last_accessed_at'])
                                                 <span>{{ __('Ultimo accesso') }}: {{ $course['last_accessed_at'] }}</span>
                                             @endif
+                                            @if($course['expiry_date'])
+                                                <span>{{ __('Scadenza') }}: {{ $course['expiry_date'] }}</span>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>

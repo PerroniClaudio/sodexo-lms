@@ -16,7 +16,7 @@
         </div>
         <div class="drawer-side">
             <label for="my-drawer-3" aria-label="{{ __('layout.close_sidebar') }}" class="drawer-overlay"></label>
-            <div class="flex min-h-full w-80 flex-col bg-base-200 p-4">
+            <div class="flex min-h-full w-80 flex-col bg-base-300 p-4">
 
                 <ul class="menu w-full gap-1">
                     @role(['admin', 'superadmin'])
@@ -28,6 +28,7 @@
                                     'menu-active' => request()->routeIs('admin.dashboard*'),
                                 ])
                             >
+                                <x-lucide-layout-dashboard class="mr-2 inline-block h-5 w-5" />
                                 {{ __('Dashboard') }}
                             </a>
                         </li>
@@ -41,6 +42,7 @@
                                 'menu-active' => request()->routeIs('admin.courses.*'),
                             ])
                         >
+                            <x-lucide-graduation-cap class="mr-2 inline-block h-5 w-5" />
                             {{ __('Corsi') }}
                         </a>
                     </li>
@@ -53,6 +55,7 @@
                                 'menu-active' => request()->routeIs('admin.regia.*'),
                             ])
                         >
+                            <x-lucide-settings class="mr-2 inline-block h-5 w-5" />
                             {{ __('Regia') }}
                         </a>
                     </li>
@@ -67,6 +70,7 @@
                                     'menu-active' => request()->routeIs('admin.homepage.*'),
                                 ])
                             >
+                                <x-lucide-monitor-play class="mr-2 inline-block h-5 w-5" />
                                 {{ __('Home page') }}
                             </a>
                         </li>
@@ -81,6 +85,7 @@
                                     'menu-active' => request()->routeIs('admin.users.*'),
                                 ])
                             >
+                                <x-lucide-user-round class="mr-2 inline-block h-5 w-5" />
                                 {{ __('Utenti') }}
                             </a>
                         </li>
@@ -92,6 +97,7 @@
                                     'menu-active' => request()->routeIs('admin.certificates.*'),
                                 ])
                             >
+                                <x-lucide-file-text class="mr-2 inline-block h-5 w-5" />
                                 {{ __('Attestati') }}
                             </a>
                         </li>
@@ -103,6 +109,7 @@
                                     'menu-active' => request()->routeIs('admin.videos.*'),
                                 ])
                             >
+                                <x-lucide-video class="mr-2 inline-block h-5 w-5" />
                                 {{ __('Libreria Video') }}
                             </a>
                         </li>
@@ -114,6 +121,7 @@
                                     'menu-active' => request()->routeIs('admin.video-reports.*'),
                                 ])
                             >
+                                <x-lucide-chart-column class="mr-2 inline-block h-5 w-5" />
                                 {{ __('Audit trail') }}
                             </a>
                         </li>
@@ -124,6 +132,7 @@
                             {{-- <details @if(request()->routeIs('admin.job-*')) open @endif> --}}
                             <details @if(request()->routeIs('admin.job-*') or request()->routeIs('admin.nace-ateco.index') or request()->routeIs('admin.risk-based-requirements.*') or request()->routeIs('admin.document-types.*')) open @endif>
                                 <summary @class(['menu-active' => request()->routeIs('admin.job-*')])>
+                                    <x-lucide-briefcase class="mr-2 inline-block h-5 w-5" />
                                     {{ __('Configurazione Lavori') }}
                                 </summary>
                                 <ul>
@@ -132,6 +141,7 @@
                                             href="{{ route('admin.job-sectors.index') }}"
                                             @class(['menu-active' => request()->routeIs('admin.job-sectors.*')])
                                         >
+                                            <x-lucide-briefcase class="mr-2 inline-block h-4 w-4" />
                                             {{ __('Settori') }}
                                         </a>
                                     </li>
@@ -140,6 +150,7 @@
                                             href="{{ route('admin.job-categories.index') }}"
                                             @class(['menu-active' => request()->routeIs('admin.job-categories.*')])
                                         >
+                                            <x-lucide-layers class="mr-2 inline-block h-4 w-4" />
                                             {{ __('Categorie') }}
                                         </a>
                                     </li>
@@ -148,6 +159,7 @@
                                             href="{{ route('admin.job-levels.index') }}"
                                             @class(['menu-active' => request()->routeIs('admin.job-levels.*')])
                                         >
+                                            <x-lucide-chart-column class="mr-2 inline-block h-4 w-4" />
                                             {{ __('Livelli') }}
                                         </a>
                                     </li>
@@ -156,6 +168,7 @@
                                             href="{{ route('admin.job-roles.index') }}"
                                             @class(['menu-active' => request()->routeIs('admin.job-roles.*')])
                                         >
+                                            <x-lucide-user-round class="mr-2 inline-block h-4 w-4" />
                                             {{ __('Ruoli') }}
                                         </a>
                                     </li>
@@ -164,6 +177,7 @@
                                             href="{{ route('admin.job-tasks.index') }}"
                                             @class(['menu-active' => request()->routeIs('admin.job-tasks.*')])
                                         >
+                                            <x-lucide-clipboard-check class="mr-2 inline-block h-4 w-4" />
                                             {{ __('Mansioni') }}
                                         </a>
                                     </li>
@@ -172,6 +186,7 @@
                                             href="{{ route('admin.job-units.index') }}"
                                             @class(['menu-active' => request()->routeIs('admin.job-units.*')])
                                         >
+                                            <x-lucide-map-pin class="mr-2 inline-block h-4 w-4" />
                                             {{ __('Unità Lavorative') }}
                                         </a>
                                     </li>
@@ -180,6 +195,7 @@
                                             href="{{ route('admin.nace-ateco.index') }}"
                                             @class(['menu-active' => request()->routeIs('admin.nace-ateco.*')])
                                         >
+                                            <x-lucide-search class="mr-2 inline-block h-4 w-4" />
                                             {{ __('ATECO') }}
                                         </a>
                                     </li>
@@ -188,6 +204,7 @@
                                             href="{{ route('admin.risk-based-requirements.index') }}"
                                             @class(['menu-active' => request()->routeIs('admin.risk-based-requirements.*')])
                                         >
+                                            <x-lucide-shield-alert class="mr-2 inline-block h-4 w-4" />
                                             {{ __('Requisiti (Rischio)') }}
                                         </a>
                                     </li>
@@ -196,6 +213,7 @@
                                             href="{{ route('admin.document-types.index') }}"
                                             @class(['menu-active' => request()->routeIs('admin.document-types.*')])
                                         >
+                                            <x-lucide-file-text class="mr-2 inline-block h-4 w-4" />
                                             {{ __('Tipologie documento') }}
                                         </a>
                                     </li>
@@ -207,6 +225,7 @@
                                 href="{{ route('admin.document-conversion-jobs.index') }}"
                                 @class(['menu-active' => request()->routeIs('admin.document-conversion-jobs.*')])
                             >
+                                <x-lucide-settings class="mr-2 inline-block h-5 w-5" />
                                 {{ __('Debug conversioni documenti') }}
                             </a>
                         </li>
@@ -215,6 +234,7 @@
                                 href="{{ route('admin.live-stream-logs.index') }}"
                                 @class(['menu-active' => request()->routeIs('admin.live-stream-logs.*')])
                             >
+                                <x-lucide-activity class="mr-2 inline-block h-5 w-5" />
                                 {{ __('Log live stream') }}
                             </a>
                         </li>
@@ -223,6 +243,7 @@
                                 href="{{ route('admin.satisfaction-survey.edit') }}"
                                 @class(['menu-active' => request()->routeIs('admin.satisfaction-survey.*')])
                             >
+                                <x-lucide-clipboard-check class="mr-2 inline-block h-5 w-5" />
                                 {{ __('Configurazione gradimento') }}
                             </a>
                         </li>
