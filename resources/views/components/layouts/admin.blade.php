@@ -19,6 +19,20 @@
             <div class="flex min-h-full w-80 flex-col bg-base-200 p-4">
 
                 <ul class="menu w-full gap-1">
+                    @role(['admin', 'superadmin'])
+                        <li class="w-full">
+                            <a
+                                href="{{ route('admin.dashboard') }}"
+                                @class([
+                                    'w-full',
+                                    'menu-active' => request()->routeIs('admin.dashboard*'),
+                                ])
+                            >
+                                {{ __('Dashboard') }}
+                            </a>
+                        </li>
+                    @endrole
+
                     <li class="w-full">
                         <a
                             href="{{ route('admin.courses.index') }}"

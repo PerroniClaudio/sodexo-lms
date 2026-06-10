@@ -5,36 +5,42 @@
         'fad' => [
             'dot' => 'bg-info',
             'type_badge' => 'badge-info badge-soft',
+            'type_badge_classes' => 'border-sky-300 text-sky-700',
             'progress' => 'progress-info',
             'button' => 'btn-info',
         ],
         'res' => [
             'dot' => 'bg-secondary',
             'type_badge' => 'badge-secondary badge-soft',
+            'type_badge_classes' => '',
             'progress' => 'progress-secondary',
             'button' => 'btn-secondary',
         ],
         'blended' => [
             'dot' => 'bg-warning',
             'type_badge' => 'badge-warning badge-soft',
+            'type_badge_classes' => '',
             'progress' => 'progress-warning',
             'button' => 'btn-warning',
         ],
         'fsc' => [
             'dot' => 'bg-secondary',
             'type_badge' => 'badge-secondary badge-soft',
+            'type_badge_classes' => '',
             'progress' => 'progress-secondary',
             'button' => 'btn-secondary',
         ],
         'async' => [
             'dot' => 'bg-primary',
             'type_badge' => 'badge-primary badge-soft',
+            'type_badge_classes' => '',
             'progress' => 'progress-primary',
             'button' => 'btn-primary',
         ],
         'unknown' => [
             'dot' => 'bg-neutral',
             'type_badge' => 'badge-neutral badge-soft',
+            'type_badge_classes' => '',
             'progress' => 'progress-neutral',
             'button' => 'btn-neutral',
         ],
@@ -108,7 +114,7 @@
                                             <span class="badge badge-xs {{ $statusBadges[$course['status']] ?? 'badge-ghost' }} h-fit">
                                                 {{ $statusLabels[$course['status']] ?? ucfirst(str_replace('_', ' ', $course['status'])) }}
                                             </span>
-                                            <span class="badge badge-xs {{ $theme['type_badge'] }} h-fit">
+                                            <span class="badge badge-xs {{ $theme['type_badge'] }} {{ $theme['type_badge_classes'] }}">
                                                 {{ $course['type_label'] }}
                                             </span>
                                         </div>

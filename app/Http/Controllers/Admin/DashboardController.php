@@ -575,12 +575,17 @@ class DashboardController extends Controller
      *     submissions_count: int,
      *     questions: array<int, array{
      *         question: string,
-     *         answers: array<int, array{
+     *         top_answer: array{
      *             label: string,
      *             count: int,
-     *             percentage: int,
-     *             is_top_answer: bool
-     *         }>
+     *             percentage: int
+     *         }|null,
+     *         distribution: array<int, array{
+     *             label: string,
+     *             count: int,
+     *             percentage: int
+     *         }>,
+     *         has_tied_top_answers: bool
      *     }>
      * }
      */
@@ -619,21 +624,26 @@ class DashboardController extends Controller
                 $countsByAnswerId = $rows->pluck('total', 'satisfaction_survey_answer_id');
                 $totalAnswers = (int) $rows->sum('total');
                 $topCount = (int) $rows->max('total');
+                $distribution = $question->answers->map(function ($answer) use ($countsByAnswerId, $totalAnswers): array {
+                    $count = (int) ($countsByAnswerId[$answer->getKey()] ?? 0);
+
+                    return [
+                        'label' => $answer->text,
+                        'count' => $count,
+                        'percentage' => $totalAnswers > 0
+                            ? (int) round(($count / $totalAnswers) * 100)
+                            : 0,
+                    ];
+                })->values();
+                $topAnswers = $distribution
+                    ->filter(fn (array $answer): bool => $answer['count'] > 0 && $answer['count'] === $topCount)
+                    ->values();
 
                 return [
                     'question' => $question->text,
-                    'answers' => $question->answers->map(function ($answer) use ($countsByAnswerId, $totalAnswers, $topCount): array {
-                        $count = (int) ($countsByAnswerId[$answer->getKey()] ?? 0);
-
-                        return [
-                            'label' => $answer->text,
-                            'count' => $count,
-                            'percentage' => $totalAnswers > 0
-                                ? (int) round(($count / $totalAnswers) * 100)
-                                : 0,
-                            'is_top_answer' => $count > 0 && $count === $topCount,
-                        ];
-                    })->all(),
+                    'top_answer' => $topAnswers->first(),
+                    'distribution' => $distribution->all(),
+                    'has_tied_top_answers' => $topAnswers->count() > 1,
                 ];
             })->all();
 

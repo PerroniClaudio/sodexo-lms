@@ -9,7 +9,7 @@
 @php
     $completedModules = $modules->filter(fn ($courseModule) => $courseModule->pivot->status === 'completed')->count();
     $totalModules = $modules->count();
-    $authUserRole = auth()->user()?->getRoleNames()->first() ?? 'user';
+    $navigationRoutePrefix = str((string) request()->route()?->getName())->before('.')->toString() ?: 'user';
     $currentModuleMeta = $moduleTypeMeta[$currentModule->type] ?? [
         'label' => strtoupper((string) $currentModule->type),
         'icon' => 'lucide-shapes',
@@ -118,6 +118,7 @@
                                                     && $courseModule->type === 'learning_quiz'
                                                     && $courseModule->pivot->quiz_attempts < $courseModule->max_attempts;
                                                 $isAccessible = in_array($status, ['completed', 'available', 'in_progress'], true) || $isRetryableQuiz;
+                                                $canReviewCompletedVideo = $isCompleted && $courseModule->type === 'video';
                                                 $courseModuleMeta = $moduleTypeMeta[$courseModule->type] ?? [
                                                     'label' => strtoupper((string) $courseModule->type),
                                                     'icon' => 'lucide-shapes',
@@ -140,6 +141,10 @@
                                                             'h-4 w-4 text-base-content/60',
                                                             'text-accent-content' => $isCurrent,
                                                         ]) />
+                                                    @elseif($isCompleted)
+                                                        <x-lucide-check @class([
+                                                            'h-5 w-5 text-emerald-500',
+                                                        ]) />
                                                     @else
                                                         <x-dynamic-component :component="$courseModuleMeta['icon']" @class([
                                                             'h-4 w-4 text-primary',
@@ -158,13 +163,17 @@
                                                     </div>
                                                 </div>
 
-                                                @if($isCompleted)
-                                                    <span @class([
-                                                        'flex size-8 items-center justify-center rounded-full bg-success/15 text-success',
-                                                        'bg-accent text-accent-content' => $isCurrent,
-                                                    ])>
-                                                        <x-lucide-check class="h-4 w-4" />
-                                                    </span>
+                                                @if($canReviewCompletedVideo)
+                                                    <a
+                                                        href="{{ route('user.courses.modules.player', [$course, $courseModule]) }}"
+                                                        @class([
+                                                            'btn btn-xs',
+                                                            'btn-secondary border-0' => $isCurrent,
+                                                            'btn-outline btn-primary' => ! $isCurrent,
+                                                        ])
+                                                    >
+                                                        {{ __('Rivedi') }}
+                                                    </a>
                                                 @elseif($isCurrent)
                                                     <a href="{{ route('user.courses.modules.player', [$course, $courseModule]) }}" class="btn btn-secondary btn-square btn-sm border-0">
                                                         <x-lucide-play class="h-4 w-4 fill-current" />
@@ -203,18 +212,18 @@
             <div class="flex min-h-full w-72 flex-col bg-base-200 p-4 lg:h-screen lg:overflow-y-auto">
                 <ul class="menu w-full gap-1">
                     <li class="w-full">
-                        <a href="{{ route($authUserRole . '.dashboard') }}" @class([
+                        <a href="{{ route($navigationRoutePrefix . '.dashboard') }}" @class([
                             'w-full',
-                            'menu-active' => request()->routeIs($authUserRole . '.dashboard'),
+                            'menu-active' => request()->routeIs($navigationRoutePrefix . '.dashboard'),
                         ])>
                             <x-lucide-layout-dashboard class="mr-2 inline-block h-5 w-5" />
                             {{ __('Dashboard') }}
                         </a>
                     </li>
                     <li class="w-full">
-                        <a href="{{ route($authUserRole . '.courses.index') }}" @class([
+                        <a href="{{ route($navigationRoutePrefix . '.courses.index') }}" @class([
                             'w-full',
-                            'menu-active' => request()->routeIs($authUserRole . '.courses.*'),
+                            'menu-active' => request()->routeIs($navigationRoutePrefix . '.courses.*'),
                         ])>
                             <x-lucide-graduation-cap class="inline-block mr-2 h-5 w-5" />
                             {{ __('I miei corsi') }}
@@ -230,9 +239,9 @@
                         </a>
                     </li>
                     <li class="w-full">
-                        <a href="{{ route($authUserRole . '.profile.edit') }}" @class([
+                        <a href="{{ route($navigationRoutePrefix . '.profile.edit') }}" @class([
                             'w-full',
-                            'menu-active' => request()->routeIs($authUserRole . '.profile.*'),
+                            'menu-active' => request()->routeIs($navigationRoutePrefix . '.profile.*'),
                         ])>
                             <x-lucide-user-round class="inline-block mr-2 h-5 w-5" />
                             {{ __('Profilo') }}

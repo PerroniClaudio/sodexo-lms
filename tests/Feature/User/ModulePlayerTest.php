@@ -34,7 +34,9 @@ function enrollUserInCourseWithModule(string $moduleType = 'video', array $modul
     $user->assignRole('superadmin');
     test()->actingAs($user);
 
-    $course = Course::factory()->create();
+    $course = Course::factory()->create([
+        'status' => 'draft',
+    ]);
     $video = null;
 
     if ($moduleType === 'video' && ! array_key_exists('video_id', $moduleAttributes)) {
@@ -122,6 +124,60 @@ test('module player page requires authentication', function () {
 
     $this->get(route('user.courses.modules.player', [$course, $module]))
         ->assertRedirect(route('login'));
+});
+
+test('module player sidebar shows review button for completed video modules', function () {
+    test()->seed(RoleAndPermissionSeeder::class);
+
+    $user = User::forceCreate([
+        'name' => 'Test',
+        'surname' => 'Player',
+        'email' => fake()->unique()->safeEmail(),
+        'password' => bcrypt('password'),
+        'fiscal_code' => strtoupper(Str::random(16)),
+        'email_verified_at' => now(),
+        'profile_completed_at' => now(),
+        'account_state' => 'active',
+        'is_foreigner_or_immigrant' => false,
+    ]);
+    $user->assignRole('superadmin');
+
+    $course = Course::factory()->create([
+        'status' => 'draft',
+    ]);
+    $video = Video::factory()->create();
+
+    $completedVideoModule = Module::factory()->create([
+        'title' => 'Video completato',
+        'type' => Module::TYPE_VIDEO,
+        'order' => 1,
+        'belongsTo' => (string) $course->getKey(),
+        'video_id' => $video->getKey(),
+    ]);
+
+    $currentQuizModule = Module::factory()->create([
+        'title' => 'Quiz corrente',
+        'type' => Module::TYPE_LEARNING_QUIZ,
+        'order' => 2,
+        'belongsTo' => (string) $course->getKey(),
+        'passing_score' => 7,
+        'max_score' => 10,
+    ]);
+
+    $enrollment = CourseEnrollment::enroll($user, $course);
+
+    $enrollment->moduleProgresses()
+        ->where('module_id', $completedVideoModule->getKey())
+        ->firstOrFail()
+        ->markCompleted();
+
+    $response = $this->actingAs($user)
+        ->get(route('user.courses.modules.player', [$course, $currentQuizModule]));
+
+    $response->assertOk()
+        ->assertSee('Video completato')
+        ->assertSee(route('user.courses.modules.player', [$course, $completedVideoModule]), escape: false)
+        ->assertSee('Rivedi');
 });
 
 test('video progress endpoint updates module progress', function () {

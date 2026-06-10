@@ -8,31 +8,37 @@
                 'label' => __('Video'),
                 'icon' => 'lucide-clapperboard',
                 'badge' => 'badge-primary',
+                'badge_classes' => '',
             ],
             'res' => [
                 'label' => __('Sessione in aula'),
                 'icon' => 'lucide-users',
                 'badge' => 'badge-accent',
+                'badge_classes' => '',
             ],
             'live' => [
                 'label' => __('Live'),
                 'icon' => 'lucide-monitor-play',
                 'badge' => 'badge-secondary',
+                'badge_classes' => '',
             ],
             'scorm' => [
                 'label' => __('SCORM'),
                 'icon' => 'lucide-package',
                 'badge' => 'badge-info',
+                'badge_classes' => 'border-sky-300 text-sky-600',
             ],
             'learning_quiz' => [
                 'label' => __('Quiz'),
                 'icon' => 'lucide-badge-help',
                 'badge' => 'badge-error',
+                'badge_classes' => '',
             ],
             'satisfaction_quiz' => [
                 'label' => __('Gradimento'),
                 'icon' => 'lucide-message-square-heart',
                 'badge' => 'badge-success',
+                'badge_classes' => 'border-emerald-400 text-emerald-600',
             ],
         ];
     @endphp
@@ -82,10 +88,12 @@
                             && $module->pivot->quiz_attempts < $module->max_attempts;
                         $isAccessible = in_array($status, ['completed', 'available', 'in_progress'], true) || $isRetryableQuiz;
                         $isLocked = ! $isAccessible;
+                        $canReviewCompletedVideo = $isCompleted && $module->type === 'video';
                         $meta = $moduleTypeMeta[$module->type] ?? [
                             'label' => strtoupper((string) $module->type),
                             'icon' => 'lucide-shapes',
                             'badge' => 'badge-ghost',
+                            'badge_classes' => '',
                         ];
 
                         $detail = null;
@@ -132,7 +140,7 @@
                                     </div>
 
                                     <div class="flex flex-wrap items-center gap-2 text-sm text-base-content/70">
-                                        <span class="badge {{ $meta['badge'] }} badge-outline gap-1.5 h-fit">
+                                        <span class="badge {{ $meta['badge'] }} {{ $meta['badge_classes'] }} badge-outline gap-1.5">
                                             <x-dynamic-component :component="$meta['icon']" class="h-3.5 w-3.5" />
                                             {{ $meta['label'] }}
                                         </span>
@@ -149,10 +157,13 @@
 
                             <div class="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
                                 @if($isCompleted)
-                                    <span class="inline-flex items-center gap-2 text-base font-medium text-success">
-                                        <x-lucide-circle-check class="h-5 w-5" />
-                                        {{ __('Completato') }}
-                                    </span>
+                                    <div class="flex flex-wrap items-center justify-end gap-3">
+                                        @if($canReviewCompletedVideo)
+                                            <a href="{{ route('user.courses.modules.player', [$course, $module]) }}" class="btn btn-outline btn-primary btn-sm">
+                                                {{ __('Rivedi') }}
+                                            </a>
+                                        @endif
+                                    </div>
                                 @elseif($isCurrent)
                                     <a href="{{ route('user.courses.modules.player', [$course, $module]) }}" class="btn btn-primary gap-2">
                                         {{ __('Inizia') }}

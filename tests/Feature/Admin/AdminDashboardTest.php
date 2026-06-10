@@ -194,6 +194,9 @@ it('renders the admin dashboard with core cards and data', function () {
     $response->assertSeeText('Attestati');
     $response->assertSeeText('Mario Rossi');
     $response->assertSeeText('Come valuti il corso?');
+    $response->assertSeeText('Opzione più scelta');
+    $response->assertSeeText('5');
+    $response->assertSee('data-survey-distribution-trigger', escape: false);
     $response->assertSee(route('admin.dashboard.follow-up-users.export'), escape: false);
 });
 

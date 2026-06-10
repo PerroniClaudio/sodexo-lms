@@ -15,24 +15,24 @@
         </div>
         <div class="drawer-side">
             @php
-                $authUserRole = auth()->user()?->getRoleNames()->first() ?? 'user'; // Spatie restituisce una collection
+                $navigationRoutePrefix = str((string) request()->route()?->getName())->before('.')->toString() ?: 'user';
             @endphp
             <label for="user-drawer" aria-label="{{ __('layout.close_sidebar') }}" class="drawer-overlay"></label>
             <div class="flex min-h-full w-72 flex-col bg-base-200 p-4 lg:h-screen lg:overflow-y-auto">
                 <ul class="menu w-full gap-1">
                     <li class="w-full">
-                        <a href="{{ route($authUserRole . '.dashboard') }}" @class([
+                        <a href="{{ route($navigationRoutePrefix . '.dashboard') }}" @class([
                             'w-full',
-                            'menu-active' => request()->routeIs($authUserRole . '.dashboard'),
+                            'menu-active' => request()->routeIs($navigationRoutePrefix . '.dashboard'),
                         ])>
                             <x-lucide-layout-dashboard class="mr-2 inline-block h-5 w-5" />
                             {{ __('Dashboard') }}
                         </a>
                     </li>
                     <li class="w-full">
-                        <a href="{{ route($authUserRole . '.courses.index') }}" @class([
+                        <a href="{{ route($navigationRoutePrefix . '.courses.index') }}" @class([
                             'w-full',
-                            'menu-active' => request()->routeIs($authUserRole . '.courses.*'),
+                            'menu-active' => request()->routeIs($navigationRoutePrefix . '.courses.*'),
                         ])>
                             <x-lucide-graduation-cap class="inline-block mr-2 h-5 w-5" />
                             {{ __('I miei corsi') }}
@@ -48,9 +48,9 @@
                         </a>
                     </li>
                     <li class="w-full">
-                        <a href="{{ route($authUserRole . '.profile.edit') }}" @class([
+                        <a href="{{ route($navigationRoutePrefix . '.profile.edit') }}" @class([
                             'w-full',
-                            'menu-active' => request()->routeIs($authUserRole . '.profile.*'),
+                            'menu-active' => request()->routeIs($navigationRoutePrefix . '.profile.*'),
                         ])>
                             <x-lucide-user-round class="inline-block mr-2 h-5 w-5" />
                             {{ __('Profilo') }}
