@@ -27,6 +27,7 @@ use App\Services\RiskCalculationService;
 use App\Services\UserJobAssignmentService;
 use App\Support\UserGeographyMapper;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -67,6 +68,8 @@ class UserController extends Controller
                     ->orWhere('email', 'like', "%$search%");
             });
         }
+
+        $userRiskOverview = $this->buildUserRiskOverview(clone $query);
 
         // Ordinamento
         $sortable = ['name', 'surname', 'fiscal_code', 'email', 'account_type', 'role', 'status'];
@@ -116,7 +119,7 @@ class UserController extends Controller
             $users = $query->paginate(20)->appends($request->only(['search', 'sort', 'direction', 'show_trashed']));
         }
 
-        return view('admin.users.index', compact('users', 'sort', 'direction', 'search', 'showTrashed'));
+        return view('admin.users.index', compact('users', 'sort', 'direction', 'search', 'showTrashed', 'userRiskOverview'));
     }
 
     public function create(): View
@@ -613,6 +616,71 @@ class UserController extends Controller
         }
 
         return $availableTeacherRoles->first() ?? $accountType;
+    }
+
+    /**
+     * @return array{
+     *     total_users: int,
+     *     classified_users: int,
+     *     unclassified_users: int,
+     *     risk_counts: array<int, array{
+     *         level: string,
+     *         label: string,
+     *         count: int,
+     *         value_class: string
+     *     }>
+     * }
+     */
+    private function buildUserRiskOverview(Builder $query): array
+    {
+        $riskCounts = collect(RiskLevel::ordered())
+            ->mapWithKeys(fn (RiskLevel $riskLevel): array => [$riskLevel->value => 0]);
+
+        $workerRoleName = $this->resolveAccountType('user');
+        $totalUsers = (clone $query)->count();
+
+        $classifiedUsers = (clone $query)
+            ->with(['jobSector', 'jobTasks', 'roles'])
+            ->whereHas('roles', fn (Builder $builder): Builder => $builder->where('name', $workerRoleName))
+            ->get()
+            ->reduce(function ($counts, User $user) {
+                $riskLevel = rescue(
+                    fn (): ?RiskLevel => $user->getEffectiveWorkerRisk(),
+                    null,
+                    false,
+                );
+
+                if (! $riskLevel instanceof RiskLevel) {
+                    return $counts;
+                }
+
+                $counts->put($riskLevel->value, $counts->get($riskLevel->value, 0) + 1);
+
+                return $counts;
+            }, $riskCounts);
+
+        $classifiedTotal = $classifiedUsers->sum();
+
+        return [
+            'total_users' => $classifiedTotal,
+            'classified_users' => $classifiedTotal,
+            'unclassified_users' => $totalUsers - $classifiedTotal,
+            'risk_counts' => collect(RiskLevel::ordered())
+                ->map(function (RiskLevel $riskLevel) use ($classifiedUsers): array {
+                    return [
+                        'level' => $riskLevel->value,
+                        'label' => $riskLevel->label(),
+                        'count' => $classifiedUsers->get($riskLevel->value, 0),
+                        'value_class' => match ($riskLevel) {
+                            RiskLevel::LOW => 'text-success',
+                            RiskLevel::MEDIUM => 'text-warning',
+                            RiskLevel::HIGH => 'text-error',
+                        },
+                    ];
+                })
+                ->values()
+                ->all(),
+        ];
     }
 
     /**

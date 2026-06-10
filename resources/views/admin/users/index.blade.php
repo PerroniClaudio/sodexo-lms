@@ -19,6 +19,37 @@
             :action-url="route('admin.users.create')"
         />
 
+        <div class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-5">
+                <div class="flex flex-col gap-1">
+                    <h2 class="card-title">
+                        <x-lucide-chart-column class="h-5 w-5" />
+                        {{ __('Distribuzione utenti per rischio') }}
+                    </h2>
+                    <p class="text-sm text-base-content/70">
+                        {{ __('Panoramica degli utenti mostrati in tabella, suddivisi per rischio effettivo.') }}
+                    </p>
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <x-admin.dashboard.metric-stat
+                        icon="users"
+                        :label="__('Totale utenti')"
+                        :value="$userRiskOverview['total_users']"
+                    />
+
+                    @foreach ($userRiskOverview['risk_counts'] as $riskCount)
+                        <x-admin.dashboard.metric-stat
+                            icon="shield-alert"
+                            :label="$riskCount['label']"
+                            :value="$riskCount['count']"
+                            :value-class="$riskCount['value_class']"
+                        />
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
         <x-data-table
             :columns="$columns"
             :rows="$users"
