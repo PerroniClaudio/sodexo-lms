@@ -10,16 +10,17 @@
         ];
         $courseEditSections = collect([
             ['key' => 'details', 'label' => __('Dati anagrafici corso'), 'icon' => 'lucide-book-open-text'],
+            ['key' => 'attachments', 'label' => __('Allegati'), 'icon' => 'lucide-paperclip'],
             ['key' => 'duration', 'label' => __('Durata corso'), 'icon' => 'lucide-clock-3'],
             ['key' => 'survey', 'label' => __('Questionario di gradimento'), 'icon' => 'lucide-message-square-heart'],
-            ['key' => 'certificates', 'label' => __('Certificati ottenibili'), 'icon' => 'lucide-file-badge'],
+            ['key' => 'certificates', 'label' => __('Abilitazioni di rischio acquisite'), 'icon' => 'lucide-file-badge'],
             ['key' => 'modules', 'label' => __('Moduli'), 'icon' => 'lucide-blocks'],
             ['key' => 'teachers', 'label' => __('Docenti'), 'icon' => 'lucide-graduation-cap'],
             ['key' => 'tutors', 'label' => __('Tutor'), 'icon' => 'lucide-users-round'],
             ['key' => 'enrollments', 'label' => __('Iscritti'), 'icon' => 'lucide-user-plus'],
             ['key' => 'operations', 'label' => __('Operazioni corso'), 'icon' => 'lucide-wrench'],
         ]);
-        $activeCourseEditSection = request('section', 'details');
+        $activeCourseEditSection = request('section', 'certificates');
 
         if (! $courseEditSections->contains(fn (array $section): bool => $section['key'] === $activeCourseEditSection)) {
             $activeCourseEditSection = 'details';
@@ -499,6 +500,118 @@
                                         </div>
                                 </div>
                             </form>
+                        @elseif ($activeCourseEditSection === 'attachments')
+                            <form method="POST" action="{{ $courseUpdateUrl }}" enctype="multipart/form-data" class="flex flex-col gap-6">
+                                @include('admin.course.partials.course-edit-badge-bar')
+
+                                <div class="card border border-base-300 bg-base-100 shadow-sm">
+                                    <div class="card-body gap-6">
+                                        <div>
+                                            <h2 class="card-title">{{ __('Allegati corso') }}</h2>
+                                            <p class="text-sm text-base-content/70">
+                                                {{ __('Carica copertina e locandina PDF del corso.') }}
+                                            </p>
+                                        </div>
+
+                                        @csrf
+                                        @method('PUT')
+
+                                        <input type="hidden" name="title" value="{{ $courseBaseValues['title'] }}">
+                                        <input type="hidden" name="code" value="{{ $courseBaseValues['code'] }}">
+                                        <input type="hidden" name="description" value="{{ $courseBaseValues['description'] }}">
+                                        <input type="hidden" name="teaching_material" value="{{ $courseBaseValues['teaching_material'] }}">
+                                        @if (in_array($course->type, ['res', 'async', 'blended'], true) && $courseBaseValues['max_participants'] !== null && $courseBaseValues['max_participants'] !== '')
+                                            <input type="hidden" name="max_participants" value="{{ $courseBaseValues['max_participants'] }}">
+                                        @endif
+                                        <input type="hidden" name="internal_notes" value="{{ $courseBaseValues['internal_notes'] }}">
+                                        <input type="hidden" name="training_objective" value="{{ $courseBaseValues['training_objective'] }}">
+                                        <input type="hidden" name="knowledge" value="{{ $courseBaseValues['knowledge'] }}">
+                                        <input type="hidden" name="skills" value="{{ $courseBaseValues['skills'] }}">
+                                        <input type="hidden" name="competences" value="{{ $courseBaseValues['competences'] }}">
+                                        <input type="hidden" name="regulatory_reference" value="{{ $courseBaseValues['regulatory_reference'] }}">
+                                        <input type="hidden" name="course_start_date" value="{{ $courseBaseValues['course_start_date'] }}">
+                                        <input type="hidden" name="course_end_date" value="{{ $courseBaseValues['course_end_date'] }}">
+                                        <input type="hidden" name="access_closure_date" value="{{ $courseBaseValues['access_closure_date'] }}">
+                                        <input type="hidden" name="course_duration_hours" value="{{ $courseBaseValues['course_duration_hours'] }}">
+                                        <input type="hidden" name="interaction_duration_minutes" value="{{ $courseBaseValues['interaction_duration_minutes'] }}">
+                                        <input type="hidden" name="year" value="{{ $courseBaseValues['year'] }}">
+                                        <input type="hidden" name="expiry_date" value="{{ $courseBaseValues['expiry_date'] }}">
+                                        <input type="hidden" name="status" value="{{ $courseBaseValues['status'] }}">
+                                        <input type="hidden" name="has_satisfaction_survey" value="{{ $courseBaseValues['has_satisfaction_survey'] ? '1' : '0' }}">
+                                        <input type="hidden" name="satisfaction_survey_required_for_certificate" value="{{ $courseBaseValues['satisfaction_survey_required_for_certificate'] ? '1' : '0' }}">
+                                        @foreach ($selectedRiskBasedRequirementsPayload as $selectedRiskBasedRequirement)
+                                            <input type="hidden" name="risk_based_requirement_ids[]" value="{{ $selectedRiskBasedRequirement['id'] }}">
+                                            @foreach ($selectedRiskBasedRequirement['course_validity_types'] as $courseValidityType)
+                                                <input type="hidden" name="risk_based_requirement_validity_types[{{ $selectedRiskBasedRequirement['id'] }}][]" value="{{ $courseValidityType }}">
+                                            @endforeach
+                                            @foreach ($selectedRiskBasedRequirement['integrative_start_risk_levels'] as $integrativeStartRiskLevel)
+                                                <input type="hidden" name="risk_based_requirement_integrative_start_levels[{{ $selectedRiskBasedRequirement['id'] }}][]" value="{{ $integrativeStartRiskLevel }}">
+                                            @endforeach
+                                        @endforeach
+
+                                        <div class="grid gap-6 xl:grid-cols-2">
+                                            <div class="rounded-box border border-base-300 p-5">
+                                                <div class="flex items-start justify-between gap-4">
+                                                    <div>
+                                                        <h3 class="text-lg font-semibold">{{ __('Immagine di copertina') }}</h3>
+                                                        <p class="mt-1 text-sm text-base-content/70">{{ __('Formati immagine supportati.') }}</p>
+                                                    </div>
+                                                    @if ($course->cover_image_path)
+                                                        <a href="{{ route('admin.courses.attachments.cover-image.preview', $course) }}" target="_blank" rel="noreferrer" class="btn btn-outline btn-sm">
+                                                            <x-lucide-eye class="h-4 w-4" />
+                                                            {{ __('Preview') }}
+                                                        </a>
+                                                    @endif
+                                                </div>
+                                                <div class="mt-4 space-y-3">
+                                                    @if ($course->cover_image_path)
+                                                        <p class="text-sm text-base-content/70">{{ __('File presente nel bucket.') }}</p>
+                                                    @else
+                                                        <p class="text-sm text-base-content/70">{{ __('Nessuna copertina caricata.') }}</p>
+                                                    @endif
+                                                    <input id="cover_image" name="cover_image" type="file" accept="image/*" class="file-input file-input-bordered w-full @error('cover_image') file-input-error @enderror">
+                                                    @error('cover_image')
+                                                        <p class="text-sm text-error">{{ $message }}</p>
+                                                    @enderror
+                                                </div>
+                                            </div>
+
+                                            <div class="rounded-box border border-base-300 p-5">
+                                                <div class="flex items-start justify-between gap-4">
+                                                    <div>
+                                                        <h3 class="text-lg font-semibold">{{ __('Locandina PDF') }}</h3>
+                                                        <p class="mt-1 text-sm text-base-content/70">{{ __('Carica locandina in formato PDF.') }}</p>
+                                                    </div>
+                                                    @if ($course->poster_pdf_path)
+                                                        <a href="{{ route('admin.courses.attachments.poster-pdf.preview', $course) }}" target="_blank" rel="noreferrer" class="btn btn-outline btn-sm">
+                                                            <x-lucide-eye class="h-4 w-4" />
+                                                            {{ __('Preview') }}
+                                                        </a>
+                                                    @endif
+                                                </div>
+                                                <div class="mt-4 space-y-3">
+                                                    @if ($course->poster_pdf_path)
+                                                        <p class="text-sm text-base-content/70">{{ __('File presente nel bucket.') }}</p>
+                                                    @else
+                                                        <p class="text-sm text-base-content/70">{{ __('Nessuna locandina caricata.') }}</p>
+                                                    @endif
+                                                    <input id="poster_pdf" name="poster_pdf" type="file" accept="application/pdf,.pdf" class="file-input file-input-bordered w-full @error('poster_pdf') file-input-error @enderror">
+                                                    @error('poster_pdf')
+                                                        <p class="text-sm text-error">{{ $message }}</p>
+                                                    @enderror
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex justify-end">
+                                            <button type="submit" class="btn btn-primary">
+                                                <span>{{ __('Salva allegati') }}</span>
+                                                <x-lucide-save class="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
                         @endif
 
                         @if ($activeCourseEditSection === 'survey')
@@ -601,7 +714,7 @@
                                     <div class="card-body gap-6">
                                         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                                             <div>
-                                                <h2 class="card-title">{{ __('Certificati ottenibili') }}</h2>
+                                                <h2 class="card-title">{{ __('Abilitazioni di rischio acquisite') }}</h2>
                                                 <p class="text-sm text-base-content/70">
                                                     {{ __('Seleziona i certificati ottenibili con questo corso e definisci una o più tipologie di validità per ciascuno.') }}
                                                 </p>
@@ -609,7 +722,7 @@
 
                                             @if ($riskBasedRequirements->isNotEmpty())
                                                 <button type="button" class="btn btn-primary btn-sm" data-open-risk-requirement-selection-modal>
-                                                    <span>{{ __('Aggiungi') }}</span>
+                                                    <span>{{ __('Aggiungi requisito') }}</span>
                                                     <x-lucide-plus class="h-4 w-4" />
                                                 </button>
                                             @endif

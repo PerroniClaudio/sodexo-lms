@@ -47,6 +47,8 @@ class Course extends Model
         'title',
         'code',
         'description',
+        'cover_image_path',
+        'poster_pdf_path',
         'teaching_material',
         'max_participants',
         'internal_notes',

@@ -16,7 +16,7 @@ class ModuleFactory extends Factory
             'description' => fake()->text(),
             'type' => Module::TYPE_VIDEO,
             'order' => 1,
-            'is_live_teacher' => false,
+            'is_live_teacher' => true,
             'mux_live_stream_id' => null,
             'mux_playback_id' => null,
             'mux_stream_key' => null,
@@ -28,7 +28,7 @@ class ModuleFactory extends Factory
             'passing_score' => null,
             'max_score' => null,
             'max_attempts' => null,
-            'permitted_submission' => null,
+            'permitted_submission' => Module::PERMITTED_SUBMISSION_ONLINE,
             'belongsTo' => '1',
             'video_id' => null,
         ];

@@ -2,8 +2,22 @@
     @php
         /** @var \App\Models\User $user */
         $user = auth()->user();
-        $role = $user?->getRoleNames()->first() ?? __('nessun ruolo');
-        $roleLabel = str($role)->headline();
+        $role = match (true) {
+            $user?->hasRole('teacher') || $user?->hasRole('docente') => 'teacher',
+            $user?->hasRole('tutor') => 'tutor',
+            $user?->hasRole('admin') => 'admin',
+            $user?->hasRole('superadmin') => 'superadmin',
+            $user?->hasRole('user') => 'user',
+            default => $user?->getRoleNames()->first() ?? __('nessun ruolo'),
+        };
+        $roleLabel = match ($role) {
+            'teacher', 'docente' => __('Docente'),
+            'tutor' => __('Tutor'),
+            'admin' => __('Admin'),
+            'superadmin' => __('Superadmin'),
+            'user' => __('User'),
+            default => str($role)->headline()->toString(),
+        };
         $avatarClass = $user?->hasAnyRole(['teacher', 'docente']) ? 'bg-secondary text-secondary-content' : 'bg-primary text-primary-content';
     @endphp
 

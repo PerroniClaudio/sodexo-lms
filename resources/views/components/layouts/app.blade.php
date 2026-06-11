@@ -13,6 +13,33 @@
     </head>
 
     <body class="antialiased overflow-y-scroll [scrollbar-gutter:stable]">
+        @php
+            $viewErrors = match (true) {
+                $errors instanceof \Illuminate\Support\ViewErrorBag => $errors,
+                $errors instanceof \Illuminate\Support\MessageBag => tap(new \Illuminate\Support\ViewErrorBag(), function (\Illuminate\Support\ViewErrorBag $bag) use ($errors): void {
+                    $bag->put('default', $errors);
+                }),
+                is_array($errors ?? null) => tap(new \Illuminate\Support\ViewErrorBag(), function (\Illuminate\Support\ViewErrorBag $bag) use ($errors): void {
+                    $messages = collect($errors)
+                        ->map(function (mixed $value): array {
+                            if ($value instanceof \Illuminate\Support\MessageBag) {
+                                return $value->all();
+                            }
+
+                            return collect(\Illuminate\Support\Arr::wrap($value))
+                                ->flatten()
+                                ->map(fn (mixed $message): string => (string) $message)
+                                ->all();
+                        })
+                        ->flatten()
+                        ->values()
+                        ->all();
+
+                    $bag->put('default', new \Illuminate\Support\MessageBag($messages));
+                }),
+                default => new \Illuminate\Support\ViewErrorBag(),
+            };
+        @endphp
         <div class="min-h-screen bg-base-100">
             {{ $slot }}
         </div>
@@ -181,10 +208,10 @@
                         }
                     };
 
-                    @if ($errors->any())
+                    @if ($viewErrors->any())
                         window.showFlash(
                             'error',
-                            @json($errors->all()[0].(count($errors->all()) > 1 ? ' (+' . (count($errors->all()) - 1) . ' altri errori)' : ''))
+                            @json($viewErrors->all()[0].(count($viewErrors->all()) > 1 ? ' (+' . (count($viewErrors->all()) - 1) . ' altri errori)' : ''))
                         );
                     @endif
                 });

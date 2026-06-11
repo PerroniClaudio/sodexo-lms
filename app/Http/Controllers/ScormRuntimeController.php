@@ -37,7 +37,7 @@ class ScormRuntimeController extends Controller
         return response()->json([
             'success' => true,
             'error' => '0',
-            'state' => $snapshot,
+            'state' => $this->decorateState($snapshot),
         ]);
     }
 
@@ -110,7 +110,7 @@ class ScormRuntimeController extends Controller
         return response()->json([
             'success' => true,
             'error' => '0',
-            'state' => $snapshot,
+            'state' => $this->decorateState($snapshot),
         ]);
     }
 
@@ -132,9 +132,10 @@ class ScormRuntimeController extends Controller
             $request->validated('values', []),
         );
 
+        $validatedValues = $request->validated('values', []);
         $navigation = $scormService->resolveNavigationRequest(
             $scormPackage,
-            $request->input('values.adl.nav.request')
+            isset($validatedValues['adl.nav.request']) ? (string) $validatedValues['adl.nav.request'] : null
         );
         $moduleProgress->refresh();
         $enrollment = $moduleProgress->courseEnrollment()->with('currentModule')->firstOrFail();
@@ -145,7 +146,7 @@ class ScormRuntimeController extends Controller
         return response()->json([
             'success' => true,
             'error' => '0',
-            'state' => $snapshot,
+            'state' => $this->decorateState($snapshot),
             'redirect_url' => $redirectUrl,
             'navigation' => $navigation === null ? null : [
                 'sco_identifier' => $navigation['sco_identifier'],
@@ -238,5 +239,24 @@ class ScormRuntimeController extends Controller
         abort_unless($moduleProgress->status !== ModuleProgress::STATUS_LOCKED, Response::HTTP_FORBIDDEN);
 
         return [$moduleProgress, $enrollment];
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @return array<string, mixed>
+     */
+    private function decorateState(array $state): array
+    {
+        $decorated = $state;
+
+        foreach ($state as $key => $value) {
+            if (! is_string($key) || ! str_contains($key, '.')) {
+                continue;
+            }
+
+            data_set($decorated, $key, $value, overwrite: false);
+        }
+
+        return $decorated;
     }
 }

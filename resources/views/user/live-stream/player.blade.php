@@ -99,6 +99,9 @@
                                     <p class="mt-2 max-w-3xl text-sm leading-6 text-base-content/70">
                                         {{ $module->description ?: __('Nessuna descrizione disponibile per questo modulo live.') }}
                                     </p>
+                                    <p class="mt-3 text-sm text-base-content/70">
+                                        {{ __('Consenti l\'accesso a videocamera e microfono per visualizzare l\'anteprima. Puoi continuare anche senza videocamera.') }}
+                                    </p>
                                 </div>
                             </div>
 

@@ -9,6 +9,7 @@ use App\Models\RiskBasedRequirement;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\File;
 use Illuminate\Validation\Validator;
 
 class UpdateCourseRequest extends FormRequest
@@ -32,6 +33,8 @@ class UpdateCourseRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'code' => ['required', 'string', 'max:255', Rule::unique('courses', 'code')->ignore($this->route('course'))],
             'description' => ['required', 'string'],
+            'cover_image' => ['nullable', File::image()->max(1024 * 5)],
+            'poster_pdf' => ['nullable', File::types(['pdf'])->max(1024 * 20)],
             'teaching_material' => ['nullable', 'string'],
             'max_participants' => ['nullable', 'integer', 'min:1'],
             'internal_notes' => ['nullable', 'string'],
@@ -178,6 +181,8 @@ class UpdateCourseRequest extends FormRequest
             'title' => __('Titolo del corso'),
             'code' => __('Codice corso'),
             'description' => __('Descrizione'),
+            'cover_image' => __('Immagine di copertina'),
+            'poster_pdf' => __('Locandina PDF'),
             'year' => __('Anno del corso'),
             'expiry_date' => __('Data scadenza'),
             'status' => __('Stato'),

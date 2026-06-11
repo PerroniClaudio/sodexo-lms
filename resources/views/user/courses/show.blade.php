@@ -64,10 +64,29 @@
 
         <div class="card border border-base-300 bg-base-100 shadow-sm">
             <div class="card-body gap-4">
+                @if ($course->cover_image_path)
+                    <div class="overflow-hidden rounded-box border border-base-300">
+                        <img
+                            src="{{ route('user.courses.cover-image.show', $course) }}"
+                            alt="{{ __('Copertina del corso :title', ['title' => $course->title]) }}"
+                            class="h-auto max-h-[28rem] w-full object-cover"
+                            loading="lazy"
+                        >
+                    </div>
+                @endif
                 <h2 class="text-2xl font-semibold text-base-content">{{ __('Informazioni sul corso') }}</h2>
                 <p class="max-w-4xl text-base leading-8 text-base-content/80">
                     {{ $course->description }}
                 </p>
+
+                @if ($course->poster_pdf_path)
+                    <div class="pt-2">
+                        <a href="{{ route('user.courses.poster-pdf.download', $course) }}" class="btn btn-outline btn-primary">
+                            <x-lucide-download class="h-4 w-4" />
+                            {{ __('Scarica locandina') }}
+                        </a>
+                    </div>
+                @endif
             </div>
         </div>
 

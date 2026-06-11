@@ -17,11 +17,15 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CourseController extends Controller
 {
+    private const ATTACHMENTS_DISK = 's3';
+
     public function __construct(
         private readonly AbandonLearningQuizAttempt $abandonLearningQuizAttempt,
         private readonly SyncCourseModuleProgresses $syncCourseModuleProgresses,
@@ -150,6 +154,53 @@ class CourseController extends Controller
             ->first();
 
         return view('user.courses.module', compact('course', 'module', 'enrollment', 'progress', 'nextModule', 'modules'));
+    }
+
+    public function downloadPosterPdf(Course $course): StreamedResponse
+    {
+        $user = $this->authUser();
+        $enrollment = $user->courseEnrollments()->where('course_id', $course->id)->first();
+
+        abort_unless($enrollment !== null, Response::HTTP_FORBIDDEN);
+        abort_unless($course->poster_pdf_path !== null, Response::HTTP_NOT_FOUND);
+
+        $disk = Storage::disk(self::ATTACHMENTS_DISK);
+        abort_unless($disk->exists($course->poster_pdf_path), Response::HTTP_NOT_FOUND);
+
+        $downloadName = str($course->title)->slug('-')->append('-locandina.pdf')->toString();
+
+        return response()->streamDownload(
+            static function () use ($disk, $course): void {
+                echo $disk->get($course->poster_pdf_path);
+            },
+            $downloadName,
+            [
+                'Content-Type' => $disk->mimeType($course->poster_pdf_path) ?: 'application/pdf',
+            ],
+        );
+    }
+
+    public function showCoverImage(Course $course): StreamedResponse
+    {
+        $user = $this->authUser();
+        $enrollment = $user->courseEnrollments()->where('course_id', $course->id)->first();
+
+        abort_unless($enrollment !== null, Response::HTTP_FORBIDDEN);
+        abort_unless($course->cover_image_path !== null, Response::HTTP_NOT_FOUND);
+
+        $disk = Storage::disk(self::ATTACHMENTS_DISK);
+        abort_unless($disk->exists($course->cover_image_path), Response::HTTP_NOT_FOUND);
+
+        return response()->streamDownload(
+            static function () use ($disk, $course): void {
+                echo $disk->get($course->cover_image_path);
+            },
+            basename($course->cover_image_path),
+            [
+                'Content-Type' => $disk->mimeType($course->cover_image_path) ?: 'application/octet-stream',
+                'Content-Disposition' => 'inline; filename="'.basename($course->cover_image_path).'"',
+            ],
+        );
     }
 
     private function userIndex(User $user): View

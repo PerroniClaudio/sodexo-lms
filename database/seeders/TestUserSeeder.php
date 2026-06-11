@@ -9,7 +9,6 @@ use App\Models\JobTask;
 use App\Models\JobUnit;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
@@ -82,14 +81,10 @@ class TestUserSeeder extends Seeder
      */
     private function userRoleAttributes(): array
     {
-        $jobUnit = JobUnit::query()->inRandomOrder()->first();
-        $jobTask = JobTask::query()->inRandomOrder()->first();
-        $jobRole = JobRole::query()->inRandomOrder()->first();
-        $jobSector = JobSector::query()->inRandomOrder()->first();
-
-        if ($jobUnit === null || $jobTask === null || $jobRole === null || $jobSector === null) {
-            throw new ModelNotFoundException('Missing required job data for seeding the test user with role user.');
-        }
+        $jobUnit = JobUnit::query()->inRandomOrder()->first() ?? JobUnit::factory()->create();
+        $jobTask = JobTask::query()->inRandomOrder()->first() ?? JobTask::factory()->create();
+        $jobRole = JobRole::query()->inRandomOrder()->first() ?? JobRole::factory()->create();
+        $jobSector = JobSector::query()->inRandomOrder()->first() ?? JobSector::factory()->create();
 
         return [
             'job_unit_id' => $jobUnit->id,

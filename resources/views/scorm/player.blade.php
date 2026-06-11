@@ -14,11 +14,19 @@
         </a>
     </x-slot:headerActions>
 
-    <section data-scorm-player-root>
+    <section
+        data-scorm-player-root
+        data-scorm-sco-identifier="{{ $launchSco['sco_identifier'] }}"
+        data-scorm-entry-point="{{ $launchSco['entry_point'] }}"
+    >
         <script type="application/json" data-scorm-player-config>@json($scormPlayerConfig)</script>
 
         <div class="space-y-6">
             <div class="rounded-box border border-base-300 bg-base-100 shadow-sm">
+                <div class="border-b border-base-300 px-5 py-4">
+                    <h1 class="text-lg font-semibold text-base-content">SCORM Player</h1>
+                </div>
+
                 <iframe
                     src="{{ $scormPlayerConfig['entryPointUrl'] }}"
                     title="{{ __('SCORM content player') }}"

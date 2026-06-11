@@ -59,12 +59,7 @@ class ScormPlayerController extends Controller
             'moduleTypeMeta' => $this->moduleTypeMeta(),
             'scormPlayerConfig' => [
                 'version' => $scormPackage->version,
-                'entryPointUrl' => route('user.courses.modules.scorm.asset', [
-                    'course' => $course,
-                    'module' => $module,
-                    'scormPackage' => $scormPackage,
-                    'path' => $launchSco['entry_point'],
-                ]),
+                'entryPointUrl' => $this->buildAssetUrl($course, $module, $scormPackage, $launchSco['entry_point']),
                 'runtime' => [
                     'initialize' => route('user.courses.modules.scorm.runtime.initialize', [$course, $module, $scormPackage]),
                     'getValue' => route('user.courses.modules.scorm.runtime.get-value', [$course, $module, $scormPackage]),
@@ -243,13 +238,13 @@ class ScormPlayerController extends Controller
         };
     }
 
-    private function streamHtmlAsset(FilesystemAdapter $disk, string $storagePath, string $mimeType): StreamedResponse
+    private function streamHtmlAsset(FilesystemAdapter $disk, string $storagePath, string $mimeType): HttpResponse
     {
         $contents = $this->injectScormBridge($disk->get($storagePath));
+        $response = response($contents, Response::HTTP_OK, $this->uncachedAssetHeaders($mimeType));
+        $response->setProtocolVersion('1.1');
 
-        return $this->streamAssetResponse(function () use ($contents): void {
-            echo $contents;
-        }, $this->uncachedAssetHeaders($mimeType));
+        return $response;
     }
 
     private function streamStaticAsset(
@@ -264,28 +259,10 @@ class ScormPlayerController extends Controller
             return response('', Response::HTTP_NOT_MODIFIED, $headers);
         }
 
-        $stream = $disk->readStream($storagePath);
+        $response = response($disk->get($storagePath), Response::HTTP_OK, $headers);
+        $response->setProtocolVersion('1.1');
 
-        abort_unless(is_resource($stream), Response::HTTP_NOT_FOUND);
-
-        return $this->streamAssetResponse(function () use ($stream): void {
-            try {
-                fpassthru($stream);
-            } finally {
-                fclose($stream);
-            }
-        }, $headers);
-    }
-
-    /**
-     * @param  callable(): void  $callback
-     */
-    private function streamAssetResponse(callable $callback, array $headers): StreamedResponse
-    {
-        return response()->stream(function () use ($callback): void {
-            $this->clearOutputBuffers();
-            $callback();
-        }, Response::HTTP_OK, $headers);
+        return $response;
     }
 
     /**
@@ -341,13 +318,6 @@ class ScormPlayerController extends Controller
         $timestamp = strtotime($ifModifiedSince);
 
         return $timestamp !== false && $lastModified <= $timestamp;
-    }
-
-    private function clearOutputBuffers(): void
-    {
-        while (ob_get_level() > 0) {
-            ob_end_clean();
-        }
     }
 
     private function injectScormBridge(string $contents): string
@@ -455,5 +425,20 @@ HTML;
         }
 
         return $bridgeScript.$contents;
+    }
+
+    private function buildAssetUrl(Course $course, Module $module, ScormPackage $scormPackage, string $entryPoint): string
+    {
+        $query = parse_url($entryPoint, PHP_URL_QUERY);
+        $path = parse_url($entryPoint, PHP_URL_PATH) ?: $entryPoint;
+
+        $url = route('user.courses.modules.scorm.asset', [
+            'course' => $course,
+            'module' => $module,
+            'scormPackage' => $scormPackage,
+            'path' => ltrim($path, '/'),
+        ]);
+
+        return is_string($query) && $query !== '' ? $url.'?'.$query : $url;
     }
 }

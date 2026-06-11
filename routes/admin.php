@@ -95,6 +95,8 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             ->middleware('permission:duplicate courses')
             ->name('courses.duplicate-structure');
         Route::get('/courses/{course}/edit', [CourseController::class, 'edit'])->name('courses.edit');
+        Route::get('/courses/{course}/attachments/cover-image', [CourseController::class, 'previewCoverImage'])->name('courses.attachments.cover-image.preview');
+        Route::get('/courses/{course}/attachments/poster-pdf', [CourseController::class, 'previewPosterPdf'])->name('courses.attachments.poster-pdf.preview');
         Route::put('/courses/{course}', [CourseController::class, 'update'])->name('courses.update');
         Route::delete('/courses/{course}', [CourseController::class, 'destroy'])->name('courses.destroy');
         Route::get('/courses/{course}/classes', [CourseClassController::class, 'index'])->name('courses.classes.index');

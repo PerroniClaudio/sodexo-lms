@@ -235,14 +235,14 @@ describe('ModuleValidatorService', function () {
         expect($validator->validate($module))->toBeTrue();
     });
 
-    it('validates satisfaction quiz module as always valid', function () {
+    it('requires a valid global template and a unique final placement for satisfaction quiz modules', function () {
         $module = Module::factory()->create([
             'type' => 'satisfaction_quiz',
         ]);
 
         $validator = app(ModuleValidatorService::class);
 
-        expect($validator->validate($module))->toBeTrue();
+        expect($validator->validate($module))->toBeFalse();
     });
 
     it('validates resource module as always valid', function () {

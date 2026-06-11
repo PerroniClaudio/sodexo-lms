@@ -237,6 +237,106 @@ class QuizModuleController extends Controller
     }
 
     /**
+     * Legacy endpoint that returns the full quiz payload in a single response.
+     */
+    public function show(Request $request, Course $course, Module $module): JsonResponse
+    {
+        abort_unless((string) $module->belongsTo === (string) $course->getKey(), 404);
+        abort_unless($module->isQuiz(), 404);
+
+        $enrollment = $this->resolveEnrollment($course);
+        abort_unless($enrollment !== null, 403);
+
+        return response()->json([
+            'passing_score' => $module->passing_score,
+            'max_score' => $module->max_score,
+            'questions' => $module->quizQuestions()
+                ->with('answers')
+                ->get()
+                ->map(fn (ModuleQuizQuestion $question): array => [
+                    'id' => $question->getKey(),
+                    'text' => $question->text,
+                    'points' => $question->points,
+                    'answers' => $question->answers->map(fn (ModuleQuizAnswer $answer): array => [
+                        'id' => $answer->getKey(),
+                        'text' => $answer->text,
+                    ])->values()->all(),
+                ])->values()->all(),
+        ]);
+    }
+
+    /**
+     * Submit an answer to a question.
+     */
+    public function submit(Request $request, Course $course, Module $module): JsonResponse
+    {
+        abort_unless((string) $module->belongsTo === (string) $course->getKey(), 404);
+        abort_unless($module->isQuiz(), 404);
+
+        $validated = $request->validate([
+            'answers' => ['required', 'array', 'min:1'],
+            'answers.*' => ['required', 'integer', 'exists:module_quiz_answers,id'],
+        ]);
+
+        $enrollment = $this->resolveEnrollment($course);
+        abort_unless($enrollment !== null, 403);
+
+        $progress = $this->resolveProgress($enrollment, $module);
+        abort_unless($progress !== null, 404);
+
+        $questions = $module->quizQuestions()->with('answers')->get()->keyBy(fn (ModuleQuizQuestion $question): int => (int) $question->getKey());
+        $submittedAnswers = collect($validated['answers']);
+
+        if ($submittedAnswers->count() !== $questions->count()) {
+            return response()->json([
+                'error' => 'Devi rispondere a tutte le domande prima di completare il quiz.',
+                'answered' => $submittedAnswers->count(),
+                'total' => $questions->count(),
+            ], 422);
+        }
+
+        $score = 0;
+
+        foreach ($submittedAnswers as $questionId => $answerId) {
+            $question = $questions->get((int) $questionId);
+
+            if (! $question) {
+                return response()->json(['error' => 'Domanda non valida.'], 422);
+            }
+
+            $answerExists = $question->answers->contains(
+                fn (ModuleQuizAnswer $answer): bool => (int) $answer->getKey() === (int) $answerId
+            );
+
+            if (! $answerExists) {
+                return response()->json(['error' => 'Risposta non valida.'], 422);
+            }
+
+            if ((int) $question->correct_answer_id === (int) $answerId) {
+                $score += $question->points;
+            }
+        }
+
+        $totalScore = $module->max_score ?? $questions->sum('points');
+        $passed = $score >= ($module->passing_score ?? 0);
+
+        try {
+            $progress->recordQuizAttempt($score, $totalScore);
+        } catch (DomainException $e) {
+            // Legacy endpoint keeps idempotent behavior for already-processed attempts.
+        }
+
+        return response()->json([
+            'success' => true,
+            'score' => $score,
+            'total_score' => $totalScore,
+            'passing_score' => $module->passing_score,
+            'passed' => $passed,
+            'message' => $passed ? 'Quiz superato!' : 'Quiz non superato. Puoi riprovare.',
+        ]);
+    }
+
+    /**
      * Submit an answer to a question.
      */
     public function submitAnswer(Request $request, Course $course, Module $module): JsonResponse

@@ -612,7 +612,9 @@ class ScormService
                 'identifier' => $childNode->getAttribute('identifier') ?: null,
                 'identifierref' => $childNode->getAttribute('identifierref') ?: null,
                 'title' => trim((string) $childNode->getElementsByTagName('title')->item(0)?->textContent) ?: null,
-                'parameters' => $childNode->getAttributeNS('*', 'parameters') ?: null,
+                'parameters' => $childNode->getAttribute('parameters')
+                    ?: $childNode->getAttributeNS('http://www.adlnet.org/xsd/adlcp_v1p3', 'parameters')
+                    ?: null,
                 'isvisible' => $childNode->getAttribute('isvisible') !== 'false',
                 'items' => $this->parseItems($childNode),
             ];

@@ -92,6 +92,8 @@ Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
         Route::get('completed-courses', [CourseController::class, 'completed'])->name('completed-courses.index');
         Route::get('completed-courses/{courseEnrollment}/certificate', [CourseController::class, 'downloadCertificate'])
             ->name('completed-courses.certificate.download');
+        Route::get('courses/{course}/cover-image', [CourseController::class, 'showCoverImage'])->name('courses.cover-image.show');
+        Route::get('courses/{course}/poster-pdf', [CourseController::class, 'downloadPosterPdf'])->name('courses.poster-pdf.download');
         Route::get('courses/{course}', [CourseController::class, 'show'])->name('courses.show');
     });
 });

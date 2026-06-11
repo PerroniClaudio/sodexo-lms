@@ -19,11 +19,17 @@ use App\Services\SyncCourseSatisfactionSurvey;
 use Carbon\CarbonInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CourseController extends Controller
 {
+    private const ATTACHMENTS_DISK = 's3';
+
     public function __construct(
         private readonly CourseValidatorService $courseValidator
     ) {}
@@ -132,6 +138,8 @@ class CourseController extends Controller
         try {
             $validated = $request->validated();
             $courseAttributes = collect($validated)->except([
+                'cover_image',
+                'poster_pdf',
                 'risk_based_requirement_ids',
                 'risk_based_requirement_validity_types',
                 'risk_based_requirement_integrative_start_levels',
@@ -163,6 +171,8 @@ class CourseController extends Controller
                 $course->update($attributes);
             }
 
+            $this->syncAttachments($request, $course);
+
             $course->riskBasedRequirements()->sync(
                 $this->buildRiskBasedRequirementSyncPayload($validated)
             );
@@ -190,6 +200,44 @@ class CourseController extends Controller
                 ->withInput()
                 ->with('error', $e->getMessage());
         }
+    }
+
+    public function previewCoverImage(Course $course): StreamedResponse
+    {
+        abort_unless($course->cover_image_path !== null, Response::HTTP_NOT_FOUND);
+
+        $disk = Storage::disk(self::ATTACHMENTS_DISK);
+        abort_unless($disk->exists($course->cover_image_path), Response::HTTP_NOT_FOUND);
+
+        return response()->streamDownload(
+            static function () use ($disk, $course): void {
+                echo $disk->get($course->cover_image_path);
+            },
+            basename($course->cover_image_path),
+            [
+                'Content-Type' => $disk->mimeType($course->cover_image_path) ?: 'application/octet-stream',
+                'Content-Disposition' => 'inline; filename="'.basename($course->cover_image_path).'"',
+            ],
+        );
+    }
+
+    public function previewPosterPdf(Course $course): StreamedResponse
+    {
+        abort_unless($course->poster_pdf_path !== null, Response::HTTP_NOT_FOUND);
+
+        $disk = Storage::disk(self::ATTACHMENTS_DISK);
+        abort_unless($disk->exists($course->poster_pdf_path), Response::HTTP_NOT_FOUND);
+
+        return response()->streamDownload(
+            static function () use ($disk, $course): void {
+                echo $disk->get($course->poster_pdf_path);
+            },
+            basename($course->poster_pdf_path),
+            [
+                'Content-Type' => $disk->mimeType($course->poster_pdf_path) ?: 'application/pdf',
+                'Content-Disposition' => 'inline; filename="'.basename($course->poster_pdf_path).'"',
+            ],
+        );
     }
 
     /**
@@ -304,6 +352,50 @@ class CourseController extends Controller
 
         return $normalizedOriginal === $normalizedIncoming
             && ($attributes['status'] ?? null) !== $course->status;
+    }
+
+    private function syncAttachments(Request $request, Course $course): void
+    {
+        $disk = Storage::disk(self::ATTACHMENTS_DISK);
+
+        if ($request->hasFile('cover_image')) {
+            $currentPath = $course->cover_image_path;
+            $newPath = $request->file('cover_image')->storeAs(
+                $this->attachmentDirectory($course),
+                'cover-image.'.$request->file('cover_image')->extension(),
+                self::ATTACHMENTS_DISK,
+            );
+
+            $course->forceFill([
+                'cover_image_path' => $newPath,
+            ])->save();
+
+            if ($currentPath !== null && $currentPath !== $newPath) {
+                $disk->delete($currentPath);
+            }
+        }
+
+        if ($request->hasFile('poster_pdf')) {
+            $currentPath = $course->poster_pdf_path;
+            $newPath = $request->file('poster_pdf')->storeAs(
+                $this->attachmentDirectory($course),
+                'poster-'.Str::slug(pathinfo($request->file('poster_pdf')->getClientOriginalName(), PATHINFO_FILENAME) ?: 'course').'.pdf',
+                self::ATTACHMENTS_DISK,
+            );
+
+            $course->forceFill([
+                'poster_pdf_path' => $newPath,
+            ])->save();
+
+            if ($currentPath !== null && $currentPath !== $newPath) {
+                $disk->delete($currentPath);
+            }
+        }
+    }
+
+    private function attachmentDirectory(Course $course): string
+    {
+        return 'courses/'.$course->getKey().'/attachments';
     }
 
     public function destroy(Course $course): RedirectResponse

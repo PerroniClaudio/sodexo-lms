@@ -16,21 +16,30 @@
         <div class="drawer-side">
             @php
                 $navigationRoutePrefix = str((string) request()->route()?->getName())->before('.')->toString() ?: 'user';
+                $dashboardRoute = \Illuminate\Support\Facades\Route::has($navigationRoutePrefix . '.dashboard')
+                    ? $navigationRoutePrefix . '.dashboard'
+                    : 'user.dashboard';
+                $coursesRoute = \Illuminate\Support\Facades\Route::has($navigationRoutePrefix . '.courses.index')
+                    ? $navigationRoutePrefix . '.courses.index'
+                    : 'user.courses.index';
+                $profileRoute = \Illuminate\Support\Facades\Route::has($navigationRoutePrefix . '.profile.edit')
+                    ? $navigationRoutePrefix . '.profile.edit'
+                    : 'user.profile.edit';
             @endphp
             <label for="user-drawer" aria-label="{{ __('layout.close_sidebar') }}" class="drawer-overlay"></label>
             <div class="flex min-h-full w-72 flex-col bg-base-200 p-4 lg:h-screen lg:overflow-y-auto">
                 <ul class="menu w-full gap-1">
                     <li class="w-full">
-                        <a href="{{ route($navigationRoutePrefix . '.dashboard') }}" @class([
+                        <a href="{{ route($dashboardRoute) }}" @class([
                             'w-full',
-                            'menu-active' => request()->routeIs($navigationRoutePrefix . '.dashboard'),
+                            'menu-active' => request()->routeIs($dashboardRoute),
                         ])>
                             <x-lucide-layout-dashboard class="mr-2 inline-block h-5 w-5" />
                             {{ __('Dashboard') }}
                         </a>
                     </li>
                     <li class="w-full">
-                        <a href="{{ route($navigationRoutePrefix . '.courses.index') }}" @class([
+                        <a href="{{ route($coursesRoute) }}" @class([
                             'w-full',
                             'menu-active' => request()->routeIs($navigationRoutePrefix . '.courses.*'),
                         ])>
@@ -48,9 +57,9 @@
                         </a>
                     </li>
                     <li class="w-full">
-                        <a href="{{ route($navigationRoutePrefix . '.profile.edit') }}" @class([
+                        <a href="{{ route($profileRoute) }}" @class([
                             'w-full',
-                            'menu-active' => request()->routeIs($navigationRoutePrefix . '.profile.*'),
+                            'menu-active' => request()->routeIs($profileRoute),
                         ])>
                             <x-lucide-user-round class="inline-block mr-2 h-5 w-5" />
                             {{ __('Profilo') }}

@@ -13,7 +13,7 @@ class RiskBasedRequirementSeeder extends Seeder
         $requirements = [
             [
                 'name' => 'Formazione Generale',
-                'description' => 'Obbligatoria per tutti i lavoratori, validita illimitata.',
+                'description' => 'Obbligatoria per tutti i lavoratori, validità illimitata.',
                 'risk_progression_group' => null,
                 'risk_levels' => [RiskLevel::LOW, RiskLevel::MEDIUM, RiskLevel::HIGH],
                 'is_limited_validity' => false,
