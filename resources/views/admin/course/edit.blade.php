@@ -5,7 +5,7 @@
             'res' => 'lucide-users',
             'live' => 'lucide-monitor-play',
             'scorm' => 'lucide-package',
-            'learning_quiz' => 'lucide-badge-help',
+            'learning_quiz' => 'lucide-circle-help',
             'satisfaction_quiz' => 'lucide-message-square-heart',
         ];
         $courseEditSections = collect([
@@ -604,54 +604,55 @@
                                     data-module-id="{{ $module->id }}"
                                     data-module-type="{{ $module->type }}"
                                 >
-                                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                        <div class="flex items-start gap-3">
-                                            <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-base-300 text-base-content/60 cursor-move">
-                                                <x-lucide-move class="h-4 w-4" />
-                                            </div>
-
-                                            <div class="space-y-1">
-                                                <p class="text-sm font-semibold text-base-content">
-                                                    {{ $module->title }}
-                                                </p>
-                                                <div class="flex flex-wrap items-center gap-2 text-sm text-base-content/70">
-                                                    <span class="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/8 px-3 py-1 text-xs font-medium tracking-wide text-primary">
-                                                        <x-dynamic-component
-                                                            :component="$moduleTypeIcons[$module->type] ?? 'lucide-shapes'"
-                                                            class="h-3.5 w-3.5"
-                                                        />
-                                                        <span>{{ $moduleTypeLabels[$module->type] ?? $module->type }}</span>
-                                                    </span>
-                                                    @php
-                                                        $moduleValidator = app(\App\Services\ModuleValidation\ModuleValidatorService::class);
-                                                        $moduleIsValid = $moduleValidator->validate($module);
-                                                    @endphp
-                                                    @if ($moduleIsValid)
-                                                        <span class="badge badge-xs badge-success h-fit">{{ __('Valido') }}</span>
-                                                    @else
-                                                        <span class="badge badge-xs badge-error h-fit">{{ __('Non valido') }}</span>
-                                                    @endif
-                                                </div>
-                                            </div>
+                                    <div class="flex gap-3">
+                                        <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-base-300 text-base-content/60 cursor-move">
+                                            <x-lucide-move class="h-4 w-4" />
                                         </div>
 
-                                        <div class="flex items-center gap-2">
-                                            <span class="badge badge-ghost h-fit">
-                                                {{ $moduleStatusLabels[$module->status] ?? $module->status }}
-                                            </span>
-                                            <a href="{{ route('admin.courses.modules.edit', [$course, $module]) }}" class="btn btn-secondary btn-sm">
-                                                <x-lucide-pencil class="h-4 w-4" />
-                                                {{ __('Edit') }}
-                                            </a>
-                                            <button
-                                                type="button"
-                                                class="btn btn-accent btn-sm"
-                                                data-open-delete-module-modal
-                                                data-modal-target="#delete-module-modal-{{ $module->id }}"
-                                            >
-                                                <x-lucide-trash-2 class="h-4 w-4" />
-                                                {{ __('Delete') }}
-                                            </button>
+                                        <div class="flex min-w-0 flex-1 flex-col gap-3">
+                                            <div class="min-w-0">
+                                                <p class="break-words text-sm font-semibold text-base-content">
+                                                    {{ $module->title }}
+                                                </p>
+                                            </div>
+
+                                            <div class="flex flex-wrap items-center gap-2 text-sm text-base-content/70">
+                                                <span class="inline-flex min-h-8 items-center gap-2 rounded-full border border-primary/15 bg-primary/8 px-3 py-1 text-xs font-medium tracking-wide text-primary">
+                                                    <x-dynamic-component
+                                                        :component="$moduleTypeIcons[$module->type] ?? 'lucide-shapes'"
+                                                        class="h-3.5 w-3.5"
+                                                    />
+                                                    <span>{{ $moduleTypeLabels[$module->type] ?? $module->type }}</span>
+                                                </span>
+                                                <span class="inline-flex min-h-8 items-center rounded-full bg-base-200 px-3 py-1 text-xs font-medium text-base-content/70">
+                                                    {{ $moduleStatusLabels[$module->status] ?? $module->status }}
+                                                </span>
+                                                @php
+                                                    $moduleValidator = app(\App\Services\ModuleValidation\ModuleValidatorService::class);
+                                                    $moduleIsValid = $moduleValidator->validate($module);
+                                                @endphp
+                                                @if ($moduleIsValid)
+                                                    <span class="inline-flex min-h-8 items-center rounded-full bg-success px-3 py-1 text-xs font-medium text-success-content">{{ __('Valido') }}</span>
+                                                @else
+                                                    <span class="inline-flex min-h-8 items-center rounded-full bg-error px-3 py-1 text-xs font-medium text-error-content">{{ __('Non valido') }}</span>
+                                                @endif
+                                            </div>
+
+                                            <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                                                <a href="{{ route('admin.courses.modules.edit', [$course, $module]) }}" class="btn btn-secondary btn-sm w-full sm:w-auto whitespace-nowrap">
+                                                    <x-lucide-pencil class="h-4 w-4" />
+                                                    {{ __('Edit') }}
+                                                </a>
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-accent btn-sm w-full sm:w-auto whitespace-nowrap"
+                                                    data-open-delete-module-modal
+                                                    data-modal-target="#delete-module-modal-{{ $module->id }}"
+                                                >
+                                                    <x-lucide-trash-2 class="h-4 w-4" />
+                                                    {{ __('Delete') }}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

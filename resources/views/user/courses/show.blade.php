@@ -30,7 +30,7 @@
             ],
             'learning_quiz' => [
                 'label' => __('Quiz'),
-                'icon' => 'lucide-badge-help',
+                'icon' => 'lucide-circle-help',
                 'badge' => 'badge-error',
                 'badge_classes' => '',
             ],

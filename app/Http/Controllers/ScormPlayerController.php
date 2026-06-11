@@ -169,7 +169,7 @@ class ScormPlayerController extends Controller
             ],
             'learning_quiz' => [
                 'label' => __('Quiz'),
-                'icon' => 'lucide-badge-help',
+                'icon' => 'lucide-circle-help',
                 'badge' => 'badge-error',
             ],
             'satisfaction_quiz' => [
