@@ -80,11 +80,33 @@ it('shows the edit course page with the details section by default', function ()
     $response->assertSeeText('Questionario di gradimento');
     $response->assertSeeText('Certificati ottenibili');
     $response->assertSeeText('Elimina corso');
+    $response->assertSeeText('Materiale didattico');
+    $response->assertSeeText('Note interne corso');
+    $response->assertSeeText('Obiettivo formativo');
+    $response->assertSeeText('Conoscenze');
+    $response->assertSeeText('Abilità');
+    $response->assertSeeText('Competenze');
+    $response->assertSeeText('Riferimento normativo');
+    $response->assertSeeText('Durata corso');
+    $response->assertDontSeeText('Numero massimo partecipanti');
     $response->assertSeeText('Bozza');
     $response->assertSeeText('Pubblicato');
     $response->assertSeeText('Archiviato');
     $response->assertSeeText('Salva dati');
     $response->assertDontSee('data-modules-sortable-list', escape: false);
+});
+
+it('shows max participants only for supported course types', function () {
+    $resCourse = Course::factory()->create(['type' => 'res']);
+    $fadCourse = Course::factory()->create(['type' => 'fad']);
+
+    $this->get(route('admin.courses.edit', $resCourse))
+        ->assertOk()
+        ->assertSeeText('Numero massimo partecipanti');
+
+    $this->get(route('admin.courses.edit', $fadCourse))
+        ->assertOk()
+        ->assertDontSeeText('Numero massimo partecipanti');
 });
 
 it('shows the modules section when requested', function () {
@@ -132,6 +154,19 @@ it('updates the course personal data', function () {
     $response = $this->put(route('admin.courses.update', $course), [
         'title' => 'Titolo aggiornato',
         'description' => 'Descrizione aggiornata',
+        'teaching_material' => 'Dispense e slide',
+        'max_participants' => 25,
+        'internal_notes' => 'Solo uso interno',
+        'training_objective' => 'Obiettivo nuovo',
+        'knowledge' => 'Conoscenze nuove',
+        'skills' => 'Abilità nuove',
+        'competences' => 'Competenze nuove',
+        'regulatory_reference' => 'D.Lgs. esempio',
+        'course_start_date' => '2027-01-10',
+        'course_end_date' => '2027-01-12',
+        'access_closure_date' => '2027-02-01',
+        'course_duration_hours' => 16,
+        'interaction_duration_minutes' => 90,
         'year' => 2027,
         'expiry_date' => '2027-12-31',
         'status' => 'published',
@@ -146,6 +181,19 @@ it('updates the course personal data', function () {
 
     expect($course->title)->toBe('Titolo aggiornato');
     expect($course->description)->toBe('Descrizione aggiornata');
+    expect($course->teaching_material)->toBe('Dispense e slide');
+    expect($course->max_participants)->toBe(25);
+    expect($course->internal_notes)->toBe('Solo uso interno');
+    expect($course->training_objective)->toBe('Obiettivo nuovo');
+    expect($course->knowledge)->toBe('Conoscenze nuove');
+    expect($course->skills)->toBe('Abilità nuove');
+    expect($course->competences)->toBe('Competenze nuove');
+    expect($course->regulatory_reference)->toBe('D.Lgs. esempio');
+    expect($course->course_start_date?->format('Y-m-d'))->toBe('2027-01-10');
+    expect($course->course_end_date?->format('Y-m-d'))->toBe('2027-01-12');
+    expect($course->access_closure_date?->format('Y-m-d'))->toBe('2027-02-01');
+    expect($course->course_duration_hours)->toBe(16);
+    expect($course->interaction_duration_minutes)->toBe(90);
     expect($course->year)->toBe(2027);
     expect($course->expiry_date?->format('Y-m-d'))->toBe('2027-12-31');
     expect($course->status)->toBe('published');
@@ -170,6 +218,19 @@ it('allows changing only the status for a published course when other form value
     $response = $this->put(route('admin.courses.update', $course), [
         'title' => 'Titolo pubblicato',
         'description' => 'Descrizione pubblicata',
+        'teaching_material' => null,
+        'max_participants' => null,
+        'internal_notes' => null,
+        'training_objective' => null,
+        'knowledge' => null,
+        'skills' => null,
+        'competences' => null,
+        'regulatory_reference' => null,
+        'course_start_date' => null,
+        'course_end_date' => null,
+        'access_closure_date' => null,
+        'course_duration_hours' => null,
+        'interaction_duration_minutes' => null,
         'year' => 2026,
         'expiry_date' => '2027-12-31',
         'status' => 'archived',

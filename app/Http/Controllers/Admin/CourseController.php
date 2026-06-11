@@ -239,6 +239,21 @@ class CourseController extends Controller
         $normalizedOriginal = [
             'title' => (string) $course->title,
             'description' => (string) $course->description,
+            'teaching_material' => (string) ($course->teaching_material ?? ''),
+            'max_participants' => $course->max_participants === null ? null : (int) $course->max_participants,
+            'internal_notes' => (string) ($course->internal_notes ?? ''),
+            'training_objective' => (string) ($course->training_objective ?? ''),
+            'knowledge' => (string) ($course->knowledge ?? ''),
+            'skills' => (string) ($course->skills ?? ''),
+            'competences' => (string) ($course->competences ?? ''),
+            'regulatory_reference' => (string) ($course->regulatory_reference ?? ''),
+            'course_start_date' => $course->course_start_date?->format('Y-m-d'),
+            'course_end_date' => $course->course_end_date?->format('Y-m-d'),
+            'access_closure_date' => $course->access_closure_date?->format('Y-m-d'),
+            'course_duration_hours' => $course->course_duration_hours === null ? null : (int) $course->course_duration_hours,
+            'interaction_duration_minutes' => $course->interaction_duration_minutes === null
+                ? null
+                : (int) $course->interaction_duration_minutes,
             'year' => (int) $course->year,
             'expiry_date' => $course->expiry_date instanceof CarbonInterface
                 ? $course->expiry_date->format('Y-m-d')
@@ -250,6 +265,26 @@ class CourseController extends Controller
         $normalizedIncoming = [
             'title' => (string) ($attributes['title'] ?? ''),
             'description' => (string) ($attributes['description'] ?? ''),
+            'teaching_material' => (string) ($attributes['teaching_material'] ?? ''),
+            'max_participants' => array_key_exists('max_participants', $attributes) && $attributes['max_participants'] !== null
+                ? (int) $attributes['max_participants']
+                : null,
+            'internal_notes' => (string) ($attributes['internal_notes'] ?? ''),
+            'training_objective' => (string) ($attributes['training_objective'] ?? ''),
+            'knowledge' => (string) ($attributes['knowledge'] ?? ''),
+            'skills' => (string) ($attributes['skills'] ?? ''),
+            'competences' => (string) ($attributes['competences'] ?? ''),
+            'regulatory_reference' => (string) ($attributes['regulatory_reference'] ?? ''),
+            'course_start_date' => $attributes['course_start_date'] ?? null,
+            'course_end_date' => $attributes['course_end_date'] ?? null,
+            'access_closure_date' => $attributes['access_closure_date'] ?? null,
+            'course_duration_hours' => array_key_exists('course_duration_hours', $attributes) && $attributes['course_duration_hours'] !== null
+                ? (int) $attributes['course_duration_hours']
+                : null,
+            'interaction_duration_minutes' => array_key_exists('interaction_duration_minutes', $attributes)
+                && $attributes['interaction_duration_minutes'] !== null
+                ? (int) $attributes['interaction_duration_minutes']
+                : null,
             'year' => (int) ($attributes['year'] ?? 0),
             'expiry_date' => (string) ($attributes['expiry_date'] ?? ''),
             'has_satisfaction_survey' => (bool) ($attributes['has_satisfaction_survey'] ?? false),

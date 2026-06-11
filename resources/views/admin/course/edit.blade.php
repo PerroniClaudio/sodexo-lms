@@ -10,6 +10,7 @@
         ];
         $courseEditSections = collect([
             ['key' => 'details', 'label' => __('Dati anagrafici corso'), 'icon' => 'lucide-book-open-text'],
+            ['key' => 'duration', 'label' => __('Durata corso'), 'icon' => 'lucide-clock-3'],
             ['key' => 'survey', 'label' => __('Questionario di gradimento'), 'icon' => 'lucide-message-square-heart'],
             ['key' => 'certificates', 'label' => __('Certificati ottenibili'), 'icon' => 'lucide-file-badge'],
             ['key' => 'modules', 'label' => __('Moduli'), 'icon' => 'lucide-blocks'],
@@ -24,9 +25,31 @@
         }
 
         $courseUpdateUrl = route('admin.courses.update', $course).'?section='.$activeCourseEditSection;
+        $courseDetailAccordionFields = [
+            'teaching_material' => __('Materiale didattico'),
+            'internal_notes' => __('Note interne corso'),
+            'training_objective' => __('Obiettivo formativo'),
+            'knowledge' => __('Conoscenze'),
+            'skills' => __('Abilità'),
+            'competences' => __('Competenze'),
+            'regulatory_reference' => __('Riferimento normativo'),
+        ];
         $courseBaseValues = [
             'title' => old('title', $course->title),
             'description' => old('description', $course->description),
+            'teaching_material' => old('teaching_material', $course->teaching_material),
+            'max_participants' => old('max_participants', $course->max_participants),
+            'internal_notes' => old('internal_notes', $course->internal_notes),
+            'training_objective' => old('training_objective', $course->training_objective),
+            'knowledge' => old('knowledge', $course->knowledge),
+            'skills' => old('skills', $course->skills),
+            'competences' => old('competences', $course->competences),
+            'regulatory_reference' => old('regulatory_reference', $course->regulatory_reference),
+            'course_start_date' => old('course_start_date', $course->course_start_date?->format('Y-m-d')),
+            'course_end_date' => old('course_end_date', $course->course_end_date?->format('Y-m-d')),
+            'access_closure_date' => old('access_closure_date', $course->access_closure_date?->format('Y-m-d')),
+            'course_duration_hours' => old('course_duration_hours', $course->course_duration_hours),
+            'interaction_duration_minutes' => old('interaction_duration_minutes', $course->interaction_duration_minutes),
             'year' => old('year', $course->year),
             'expiry_date' => old('expiry_date', $course->expiry_date?->format('Y-m-d')),
             'status' => old('status', $course->status),
@@ -125,28 +148,29 @@
 
                     <div class="flex flex-col gap-6">
                         @if ($activeCourseEditSection === 'details')
-                            <div class="card border border-base-300 bg-base-100 shadow-sm">
-                                <div class="card-body gap-6">
-                                    <div class="flex items-start justify-between gap-4">
-                                        <div class="flex-1">
-                                            <h2 class="card-title">{{ __('Dati anagrafici corso') }}</h2>
-                                            <p class="text-sm text-base-content/70">
-                                                {{ __('Gestisci le informazioni principali del corso.') }}
-                                            </p>
-                                            <div class="mt-3">
-                                                <span class="text-base-content/70">{{ __('Tipologia:') }}</span>
-                                                <span class="badge badge-outline h-fit">{{ $courseTypeLabels[$course->type] ?? $course->type }}</span>
+                            <form method="POST" action="{{ $courseUpdateUrl }}" class="flex flex-col gap-6">
+                                <div class="card border border-base-300 bg-base-100 shadow-sm">
+                                    <div class="card-body gap-6">
+                                        <div class="flex items-start justify-between gap-4">
+                                            <div class="flex-1">
+                                                <h2 class="card-title">{{ __('Dati anagrafici corso') }}</h2>
+                                                <p class="text-sm text-base-content/70">
+                                                    {{ __('Gestisci le informazioni principali del corso.') }}
+                                                </p>
+                                                <div class="mt-3">
+                                                    <span class="text-base-content/70">{{ __('Tipologia:') }}</span>
+                                                    <span class="badge badge-outline h-fit">{{ $courseTypeLabels[$course->type] ?? $course->type }}</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                @include('admin.course.partials.course-validity-badge')
                                             </div>
                                         </div>
-                                        <div>
-                                            @include('admin.course.partials.course-validity-badge')
-                                        </div>
-                                    </div>
 
-                                    <form method="POST" action="{{ $courseUpdateUrl }}" class="flex flex-col gap-6">
                                         @csrf
                                         @method('PUT')
 
+                                        <input type="hidden" name="expiry_date" value="{{ $courseBaseValues['expiry_date'] }}">
                                         <input type="hidden" name="has_satisfaction_survey" value="{{ $courseBaseValues['has_satisfaction_survey'] ? '1' : '0' }}">
                                         <input type="hidden" name="satisfaction_survey_required_for_certificate" value="{{ $courseBaseValues['satisfaction_survey_required_for_certificate'] ? '1' : '0' }}">
                                         @foreach ($selectedRiskBasedRequirementsPayload as $selectedRiskBasedRequirement)
@@ -192,6 +216,25 @@
                                                 @enderror
                                             </div>
 
+                                            @if (in_array($course->type, ['res', 'async', 'blended'], true))
+                                                <div class="form-control flex flex-col gap-2">
+                                                    <label for="max_participants" class="label p-0">
+                                                        <span class="label-text font-medium">{{ __('Numero massimo partecipanti') }}</span>
+                                                    </label>
+                                                    <input
+                                                        id="max_participants"
+                                                        name="max_participants"
+                                                        type="number"
+                                                        min="1"
+                                                        value="{{ $courseBaseValues['max_participants'] }}"
+                                                        class="input input-bordered w-full @error('max_participants') input-error @enderror"
+                                                    >
+                                                    @error('max_participants')
+                                                        <p class="text-sm text-error">{{ $message }}</p>
+                                                    @enderror
+                                                </div>
+                                            @endif
+
                                             <div class="form-control flex flex-col gap-2">
                                                 <label for="year" class="label p-0">
                                                     <span class="label-text font-medium">{{ __('Anno del corso') }}</span>
@@ -207,23 +250,6 @@
                                                     required
                                                 >
                                                 @error('year')
-                                                    <p class="text-sm text-error">{{ $message }}</p>
-                                                @enderror
-                                            </div>
-
-                                            <div class="form-control flex flex-col gap-2">
-                                                <label for="expiry_date" class="label p-0">
-                                                    <span class="label-text font-medium">{{ __('Data scadenza') }}</span>
-                                                </label>
-                                                <input
-                                                    id="expiry_date"
-                                                    name="expiry_date"
-                                                    type="date"
-                                                    value="{{ $courseBaseValues['expiry_date'] }}"
-                                                    class="input input-bordered w-full @error('expiry_date') input-error @enderror"
-                                                    required
-                                                >
-                                                @error('expiry_date')
                                                     <p class="text-sm text-error">{{ $message }}</p>
                                                 @enderror
                                             </div>
@@ -245,6 +271,185 @@
                                                     @endforeach
                                                 </select>
                                                 @error('status')
+                                                    <p class="text-sm text-error">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-col gap-3">
+                                    @foreach ($courseDetailAccordionFields as $fieldKey => $fieldLabel)
+                                        <div class="collapse collapse-arrow border border-base-300 bg-base-100 shadow-sm">
+                                            <input type="radio" name="course-details-accordion" @checked($loop->first) />
+                                            <div class="collapse-title text-base font-medium">
+                                                {{ $fieldLabel }}
+                                            </div>
+                                            <div class="collapse-content">
+                                                <div class="form-control flex flex-col gap-2 pt-1">
+                                                    <textarea
+                                                        id="{{ $fieldKey }}"
+                                                        name="{{ $fieldKey }}"
+                                                        class="textarea textarea-bordered min-h-32 w-full @error($fieldKey) textarea-error @enderror"
+                                                    >{{ $courseBaseValues[$fieldKey] }}</textarea>
+                                                    @error($fieldKey)
+                                                        <p class="text-sm text-error">{{ $message }}</p>
+                                                    @enderror
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+
+                                <div class="flex justify-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <span>{{ __('Salva dati') }}</span>
+                                        <x-lucide-save class="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </form>
+                        @elseif ($activeCourseEditSection === 'duration')
+                            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                                <div class="card-body gap-6">
+                                    <div class="flex items-start justify-between gap-4">
+                                        <div class="flex-1">
+                                            <h2 class="card-title">{{ __('Durata corso') }}</h2>
+                                            <p class="text-sm text-base-content/70">
+                                                {{ __('Gestisci date e durata del corso.') }}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            @include('admin.course.partials.course-validity-badge')
+                                        </div>
+                                    </div>
+
+                                    <form method="POST" action="{{ $courseUpdateUrl }}" class="flex flex-col gap-6">
+                                        @csrf
+                                        @method('PUT')
+
+                                        <input type="hidden" name="title" value="{{ $courseBaseValues['title'] }}">
+                                        <input type="hidden" name="description" value="{{ $courseBaseValues['description'] }}">
+                                        <input type="hidden" name="teaching_material" value="{{ $courseBaseValues['teaching_material'] }}">
+                                        @if (in_array($course->type, ['res', 'async', 'blended'], true) && $courseBaseValues['max_participants'] !== null && $courseBaseValues['max_participants'] !== '')
+                                            <input type="hidden" name="max_participants" value="{{ $courseBaseValues['max_participants'] }}">
+                                        @endif
+                                        <input type="hidden" name="internal_notes" value="{{ $courseBaseValues['internal_notes'] }}">
+                                        <input type="hidden" name="training_objective" value="{{ $courseBaseValues['training_objective'] }}">
+                                        <input type="hidden" name="knowledge" value="{{ $courseBaseValues['knowledge'] }}">
+                                        <input type="hidden" name="skills" value="{{ $courseBaseValues['skills'] }}">
+                                        <input type="hidden" name="competences" value="{{ $courseBaseValues['competences'] }}">
+                                        <input type="hidden" name="regulatory_reference" value="{{ $courseBaseValues['regulatory_reference'] }}">
+                                        <input type="hidden" name="year" value="{{ $courseBaseValues['year'] }}">
+                                        <input type="hidden" name="status" value="{{ $courseBaseValues['status'] }}">
+                                        <input type="hidden" name="has_satisfaction_survey" value="{{ $courseBaseValues['has_satisfaction_survey'] ? '1' : '0' }}">
+                                        <input type="hidden" name="satisfaction_survey_required_for_certificate" value="{{ $courseBaseValues['satisfaction_survey_required_for_certificate'] ? '1' : '0' }}">
+                                        @foreach ($selectedRiskBasedRequirementsPayload as $selectedRiskBasedRequirement)
+                                            <input type="hidden" name="risk_based_requirement_ids[]" value="{{ $selectedRiskBasedRequirement['id'] }}">
+                                            @foreach ($selectedRiskBasedRequirement['course_validity_types'] as $courseValidityType)
+                                                <input type="hidden" name="risk_based_requirement_validity_types[{{ $selectedRiskBasedRequirement['id'] }}][]" value="{{ $courseValidityType }}">
+                                            @endforeach
+                                            @foreach ($selectedRiskBasedRequirement['integrative_start_risk_levels'] as $integrativeStartRiskLevel)
+                                                <input type="hidden" name="risk_based_requirement_integrative_start_levels[{{ $selectedRiskBasedRequirement['id'] }}][]" value="{{ $integrativeStartRiskLevel }}">
+                                            @endforeach
+                                        @endforeach
+
+                                        <div class="grid gap-6 md:grid-cols-2">
+                                            <div class="form-control flex flex-col gap-2">
+                                                <label for="course_start_date" class="label p-0">
+                                                    <span class="label-text font-medium">{{ __('Inizio corso') }}</span>
+                                                </label>
+                                                <input
+                                                    id="course_start_date"
+                                                    name="course_start_date"
+                                                    type="date"
+                                                    value="{{ $courseBaseValues['course_start_date'] }}"
+                                                    class="input input-bordered w-full @error('course_start_date') input-error @enderror"
+                                                >
+                                                @error('course_start_date')
+                                                    <p class="text-sm text-error">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+
+                                            <div class="form-control flex flex-col gap-2">
+                                                <label for="course_end_date" class="label p-0">
+                                                    <span class="label-text font-medium">{{ __('Fine corso') }}</span>
+                                                </label>
+                                                <input
+                                                    id="course_end_date"
+                                                    name="course_end_date"
+                                                    type="date"
+                                                    value="{{ $courseBaseValues['course_end_date'] }}"
+                                                    class="input input-bordered w-full @error('course_end_date') input-error @enderror"
+                                                >
+                                                @error('course_end_date')
+                                                    <p class="text-sm text-error">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+
+                                            <div class="form-control flex flex-col gap-2">
+                                                <label for="access_closure_date" class="label p-0">
+                                                    <span class="label-text font-medium">{{ __('Chiusura fruizione') }}</span>
+                                                </label>
+                                                <input
+                                                    id="access_closure_date"
+                                                    name="access_closure_date"
+                                                    type="date"
+                                                    value="{{ $courseBaseValues['access_closure_date'] }}"
+                                                    class="input input-bordered w-full @error('access_closure_date') input-error @enderror"
+                                                >
+                                                @error('access_closure_date')
+                                                    <p class="text-sm text-error">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+
+                                            <div class="form-control flex flex-col gap-2">
+                                                <label for="expiry_date" class="label p-0">
+                                                    <span class="label-text font-medium">{{ __('Data scadenza') }}</span>
+                                                </label>
+                                                <input
+                                                    id="expiry_date"
+                                                    name="expiry_date"
+                                                    type="date"
+                                                    value="{{ $courseBaseValues['expiry_date'] }}"
+                                                    class="input input-bordered w-full @error('expiry_date') input-error @enderror"
+                                                    required
+                                                >
+                                                @error('expiry_date')
+                                                    <p class="text-sm text-error">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+
+                                            <div class="form-control flex flex-col gap-2">
+                                                <label for="course_duration_hours" class="label p-0">
+                                                    <span class="label-text font-medium">{{ __('Durata corso (ore)') }}</span>
+                                                </label>
+                                                <input
+                                                    id="course_duration_hours"
+                                                    name="course_duration_hours"
+                                                    type="number"
+                                                    min="0"
+                                                    value="{{ $courseBaseValues['course_duration_hours'] }}"
+                                                    class="input input-bordered w-full @error('course_duration_hours') input-error @enderror"
+                                                >
+                                                @error('course_duration_hours')
+                                                    <p class="text-sm text-error">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+
+                                            <div class="form-control flex flex-col gap-2">
+                                                <label for="interaction_duration_minutes" class="label p-0">
+                                                    <span class="label-text font-medium">{{ __('Durata interattività (minuti)') }}</span>
+                                                </label>
+                                                <input
+                                                    id="interaction_duration_minutes"
+                                                    name="interaction_duration_minutes"
+                                                    type="number"
+                                                    min="0"
+                                                    value="{{ $courseBaseValues['interaction_duration_minutes'] }}"
+                                                    class="input input-bordered w-full @error('interaction_duration_minutes') input-error @enderror"
+                                                >
+                                                @error('interaction_duration_minutes')
                                                     <p class="text-sm text-error">{{ $message }}</p>
                                                 @enderror
                                             </div>
