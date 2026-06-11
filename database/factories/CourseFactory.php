@@ -29,6 +29,8 @@ class CourseFactory extends Factory
             'year' => now()->year,
             'expiry_date' => now()->copy()->endOfYear(),
             'status' => fake()->randomElement(Course::availableStatuses()),
+            'edition' => 1,
+            'original_course_id' => null,
             'has_satisfaction_survey' => false,
             'satisfaction_survey_required_for_certificate' => false,
             'hasMany' => '1',

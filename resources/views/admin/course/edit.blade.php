@@ -17,6 +17,7 @@
             ['key' => 'teachers', 'label' => __('Docenti'), 'icon' => 'lucide-graduation-cap'],
             ['key' => 'tutors', 'label' => __('Tutor'), 'icon' => 'lucide-users-round'],
             ['key' => 'enrollments', 'label' => __('Iscritti'), 'icon' => 'lucide-user-plus'],
+            ['key' => 'operations', 'label' => __('Operazioni corso'), 'icon' => 'lucide-wrench'],
         ]);
         $activeCourseEditSection = request('section', 'details');
 
@@ -137,14 +138,7 @@
 
             <main class="min-w-0">
                 <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-                    <x-page-header :title="__('Modifica corso')">
-                        <x-slot:actions>
-                            <button type="button" class="btn btn-accent btn-outline" data-open-delete-course-modal>
-                                <x-lucide-trash-2 class="h-4 w-4" />
-                                <span>{{ __('Delete course') }}</span>
-                            </button>
-                        </x-slot:actions>
-                    </x-page-header>
+                    <x-page-header :title="__('Modifica corso')" />
 
                     <div class="flex flex-col gap-6">
                         @if ($activeCourseEditSection === 'details')
@@ -247,6 +241,20 @@
                                                 @error('year')
                                                     <p class="text-sm text-error">{{ $message }}</p>
                                                 @enderror
+                                            </div>
+
+                                            <div class="form-control flex flex-col gap-2">
+                                                <label for="edition" class="label p-0">
+                                                    <span class="label-text font-medium">{{ __('Edizione') }}</span>
+                                                </label>
+                                                <input
+                                                    id="edition"
+                                                    type="number"
+                                                    value="{{ $course->edition }}"
+                                                    class="input input-bordered w-full"
+                                                    readonly
+                                                    disabled
+                                                >
                                             </div>
 
                                             <div class="form-control flex flex-col gap-2 md:col-span-2">
@@ -1260,6 +1268,40 @@
                             <button type="submit">{{ __('Close') }}</button>
                         </form>
                     </dialog>
+                </div>
+            </div>
+                        @endif
+
+                        @if ($activeCourseEditSection === 'operations')
+            <div class="flex flex-col gap-6">
+                @include('admin.course.partials.course-edit-badge-bar')
+
+                <div class="card border border-base-300 bg-base-100 shadow-sm">
+                    <div class="card-body gap-6">
+                        <div>
+                            <h2 class="card-title">{{ __('Operazioni corso') }}</h2>
+                            <p class="text-sm text-base-content/70">
+                                {{ __('Azioni amministrative disponibili per questo corso.') }}
+                            </p>
+                        </div>
+
+                        <div class="grid gap-3 sm:max-w-sm">
+                            @can('duplicate courses')
+                                <form method="POST" action="{{ route('admin.courses.duplicate', $course) }}">
+                                    @csrf
+                                    <button type="submit" class="btn btn-secondary btn-outline w-full justify-start">
+                                        <x-lucide-copy class="h-4 w-4" />
+                                        <span>{{ __('Duplica corso') }}</span>
+                                    </button>
+                                </form>
+                            @endcan
+
+                            <button type="button" class="btn btn-accent btn-outline w-full justify-start" data-open-delete-course-modal>
+                                <x-lucide-trash-2 class="h-4 w-4" />
+                                <span>{{ __('Delete course') }}</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
                         @endif

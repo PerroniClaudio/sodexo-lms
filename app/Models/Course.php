@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -62,6 +63,8 @@ class Course extends Model
         'year',
         'expiry_date',
         'status',
+        'edition',
+        'original_course_id',
         'has_satisfaction_survey',
         'satisfaction_survey_required_for_certificate',
         'hasMany',
@@ -78,6 +81,8 @@ class Course extends Model
             'id' => 'integer',
             'expiry_date' => 'datetime',
             'max_participants' => 'integer',
+            'edition' => 'integer',
+            'original_course_id' => 'integer',
             'course_start_date' => 'date',
             'course_end_date' => 'date',
             'access_closure_date' => 'date',
@@ -157,6 +162,16 @@ class Course extends Model
     public function teacherEnrollments(): HasMany
     {
         return $this->hasMany(CourseTeacherEnrollment::class);
+    }
+
+    public function originalCourse(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'original_course_id');
+    }
+
+    public function familyRootCourseId(): int
+    {
+        return $this->original_course_id ?? (int) $this->getKey();
     }
 
     public function supportsClasses(): bool

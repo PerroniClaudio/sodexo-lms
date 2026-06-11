@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\DuplicateCourse;
 use App\Enums\CourseRiskRequirementValidityType;
 use App\Enums\RiskLevel;
 use App\Http\Controllers\Controller;
@@ -302,5 +303,14 @@ class CourseController extends Controller
         return redirect()
             ->route('admin.courses.index')
             ->with('status', __('Corso eliminato con successo.'));
+    }
+
+    public function duplicate(Course $course, DuplicateCourse $duplicateCourse): RedirectResponse
+    {
+        $duplicatedCourse = $duplicateCourse->handle($course);
+
+        return redirect()
+            ->route('admin.courses.edit', $duplicatedCourse)
+            ->with('status', __('Corso duplicato con successo.'));
     }
 }
