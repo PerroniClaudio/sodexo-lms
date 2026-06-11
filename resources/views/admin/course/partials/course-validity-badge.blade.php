@@ -3,26 +3,27 @@
     $courseIsPublishable = $courseValidator->isPublishable($course);
     $courseValidationErrors = $courseValidator->getValidationErrors($course);
     $coursePublishabilityErrors = $courseValidator->getPublishabilityErrors($course);
+    $statusBadgeClass = 'badge badge-sm min-h-7 min-w-28 justify-center px-2.5 text-[11px] font-medium whitespace-nowrap';
 @endphp
 
 <div class="flex flex-col gap-2" data-validity-details data-validity-modal-target="#course-validity-details-modal">
-    <div class="flex items-center gap-3">
+    <div class="flex flex-wrap items-start justify-end gap-2">
         @if ($courseIsValid)
-            <span class="badge badge-sm badge-success h-fit">{{ __('Valido') }}</span>
+            <span class="{{ $statusBadgeClass }} badge-success">{{ __('Valido') }}</span>
         @else
-            <button type="button" class="badge badge-sm badge-error whitespace-nowrap cursor-pointer h-fit" data-open-validity-details-modal>
+            <button type="button" class="{{ $statusBadgeClass }} badge-error cursor-pointer" data-open-validity-details-modal>
                 {{ __('Non valido') }}
             </button>
         @endif
 
         @if ($courseIsPublishable)
             @if ($course->status === 'published')
-                <span class="badge badge-sm badge-success h-fit">{{ __('Pubblicato') }}</span>
+                <span class="{{ $statusBadgeClass }} badge-success">{{ __('Pubblicato') }}</span>
             @else
-                <span class="badge badge-sm badge-info h-fit">{{ __('Pubblicabile') }}</span>
+                <span class="{{ $statusBadgeClass }} badge-info">{{ __('Pubblicabile') }}</span>
             @endif
         @elseif ($courseIsValid)
-            <button type="button" class="badge badge-sm badge-warning cursor-pointer h-fit" data-open-validity-details-modal>
+            <button type="button" class="{{ $statusBadgeClass }} badge-warning cursor-pointer" data-open-validity-details-modal>
                 {{ __('Non pubblicabile') }}
             </button>
         @endif

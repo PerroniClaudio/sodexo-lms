@@ -149,21 +149,16 @@
                     <div class="flex flex-col gap-6">
                         @if ($activeCourseEditSection === 'details')
                             <form method="POST" action="{{ $courseUpdateUrl }}" class="flex flex-col gap-6">
+                                @include('admin.course.partials.course-edit-badge-bar')
+
                                 <div class="card border border-base-300 bg-base-100 shadow-sm">
                                     <div class="card-body gap-6">
-                                        <div class="flex items-start justify-between gap-4">
+                                        <div class="flex items-start gap-4">
                                             <div class="flex-1">
                                                 <h2 class="card-title">{{ __('Dati anagrafici corso') }}</h2>
                                                 <p class="text-sm text-base-content/70">
                                                     {{ __('Gestisci le informazioni principali del corso.') }}
                                                 </p>
-                                                <div class="mt-3">
-                                                    <span class="text-base-content/70">{{ __('Tipologia:') }}</span>
-                                                    <span class="badge badge-outline h-fit">{{ $courseTypeLabels[$course->type] ?? $course->type }}</span>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                @include('admin.course.partials.course-validity-badge')
                                             </div>
                                         </div>
 
@@ -310,21 +305,20 @@
                                 </div>
                             </form>
                         @elseif ($activeCourseEditSection === 'duration')
-                            <div class="card border border-base-300 bg-base-100 shadow-sm">
-                                <div class="card-body gap-6">
-                                    <div class="flex items-start justify-between gap-4">
-                                        <div class="flex-1">
-                                            <h2 class="card-title">{{ __('Durata corso') }}</h2>
-                                            <p class="text-sm text-base-content/70">
-                                                {{ __('Gestisci date e durata del corso.') }}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            @include('admin.course.partials.course-validity-badge')
-                                        </div>
-                                    </div>
+                            <form method="POST" action="{{ $courseUpdateUrl }}" class="flex flex-col gap-6">
+                                @include('admin.course.partials.course-edit-badge-bar')
 
-                                    <form method="POST" action="{{ $courseUpdateUrl }}" class="flex flex-col gap-6">
+                                <div class="card border border-base-300 bg-base-100 shadow-sm">
+                                    <div class="card-body gap-6">
+                                        <div class="flex items-start gap-4">
+                                            <div class="flex-1">
+                                                <h2 class="card-title">{{ __('Durata corso') }}</h2>
+                                                <p class="text-sm text-base-content/70">
+                                                    {{ __('Gestisci date e durata del corso.') }}
+                                                </p>
+                                            </div>
+                                        </div>
+
                                         @csrf
                                         @method('PUT')
 
@@ -461,22 +455,23 @@
                                                 <x-lucide-save class="h-4 w-4" />
                                             </button>
                                         </div>
-                                    </form>
                                 </div>
-                            </div>
+                            </form>
                         @endif
 
                         @if ($activeCourseEditSection === 'survey')
-                            <div class="card border border-base-300 bg-base-100 shadow-sm">
-                                <div class="card-body gap-6">
-                                    <div>
-                                        <h2 class="card-title">{{ __('Questionario di gradimento') }}</h2>
-                                        <p class="text-sm text-base-content/70">
-                                            {{ __('Se abilitato, viene aggiunto automaticamente come ultimo modulo del corso.') }}
-                                        </p>
-                                    </div>
+                            <form method="POST" action="{{ $courseUpdateUrl }}" class="flex flex-col gap-6">
+                                @include('admin.course.partials.course-edit-badge-bar')
 
-                                    <form method="POST" action="{{ $courseUpdateUrl }}" class="flex flex-col gap-6">
+                                <div class="card border border-base-300 bg-base-100 shadow-sm">
+                                    <div class="card-body gap-6">
+                                        <div>
+                                            <h2 class="card-title">{{ __('Questionario di gradimento') }}</h2>
+                                            <p class="text-sm text-base-content/70">
+                                                {{ __('Se abilitato, viene aggiunto automaticamente come ultimo modulo del corso.') }}
+                                            </p>
+                                        </div>
+
                                         @csrf
                                         @method('PUT')
 
@@ -550,31 +545,33 @@
                                                 <x-lucide-save class="h-4 w-4" />
                                             </button>
                                         </div>
-                                    </form>
+                                    </div>
                                 </div>
-                            </div>
+                            </form>
                         @endif
 
                         @if ($activeCourseEditSection === 'certificates')
-                            <div class="card border border-base-300 bg-base-100 shadow-sm">
-                                <div class="card-body gap-6">
-                                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                                        <div>
-                                            <h2 class="card-title">{{ __('Certificati ottenibili') }}</h2>
-                                            <p class="text-sm text-base-content/70">
-                                                {{ __('Seleziona i certificati ottenibili con questo corso e definisci una o più tipologie di validità per ciascuno.') }}
-                                            </p>
+                            <form method="POST" action="{{ $courseUpdateUrl }}" class="flex flex-col gap-6">
+                                @include('admin.course.partials.course-edit-badge-bar')
+
+                                <div class="card border border-base-300 bg-base-100 shadow-sm">
+                                    <div class="card-body gap-6">
+                                        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                            <div>
+                                                <h2 class="card-title">{{ __('Certificati ottenibili') }}</h2>
+                                                <p class="text-sm text-base-content/70">
+                                                    {{ __('Seleziona i certificati ottenibili con questo corso e definisci una o più tipologie di validità per ciascuno.') }}
+                                                </p>
+                                            </div>
+
+                                            @if ($riskBasedRequirements->isNotEmpty())
+                                                <button type="button" class="btn btn-primary btn-sm" data-open-risk-requirement-selection-modal>
+                                                    <span>{{ __('Aggiungi') }}</span>
+                                                    <x-lucide-plus class="h-4 w-4" />
+                                                </button>
+                                            @endif
                                         </div>
 
-                                        @if ($riskBasedRequirements->isNotEmpty())
-                                            <button type="button" class="btn btn-primary btn-sm" data-open-risk-requirement-selection-modal>
-                                                <span>{{ __('Aggiungi') }}</span>
-                                                <x-lucide-plus class="h-4 w-4" />
-                                            </button>
-                                        @endif
-                                    </div>
-
-                                    <form method="POST" action="{{ $courseUpdateUrl }}" class="flex flex-col gap-6">
                                         @csrf
                                         @method('PUT')
 
@@ -696,7 +693,7 @@
                                                                                 class="checkbox"
                                                                                 data-integrative-start-level-option
                                                                             >
-                                                                            <span class="badge {{ $riskLevel->badgeColor() }} h-fit">{{ $riskLevel->label() }}</span>
+                                                                            <span class="badge badge-sm {{ $riskLevel->badgeColor() }} min-h-7 px-2 text-[11px]">{{ $riskLevel->label() }}</span>
                                                                         </label>
                                                                     @endforeach
                                                                 </div>
@@ -755,41 +752,44 @@
                                                 <x-lucide-save class="h-4 w-4" />
                                             </button>
                                         </div>
-                                    </form>
+                                    </div>
                                 </div>
-                            </div>
+                            </form>
                         @endif
 
                         @if ($activeCourseEditSection === 'modules')
-            <div class="card border border-base-300 bg-base-100 shadow-sm">
-                <div class="card-body gap-6">
-                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                            <h2 class="card-title">{{ __('Moduli') }}</h2>
-                            <p class="text-sm text-base-content/70">
-                                {{ __('Aggiungi un nuovo modulo scegliendo la tipologia da creare.') }}
-                            </p>
-                        </div>
+            <div class="flex flex-col gap-6">
+                @include('admin.course.partials.course-edit-badge-bar')
 
-                        <span
-                            @class([
-                                'tooltip tooltip-left' => $course->status === 'published',
-                            ])
-                            @if ($course->status === 'published')
-                                data-tip="{{ __('Non puoi aggiungere nuovi moduli mentre il corso è pubblicato.') }}"
-                            @endif
-                        >
-                            <button
-                                type="button"
-                                class="btn btn-primary"
-                                data-open-module-modal
-                                @disabled($course->status === 'published')
+                <div class="card border border-base-300 bg-base-100 shadow-sm">
+                    <div class="card-body gap-6">
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                                <h2 class="card-title">{{ __('Moduli') }}</h2>
+                                <p class="text-sm text-base-content/70">
+                                    {{ __('Aggiungi un nuovo modulo scegliendo la tipologia da creare.') }}
+                                </p>
+                            </div>
+
+                            <span
+                                @class([
+                                    'tooltip tooltip-left' => $course->status === 'published',
+                                ])
+                                @if ($course->status === 'published')
+                                    data-tip="{{ __('Non puoi aggiungere nuovi moduli mentre il corso è pubblicato.') }}"
+                                @endif
                             >
-                                <span>{{ __('New module') }}</span>
-                                <x-lucide-plus class="h-4 w-4" />
-                            </button>
-                        </span>
-                    </div>
+                                <button
+                                    type="button"
+                                    class="btn btn-primary"
+                                    data-open-module-modal
+                                    @disabled($course->status === 'published')
+                                >
+                                    <span>{{ __('New module') }}</span>
+                                    <x-lucide-plus class="h-4 w-4" />
+                                </button>
+                            </span>
+                        </div>
 
                     @if ($modules->isEmpty())
                         <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-center text-sm text-base-content/70">
@@ -822,14 +822,14 @@
                                             </div>
 
                                             <div class="flex flex-wrap items-center gap-2 text-sm text-base-content/70">
-                                                <span class="inline-flex min-h-8 items-center gap-2 rounded-full border border-primary/15 bg-primary/8 px-3 py-1 text-xs font-medium tracking-wide text-primary">
+                                                <span class="badge badge-sm badge-outline gap-1.5 min-h-7 px-2.5 text-[11px] font-medium">
                                                     <x-dynamic-component
                                                         :component="$moduleTypeIcons[$module->type] ?? 'lucide-shapes'"
-                                                        class="h-3.5 w-3.5"
+                                                        class="h-3 w-3"
                                                     />
                                                     <span>{{ $moduleTypeLabels[$module->type] ?? $module->type }}</span>
                                                 </span>
-                                                <span class="inline-flex min-h-8 items-center rounded-full bg-base-200 px-3 py-1 text-xs font-medium text-base-content/70">
+                                                <span class="badge badge-sm min-h-7 px-2.5 text-[11px] font-medium">
                                                     {{ $moduleStatusLabels[$module->status] ?? $module->status }}
                                                 </span>
                                                 @php
@@ -837,9 +837,9 @@
                                                     $moduleIsValid = $moduleValidator->validate($module);
                                                 @endphp
                                                 @if ($moduleIsValid)
-                                                    <span class="inline-flex min-h-8 items-center rounded-full bg-success px-3 py-1 text-xs font-medium text-success-content">{{ __('Valido') }}</span>
+                                                    <span class="badge badge-sm badge-success min-h-7 px-2.5 text-[11px] font-medium">{{ __('Valido') }}</span>
                                                 @else
-                                                    <span class="inline-flex min-h-8 items-center rounded-full bg-error px-3 py-1 text-xs font-medium text-error-content">{{ __('Non valido') }}</span>
+                                                    <span class="badge badge-sm badge-error min-h-7 px-2.5 text-[11px] font-medium">{{ __('Non valido') }}</span>
                                                 @endif
                                             </div>
 
@@ -974,65 +974,74 @@
                         </form>
                     </dialog>
 
+                    </div>
                 </div>
             </div>
                         @endif
 
                         @if ($activeCourseEditSection === 'teachers')
-            <section>
+            <section class="flex flex-col gap-6">
+                @include('admin.course.partials.course-edit-badge-bar')
                 @include('admin.course.partials.teacher-assignments-card')
             </section>
                         @endif
 
                         @if ($activeCourseEditSection === 'tutors')
-            <div class="card border border-base-300 bg-base-100 shadow-sm">
-                <div class="card-body gap-4">
-                    <div>
-                        <h2 class="card-title">{{ __('Tutor') }}</h2>
-                        <p class="text-sm text-base-content/70">
-                            {{ __('Sezione riservata alla futura gestione dei tutor del corso.') }}
-                        </p>
-                    </div>
+            <div class="flex flex-col gap-6">
+                @include('admin.course.partials.course-edit-badge-bar')
 
-                    <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-sm text-base-content/70">
-                        {{ __('Funzione in sviluppo. Per ora non sono previste azioni in questa sezione.') }}
+                <div class="card border border-base-300 bg-base-100 shadow-sm">
+                    <div class="card-body gap-4">
+                        <div>
+                            <h2 class="card-title">{{ __('Tutor') }}</h2>
+                            <p class="text-sm text-base-content/70">
+                                {{ __('Sezione riservata alla futura gestione dei tutor del corso.') }}
+                            </p>
+                        </div>
+
+                        <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-sm text-base-content/70">
+                            {{ __('Funzione in sviluppo. Per ora non sono previste azioni in questa sezione.') }}
+                        </div>
                     </div>
                 </div>
             </div>
                         @endif
 
                         @if ($activeCourseEditSection === 'enrollments')
-            <div class="card border border-base-300 bg-base-100 shadow-sm">
-                <div
-                    class="card-body gap-6"
-                    data-enrollments-table
-                    data-enrollments-api-url="{{ route('admin.api.courses.enrollments.index', $course) }}"
-                    data-enrollments-search-users-api-url="{{ route('admin.api.courses.enrollments.search-users', $course) }}"
-                    data-enrollments-store-api-url="{{ route('admin.api.courses.enrollments.store', $course) }}"
-                >
-                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                            <h2 class="card-title">{{ __('Iscritti') }}</h2>
-                            @if($course->status === 'draft')
-                                <p class="text-sm text-base-content/70">
-                                    {{ __('Il corso è in stato bozza, non è possibile aggiungere iscritti finché non viene pubblicato.') }}
-                                </p>
-                            @else
-                                <p class="text-sm text-base-content/70">
-                                    {{ __('Gestisci gli iscritti al corso. Puoi aggiungere nuovi utenti o rimuovere quelli esistenti.') }}
-                                </p>
-                            @endif
-                        </div>
+            <div class="flex flex-col gap-6">
+                @include('admin.course.partials.course-edit-badge-bar')
 
-                        <button
-                            type="button"
-                            class="btn btn-primary"
-                            data-open-iscritto-modal
-                        >
-                            <span>{{ __('Nuovo iscritto') }}</span>
-                            <x-lucide-plus class="h-4 w-4" />
-                        </button>
-                    </div>
+                <div class="card border border-base-300 bg-base-100 shadow-sm">
+                    <div
+                        class="card-body gap-6"
+                        data-enrollments-table
+                        data-enrollments-api-url="{{ route('admin.api.courses.enrollments.index', $course) }}"
+                        data-enrollments-search-users-api-url="{{ route('admin.api.courses.enrollments.search-users', $course) }}"
+                        data-enrollments-store-api-url="{{ route('admin.api.courses.enrollments.store', $course) }}"
+                    >
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                                <h2 class="card-title">{{ __('Iscritti') }}</h2>
+                                @if($course->status === 'draft')
+                                    <p class="text-sm text-base-content/70">
+                                        {{ __('Il corso è in stato bozza, non è possibile aggiungere iscritti finché non viene pubblicato.') }}
+                                    </p>
+                                @else
+                                    <p class="text-sm text-base-content/70">
+                                        {{ __('Gestisci gli iscritti al corso. Puoi aggiungere nuovi utenti o rimuovere quelli esistenti.') }}
+                                    </p>
+                                @endif
+                            </div>
+
+                            <button
+                                type="button"
+                                class="btn btn-primary"
+                                data-open-iscritto-modal
+                            >
+                                <span>{{ __('Nuovo iscritto') }}</span>
+                                <x-lucide-plus class="h-4 w-4" />
+                            </button>
+                        </div>
 
                     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <label class="label cursor-pointer justify-start gap-3 p-0">
