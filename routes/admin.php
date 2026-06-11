@@ -95,9 +95,13 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             ->middleware('permission:duplicate courses')
             ->name('courses.duplicate-structure');
         Route::get('/courses/{course}/edit', [CourseController::class, 'edit'])->name('courses.edit');
+        Route::put('/courses/{course}/details', [CourseController::class, 'updateDetails'])->name('courses.details.update');
+        Route::put('/courses/{course}/duration', [CourseController::class, 'updateDuration'])->name('courses.duration.update');
+        Route::put('/courses/{course}/attachments', [CourseController::class, 'updateAttachments'])->name('courses.attachments.update');
+        Route::put('/courses/{course}/survey', [CourseController::class, 'updateSurvey'])->name('courses.survey.update');
         Route::get('/courses/{course}/attachments/cover-image', [CourseController::class, 'previewCoverImage'])->name('courses.attachments.cover-image.preview');
         Route::get('/courses/{course}/attachments/poster-pdf', [CourseController::class, 'previewPosterPdf'])->name('courses.attachments.poster-pdf.preview');
-        Route::put('/courses/{course}', [CourseController::class, 'update'])->name('courses.update');
+        Route::put('/courses/{course}/certificates', [CourseController::class, 'updateCertificates'])->name('courses.certificates.update');
         Route::delete('/courses/{course}', [CourseController::class, 'destroy'])->name('courses.destroy');
         Route::get('/courses/{course}/classes', [CourseClassController::class, 'index'])->name('courses.classes.index');
         Route::post('/courses/{course}/classes', [CourseClassController::class, 'store'])->name('courses.classes.store');

@@ -30,7 +30,7 @@ it('stores course attachments on s3', function () {
         'status' => 'draft',
     ]);
 
-    $response = $this->put(route('admin.courses.update', $course), [
+    $response = $this->put(route('admin.courses.attachments.update', $course), [
         'title' => 'Corso allegati',
         'code' => $course->code,
         'description' => 'Descrizione',
@@ -41,7 +41,7 @@ it('stores course attachments on s3', function () {
         'poster_pdf' => UploadedFile::fake()->create('poster.pdf', 200, 'application/pdf'),
     ]);
 
-    $response->assertRedirect(route('admin.courses.edit', $course));
+    $response->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'attachments']));
 
     $course->refresh();
 
@@ -71,7 +71,7 @@ it('replaces old course attachments and deletes previous files', function () {
     $oldCoverPath = $course->cover_image_path;
     $oldPosterPath = $course->poster_pdf_path;
 
-    $this->put(route('admin.courses.update', $course), [
+    $this->put(route('admin.courses.attachments.update', $course), [
         'title' => 'Corso allegati',
         'code' => $course->code,
         'description' => 'Descrizione',
@@ -80,7 +80,7 @@ it('replaces old course attachments and deletes previous files', function () {
         'status' => 'draft',
         'cover_image' => UploadedFile::fake()->image('cover-new.jpg'),
         'poster_pdf' => UploadedFile::fake()->create('poster-new.pdf', 220, 'application/pdf'),
-    ])->assertRedirect(route('admin.courses.edit', $course));
+    ])->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'attachments']));
 
     $course->refresh();
 
@@ -100,7 +100,7 @@ it('validates course attachment types', function () {
     ]);
 
     $this->from(route('admin.courses.edit', [$course, 'section' => 'attachments']))
-        ->put(route('admin.courses.update', $course), [
+        ->put(route('admin.courses.attachments.update', $course), [
             'title' => 'Corso allegati',
             'code' => $course->code,
             'description' => 'Descrizione',

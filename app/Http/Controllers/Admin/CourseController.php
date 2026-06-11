@@ -9,14 +9,17 @@ use App\Enums\RiskLevel;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\DuplicateCourseStructureRequest;
 use App\Http\Requests\StoreCourseRequest;
-use App\Http\Requests\UpdateCourseRequest;
+use App\Http\Requests\UpdateCourseAttachmentsRequest;
+use App\Http\Requests\UpdateCourseCertificatesRequest;
+use App\Http\Requests\UpdateCourseDetailsRequest;
+use App\Http\Requests\UpdateCourseDurationRequest;
+use App\Http\Requests\UpdateCourseSurveyRequest;
 use App\Models\Course;
 use App\Models\Module;
 use App\Models\RiskBasedRequirement;
 use App\Models\SatisfactionSurveyTemplate;
 use App\Services\CourseValidation\CourseValidatorService;
 use App\Services\SyncCourseSatisfactionSurvey;
-use Carbon\CarbonInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -130,28 +133,16 @@ class CourseController extends Controller
         ]);
     }
 
-    public function update(
-        UpdateCourseRequest $request,
+    public function updateDetails(
+        UpdateCourseDetailsRequest $request,
         Course $course,
         SyncCourseSatisfactionSurvey $syncCourseSatisfactionSurvey,
     ): RedirectResponse {
         try {
             $validated = $request->validated();
-            $courseAttributes = collect($validated)->except([
-                'cover_image',
-                'poster_pdf',
-                'risk_based_requirement_ids',
-                'risk_based_requirement_validity_types',
-                'risk_based_requirement_integrative_start_levels',
-            ])->all();
-            $attributes = [
-                ...$courseAttributes,
-                'has_satisfaction_survey' => (bool) ($validated['has_satisfaction_survey'] ?? false),
-                'satisfaction_survey_required_for_certificate' => (bool) (($validated['has_satisfaction_survey'] ?? false)
-                    && ($validated['satisfaction_survey_required_for_certificate'] ?? false)),
-            ];
+            $attributes = $validated;
 
-            if ($this->isPublishedCourseStatusOnlyUpdate($course, $attributes)) {
+            if ($this->isPublishedCourseDetailsStatusOnlyUpdate($course, $attributes)) {
                 $attributes = [
                     'status' => $validated['status'],
                 ];
@@ -159,8 +150,8 @@ class CourseController extends Controller
 
             $targetStatus = (string) ($attributes['status'] ?? $course->status);
             $shouldPrepareSurveyBeforePublishing = $targetStatus === 'published'
-                && ($course->status !== 'published' || ! $course->exists)
-                && (bool) ($attributes['has_satisfaction_survey'] ?? false);
+                && $course->status !== 'published'
+                && (bool) $course->has_satisfaction_survey;
 
             if ($shouldPrepareSurveyBeforePublishing) {
                 $course->update([
@@ -171,12 +162,9 @@ class CourseController extends Controller
                 $course->update($attributes);
             }
 
-            $this->syncAttachments($request, $course);
-
-            $course->riskBasedRequirements()->sync(
-                $this->buildRiskBasedRequirementSyncPayload($validated)
-            );
-            $syncCourseSatisfactionSurvey->handle($course);
+            if ($shouldPrepareSurveyBeforePublishing) {
+                $syncCourseSatisfactionSurvey->handle($course);
+            }
 
             if ($shouldPrepareSurveyBeforePublishing) {
                 $course->modules()
@@ -191,15 +179,54 @@ class CourseController extends Controller
                 ]);
             }
 
-            return redirect()
-                ->route('admin.courses.edit', $course)
-                ->with('status', __('Corso aggiornato con successo.'));
+            return $this->redirectToSection($course, 'details', __('Corso aggiornato con successo.'));
         } catch (RuntimeException $e) {
             return redirect()
                 ->back()
                 ->withInput()
                 ->with('error', $e->getMessage());
         }
+    }
+
+    public function updateDuration(UpdateCourseDurationRequest $request, Course $course): RedirectResponse
+    {
+        $course->update($request->validated());
+
+        return $this->redirectToSection($course, 'duration', __('Durata del corso aggiornata con successo.'));
+    }
+
+    public function updateAttachments(UpdateCourseAttachmentsRequest $request, Course $course): RedirectResponse
+    {
+        $this->syncAttachments($request, $course);
+
+        return $this->redirectToSection($course, 'attachments', __('Allegati del corso aggiornati con successo.'));
+    }
+
+    public function updateSurvey(
+        UpdateCourseSurveyRequest $request,
+        Course $course,
+        SyncCourseSatisfactionSurvey $syncCourseSatisfactionSurvey,
+    ): RedirectResponse {
+        $validated = $request->validated();
+
+        $course->update([
+            'has_satisfaction_survey' => (bool) ($validated['has_satisfaction_survey'] ?? false),
+            'satisfaction_survey_required_for_certificate' => (bool) (($validated['has_satisfaction_survey'] ?? false)
+                && ($validated['satisfaction_survey_required_for_certificate'] ?? false)),
+        ]);
+
+        $syncCourseSatisfactionSurvey->handle($course);
+
+        return $this->redirectToSection($course, 'survey', __('Questionario di gradimento aggiornato con successo.'));
+    }
+
+    public function updateCertificates(UpdateCourseCertificatesRequest $request, Course $course): RedirectResponse
+    {
+        $course->riskBasedRequirements()->sync(
+            $this->buildRiskBasedRequirementSyncPayload($request->validated())
+        );
+
+        return $this->redirectToSection($course, 'certificates', __('Abilitazioni del corso aggiornate con successo.'));
     }
 
     public function previewCoverImage(Course $course): StreamedResponse
@@ -284,10 +311,20 @@ class CourseController extends Controller
             ->all();
     }
 
+    private function redirectToSection(Course $course, string $section, string $message): RedirectResponse
+    {
+        return redirect()
+            ->route('admin.courses.edit', [
+                'course' => $course,
+                'section' => $section,
+            ])
+            ->with('status', $message);
+    }
+
     /**
      * @param  array<string, mixed>  $attributes
      */
-    private function isPublishedCourseStatusOnlyUpdate(Course $course, array $attributes): bool
+    private function isPublishedCourseDetailsStatusOnlyUpdate(Course $course, array $attributes): bool
     {
         if ($course->status !== 'published') {
             return false;
@@ -305,19 +342,8 @@ class CourseController extends Controller
             'skills' => (string) ($course->skills ?? ''),
             'competences' => (string) ($course->competences ?? ''),
             'regulatory_reference' => (string) ($course->regulatory_reference ?? ''),
-            'course_start_date' => $course->course_start_date?->format('Y-m-d'),
-            'course_end_date' => $course->course_end_date?->format('Y-m-d'),
-            'access_closure_date' => $course->access_closure_date?->format('Y-m-d'),
-            'course_duration_hours' => $course->course_duration_hours === null ? null : (int) $course->course_duration_hours,
-            'interaction_duration_minutes' => $course->interaction_duration_minutes === null
-                ? null
-                : (int) $course->interaction_duration_minutes,
             'year' => (int) $course->year,
-            'expiry_date' => $course->expiry_date instanceof CarbonInterface
-                ? $course->expiry_date->format('Y-m-d')
-                : (string) $course->expiry_date,
-            'has_satisfaction_survey' => (bool) $course->has_satisfaction_survey,
-            'satisfaction_survey_required_for_certificate' => (bool) $course->satisfaction_survey_required_for_certificate,
+            'status' => (string) $course->status,
         ];
 
         $normalizedIncoming = [
@@ -334,24 +360,16 @@ class CourseController extends Controller
             'skills' => (string) ($attributes['skills'] ?? ''),
             'competences' => (string) ($attributes['competences'] ?? ''),
             'regulatory_reference' => (string) ($attributes['regulatory_reference'] ?? ''),
-            'course_start_date' => $attributes['course_start_date'] ?? null,
-            'course_end_date' => $attributes['course_end_date'] ?? null,
-            'access_closure_date' => $attributes['access_closure_date'] ?? null,
-            'course_duration_hours' => array_key_exists('course_duration_hours', $attributes) && $attributes['course_duration_hours'] !== null
-                ? (int) $attributes['course_duration_hours']
-                : null,
-            'interaction_duration_minutes' => array_key_exists('interaction_duration_minutes', $attributes)
-                && $attributes['interaction_duration_minutes'] !== null
-                ? (int) $attributes['interaction_duration_minutes']
-                : null,
             'year' => (int) ($attributes['year'] ?? 0),
-            'expiry_date' => (string) ($attributes['expiry_date'] ?? ''),
-            'has_satisfaction_survey' => (bool) ($attributes['has_satisfaction_survey'] ?? false),
-            'satisfaction_survey_required_for_certificate' => (bool) ($attributes['satisfaction_survey_required_for_certificate'] ?? false),
+            'status' => (string) ($attributes['status'] ?? ''),
         ];
 
-        return $normalizedOriginal === $normalizedIncoming
-            && ($attributes['status'] ?? null) !== $course->status;
+        return collect($normalizedOriginal)
+            ->except('status')
+            ->all() === collect($normalizedIncoming)
+            ->except('status')
+            ->all()
+            && $normalizedIncoming['status'] !== $course->status;
     }
 
     private function syncAttachments(Request $request, Course $course): void

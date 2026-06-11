@@ -50,7 +50,7 @@ it('updates the risk requirement associations for a course', function () {
     $firstRequirement = RiskBasedRequirement::factory()->create(['name' => 'Primo requisito']);
     $secondRequirement = RiskBasedRequirement::factory()->create(['name' => 'Secondo requisito']);
 
-    $response = $this->put(route('admin.courses.update', $course), [
+    $response = $this->put(route('admin.courses.certificates.update', $course), [
         'title' => 'Corso multi requisito',
         'description' => 'Descrizione aggiornata',
         'year' => 2026,
@@ -66,7 +66,7 @@ it('updates the risk requirement associations for a course', function () {
         ],
     ]);
 
-    $response->assertRedirect(route('admin.courses.edit', $course));
+    $response->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'certificates']));
 
     $course->refresh();
     $associations = $course->riskBasedRequirements()
@@ -95,7 +95,7 @@ it('stores integrative starting risk levels for a course requirement', function 
         ->progressionGroup('specific-worker-training')
         ->create(['name' => 'Formazione specifica rischio alto']);
 
-    $response = $this->put(route('admin.courses.update', $course), [
+    $response = $this->put(route('admin.courses.certificates.update', $course), [
         'title' => 'Corso integrativo',
         'description' => 'Descrizione',
         'year' => 2026,
@@ -116,7 +116,7 @@ it('stores integrative starting risk levels for a course requirement', function 
         ],
     ]);
 
-    $response->assertRedirect(route('admin.courses.edit', $course));
+    $response->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'certificates']));
 
     $pivot = $course->riskBasedRequirements()->firstOrFail()->pivot;
 
