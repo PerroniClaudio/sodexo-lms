@@ -37,6 +37,7 @@
         ];
         $courseBaseValues = [
             'title' => old('title', $course->title),
+            'code' => old('code', $course->code),
             'description' => old('description', $course->description),
             'teaching_material' => old('teaching_material', $course->teaching_material),
             'max_participants' => old('max_participants', $course->max_participants),
@@ -191,6 +192,23 @@
                                             </div>
 
                                             <div class="form-control flex flex-col gap-2 md:col-span-2">
+                                                <label for="code" class="label p-0">
+                                                    <span class="label-text font-medium">{{ __('Codice corso') }}</span>
+                                                </label>
+                                                <input
+                                                    id="code"
+                                                    name="code"
+                                                    type="text"
+                                                    value="{{ $courseBaseValues['code'] }}"
+                                                    class="input input-bordered w-full @error('code') input-error @enderror"
+                                                    required
+                                                >
+                                                @error('code')
+                                                    <p class="text-sm text-error">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+
+                                            <div class="form-control flex flex-col gap-2 md:col-span-2">
                                                 <label for="description" class="label p-0">
                                                     <span class="label-text font-medium">{{ __('Descrizione') }}</span>
                                                 </label>
@@ -243,19 +261,34 @@
                                                 @enderror
                                             </div>
 
-                                            <div class="form-control flex flex-col gap-2">
-                                                <label for="edition" class="label p-0">
-                                                    <span class="label-text font-medium">{{ __('Edizione') }}</span>
-                                                </label>
-                                                <input
-                                                    id="edition"
-                                                    type="number"
-                                                    value="{{ $course->edition }}"
-                                                    class="input input-bordered w-full"
-                                                    readonly
-                                                    disabled
-                                                >
-                                            </div>
+                                            @if ($course->edition > 1)
+                                                <div class="form-control flex flex-col gap-2">
+                                                    <label for="edition" class="label p-0">
+                                                        <span class="label-text font-medium">{{ __('Edizione') }}</span>
+                                                    </label>
+                                                    <input
+                                                        id="edition"
+                                                        type="number"
+                                                        value="{{ $course->edition }}"
+                                                        class="input input-bordered w-full"
+                                                        readonly
+                                                        disabled
+                                                    >
+                                                </div>
+
+                                                <div class="form-control flex flex-col gap-2">
+                                                    <span class="label p-0">
+                                                        <span class="label-text font-medium">{{ __('Corso originale') }}</span>
+                                                    </span>
+                                                    <a
+                                                        href="{{ route('admin.courses.edit', $course->original_course_id) }}"
+                                                        class="btn btn-outline w-full justify-start"
+                                                    >
+                                                        <x-lucide-arrow-left class="h-4 w-4" />
+                                                        <span>{{ __('Vai al corso originale') }}</span>
+                                                    </a>
+                                                </div>
+                                            @endif
 
                                             <div class="form-control flex flex-col gap-2 md:col-span-2">
                                                 <label for="status" class="label p-0">
@@ -331,6 +364,7 @@
                                         @method('PUT')
 
                                         <input type="hidden" name="title" value="{{ $courseBaseValues['title'] }}">
+                                        <input type="hidden" name="code" value="{{ $courseBaseValues['code'] }}">
                                         <input type="hidden" name="description" value="{{ $courseBaseValues['description'] }}">
                                         <input type="hidden" name="teaching_material" value="{{ $courseBaseValues['teaching_material'] }}">
                                         @if (in_array($course->type, ['res', 'async', 'blended'], true) && $courseBaseValues['max_participants'] !== null && $courseBaseValues['max_participants'] !== '')
@@ -484,6 +518,7 @@
                                         @method('PUT')
 
                                         <input type="hidden" name="title" value="{{ $courseBaseValues['title'] }}">
+                                        <input type="hidden" name="code" value="{{ $courseBaseValues['code'] }}">
                                         <input type="hidden" name="description" value="{{ $courseBaseValues['description'] }}">
                                         <input type="hidden" name="year" value="{{ $courseBaseValues['year'] }}">
                                         <input type="hidden" name="expiry_date" value="{{ $courseBaseValues['expiry_date'] }}">
@@ -584,6 +619,7 @@
                                         @method('PUT')
 
                                         <input type="hidden" name="title" value="{{ $courseBaseValues['title'] }}">
+                                        <input type="hidden" name="code" value="{{ $courseBaseValues['code'] }}">
                                         <input type="hidden" name="description" value="{{ $courseBaseValues['description'] }}">
                                         <input type="hidden" name="year" value="{{ $courseBaseValues['year'] }}">
                                         <input type="hidden" name="expiry_date" value="{{ $courseBaseValues['expiry_date'] }}">
@@ -1294,6 +1330,11 @@
                                         <span>{{ __('Duplica corso') }}</span>
                                     </button>
                                 </form>
+
+                                <button type="button" class="btn btn-secondary btn-outline w-full justify-start" data-open-duplicate-structure-modal>
+                                    <x-lucide-copy-plus class="h-4 w-4" />
+                                    <span>{{ __('Duplica struttura') }}</span>
+                                </button>
                             @endcan
 
                             <button type="button" class="btn btn-accent btn-outline w-full justify-start" data-open-delete-course-modal>
@@ -1333,6 +1374,51 @@
                                     </button>
                                 </form>
                             </div>
+                        </div>
+
+                        <form method="dialog" class="modal-backdrop">
+                            <button type="submit">{{ __('Close') }}</button>
+                        </form>
+                    </dialog>
+
+                    <dialog id="duplicate-structure-modal" class="modal">
+                        <div class="modal-box max-w-lg">
+                            <form method="POST" action="{{ route('admin.courses.duplicate-structure', $course).'?section=operations' }}" class="space-y-6">
+                                @csrf
+
+                                <div class="space-y-2">
+                                    <h3 class="text-lg font-semibold">{{ __('Duplica struttura') }}</h3>
+                                    <p class="text-sm text-base-content/70">
+                                        {{ __('Crea un nuovo corso copiando struttura, moduli e requisiti. La nuova copia partirà dall\'edizione 1.') }}
+                                    </p>
+                                </div>
+
+                                <div class="form-control flex flex-col gap-2">
+                                    <label for="duplicate-structure-new-code" class="label p-0">
+                                        <span class="label-text font-medium">{{ __('Nuovo codice corso') }}</span>
+                                    </label>
+                                    <input
+                                        id="duplicate-structure-new-code"
+                                        name="new_code"
+                                        type="text"
+                                        value="{{ old('new_code') }}"
+                                        class="input input-bordered w-full @error('new_code') input-error @enderror"
+                                        required
+                                    >
+                                    @error('new_code')
+                                        <p class="text-sm text-error">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                <div class="modal-action">
+                                    <button type="button" class="btn btn-ghost" onclick="this.closest('dialog').close()">
+                                        {{ __('Cancel') }}
+                                    </button>
+                                    <button type="submit" class="btn btn-primary">
+                                        {{ __('Duplica struttura') }}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
 
                         <form method="dialog" class="modal-backdrop">

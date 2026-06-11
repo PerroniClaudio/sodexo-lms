@@ -26,6 +26,24 @@
                         </div>
 
                         <div class="form-control flex flex-col gap-2">
+                            <label for="code" class="label p-0">
+                                <span class="label-text font-medium">{{ __('Codice corso') }}</span>
+                            </label>
+                            <input
+                                id="code"
+                                name="code"
+                                type="text"
+                                value="{{ old('code') }}"
+                                placeholder="CRS-{id}"
+                                class="input input-bordered w-full @error('code') input-error @enderror"
+                            >
+                            <p class="text-sm text-base-content/70">{{ __('Se lasci vuoto, il codice verrà impostato automaticamente dopo il salvataggio.') }}</p>
+                            @error('code')
+                                <p class="text-sm text-error">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="form-control flex flex-col gap-2">
                             <label for="type" class="label p-0">
                                 <span class="label-text font-medium">{{ __('Tipologia') }}</span>
                             </label>

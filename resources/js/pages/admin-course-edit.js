@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeValidityIssueDialogs(courseEditPage);
     initializeCreateModuleDialog(courseEditPage);
     initializeDeleteCourseDialog(courseEditPage);
+    initializeDuplicateStructureDialog(courseEditPage);
     initializeDeleteModuleDialogs(courseEditPage);
     initializeModuleSorting(courseEditPage);
     initializeSatisfactionSurveyFields(courseEditPage);
@@ -914,6 +915,23 @@ function initializeDeleteCourseDialog(courseEditPage) {
     openDeleteCourseModalButton.addEventListener('click', () => {
         deleteCourseModal.showModal();
     });
+}
+
+function initializeDuplicateStructureDialog(courseEditPage) {
+    const duplicateStructureModal = courseEditPage.querySelector('#duplicate-structure-modal');
+    const openDuplicateStructureModalButton = courseEditPage.querySelector('[data-open-duplicate-structure-modal]');
+
+    if (!duplicateStructureModal || !openDuplicateStructureModalButton) {
+        return;
+    }
+
+    openDuplicateStructureModalButton.addEventListener('click', () => {
+        duplicateStructureModal.showModal();
+    });
+
+    if (duplicateStructureModal.querySelector('.input-error') !== null) {
+        duplicateStructureModal.showModal();
+    }
 }
 
 function initializeDeleteModuleDialogs(courseEditPage) {

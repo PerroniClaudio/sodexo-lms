@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\DuplicateCourse;
+use App\Actions\DuplicateCourseStructure;
 use App\Enums\CourseRiskRequirementValidityType;
 use App\Enums\RiskLevel;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DuplicateCourseStructureRequest;
 use App\Http\Requests\StoreCourseRequest;
 use App\Http\Requests\UpdateCourseRequest;
 use App\Models\Course;
@@ -87,6 +89,12 @@ class CourseController extends Controller
             'satisfaction_survey_required_for_certificate' => (bool) ($validated['satisfaction_survey_required_for_certificate'] ?? false),
             'hasMany' => '0',
         ]);
+
+        if (blank($validated['code'] ?? null)) {
+            $course->forceFill([
+                'code' => 'CRS-'.$course->getKey(),
+            ])->save();
+        }
 
         return redirect()
             ->route('admin.courses.edit', $course)
@@ -239,6 +247,7 @@ class CourseController extends Controller
 
         $normalizedOriginal = [
             'title' => (string) $course->title,
+            'code' => (string) $course->code,
             'description' => (string) $course->description,
             'teaching_material' => (string) ($course->teaching_material ?? ''),
             'max_participants' => $course->max_participants === null ? null : (int) $course->max_participants,
@@ -265,6 +274,7 @@ class CourseController extends Controller
 
         $normalizedIncoming = [
             'title' => (string) ($attributes['title'] ?? ''),
+            'code' => (string) ($attributes['code'] ?? ''),
             'description' => (string) ($attributes['description'] ?? ''),
             'teaching_material' => (string) ($attributes['teaching_material'] ?? ''),
             'max_participants' => array_key_exists('max_participants', $attributes) && $attributes['max_participants'] !== null
@@ -312,5 +322,20 @@ class CourseController extends Controller
         return redirect()
             ->route('admin.courses.edit', $duplicatedCourse)
             ->with('status', __('Corso duplicato con successo.'));
+    }
+
+    public function duplicateStructure(
+        DuplicateCourseStructureRequest $request,
+        Course $course,
+        DuplicateCourseStructure $duplicateCourseStructure,
+    ): RedirectResponse {
+        $duplicatedCourse = $duplicateCourseStructure->handle(
+            $course,
+            (string) $request->validated('new_code')
+        );
+
+        return redirect()
+            ->route('admin.courses.edit', $duplicatedCourse)
+            ->with('status', __('Struttura corso duplicata con successo.'));
     }
 }

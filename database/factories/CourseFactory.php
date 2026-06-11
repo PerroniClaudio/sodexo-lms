@@ -11,6 +11,7 @@ class CourseFactory extends Factory
     {
         return [
             'title' => fake()->sentence(4),
+            'code' => 'CRS-'.fake()->unique()->numerify('########'),
             'description' => fake()->text(),
             'teaching_material' => fake()->optional()->paragraph(),
             'max_participants' => fake()->optional()->numberBetween(5, 100),

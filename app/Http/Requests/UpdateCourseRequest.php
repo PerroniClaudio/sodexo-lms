@@ -30,6 +30,7 @@ class UpdateCourseRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
+            'code' => ['required', 'string', 'max:255', Rule::unique('courses', 'code')->ignore($this->route('course'))],
             'description' => ['required', 'string'],
             'teaching_material' => ['nullable', 'string'],
             'max_participants' => ['nullable', 'integer', 'min:1'],
@@ -175,6 +176,7 @@ class UpdateCourseRequest extends FormRequest
             'course_duration_hours' => __('Durata corso'),
             'interaction_duration_minutes' => __('Durata interattività'),
             'title' => __('Titolo del corso'),
+            'code' => __('Codice corso'),
             'description' => __('Descrizione'),
             'year' => __('Anno del corso'),
             'expiry_date' => __('Data scadenza'),

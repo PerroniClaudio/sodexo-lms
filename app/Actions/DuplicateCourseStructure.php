@@ -7,40 +7,30 @@ use App\Models\Module;
 use App\Models\RiskBasedRequirement;
 use Illuminate\Support\Facades\DB;
 
-class DuplicateCourse
+class DuplicateCourseStructure
 {
-    public function handle(Course $sourceCourse): Course
+    public function handle(Course $sourceCourse, string $code): Course
     {
-        return DB::transaction(function () use ($sourceCourse): Course {
+        return DB::transaction(function () use ($sourceCourse, $code): Course {
             $sourceCourse->loadMissing([
                 'modules',
                 'riskBasedRequirements',
-                'originalCourse',
             ]);
-
-            $rootCourse = $sourceCourse->originalCourse ?? $sourceCourse;
-            $rootCourseId = $sourceCourse->familyRootCourseId();
-            $nextEdition = $this->nextEdition($rootCourseId);
 
             $duplicatedCourse = $sourceCourse
                 ->replicate([
-                    'title',
                     'status',
                     'edition',
                     'original_course_id',
                 ])
                 ->fill([
-                    'title' => sprintf('%s - edizione %d', $rootCourse->title, $nextEdition),
-                    'code' => null,
+                    'code' => $code,
                     'status' => 'draft',
-                    'edition' => $nextEdition,
-                    'original_course_id' => $rootCourseId,
+                    'edition' => 1,
+                    'original_course_id' => null,
                 ]);
 
             $duplicatedCourse->save();
-            $duplicatedCourse->update([
-                'code' => 'CRS-'.$duplicatedCourse->getKey(),
-            ]);
 
             $duplicatedCourse->riskBasedRequirements()->sync(
                 $this->riskRequirementSyncPayload($sourceCourse)
@@ -59,20 +49,8 @@ class DuplicateCourse
             return $duplicatedCourse->fresh([
                 'modules',
                 'riskBasedRequirements',
-                'originalCourse',
             ]);
         });
-    }
-
-    private function nextEdition(int $rootCourseId): int
-    {
-        return (int) Course::query()
-            ->where(function ($query) use ($rootCourseId): void {
-                $query
-                    ->whereKey($rootCourseId)
-                    ->orWhere('original_course_id', $rootCourseId);
-            })
-            ->max('edition') + 1;
     }
 
     /**
