@@ -8,246 +8,354 @@
             'learning_quiz' => 'lucide-badge-help',
             'satisfaction_quiz' => 'lucide-message-square-heart',
         ];
+        $courseEditSections = collect([
+            ['key' => 'details', 'label' => __('Dati anagrafici corso'), 'icon' => 'lucide-book-open-text'],
+            ['key' => 'survey', 'label' => __('Questionario di gradimento'), 'icon' => 'lucide-message-square-heart'],
+            ['key' => 'certificates', 'label' => __('Certificati ottenibili'), 'icon' => 'lucide-file-badge'],
+            ['key' => 'modules', 'label' => __('Moduli'), 'icon' => 'lucide-blocks'],
+            ['key' => 'teachers', 'label' => __('Docenti'), 'icon' => 'lucide-graduation-cap'],
+            ['key' => 'tutors', 'label' => __('Tutor'), 'icon' => 'lucide-users-round'],
+            ['key' => 'enrollments', 'label' => __('Iscritti'), 'icon' => 'lucide-user-plus'],
+        ]);
+        $activeCourseEditSection = request('section', 'details');
+
+        if (! $courseEditSections->contains(fn (array $section): bool => $section['key'] === $activeCourseEditSection)) {
+            $activeCourseEditSection = 'details';
+        }
+
+        $courseUpdateUrl = route('admin.courses.update', $course).'?section='.$activeCourseEditSection;
+        $courseBaseValues = [
+            'title' => old('title', $course->title),
+            'description' => old('description', $course->description),
+            'year' => old('year', $course->year),
+            'expiry_date' => old('expiry_date', $course->expiry_date?->format('Y-m-d')),
+            'status' => old('status', $course->status),
+            'has_satisfaction_survey' => (bool) old('has_satisfaction_survey', $course->has_satisfaction_survey),
+            'satisfaction_survey_required_for_certificate' => (bool) old(
+                'satisfaction_survey_required_for_certificate',
+                $course->satisfaction_survey_required_for_certificate
+            ),
+        ];
+        $selectedRiskBasedRequirementIds = collect(old(
+            'risk_based_requirement_ids',
+            $course->riskBasedRequirements->pluck('id')->map(fn ($id) => (string) $id)->all(),
+        ))->map(fn ($id) => (string) $id);
+        $selectedRiskBasedRequirementValidityTypes = collect(
+            old(
+                'risk_based_requirement_validity_types',
+                $course->riskBasedRequirements
+                    ->mapWithKeys(fn ($riskBasedRequirement) => [
+                        (string) $riskBasedRequirement->getKey() => $course
+                            ->courseValidityTypesForRequirement($riskBasedRequirement)
+                            ->pluck('value')
+                            ->all(),
+                    ])
+                    ->all(),
+            )
+        );
+        $allRiskBasedRequirementsPayload = $riskBasedRequirements
+            ->map(fn ($riskBasedRequirement) => [
+                'id' => (int) $riskBasedRequirement->getKey(),
+                'name' => $riskBasedRequirement->name,
+                'description' => $riskBasedRequirement->description,
+                'risk_levels' => $riskBasedRequirement->risk_levels->pluck('value')->values()->all(),
+                'single_risk_level' => $riskBasedRequirement->singleRiskLevel()?->value,
+            ])
+            ->values();
+        $selectedRiskBasedRequirementsPayload = $riskBasedRequirements
+            ->filter(fn ($riskBasedRequirement) => $selectedRiskBasedRequirementIds->contains((string) $riskBasedRequirement->getKey()))
+            ->map(fn ($riskBasedRequirement) => [
+                'id' => (int) $riskBasedRequirement->getKey(),
+                'name' => $riskBasedRequirement->name,
+                'description' => $riskBasedRequirement->description,
+                'risk_levels' => $riskBasedRequirement->risk_levels->pluck('value')->values()->all(),
+                'single_risk_level' => $riskBasedRequirement->singleRiskLevel()?->value,
+                'course_validity_types' => collect($selectedRiskBasedRequirementValidityTypes->get(
+                    (string) $riskBasedRequirement->getKey(),
+                    [],
+                ))->filter()->values()->all(),
+                'integrative_start_risk_levels' => collect(old(
+                    'risk_based_requirement_integrative_start_levels.'.(string) $riskBasedRequirement->getKey(),
+                    $course->integrativeStartRiskLevelsForRequirement($riskBasedRequirement)->pluck('value')->all(),
+                ))->filter()->values()->all(),
+            ])
+            ->values();
     @endphp
 
     <div
-        class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8"
+        class="min-h-screen bg-base-100"
         data-course-edit-page
         data-has-create-module-errors="{{ $errors->has('type') || $errors->has('title') ? 'true' : 'false' }}"
         data-course-is-published="{{ $course->status === 'published' ? 'true' : 'false' }}"
     >
-        <x-page-header :title="__('Modifica corso')">
-            <x-slot:actions>
-                <button type="button" class="btn btn-accent btn-outline" data-open-delete-course-modal>
-                    <x-lucide-trash-2 class="h-4 w-4" />
-                    <span>{{ __('Delete course') }}</span>
-                </button>
-            </x-slot:actions>
-        </x-page-header>
-
-        <div class="flex flex-col gap-6">
-            <div class="card border border-base-300 bg-base-100 shadow-sm">
-                <div class="card-body gap-6">
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="flex-1">
-                            <h2 class="card-title">{{ __('Dati anagrafici') }}</h2>
-                            <p class="text-sm text-base-content/70">
-                                {{ __('Gestisci le informazioni principali del corso.') }}
-                            </p>
-                            <div class="mt-3">
-                                <span class="text-base-content/70">{{ __('Tipologia:') }}</span> <span class="badge badge-outline h-fit">{{ $courseTypeLabels[$course->type] ?? $course->type }}</span>
-                            </div>
-                        </div>
-                        <div>
-                            @include('admin.course.partials.course-validity-badge')
-                        </div>
+        <div class="grid min-h-screen w-full lg:grid-cols-[18rem_minmax(0,1fr)]">
+            <aside class="border-b border-base-300 bg-base-200 p-4 lg:min-h-screen lg:border-b-0 lg:border-r">
+                <div class="lg:sticky lg:top-4">
+                    <div class="overflow-x-auto">
+                        <ul class="menu menu-horizontal w-max gap-1 lg:menu-vertical lg:w-full">
+                            @foreach ($courseEditSections as $section)
+                                <li class="w-full">
+                                    <a
+                                        href="{{ route('admin.courses.edit', $course).'?section='.$section['key'] }}"
+                                        @class([
+                                            'w-full whitespace-nowrap',
+                                            'menu-active' => $activeCourseEditSection === $section['key'],
+                                        ])
+                                    >
+                                        <x-dynamic-component :component="$section['icon']" class="mr-2 inline-block h-5 w-5" />
+                                        {{ $section['label'] }}
+                                    </a>
+                                </li>
+                            @endforeach
+                        </ul>
                     </div>
+                </div>
+            </aside>
 
-                    <form method="POST" action="{{ route('admin.courses.update', $course) }}" class="flex flex-col gap-6">
-                        @csrf
-                        @method('PUT')
+            <main class="min-w-0">
+                <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+                    <x-page-header :title="__('Modifica corso')">
+                        <x-slot:actions>
+                            <button type="button" class="btn btn-accent btn-outline" data-open-delete-course-modal>
+                                <x-lucide-trash-2 class="h-4 w-4" />
+                                <span>{{ __('Delete course') }}</span>
+                            </button>
+                        </x-slot:actions>
+                    </x-page-header>
 
-                        <div class="grid gap-6 md:grid-cols-2">
-                            <div class="form-control flex flex-col gap-2 md:col-span-2">
-                                <label for="title" class="label p-0">
-                                    <span class="label-text font-medium">{{ __('Titolo del corso') }}</span>
-                                </label>
-                                <input
-                                    id="title"
-                                    name="title"
-                                    type="text"
-                                    value="{{ old('title', $course->title) }}"
-                                    class="input input-bordered w-full @error('title') input-error @enderror"
-                                    required
-                                >
-                                @error('title')
-                                    <p class="text-sm text-error">{{ $message }}</p>
-                                @enderror
+                    <div class="flex flex-col gap-6">
+                        @if ($activeCourseEditSection === 'details')
+                            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                                <div class="card-body gap-6">
+                                    <div class="flex items-start justify-between gap-4">
+                                        <div class="flex-1">
+                                            <h2 class="card-title">{{ __('Dati anagrafici corso') }}</h2>
+                                            <p class="text-sm text-base-content/70">
+                                                {{ __('Gestisci le informazioni principali del corso.') }}
+                                            </p>
+                                            <div class="mt-3">
+                                                <span class="text-base-content/70">{{ __('Tipologia:') }}</span>
+                                                <span class="badge badge-outline h-fit">{{ $courseTypeLabels[$course->type] ?? $course->type }}</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            @include('admin.course.partials.course-validity-badge')
+                                        </div>
+                                    </div>
+
+                                    <form method="POST" action="{{ $courseUpdateUrl }}" class="flex flex-col gap-6">
+                                        @csrf
+                                        @method('PUT')
+
+                                        <input type="hidden" name="has_satisfaction_survey" value="{{ $courseBaseValues['has_satisfaction_survey'] ? '1' : '0' }}">
+                                        <input type="hidden" name="satisfaction_survey_required_for_certificate" value="{{ $courseBaseValues['satisfaction_survey_required_for_certificate'] ? '1' : '0' }}">
+                                        @foreach ($selectedRiskBasedRequirementsPayload as $selectedRiskBasedRequirement)
+                                            <input type="hidden" name="risk_based_requirement_ids[]" value="{{ $selectedRiskBasedRequirement['id'] }}">
+                                            @foreach ($selectedRiskBasedRequirement['course_validity_types'] as $courseValidityType)
+                                                <input type="hidden" name="risk_based_requirement_validity_types[{{ $selectedRiskBasedRequirement['id'] }}][]" value="{{ $courseValidityType }}">
+                                            @endforeach
+                                            @foreach ($selectedRiskBasedRequirement['integrative_start_risk_levels'] as $integrativeStartRiskLevel)
+                                                <input type="hidden" name="risk_based_requirement_integrative_start_levels[{{ $selectedRiskBasedRequirement['id'] }}][]" value="{{ $integrativeStartRiskLevel }}">
+                                            @endforeach
+                                        @endforeach
+
+                                        <div class="grid gap-6 md:grid-cols-2">
+                                            <div class="form-control flex flex-col gap-2 md:col-span-2">
+                                                <label for="title" class="label p-0">
+                                                    <span class="label-text font-medium">{{ __('Titolo del corso') }}</span>
+                                                </label>
+                                                <input
+                                                    id="title"
+                                                    name="title"
+                                                    type="text"
+                                                    value="{{ $courseBaseValues['title'] }}"
+                                                    class="input input-bordered w-full @error('title') input-error @enderror"
+                                                    required
+                                                >
+                                                @error('title')
+                                                    <p class="text-sm text-error">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+
+                                            <div class="form-control flex flex-col gap-2 md:col-span-2">
+                                                <label for="description" class="label p-0">
+                                                    <span class="label-text font-medium">{{ __('Descrizione') }}</span>
+                                                </label>
+                                                <textarea
+                                                    id="description"
+                                                    name="description"
+                                                    class="textarea textarea-bordered min-h-32 w-full @error('description') textarea-error @enderror"
+                                                    required
+                                                >{{ $courseBaseValues['description'] }}</textarea>
+                                                @error('description')
+                                                    <p class="text-sm text-error">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+
+                                            <div class="form-control flex flex-col gap-2">
+                                                <label for="year" class="label p-0">
+                                                    <span class="label-text font-medium">{{ __('Anno del corso') }}</span>
+                                                </label>
+                                                <input
+                                                    id="year"
+                                                    name="year"
+                                                    type="number"
+                                                    value="{{ $courseBaseValues['year'] }}"
+                                                    class="input input-bordered w-full @error('year') input-error @enderror"
+                                                    min="1900"
+                                                    max="2100"
+                                                    required
+                                                >
+                                                @error('year')
+                                                    <p class="text-sm text-error">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+
+                                            <div class="form-control flex flex-col gap-2">
+                                                <label for="expiry_date" class="label p-0">
+                                                    <span class="label-text font-medium">{{ __('Data scadenza') }}</span>
+                                                </label>
+                                                <input
+                                                    id="expiry_date"
+                                                    name="expiry_date"
+                                                    type="date"
+                                                    value="{{ $courseBaseValues['expiry_date'] }}"
+                                                    class="input input-bordered w-full @error('expiry_date') input-error @enderror"
+                                                    required
+                                                >
+                                                @error('expiry_date')
+                                                    <p class="text-sm text-error">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+
+                                            <div class="form-control flex flex-col gap-2 md:col-span-2">
+                                                <label for="status" class="label p-0">
+                                                    <span class="label-text font-medium">{{ __('Stato') }}</span>
+                                                </label>
+                                                <select
+                                                    id="status"
+                                                    name="status"
+                                                    class="select select-bordered w-full @error('status') select-error @enderror"
+                                                    required
+                                                >
+                                                    @foreach ($courseStatusLabels as $courseStatus => $courseStatusLabel)
+                                                        <option value="{{ $courseStatus }}" @selected($courseBaseValues['status'] === $courseStatus)>
+                                                            {{ $courseStatusLabel }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                @error('status')
+                                                    <p class="text-sm text-error">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+                                        </div>
+
+                                        <div class="flex justify-end">
+                                            <button type="submit" class="btn btn-primary">
+                                                <span>{{ __('Salva dati') }}</span>
+                                                <x-lucide-save class="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
+                        @endif
 
-                            <div class="form-control flex flex-col gap-2 md:col-span-2">
-                                <label for="description" class="label p-0">
-                                    <span class="label-text font-medium">{{ __('Descrizione') }}</span>
-                                </label>
-                                <textarea
-                                    id="description"
-                                    name="description"
-                                    class="textarea textarea-bordered min-h-32 w-full @error('description') textarea-error @enderror"
-                                    required
-                                >{{ old('description', $course->description) }}</textarea>
-                                @error('description')
-                                    <p class="text-sm text-error">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <div class="form-control flex flex-col gap-2">
-                                <label for="year" class="label p-0">
-                                    <span class="label-text font-medium">{{ __('Anno del corso') }}</span>
-                                </label>
-                                <input
-                                    id="year"
-                                    name="year"
-                                    type="number"
-                                    value="{{ old('year', $course->year) }}"
-                                    class="input input-bordered w-full @error('year') input-error @enderror"
-                                    min="1900"
-                                    max="2100"
-                                    required
-                                >
-                                @error('year')
-                                    <p class="text-sm text-error">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <div class="form-control flex flex-col gap-2">
-                                <label for="expiry_date" class="label p-0">
-                                    <span class="label-text font-medium">{{ __('Data scadenza') }}</span>
-                                </label>
-                                <input
-                                    id="expiry_date"
-                                    name="expiry_date"
-                                    type="date"
-                                    value="{{ old('expiry_date', $course->expiry_date?->format('Y-m-d')) }}"
-                                    class="input input-bordered w-full @error('expiry_date') input-error @enderror"
-                                    required
-                                >
-                                @error('expiry_date')
-                                    <p class="text-sm text-error">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <div class="form-control flex flex-col gap-2 md:col-span-2">
-                                <label for="status" class="label p-0">
-                                    <span class="label-text font-medium">{{ __('Stato') }}</span>
-                                </label>
-                                <select
-                                    id="status"
-                                    name="status"
-                                    class="select select-bordered w-full @error('status') select-error @enderror"
-                                    required
-                                >
-                                    @foreach ($courseStatusLabels as $courseStatus => $courseStatusLabel)
-                                        <option value="{{ $courseStatus }}" @selected(old('status', $course->status) === $courseStatus)>
-                                            {{ $courseStatusLabel }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('status')
-                                    <p class="text-sm text-error">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <div class="rounded-box border border-base-300 bg-base-200/40 p-4 md:col-span-2">
-                                <div class="flex flex-col gap-4">
+                        @if ($activeCourseEditSection === 'survey')
+                            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                                <div class="card-body gap-6">
                                     <div>
-                                        <h3 class="text-sm font-semibold text-base-content">{{ __('Questionario di gradimento') }}</h3>
+                                        <h2 class="card-title">{{ __('Questionario di gradimento') }}</h2>
                                         <p class="text-sm text-base-content/70">
                                             {{ __('Se abilitato, viene aggiunto automaticamente come ultimo modulo del corso.') }}
                                         </p>
                                     </div>
 
-                                    <label class="label cursor-pointer justify-start gap-3 p-0">
-                                        <input
-                                            type="checkbox"
-                                            name="has_satisfaction_survey"
-                                            value="1"
-                                            class="checkbox"
-                                            @checked(old('has_satisfaction_survey', $course->has_satisfaction_survey))
-                                            data-satisfaction-enabled
-                                        >
-                                        <span class="label-text">{{ __('Includi questionario di gradimento') }}</span>
-                                    </label>
-                                    @error('has_satisfaction_survey')
-                                        <p class="text-sm text-error">{{ $message }}</p>
-                                    @enderror
+                                    <form method="POST" action="{{ $courseUpdateUrl }}" class="flex flex-col gap-6">
+                                        @csrf
+                                        @method('PUT')
 
-                                    <label class="label cursor-pointer justify-start gap-3 p-0">
-                                        <input
-                                            type="checkbox"
-                                            name="satisfaction_survey_required_for_certificate"
-                                            value="1"
-                                            class="checkbox"
-                                            @checked(old('satisfaction_survey_required_for_certificate', $course->satisfaction_survey_required_for_certificate))
-                                            data-satisfaction-required
-                                        >
-                                        <span class="label-text">{{ __('Rendi il questionario obbligatorio per l\'ottenimento dell\'attestato') }}</span>
-                                    </label>
-                                    @error('satisfaction_survey_required_for_certificate')
-                                        <p class="text-sm text-error">{{ $message }}</p>
-                                    @enderror
+                                        <input type="hidden" name="title" value="{{ $courseBaseValues['title'] }}">
+                                        <input type="hidden" name="description" value="{{ $courseBaseValues['description'] }}">
+                                        <input type="hidden" name="year" value="{{ $courseBaseValues['year'] }}">
+                                        <input type="hidden" name="expiry_date" value="{{ $courseBaseValues['expiry_date'] }}">
+                                        <input type="hidden" name="status" value="{{ $courseBaseValues['status'] }}">
+                                        @foreach ($selectedRiskBasedRequirementsPayload as $selectedRiskBasedRequirement)
+                                            <input type="hidden" name="risk_based_requirement_ids[]" value="{{ $selectedRiskBasedRequirement['id'] }}">
+                                            @foreach ($selectedRiskBasedRequirement['course_validity_types'] as $courseValidityType)
+                                                <input type="hidden" name="risk_based_requirement_validity_types[{{ $selectedRiskBasedRequirement['id'] }}][]" value="{{ $courseValidityType }}">
+                                            @endforeach
+                                            @foreach ($selectedRiskBasedRequirement['integrative_start_risk_levels'] as $integrativeStartRiskLevel)
+                                                <input type="hidden" name="risk_based_requirement_integrative_start_levels[{{ $selectedRiskBasedRequirement['id'] }}][]" value="{{ $integrativeStartRiskLevel }}">
+                                            @endforeach
+                                        @endforeach
 
-                                    <div class="text-sm text-base-content/70">
-                                        @role('superadmin')
-                                            @if($activeSatisfactionSurveyTemplate)
-                                                <a href="{{ route('admin.satisfaction-survey.edit') }}" class="link link-primary">
-                                                    {{ __('Configura domande e risposte globali del questionario') }}
-                                                </a>
-                                            @else
-                                                <a href="{{ route('admin.satisfaction-survey.edit') }}" class="link link-error">
-                                                    {{ __('Configura prima il questionario globale di gradimento') }}
-                                                </a>
-                                            @endif
-                                        @else
-                                        @endrole
-                                    </div>
+                                        <div class="rounded-box border border-base-300 bg-base-200/40 p-4">
+                                            <div class="flex flex-col gap-4">
+                                                <label class="label cursor-pointer justify-start gap-3 p-0">
+                                                    <input
+                                                        type="checkbox"
+                                                        name="has_satisfaction_survey"
+                                                        value="1"
+                                                        class="checkbox"
+                                                        @checked($courseBaseValues['has_satisfaction_survey'])
+                                                        data-satisfaction-enabled
+                                                    >
+                                                    <span class="label-text">{{ __('Includi questionario di gradimento') }}</span>
+                                                </label>
+                                                @error('has_satisfaction_survey')
+                                                    <p class="text-sm text-error">{{ $message }}</p>
+                                                @enderror
+
+                                                <label class="label cursor-pointer justify-start gap-3 p-0">
+                                                    <input
+                                                        type="checkbox"
+                                                        name="satisfaction_survey_required_for_certificate"
+                                                        value="1"
+                                                        class="checkbox"
+                                                        @checked($courseBaseValues['satisfaction_survey_required_for_certificate'])
+                                                        data-satisfaction-required
+                                                    >
+                                                    <span class="label-text">{{ __('Rendi il questionario obbligatorio per l\'ottenimento dell\'attestato') }}</span>
+                                                </label>
+                                                @error('satisfaction_survey_required_for_certificate')
+                                                    <p class="text-sm text-error">{{ $message }}</p>
+                                                @enderror
+
+                                                <div class="text-sm text-base-content/70">
+                                                    @role('superadmin')
+                                                        @if ($activeSatisfactionSurveyTemplate)
+                                                            <a href="{{ route('admin.satisfaction-survey.edit') }}" class="link link-primary">
+                                                                {{ __('Configura domande e risposte globali del questionario') }}
+                                                            </a>
+                                                        @else
+                                                            <a href="{{ route('admin.satisfaction-survey.edit') }}" class="link link-error">
+                                                                {{ __('Configura prima il questionario globale di gradimento') }}
+                                                            </a>
+                                                        @endif
+                                                    @else
+                                                    @endrole
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex justify-end">
+                                            <button type="submit" class="btn btn-primary">
+                                                <span>{{ __('Salva dati') }}</span>
+                                                <x-lucide-save class="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </form>
                                 </div>
                             </div>
+                        @endif
 
-                            @php
-                                $selectedRiskBasedRequirementIds = collect(old(
-                                    'risk_based_requirement_ids',
-                                    $course->riskBasedRequirements->pluck('id')->map(fn ($id) => (string) $id)->all(),
-                                ))->map(fn ($id) => (string) $id);
-                                $selectedRiskBasedRequirementValidityTypes = collect(
-                                    old(
-                                        'risk_based_requirement_validity_types',
-                                        $course->riskBasedRequirements
-                                            ->mapWithKeys(fn ($riskBasedRequirement) => [
-                                                (string) $riskBasedRequirement->getKey() => $course
-                                                    ->courseValidityTypesForRequirement($riskBasedRequirement)
-                                                    ->pluck('value')
-                                                    ->all(),
-                                            ])
-                                            ->all(),
-                                    )
-                                );
-                                $allRiskBasedRequirementsPayload = $riskBasedRequirements
-                                    ->map(fn ($riskBasedRequirement) => [
-                                        'id' => (int) $riskBasedRequirement->getKey(),
-                                        'name' => $riskBasedRequirement->name,
-                                        'description' => $riskBasedRequirement->description,
-                                        'risk_levels' => $riskBasedRequirement->risk_levels->pluck('value')->values()->all(),
-                                        'single_risk_level' => $riskBasedRequirement->singleRiskLevel()?->value,
-                                    ])
-                                    ->values();
-                                $selectedRiskBasedRequirementsPayload = $riskBasedRequirements
-                                    ->filter(fn ($riskBasedRequirement) => $selectedRiskBasedRequirementIds->contains((string) $riskBasedRequirement->getKey()))
-                                    ->map(fn ($riskBasedRequirement) => [
-                                        'id' => (int) $riskBasedRequirement->getKey(),
-                                        'name' => $riskBasedRequirement->name,
-                                        'description' => $riskBasedRequirement->description,
-                                        'risk_levels' => $riskBasedRequirement->risk_levels->pluck('value')->values()->all(),
-                                        'single_risk_level' => $riskBasedRequirement->singleRiskLevel()?->value,
-                                        'course_validity_types' => collect($selectedRiskBasedRequirementValidityTypes->get(
-                                            (string) $riskBasedRequirement->getKey(),
-                                            [],
-                                        ))->filter()->values()->all(),
-                                        'integrative_start_risk_levels' => collect(old(
-                                            'risk_based_requirement_integrative_start_levels.'.(string) $riskBasedRequirement->getKey(),
-                                            $course->integrativeStartRiskLevelsForRequirement($riskBasedRequirement)->pluck('value')->all(),
-                                        ))->filter()->values()->all(),
-                                    ])
-                                    ->values();
-                            @endphp
-
-                            <div
-                                class="rounded-box border border-base-300 bg-base-200/40 p-4 md:col-span-2"
-                                data-course-risk-requirements
-                            >
-                                <div class="flex flex-col gap-4">
+                        @if ($activeCourseEditSection === 'certificates')
+                            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                                <div class="card-body gap-6">
                                     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                                         <div>
-                                            <h3 class="text-sm font-semibold text-base-content">{{ __('Certificati ottenibili') }}</h3>
+                                            <h2 class="card-title">{{ __('Certificati ottenibili') }}</h2>
                                             <p class="text-sm text-base-content/70">
                                                 {{ __('Seleziona i certificati ottenibili con questo corso e definisci una o più tipologie di validità per ciascuno.') }}
                                             </p>
@@ -261,180 +369,193 @@
                                         @endif
                                     </div>
 
-                                    @if ($riskBasedRequirements->isEmpty())
-                                        <div class="rounded-box border border-dashed border-base-300 bg-base-100/70 p-4 text-sm text-base-content/70">
-                                            {{ __('Non ci sono ancora abilitazioni configurate.') }}
+                                    <form method="POST" action="{{ $courseUpdateUrl }}" class="flex flex-col gap-6">
+                                        @csrf
+                                        @method('PUT')
+
+                                        <input type="hidden" name="title" value="{{ $courseBaseValues['title'] }}">
+                                        <input type="hidden" name="description" value="{{ $courseBaseValues['description'] }}">
+                                        <input type="hidden" name="year" value="{{ $courseBaseValues['year'] }}">
+                                        <input type="hidden" name="expiry_date" value="{{ $courseBaseValues['expiry_date'] }}">
+                                        <input type="hidden" name="status" value="{{ $courseBaseValues['status'] }}">
+                                        <input type="hidden" name="has_satisfaction_survey" value="{{ $courseBaseValues['has_satisfaction_survey'] ? '1' : '0' }}">
+                                        <input type="hidden" name="satisfaction_survey_required_for_certificate" value="{{ $courseBaseValues['satisfaction_survey_required_for_certificate'] ? '1' : '0' }}">
+
+                                        <div class="flex flex-col gap-4" data-course-risk-requirements>
+                                            @if ($riskBasedRequirements->isEmpty())
+                                                <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-4 text-sm text-base-content/70">
+                                                    {{ __('Non ci sono ancora abilitazioni configurate.') }}
+                                                </div>
+                                            @else
+                                                <div class="grid gap-3" data-course-risk-requirements-list></div>
+
+                                                <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-4 text-sm text-base-content/70 hidden" data-course-risk-requirements-empty>
+                                                    {{ __('Nessuna abilitazione associata al corso.') }}
+                                                </div>
+
+                                                <div data-course-risk-requirements-hidden-inputs></div>
+
+                                                <script type="application/json" data-course-risk-requirements-all>
+                                                    {!! json_encode($allRiskBasedRequirementsPayload->all(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}
+                                                </script>
+                                                <script type="application/json" data-course-risk-requirements-selected>
+                                                    {!! json_encode($selectedRiskBasedRequirementsPayload->all(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}
+                                                </script>
+
+                                                <dialog class="modal" data-course-risk-requirement-selection-modal>
+                                                        <div class="modal-box max-w-4xl">
+                                                            <div class="flex items-start justify-between gap-4">
+                                                                <div>
+                                                                    <h3 class="text-lg font-semibold">{{ __('Seleziona requisito di rischio') }}</h3>
+                                                                    <p class="text-sm text-base-content/70">
+                                                                        {{ __('Scegli uno dei requisiti disponibili da associare al corso.') }}
+                                                                    </p>
+                                                                </div>
+                                                                <button type="button" class="btn btn-ghost btn-sm btn-circle" data-close-risk-requirement-selection-modal>
+                                                                    <x-lucide-x class="h-4 w-4" />
+                                                                </button>
+                                                            </div>
+
+                                                            <div class="mt-6 overflow-x-auto rounded-box border border-base-300">
+                                                                <table class="table w-full">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th>{{ __('Nome') }}</th>
+                                                                            <th>{{ __('Descrizione') }}</th>
+                                                                            <th class="text-right">{{ __('Azioni') }}</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody data-course-risk-requirement-selection-tbody></tbody>
+                                                                </table>
+                                                            </div>
+
+                                                            <div class="mt-4 rounded-box border border-dashed border-base-300 bg-base-100/70 p-4 text-sm text-base-content/70 hidden" data-course-risk-requirement-selection-empty>
+                                                                {{ __('Tutti i requisiti disponibili sono già associati al corso.') }}
+                                                            </div>
+
+                                                            <div class="modal-action">
+                                                                <button type="button" class="btn btn-ghost" data-close-risk-requirement-selection-modal>
+                                                                    {{ __('Chiudi') }}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <button type="button" class="modal-backdrop" data-close-risk-requirement-selection-modal>
+                                                            {{ __('Chiudi') }}
+                                                        </button>
+                                                </dialog>
+
+                                                <dialog class="modal" data-course-risk-requirement-validity-modal>
+                                                        <div class="modal-box max-w-lg">
+                                                            <div class="space-y-2">
+                                                                <h3 class="text-lg font-semibold" data-course-risk-requirement-validity-modal-title>{{ __('Imposta validità del corso') }}</h3>
+                                                                <p class="text-sm text-base-content/70" data-course-risk-requirement-validity-modal-description></p>
+                                                            </div>
+
+                                                            <div class="mt-6 rounded-box border border-base-300 bg-base-200/40 p-4">
+                                                                <div class="space-y-2">
+                                                                    <div class="font-medium text-base-content">{{ __('Validità del corso') }}</div>
+                                                                    <p class="text-sm text-base-content/70">
+                                                                        {{ __('Puoi selezionare una o più tipologie di validità per lo stesso requisito.') }}
+                                                                    </p>
+                                                                </div>
+
+                                                                <div class="mt-4 flex flex-col gap-3" data-course-risk-requirement-validity-options>
+                                                                    @foreach ($courseRiskRequirementValidityTypeLabels as $value => $label)
+                                                                        <label class="label cursor-pointer justify-start gap-3 rounded-box border border-base-300 bg-base-100 px-4 py-3">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                value="{{ $value }}"
+                                                                                class="checkbox"
+                                                                                data-course-risk-requirement-validity-option
+                                                                            >
+                                                                            <span class="label-text font-medium">{{ $label }}</span>
+                                                                        </label>
+                                                                    @endforeach
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="mt-4 hidden rounded-box border border-base-300 bg-base-200/40 p-4" data-course-risk-requirement-integrative-fields>
+                                                                <div class="space-y-2">
+                                                                    <div class="font-medium text-base-content">{{ __('Livelli di partenza ammessi') }}</div>
+                                                                    <p class="text-sm text-base-content/70">
+                                                                        {{ __('Seleziona i livelli che l\'utente deve possedere per poter frequentare il corso integrativo.') }}
+                                                                    </p>
+                                                                </div>
+
+                                                                <div class="mt-4 flex flex-col gap-2" data-course-risk-requirement-integrative-options>
+                                                                    @foreach ($riskLevels as $riskLevel)
+                                                                        <label class="label cursor-pointer justify-start gap-3">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                value="{{ $riskLevel->value }}"
+                                                                                class="checkbox"
+                                                                                data-integrative-start-level-option
+                                                                            >
+                                                                            <span class="badge {{ $riskLevel->badgeColor() }} h-fit">{{ $riskLevel->label() }}</span>
+                                                                        </label>
+                                                                    @endforeach
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="modal-action">
+                                                                <button type="button" class="btn btn-ghost" data-close-risk-requirement-validity-modal>
+                                                                    {{ __('Annulla') }}
+                                                                </button>
+                                                                <button type="button" class="btn btn-primary" data-confirm-risk-requirement-validity>
+                                                                    {{ __('Conferma') }}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <button type="button" class="modal-backdrop" data-close-risk-requirement-validity-modal>
+                                                            {{ __('Chiudi') }}
+                                                        </button>
+                                                </dialog>
+
+                                                <dialog class="modal" data-course-risk-requirement-delete-modal>
+                                                        <div class="modal-box max-w-lg">
+                                                            <div class="space-y-2">
+                                                                <h3 class="text-lg font-semibold">{{ __('Rimuovi associazione') }}</h3>
+                                                                <p class="text-sm text-base-content/70" data-course-risk-requirement-delete-modal-description></p>
+                                                            </div>
+
+                                                            <div class="modal-action">
+                                                                <button type="button" class="btn btn-ghost" data-close-risk-requirement-delete-modal>
+                                                                    {{ __('Annulla') }}
+                                                                </button>
+                                                                <button type="button" class="btn btn-accent" data-confirm-risk-requirement-delete>
+                                                                    {{ __('Conferma eliminazione') }}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <button type="button" class="modal-backdrop" data-close-risk-requirement-delete-modal>
+                                                            {{ __('Chiudi') }}
+                                                        </button>
+                                                </dialog>
+                                            @endif
+
+                                            @error('risk_based_requirement_ids')
+                                                <p class="text-sm text-error">{{ $message }}</p>
+                                            @enderror
+                                            @error('risk_based_requirement_validity_types')
+                                                <p class="text-sm text-error">{{ $message }}</p>
+                                            @enderror
+                                            @error('risk_based_requirement_integrative_start_levels')
+                                                <p class="text-sm text-error">{{ $message }}</p>
+                                            @enderror
                                         </div>
-                                    @else
-                                        <div class="grid gap-3" data-course-risk-requirements-list></div>
 
-                                        <div class="rounded-box border border-dashed border-base-300 bg-base-100/70 p-4 text-sm text-base-content/70 hidden" data-course-risk-requirements-empty>
-                                            {{ __('Nessuna abilitazione associata al corso.') }}
+                                        <div class="flex justify-end">
+                                            <button type="submit" class="btn btn-primary">
+                                                <span>{{ __('Salva dati') }}</span>
+                                                <x-lucide-save class="h-4 w-4" />
+                                            </button>
                                         </div>
-
-                                        <div data-course-risk-requirements-hidden-inputs></div>
-
-                                        <script type="application/json" data-course-risk-requirements-all>
-                                            {!! json_encode($allRiskBasedRequirementsPayload->all(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}
-                                        </script>
-                                        <script type="application/json" data-course-risk-requirements-selected>
-                                            {!! json_encode($selectedRiskBasedRequirementsPayload->all(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}
-                                        </script>
-
-                                        <dialog class="modal" data-course-risk-requirement-selection-modal>
-                                            <div class="modal-box max-w-4xl">
-                                                <div class="flex items-start justify-between gap-4">
-                                                    <div>
-                                                        <h3 class="text-lg font-semibold">{{ __('Seleziona requisito di rischio') }}</h3>
-                                                        <p class="text-sm text-base-content/70">
-                                                            {{ __('Scegli uno dei requisiti disponibili da associare al corso.') }}
-                                                        </p>
-                                                    </div>
-                                                    <button type="button" class="btn btn-ghost btn-sm btn-circle" data-close-risk-requirement-selection-modal>
-                                                        <x-lucide-x class="h-4 w-4" />
-                                                    </button>
-                                                </div>
-
-                                                <div class="mt-6 overflow-x-auto rounded-box border border-base-300">
-                                                    <table class="table w-full">
-                                                        <thead>
-                                                            <tr>
-                                                                <th>{{ __('Nome') }}</th>
-                                                                <th>{{ __('Descrizione') }}</th>
-                                                                <th class="text-right">{{ __('Azioni') }}</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody data-course-risk-requirement-selection-tbody></tbody>
-                                                    </table>
-                                                </div>
-
-                                                <div class="mt-4 rounded-box border border-dashed border-base-300 bg-base-100/70 p-4 text-sm text-base-content/70 hidden" data-course-risk-requirement-selection-empty>
-                                                    {{ __('Tutti i requisiti disponibili sono già associati al corso.') }}
-                                                </div>
-
-                                                <div class="modal-action">
-                                                    <button type="button" class="btn btn-ghost" data-close-risk-requirement-selection-modal>
-                                                        {{ __('Chiudi') }}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <button type="button" class="modal-backdrop" data-close-risk-requirement-selection-modal>
-                                                {{ __('Chiudi') }}
-                                            </button>
-                                        </dialog>
-
-                                        <dialog class="modal" data-course-risk-requirement-validity-modal>
-                                            <div class="modal-box max-w-lg">
-                                                <div class="space-y-2">
-                                                    <h3 class="text-lg font-semibold" data-course-risk-requirement-validity-modal-title>{{ __('Imposta validità del corso') }}</h3>
-                                                    <p class="text-sm text-base-content/70" data-course-risk-requirement-validity-modal-description></p>
-                                                </div>
-
-                                                <div class="mt-6 rounded-box border border-base-300 bg-base-200/40 p-4">
-                                                    <div class="space-y-2">
-                                                        <div class="font-medium text-base-content">{{ __('Validità del corso') }}</div>
-                                                        <p class="text-sm text-base-content/70">
-                                                            {{ __('Puoi selezionare una o più tipologie di validità per lo stesso requisito.') }}
-                                                        </p>
-                                                    </div>
-
-                                                    <div class="mt-4 flex flex-col gap-3" data-course-risk-requirement-validity-options>
-                                                        @foreach ($courseRiskRequirementValidityTypeLabels as $value => $label)
-                                                            <label class="label cursor-pointer justify-start gap-3 rounded-box border border-base-300 bg-base-100 px-4 py-3">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    value="{{ $value }}"
-                                                                    class="checkbox"
-                                                                    data-course-risk-requirement-validity-option
-                                                                >
-                                                                <span class="label-text font-medium">{{ $label }}</span>
-                                                            </label>
-                                                        @endforeach
-                                                    </div>
-                                                </div>
-
-                                                <div class="mt-4 hidden rounded-box border border-base-300 bg-base-200/40 p-4" data-course-risk-requirement-integrative-fields>
-                                                    <div class="space-y-2">
-                                                        <div class="font-medium text-base-content">{{ __('Livelli di partenza ammessi') }}</div>
-                                                        <p class="text-sm text-base-content/70">
-                                                            {{ __('Seleziona i livelli che l\'utente deve possedere per poter frequentare il corso integrativo.') }}
-                                                        </p>
-                                                    </div>
-
-                                                    <div class="mt-4 flex flex-col gap-2" data-course-risk-requirement-integrative-options>
-                                                        @foreach ($riskLevels as $riskLevel)
-                                                            <label class="label cursor-pointer justify-start gap-3 ">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    value="{{ $riskLevel->value }}"
-                                                                    class="checkbox"
-                                                                    data-integrative-start-level-option
-                                                                >
-                                                                <span class="badge {{ $riskLevel->badgeColor() }} h-fit">{{ $riskLevel->label() }}</span>
-                                                            </label>
-                                                        @endforeach
-                                                    </div>
-                                                </div>
-
-                                                <div class="modal-action">
-                                                    <button type="button" class="btn btn-ghost" data-close-risk-requirement-validity-modal>
-                                                        {{ __('Annulla') }}
-                                                    </button>
-                                                    <button type="button" class="btn btn-primary" data-confirm-risk-requirement-validity>
-                                                        {{ __('Conferma') }}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <button type="button" class="modal-backdrop" data-close-risk-requirement-validity-modal>
-                                                {{ __('Chiudi') }}
-                                            </button>
-                                        </dialog>
-
-                                        <dialog class="modal" data-course-risk-requirement-delete-modal>
-                                            <div class="modal-box max-w-lg">
-                                                <div class="space-y-2">
-                                                    <h3 class="text-lg font-semibold">{{ __('Rimuovi associazione') }}</h3>
-                                                    <p class="text-sm text-base-content/70" data-course-risk-requirement-delete-modal-description></p>
-                                                </div>
-
-                                                <div class="modal-action">
-                                                    <button type="button" class="btn btn-ghost" data-close-risk-requirement-delete-modal>
-                                                        {{ __('Annulla') }}
-                                                    </button>
-                                                    <button type="button" class="btn btn-accent" data-confirm-risk-requirement-delete>
-                                                        {{ __('Conferma eliminazione') }}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <button type="button" class="modal-backdrop" data-close-risk-requirement-delete-modal>
-                                                {{ __('Chiudi') }}
-                                            </button>
-                                        </dialog>
-                                    @endif
-
-                                    @error('risk_based_requirement_ids')
-                                        <p class="text-sm text-error">{{ $message }}</p>
-                                    @enderror
-                                    @error('risk_based_requirement_validity_types')
-                                        <p class="text-sm text-error">{{ $message }}</p>
-                                    @enderror
-                                    @error('risk_based_requirement_integrative_start_levels')
-                                        <p class="text-sm text-error">{{ $message }}</p>
-                                    @enderror
+                                    </form>
                                 </div>
                             </div>
-                        </div>
+                        @endif
 
-                        <div class="flex justify-end">
-                            <button type="submit" class="btn btn-primary">
-                                <span>{{ __('Salva dati') }}</span>
-                                <x-lucide-save class="h-4 w-4" />
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
+                        @if ($activeCourseEditSection === 'modules')
             <div class="card border border-base-300 bg-base-100 shadow-sm">
                 <div class="card-body gap-6">
                     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -647,42 +768,34 @@
                         </form>
                     </dialog>
 
-                    <dialog id="delete-course-modal" class="modal">
-                        <div class="modal-box max-w-lg">
-                            <div class="space-y-2">
-                                <h3 class="text-lg font-semibold">{{ __('Delete course') }}</h3>
-                                <p class="text-sm text-base-content/70">
-                                    {{ __('This action will move the course to the trash. Do you want to continue?') }}
-                                </p>
-                            </div>
-
-                            <div class="modal-action mt-6">
-                                <form method="dialog">
-                                    <button type="submit" class="btn btn-ghost" data-close-delete-course-modal>
-                                        {{ __('Cancel') }}
-                                    </button>
-                                </form>
-                                <form method="POST" action="{{ route('admin.courses.destroy', $course) }}">
-                                    @csrf
-                                    @method('DELETE')
-
-                                    <button type="submit" class="btn btn-accent" data-modal-submit-loading data-loading-text="{{ __('Eliminazione...') }}">
-                                        <span>{{ __('Confirm deletion') }}</span>
-                                        <x-lucide-trash-2 class="h-4 w-4" />
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-
-                        <form method="dialog" class="modal-backdrop">
-                            <button type="submit">{{ __('Close') }}</button>
-                        </form>
-                    </dialog>
                 </div>
             </div>
+                        @endif
 
-            @include('admin.course.partials.teacher-assignments-card')
+                        @if ($activeCourseEditSection === 'teachers')
+            <section>
+                @include('admin.course.partials.teacher-assignments-card')
+            </section>
+                        @endif
 
+                        @if ($activeCourseEditSection === 'tutors')
+            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                <div class="card-body gap-4">
+                    <div>
+                        <h2 class="card-title">{{ __('Tutor') }}</h2>
+                        <p class="text-sm text-base-content/70">
+                            {{ __('Sezione riservata alla futura gestione dei tutor del corso.') }}
+                        </p>
+                    </div>
+
+                    <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-sm text-base-content/70">
+                        {{ __('Funzione in sviluppo. Per ora non sono previste azioni in questa sezione.') }}
+                    </div>
+                </div>
+            </div>
+                        @endif
+
+                        @if ($activeCourseEditSection === 'enrollments')
             <div class="card border border-base-300 bg-base-100 shadow-sm">
                 <div
                     class="card-body gap-6"
@@ -934,7 +1047,43 @@
                     </dialog>
                 </div>
             </div>
+                        @endif
 
+                    </div>
+
+                    <dialog id="delete-course-modal" class="modal">
+                        <div class="modal-box max-w-lg">
+                            <div class="space-y-2">
+                                <h3 class="text-lg font-semibold">{{ __('Delete course') }}</h3>
+                                <p class="text-sm text-base-content/70">
+                                    {{ __('This action will move the course to the trash. Do you want to continue?') }}
+                                </p>
+                            </div>
+
+                            <div class="modal-action mt-6">
+                                <form method="dialog">
+                                    <button type="submit" class="btn btn-ghost" data-close-delete-course-modal>
+                                        {{ __('Cancel') }}
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ route('admin.courses.destroy', $course) }}">
+                                    @csrf
+                                    @method('DELETE')
+
+                                    <button type="submit" class="btn btn-accent" data-modal-submit-loading data-loading-text="{{ __('Eliminazione...') }}">
+                                        <span>{{ __('Confirm deletion') }}</span>
+                                        <x-lucide-trash-2 class="h-4 w-4" />
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <form method="dialog" class="modal-backdrop">
+                            <button type="submit">{{ __('Close') }}</button>
+                        </form>
+                    </dialog>
+                </div>
+            </main>
         </div>
     </div>
 

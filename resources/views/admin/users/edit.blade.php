@@ -107,12 +107,6 @@
                                             <h2 class="text-2xl font-semibold text-base-content">{{ $activeUserEditSectionMeta['title'] }}</h2>
                                             <p class="mt-2 text-sm text-base-content/65">{{ $activeUserEditSectionMeta['description'] }}</p>
                                         </div>
-
-                                        <div class="flex justify-end gap-3">
-                                            <button type="submit" class="btn btn-primary btn-square">
-                                                <x-lucide-save class="h-5 w-5" />
-                                            </button>
-                                        </div>
                                     </div>
 
                                     <div>
@@ -135,6 +129,13 @@
                                                 :job-units="$jobUnits"
                                             />
                                         @endif
+                                    </div>
+
+                                    <div class="flex justify-end border-t border-base-300 pt-6">
+                                        <button type="submit" class="btn btn-primary">
+                                            <x-lucide-save class="h-4 w-4" />
+                                            <span>{{ __('Salva dati') }}</span>
+                                        </button>
                                     </div>
                                 </div>
                             </div>

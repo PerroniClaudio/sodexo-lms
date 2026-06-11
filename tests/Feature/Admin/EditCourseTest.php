@@ -37,7 +37,7 @@ function createValidSatisfactionSurveyTemplate(): SatisfactionSurveyTemplate
     return $template;
 }
 
-it('shows the edit course page with the update form and modules card', function () {
+it('shows the edit course page with the details section by default', function () {
     $course = Course::factory()->create([
         'title' => 'Corso prova',
         'type' => 'fad',
@@ -76,24 +76,45 @@ it('shows the edit course page with the update form and modules card', function 
     $response->assertSeeText('Modifica corso');
     $response->assertDontSeeText('Corso prova');
     $response->assertSeeText('Tipologia: FAD');
-    $response->assertSeeText('Dati anagrafici');
+    $response->assertSeeText('Dati anagrafici corso');
+    $response->assertSeeText('Questionario di gradimento');
+    $response->assertSeeText('Certificati ottenibili');
+    $response->assertSeeText('Elimina corso');
+    $response->assertSeeText('Bozza');
+    $response->assertSeeText('Pubblicato');
+    $response->assertSeeText('Archiviato');
+    $response->assertSeeText('Salva dati');
+    $response->assertDontSee('data-modules-sortable-list', escape: false);
+});
+
+it('shows the modules section when requested', function () {
+    $course = Course::factory()->create([
+        'title' => 'Corso prova',
+        'type' => 'fad',
+        'description' => 'Descrizione corso',
+        'year' => 2026,
+        'expiry_date' => now()->addMonth(),
+        'status' => 'draft',
+    ]);
+    Module::factory()->create([
+        'title' => 'Modulo prova',
+        'type' => 'video',
+        'order' => 1,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $response = $this->get(route('admin.courses.edit', $course).'?section=modules');
+
+    $response->assertOk();
     $response->assertSeeText('Moduli');
     $response->assertSeeText('Nuovo modulo');
-    $response->assertSeeText('Elimina corso');
     $response->assertSeeText('Elimina modulo');
     $response->assertSeeText('Aggiungi un nuovo modulo scegliendo la tipologia da creare.');
-    $response->assertSeeText('Docenti del corso');
-    $response->assertDontSeeText('Tutor assegnati ai moduli');
     $response->assertSeeText('Titolo del modulo');
     $response->assertSeeText('Conferma eliminazione');
     $response->assertSee('data-modules-sortable-list', escape: false);
     $response->assertSee(route('admin.courses.modules.reorder', $course), escape: false);
-    $response->assertSeeText('Bozza');
-    $response->assertSeeText('Pubblicato');
-    $response->assertSeeText('Archiviato');
-    $response->assertSeeText('Abilitazioni di rischio acquisite');
-    $response->assertSeeText('Non ci sono ancora requisiti di rischio configurati.');
-    $response->assertSeeText('Salva dati');
+    $response->assertDontSeeText('Docenti del corso');
 });
 
 it('updates the course personal data', function () {
@@ -172,7 +193,7 @@ it('allows changing only the status for a published course when other form value
 it('disables the new module button when the course is published', function () {
     $course = Course::factory()->create(['status' => 'published']);
 
-    $response = $this->get(route('admin.courses.edit', $course));
+    $response = $this->get(route('admin.courses.edit', $course).'?section=modules');
 
     $response->assertOk();
     $response->assertSee('data-open-module-modal', false);
@@ -194,7 +215,7 @@ it('soft deletes a course', function () {
 });
 
 it('soft deletes a module from the course edit page', function () {
-    $course = Course::factory()->create();
+    $course = Course::factory()->create(['status' => 'draft']);
     $module = Module::factory()->create([
         'belongsTo' => (string) $course->getKey(),
     ]);

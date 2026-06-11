@@ -70,7 +70,7 @@
                                     'menu-active' => request()->routeIs('admin.homepage.*'),
                                 ])
                             >
-                                <x-lucide-monitor-play class="mr-2 inline-block h-5 w-5" />
+                                <x-lucide-home class="mr-2 inline-block h-5 w-5" />
                                 {{ __('Home page') }}
                             </a>
                         </li>
