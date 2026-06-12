@@ -171,6 +171,11 @@ class Course extends Model
         return $this->hasMany(CourseTeacherEnrollment::class);
     }
 
+    public function tutorEnrollments(): HasMany
+    {
+        return $this->hasMany(CourseTutorEnrollment::class);
+    }
+
     public function originalCourse(): BelongsTo
     {
         return $this->belongsTo(self::class, 'original_course_id');
@@ -309,13 +314,10 @@ class Course extends Model
     {
         return User::query()
             ->select('users.*')
-            ->selectRaw('COUNT(DISTINCT module_tutor_enrollments.module_id) as module_enrollments_count')
-            ->join('module_tutor_enrollments', 'module_tutor_enrollments.user_id', '=', 'users.id')
-            ->join('modules', 'modules.id', '=', 'module_tutor_enrollments.module_id')
-            ->where('modules.belongsTo', (string) $this->getKey())
-            ->whereNull('modules.deleted_at')
-            ->whereNull('module_tutor_enrollments.deleted_at')
-            ->groupBy('users.id')
+            ->join('course_tutor_enrollments', 'course_tutor_enrollments.user_id', '=', 'users.id')
+            ->where('course_tutor_enrollments.course_id', $this->getKey())
+            ->whereNull('course_tutor_enrollments.deleted_at')
+            ->distinct()
             ->orderBy('users.surname')
             ->orderBy('users.name');
     }

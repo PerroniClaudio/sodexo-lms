@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeCourseRiskRequirements(courseEditPage);
     initializeCourseClasses(courseEditPage);
     initializeTeacherAssignmentsTable(courseEditPage);
+    initializeTutorAssignmentsTable(courseEditPage);
     initializeEnrollmentsTable(courseEditPage);
 });
 
@@ -1990,4 +1991,448 @@ function initializeTeacherAssignmentsTable(courseEditPage) {
 
     updateSortIndicators();
     loadTeacherAssignments();
+}
+
+function initializeTutorAssignmentsTable(courseEditPage) {
+    const container = courseEditPage.querySelector('[data-tutor-assignments-table]');
+
+    if (!container) {
+        return;
+    }
+
+    const apiUrl = container.dataset.tutorAssignmentsApiUrl;
+    const searchUsersApiUrl = container.dataset.tutorAssignmentsSearchUsersApiUrl;
+    const storeApiUrl = container.dataset.tutorAssignmentsStoreApiUrl;
+    const tbody = container.querySelector('[data-tutor-assignments-tbody]');
+    const template = container.querySelector('[data-tutor-assignment-row-template]');
+    const emptyState = container.querySelector('[data-tutor-assignments-empty]');
+    const tableContainer = container.querySelector('[data-tutor-assignments-table-container]');
+    const tableLoader = container.querySelector('[data-tutor-assignments-loader]');
+    const searchInput = container.querySelector('[data-tutor-assignments-search]');
+    const searchButton = container.querySelector('[data-tutor-assignments-search-button]');
+    const showTrashedCheckbox = container.querySelector('[data-tutor-assignments-show-trashed]');
+    const paginationContainer = container.querySelector('[data-tutor-assignments-pagination]');
+    const summaryElement = container.querySelector('[data-tutor-assignments-summary]');
+    const sortButtons = Array.from(container.querySelectorAll('[data-tutor-sort-key]'));
+    const sortIndicators = Array.from(new Set(Array.from(container.querySelectorAll('[data-tutor-sort-indicator]')).map((indicator) => indicator.dataset.tutorSortIndicator)));
+    const openCreateModalButton = container.querySelector('[data-open-course-tutor-modal]');
+    const createModal = container.querySelector('[data-create-course-tutor-modal]');
+    const closeCreateModalButton = container.querySelector('[data-close-course-tutor-modal]');
+    const userSearchInput = container.querySelector('[data-course-tutor-user-search]');
+    const userSearchButton = container.querySelector('[data-course-tutor-user-search-button]');
+    const userResultsBody = container.querySelector('[data-course-tutor-user-results]');
+    const userResultsEmptyState = container.querySelector('[data-course-tutor-user-results-empty]');
+    const userRowTemplate = container.querySelector('[data-course-tutor-user-row-template]');
+    const confirmModal = container.querySelector('[data-confirm-course-tutor-modal]');
+    const confirmMessage = container.querySelector('[data-confirm-course-tutor-message]');
+    const confirmSubmitButton = container.querySelector('[data-confirm-course-tutor-submit]');
+
+    if (!apiUrl || !searchUsersApiUrl || !storeApiUrl || !tbody || !template || !emptyState || !tableContainer || !tableLoader || !searchInput || !searchButton || !showTrashedCheckbox || !paginationContainer || !summaryElement || !openCreateModalButton || !createModal || !closeCreateModalButton || !userSearchInput || !userSearchButton || !userResultsBody || !userResultsEmptyState || !userRowTemplate || !confirmModal || !confirmMessage || !confirmSubmitButton) {
+        return;
+    }
+
+    const state = {
+        page: 1,
+        search: '',
+        showTrashed: false,
+        sort: 'surname',
+        direction: 'asc',
+        loading: false,
+        selectedUser: null,
+        confirmAction: 'create',
+        restoreUrl: null,
+    };
+
+    const updateSortIndicators = () => {
+        sortIndicators.forEach((key) => {
+            const icons = container.querySelectorAll(`[data-tutor-sort-indicator="${key}"]`);
+
+            icons.forEach((icon) => {
+                const iconType = icon.dataset.tutorSortIcon;
+                let shouldShow = false;
+
+                if (state.sort !== key) {
+                    shouldShow = iconType === 'none';
+                } else if (state.direction === 'asc') {
+                    shouldShow = iconType === 'asc';
+                } else if (state.direction === 'desc') {
+                    shouldShow = iconType === 'desc';
+                }
+
+                icon.classList.toggle('hidden', !shouldShow);
+            });
+        });
+    };
+
+    const buildQueryString = () => {
+        const params = new URLSearchParams();
+
+        params.set('page', String(state.page));
+        params.set('show_trashed', state.showTrashed ? '1' : '0');
+
+        if (state.search !== '') {
+            params.set('search', state.search);
+        }
+
+        if (state.sort !== null && state.direction !== null) {
+            params.set('sort', state.sort);
+            params.set('direction', state.direction);
+        }
+
+        return params.toString();
+    };
+
+    const setLoadingState = (loading) => {
+        state.loading = loading;
+        toggleAsyncTableLoading({ scope: container, container: tableContainer, loader: tableLoader }, loading);
+    };
+
+    const cycleSortDirection = (currentDirection) => {
+        if (currentDirection === null) {
+            return 'asc';
+        }
+
+        if (currentDirection === 'asc') {
+            return 'desc';
+        }
+
+        return null;
+    };
+
+    const renderPagination = (meta) => {
+        paginationContainer.innerHTML = '';
+
+        if (meta.last_page <= 1) {
+            return;
+        }
+
+        const createPageButton = (label, page, disabled = false, active = false) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `join-item btn btn-sm ${active ? 'btn-primary' : 'btn-ghost'}`;
+            button.textContent = label;
+            button.disabled = disabled;
+
+            if (!disabled) {
+                button.addEventListener('click', () => {
+                    state.page = page;
+                    loadTutorAssignments();
+                });
+            }
+
+            return button;
+        };
+
+        paginationContainer.appendChild(createPageButton('«', Math.max(meta.current_page - 1, 1), meta.current_page <= 1));
+
+        const pagesToRender = new Set([
+            1,
+            meta.last_page,
+            Math.max(meta.current_page - 1, 1),
+            meta.current_page,
+            Math.min(meta.current_page + 1, meta.last_page),
+        ]);
+
+        Array.from(pagesToRender)
+            .sort((a, b) => a - b)
+            .forEach((page) => {
+                paginationContainer.appendChild(createPageButton(String(page), page, false, page === meta.current_page));
+            });
+
+        paginationContainer.appendChild(createPageButton('»', Math.min(meta.current_page + 1, meta.last_page), meta.current_page >= meta.last_page));
+    };
+
+    const renderRows = (rows) => {
+        tbody.innerHTML = '';
+
+        rows.forEach((row) => {
+            const fragment = template.content.cloneNode(true);
+            const tr = fragment.querySelector('tr');
+            const deleteButton = fragment.querySelector('[data-action="delete"]');
+            const restoreButton = fragment.querySelector('[data-action="restore"]');
+
+            fragment.querySelector('[data-cell="surname"]').textContent = row.user.surname || '-';
+            fragment.querySelector('[data-cell="name"]').textContent = row.user.name || '-';
+            fragment.querySelector('[data-cell="fiscal_code"]').textContent = row.user.fiscal_code || '-';
+            fragment.querySelector('[data-cell="email"]').textContent = row.user.email || '-';
+            fragment.querySelector('[data-cell="assigned_at"]').textContent = row.assigned_at || '-';
+
+            deleteButton.classList.toggle('hidden', !row.actions.can_delete);
+            restoreButton.classList.toggle('hidden', !row.actions.can_restore);
+
+            if (row.actions.can_delete) {
+                deleteButton.addEventListener('click', async () => {
+                    if (!window.confirm('Sei sicuro di voler rimuovere questo tutor dal corso?')) {
+                        return;
+                    }
+
+                    try {
+                        await window.axios.delete(row.actions.delete_url, {
+                            headers: { Accept: 'application/json' },
+                        });
+
+                        await loadTutorAssignments();
+                    } catch (error) {
+                        window.alert(error.response?.data?.message || 'Errore durante la rimozione del tutor.');
+                    }
+                });
+            }
+
+            if (row.actions.can_restore) {
+                restoreButton.addEventListener('click', async () => {
+                    if (!window.confirm('Vuoi ripristinare questo tutor del corso?')) {
+                        return;
+                    }
+
+                    try {
+                        await window.axios.post(
+                            row.actions.restore_url,
+                            {},
+                            { headers: { Accept: 'application/json' } },
+                        );
+
+                        await loadTutorAssignments();
+                    } catch (error) {
+                        window.alert(error.response?.data?.message || 'Errore durante il ripristino del tutor.');
+                    }
+                });
+            }
+
+            if (row.is_deleted) {
+                tr.classList.add('opacity-70');
+            }
+
+            tbody.appendChild(fragment);
+        });
+    };
+
+    const renderUserSearchResults = (users) => {
+        userResultsBody.innerHTML = '';
+
+        users.forEach((user) => {
+            const fragment = userRowTemplate.content.cloneNode(true);
+            const selectButton = fragment.querySelector('[data-action="select-user"]');
+
+            fragment.querySelector('[data-cell="id"]').textContent = user.id;
+            fragment.querySelector('[data-cell="surname"]').textContent = user.surname || '-';
+            fragment.querySelector('[data-cell="name"]').textContent = user.name || '-';
+            fragment.querySelector('[data-cell="fiscal_code"]').textContent = user.fiscal_code || '-';
+            fragment.querySelector('[data-cell="email"]').textContent = user.email || '-';
+
+            selectButton.addEventListener('click', () => {
+                state.selectedUser = user;
+                state.confirmAction = 'create';
+                state.restoreUrl = null;
+                confirmMessage.textContent = `Confermi l'assegnazione di ${user.surname || ''} ${user.name || ''} (ID ${user.id}) come tutor del corso?`.trim();
+                confirmModal.showModal();
+            });
+
+            userResultsBody.appendChild(fragment);
+        });
+
+        userResultsEmptyState.classList.toggle('hidden', users.length > 0);
+    };
+
+    const searchUsers = async () => {
+        const search = userSearchInput.value.trim();
+
+        if (search === '') {
+            userResultsBody.innerHTML = '';
+            userResultsEmptyState.classList.remove('hidden');
+
+            return;
+        }
+
+        userSearchButton.disabled = true;
+
+        try {
+            const response = await window.axios.get(searchUsersApiUrl, {
+                params: { search },
+                headers: { Accept: 'application/json' },
+            });
+
+            renderUserSearchResults(response.data.data ?? []);
+        } catch (error) {
+            userResultsBody.innerHTML = '';
+            userResultsEmptyState.classList.remove('hidden');
+            window.alert('Errore durante la ricerca tutor.');
+        } finally {
+            userSearchButton.disabled = false;
+        }
+    };
+
+    const renderSummary = (meta) => {
+        if (meta.total === 0 || meta.from === null || meta.to === null) {
+            summaryElement.textContent = '0 tutor';
+
+            return;
+        }
+
+        summaryElement.textContent = `Mostrati ${meta.from}-${meta.to} di ${meta.total} tutor`;
+    };
+
+    const loadTutorAssignments = async () => {
+        if (state.loading) {
+            return;
+        }
+
+        setLoadingState(true);
+
+        try {
+            const response = await window.axios.get(`${apiUrl}?${buildQueryString()}`, {
+                headers: { Accept: 'application/json' },
+            });
+
+            const rows = response.data.data ?? [];
+            const meta = response.data.meta ?? {
+                current_page: 1,
+                last_page: 1,
+                per_page: 10,
+                total: 0,
+                from: null,
+                to: null,
+            };
+
+            if (rows.length === 0 && meta.total > 0 && state.page > 1) {
+                state.page = Math.max(meta.last_page, 1);
+                setLoadingState(false);
+                await loadTutorAssignments();
+
+                return;
+            }
+
+            renderRows(rows);
+            renderSummary(meta);
+            renderPagination(meta);
+            emptyState.classList.toggle('hidden', rows.length > 0);
+            updateSortIndicators();
+        } catch (error) {
+            tbody.innerHTML = '';
+            emptyState.classList.remove('hidden');
+            summaryElement.textContent = 'Errore nel caricamento dei tutor.';
+            paginationContainer.innerHTML = '';
+        } finally {
+            setLoadingState(false);
+        }
+    };
+
+    openCreateModalButton.addEventListener('click', () => {
+        userSearchInput.value = '';
+        userResultsBody.innerHTML = '';
+        userResultsEmptyState.classList.add('hidden');
+        state.selectedUser = null;
+        createModal.showModal();
+    });
+
+    closeCreateModalButton.addEventListener('click', () => {
+        createModal.close();
+    });
+
+    userSearchButton.addEventListener('click', () => {
+        searchUsers();
+    });
+
+    userSearchInput.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') {
+            return;
+        }
+
+        event.preventDefault();
+        searchUsers();
+    });
+
+    confirmSubmitButton.addEventListener('click', async () => {
+        if (!state.selectedUser) {
+            return;
+        }
+
+        setButtonLoading(confirmSubmitButton, true, { loadingText: 'Salvataggio...' });
+
+        try {
+            if (state.confirmAction === 'restore') {
+                if (!state.restoreUrl) {
+                    setButtonLoading(confirmSubmitButton, false);
+
+                    return;
+                }
+
+                await window.axios.post(
+                    state.restoreUrl,
+                    {},
+                    { headers: { Accept: 'application/json' } },
+                );
+            } else {
+                await window.axios.post(
+                    storeApiUrl,
+                    { user_id: state.selectedUser.id },
+                    { headers: { Accept: 'application/json' } },
+                );
+            }
+
+            confirmModal.close();
+            createModal.close();
+            state.confirmAction = 'create';
+            state.restoreUrl = null;
+            await loadTutorAssignments();
+        } catch (error) {
+            const responseData = error.response?.data;
+
+            if (error.response?.status === 409 && responseData?.requires_restore && responseData?.restore_url) {
+                state.confirmAction = 'restore';
+                state.restoreUrl = responseData.restore_url;
+                confirmMessage.textContent = responseData.message || 'Esiste già una assegnazione tutor eliminata. Vuoi ripristinarla?';
+            } else {
+                window.alert(responseData?.message || 'Errore durante l\'assegnazione del tutor.');
+            }
+        } finally {
+            setButtonLoading(confirmSubmitButton, false);
+        }
+    });
+
+    searchButton.addEventListener('click', () => {
+        state.search = searchInput.value.trim();
+        state.page = 1;
+        loadTutorAssignments();
+    });
+
+    searchInput.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') {
+            return;
+        }
+
+        event.preventDefault();
+        state.search = searchInput.value.trim();
+        state.page = 1;
+        loadTutorAssignments();
+    });
+
+    showTrashedCheckbox.addEventListener('change', () => {
+        state.showTrashed = showTrashedCheckbox.checked;
+        state.page = 1;
+        loadTutorAssignments();
+    });
+
+    sortButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const selectedSort = button.dataset.tutorSortKey;
+
+            if (state.sort !== selectedSort) {
+                state.sort = selectedSort;
+                state.direction = 'asc';
+            } else {
+                state.direction = cycleSortDirection(state.direction);
+
+                if (state.direction === null) {
+                    state.sort = 'surname';
+                    state.direction = 'asc';
+                }
+            }
+
+            state.page = 1;
+            loadTutorAssignments();
+        });
+    });
+
+    updateSortIndicators();
+    loadTutorAssignments();
 }

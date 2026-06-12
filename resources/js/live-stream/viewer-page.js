@@ -285,7 +285,7 @@ export function initViewerPage() {
         try {
             const joinResponse = await window.axios.post(config.routes.join);
             const joinPayload = joinResponse.data;
-            const localTracks = previewController.getLocalTracks();
+            const localTracks = config.role === 'tutor' ? [] : previewController.getLocalTracks();
 
             if (config.role === 'user') {
                 localTracks
@@ -964,6 +964,8 @@ export function initViewerPage() {
 
         participants.forEach((participant) => {
             const isSpeaking = state.dominantSpeakerIdentity === participant.twilio_identity;
+            const canModerateSpeakers = Boolean(config.capabilities?.canModerateSpeakers && config.routes.speakerTemplate);
+            const pendingHandRaiseIds = new Set((state.latestState?.pending_hand_raises ?? []).map((item) => item.user_id));
             const item = document.createElement('div');
             item.className = 'flex items-center justify-between gap-3 rounded-box border border-base-300 bg-base-100 px-3 py-2';
 
@@ -974,13 +976,25 @@ export function initViewerPage() {
                     </div>
                     <div class="min-w-0">
                         <p class="truncate text-sm font-medium">${participant.name}</p>
-                        <p class="text-xs text-base-content/60">${participant.user_id === currentUserId() ? 'Tu' : 'Discente'}</p>
+                        <p class="text-xs text-base-content/60">${pendingHandRaiseIds.has(participant.user_id) ? 'Mano alzata' : (participant.user_id === currentUserId() ? 'Tu' : 'Discente')}</p>
                     </div>
                 </div>
-                <span class="text-xs text-base-content/50">
-                    ${getParticipantAudioStatusMarkup(participant.audio_enabled)}
-                </span>
+                ${canModerateSpeakers
+                    ? `<button type="button" class="btn btn-square btn-xs ${participant.audio_enabled ? 'btn-warning' : 'btn-primary'}" data-action="speaker" aria-label="${participant.audio_enabled ? 'Muta' : 'Smuta'}" title="${participant.audio_enabled ? 'Muta' : 'Smuta'}">
+                        ${getLiveStreamIconButtonContent(participant.audio_enabled ? 'mic' : 'mic-off', participant.audio_enabled ? 'Muta' : 'Smuta')}
+                    </button>`
+                    : `<span class="text-xs text-base-content/50">
+                        ${getParticipantAudioStatusMarkup(participant.audio_enabled)}
+                    </span>`}
             `;
+
+            item.querySelector('[data-action="speaker"]')?.addEventListener('click', async () => {
+                await window.axios.patch(config.routes.speakerTemplate.replace('__PARTICIPANT__', String(participant.id)), {
+                    enabled: !participant.audio_enabled,
+                });
+
+                await fetchState();
+            });
 
             list.appendChild(item);
         });

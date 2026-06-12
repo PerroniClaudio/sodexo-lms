@@ -20,6 +20,7 @@ Route::middleware(['auth', 'role:tutor|superadmin'])->group(function () {
         Route::post('/live-stream/{module}/messages', [LiveStreamController::class, 'storeTutorMessage'])->name('live-stream.messages.store');
         Route::get('/live-stream/{module}/documents/{document}', [LiveStreamController::class, 'downloadTutorDocument'])->name('live-stream.documents.download');
         Route::delete('/live-stream/{module}/messages/{message}', [LiveStreamController::class, 'destroyTutorMessage'])->name('live-stream.messages.destroy');
+        Route::patch('/live-stream/{module}/participants/{participant}/speaker', [LiveStreamController::class, 'updateSpeaker'])->name('live-stream.participants.speaker');
 
         // Profilo utente
         Route::get('profile', [UserController::class, 'editOwnProfile'])->name('profile.edit');

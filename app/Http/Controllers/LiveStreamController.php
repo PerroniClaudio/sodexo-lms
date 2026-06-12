@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreLiveStreamSessionLogRequest;
 use App\Models\CourseEnrollment;
+use App\Models\CourseTutorEnrollment;
 use App\Models\LiveStreamAttendanceMinute;
 use App\Models\LiveStreamDocument;
 use App\Models\LiveStreamHandRaise;
@@ -732,7 +733,7 @@ class LiveStreamController extends Controller
     {
         $this->ensureTutorEnrollment($request, $module);
 
-        return $this->destroyMessage($request, $module, $message, LiveStreamParticipant::ROLE_TUTOR);
+        abort(Response::HTTP_FORBIDDEN);
     }
 
     public function storeTeacherDocument(Request $request, Module $module): JsonResponse
@@ -925,8 +926,15 @@ class LiveStreamController extends Controller
     public function updateSpeaker(Request $request, Module $module, LiveStreamParticipant $participant): JsonResponse
     {
         $this->abortUnlessLiveModule($module);
-        $this->ensureTeacherEnrollment($request, $module);
+        $this->ensureLiveSpeakerModerationAccess($request, $module);
 
+        return $this->updateParticipantSpeaker($request, $module, $participant);
+    }
+
+    public function updateAdminSpeaker(Request $request, Module $module, LiveStreamParticipant $participant): JsonResponse
+    {
+        $this->abortUnlessLiveModule($module);
+        $this->ensureAdminRegiaAccess($request, $module);
         $validated = $request->validate([
             'enabled' => ['required', 'boolean'],
         ]);
@@ -963,10 +971,8 @@ class LiveStreamController extends Controller
         ]);
     }
 
-    public function updateAdminSpeaker(Request $request, Module $module, LiveStreamParticipant $participant): JsonResponse
+    private function updateParticipantSpeaker(Request $request, Module $module, LiveStreamParticipant $participant): JsonResponse
     {
-        $this->abortUnlessLiveModule($module);
-        $this->ensureAdminRegiaAccess($request, $module);
         $validated = $request->validate([
             'enabled' => ['required', 'boolean'],
         ]);
@@ -1075,7 +1081,7 @@ class LiveStreamController extends Controller
             'permissions' => [
                 'can_end_session' => in_array($role, [LiveStreamParticipant::ROLE_TEACHER, LiveStreamParticipant::ROLE_ADMIN], true),
                 'can_raise_hand' => $role === LiveStreamParticipant::ROLE_USER,
-                'can_moderate_speakers' => in_array($role, [LiveStreamParticipant::ROLE_TEACHER, LiveStreamParticipant::ROLE_ADMIN], true),
+                'can_moderate_speakers' => in_array($role, [LiveStreamParticipant::ROLE_TEACHER, LiveStreamParticipant::ROLE_TUTOR, LiveStreamParticipant::ROLE_ADMIN], true),
                 'is_hidden' => in_array($role, [LiveStreamParticipant::ROLE_TUTOR, LiveStreamParticipant::ROLE_ADMIN], true),
                 'can_manage_broadcast' => $role === LiveStreamParticipant::ROLE_ADMIN,
             ],
@@ -1343,7 +1349,7 @@ class LiveStreamController extends Controller
             'viewer_roster' => $this->serializeViewerRoster($teacherParticipants, $visibleStudents),
             'messages' => $messages->map(fn (LiveStreamMessage $message): array => $this->serializeMessage($message))->all(),
             'documents' => $this->serializeDocuments($module, $role),
-            'pending_hand_raises' => in_array($role, [LiveStreamParticipant::ROLE_TEACHER, LiveStreamParticipant::ROLE_ADMIN], true)
+            'pending_hand_raises' => in_array($role, [LiveStreamParticipant::ROLE_TEACHER, LiveStreamParticipant::ROLE_TUTOR, LiveStreamParticipant::ROLE_ADMIN], true)
                 ? $session->handRaises
                     ->where('status', LiveStreamHandRaise::STATUS_PENDING)
                     ->sortBy('requested_at')
@@ -1448,9 +1454,7 @@ class LiveStreamController extends Controller
                 'deleteDocumentTemplate' => $isAdminRole
                     ? route('admin.regia.documents.destroy', [$module, '__DOCUMENT__'])
                     : ($isTeacherRole && ! $isRegiaMode ? route('teacher.live-stream.documents.destroy', [$module, '__DOCUMENT__']) : null),
-                'deleteMessageTemplate' => $isTutorRole
-                    ? route('tutor.live-stream.messages.destroy', [$module, '__MESSAGE__'])
-                    : null,
+                'deleteMessageTemplate' => null,
                 'startSession' => $isAdminRole
                     ? route('admin.regia.session.start', $module)
                     : ($isTeacherRole && ! $isRegiaMode ? route('teacher.live-stream.session.start', $module) : null),
@@ -1468,7 +1472,11 @@ class LiveStreamController extends Controller
                     : null,
                 'speakerTemplate' => $isAdminRole
                     ? route('admin.regia.participants.speaker', [$module, '__PARTICIPANT__'])
-                    : ($isTeacherRole ? route('teacher.live-stream.participants.speaker', [$module, '__PARTICIPANT__']) : null),
+                    : match (true) {
+                        $isTeacherRole => route('teacher.live-stream.participants.speaker', [$module, '__PARTICIPANT__']),
+                        $isTutorRole => route('tutor.live-stream.participants.speaker', [$module, '__PARTICIPANT__']),
+                        default => null,
+                    },
                 'regiaStart' => $isAdminRole ? route('admin.regia.session.start', $module) : null,
                 'regiaEnd' => $isAdminRole ? route('admin.regia.session.end', $module) : null,
                 'regiaState' => $isAdminRole ? route('admin.regia.state', $module) : null,
@@ -1476,8 +1484,8 @@ class LiveStreamController extends Controller
             'capabilities' => [
                 'canEndSession' => $isTeacherRole || $isAdminRole,
                 'canRaiseHand' => $isUserRole,
-                'canModerateChat' => $isTutorRole,
-                'canModerateSpeakers' => $isTeacherRole || $isAdminRole,
+                'canModerateChat' => false,
+                'canModerateSpeakers' => $isTeacherRole || $isTutorRole || $isAdminRole,
                 'canManageDocuments' => $isAdminRole || ($isTeacherRole && ! $isRegiaMode),
                 'canManageBroadcast' => $isAdminRole,
                 'hiddenParticipant' => $isTutorRole || $isAdminRole,
@@ -1543,6 +1551,16 @@ class LiveStreamController extends Controller
 
         $module->loadMissing('course');
 
+        $isAssignedToCourse = CourseTutorEnrollment::query()
+            ->where('user_id', $request->user()->getKey())
+            ->where('course_id', $module->course?->getKey())
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if ($isAssignedToCourse) {
+            return;
+        }
+
         $isAssigned = ModuleTutorEnrollment::query()
             ->where('user_id', $request->user()->getKey())
             ->where('module_id', $module->getKey())
@@ -1550,6 +1568,25 @@ class LiveStreamController extends Controller
             ->exists();
 
         abort_unless($isAssigned, Response::HTTP_FORBIDDEN);
+    }
+
+    private function ensureLiveSpeakerModerationAccess(Request $request, Module $module): void
+    {
+        if ($request->user()?->hasRole('superadmin')) {
+            return;
+        }
+
+        $teacherIsAssigned = ModuleTeacherEnrollment::query()
+            ->where('user_id', $request->user()->getKey())
+            ->where('module_id', $module->getKey())
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if ($teacherIsAssigned) {
+            return;
+        }
+
+        $this->ensureTutorEnrollment($request, $module);
     }
 
     private function ensureAdminRegiaAccess(Request $request, Module $module): void
