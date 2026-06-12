@@ -404,6 +404,7 @@ class CourseModuleController extends Controller
             'passing_score' => $module->isLearningQuiz() ? $validated['passing_score'] : null,
             'max_attempts' => $module->isLearningQuiz() ? $validated['max_attempts'] : null,
             'permitted_submission' => $module->isLearningQuiz() ? ($validated['permitted_submission'] ?? 'online') : null,
+            'access_delay_minutes' => $module->isLearningQuiz() ? ($validated['access_delay_minutes'] ?? null) : null,
             // 'max_score' => $module->isQuiz() ? $validated['max_score'] : null, --- IGNORE ---
         ];
 

@@ -30,11 +30,51 @@ export function initLearningQuizModule() {
 
     const moduleData = getModuleData(root);
 
+    if (moduleData.quizAccessGateActive) {
+        initQuizAccessGate(moduleData);
+
+        return;
+    }
+
     // Carica lo stato del quiz
     loadQuizStatus(moduleData);
 
     // Previeni ricaricamento pagina durante quiz attivo
     preventPageReload();
+}
+
+function initQuizAccessGate(moduleData) {
+    const timerElement = document.querySelector('[data-quiz-access-gate-timer]');
+
+    if (!timerElement) {
+        return;
+    }
+
+    let remainingSeconds = Math.max(0, moduleData.quizAccessGateRemainingSeconds || 0);
+
+    const renderTime = () => {
+        const hours = String(Math.floor(remainingSeconds / 3600)).padStart(2, '0');
+        const minutes = String(Math.floor((remainingSeconds % 3600) / 60)).padStart(2, '0');
+        const seconds = String(remainingSeconds % 60).padStart(2, '0');
+
+        timerElement.textContent = `${hours}:${minutes}:${seconds}`;
+    };
+
+    renderTime();
+
+    const interval = window.setInterval(() => {
+        remainingSeconds -= 1;
+
+        if (remainingSeconds <= 0) {
+            window.clearInterval(interval);
+            timerElement.textContent = '00:00:00';
+            window.location.reload();
+
+            return;
+        }
+
+        renderTime();
+    }, 1000);
 }
 
 /**

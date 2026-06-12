@@ -42,6 +42,11 @@ export function getModuleData(root) {
         quizSubmitUrl: root.dataset.quizSubmitUrl,
         nextModuleUrl: root.dataset.nextModuleUrl,
         nextModuleTitle: root.dataset.nextModuleTitle,
+        quizAccessGateActive: root.dataset.quizAccessGateActive === 'true',
+        quizAccessGateRemainingSeconds: parseInt(root.dataset.quizAccessGateRemainingSeconds ?? '0', 10),
+        quizAccessGateAvailableAt: root.dataset.quizAccessGateAvailableAt,
+        quizAccessGatePreviousModuleTitle: root.dataset.quizAccessGatePreviousModuleTitle,
+        quizAccessGateDelayMinutes: parseInt(root.dataset.quizAccessGateDelayMinutes ?? '0', 10),
     };
 }
 

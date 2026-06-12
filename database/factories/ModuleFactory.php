@@ -29,6 +29,7 @@ class ModuleFactory extends Factory
             'max_score' => null,
             'max_attempts' => null,
             'permitted_submission' => Module::PERMITTED_SUBMISSION_ONLINE,
+            'access_delay_minutes' => null,
             'belongsTo' => '1',
             'video_id' => null,
         ];

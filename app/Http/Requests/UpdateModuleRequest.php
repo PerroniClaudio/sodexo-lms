@@ -80,6 +80,11 @@ class UpdateModuleRequest extends FormRequest
                 'string',
                 Rule::in(Module::availablePermittedSubmissions()),
             ],
+            'access_delay_minutes' => [
+                'nullable',
+                'integer',
+                'min:0',
+            ],
             // max_score viene gestito in automatico con la modifica delle domande, quindi non è richiesto in input e non può essere modificato manualmente
             // 'max_score' => [
             //     Rule::requiredIf($requiresQuizScores),
@@ -122,6 +127,7 @@ class UpdateModuleRequest extends FormRequest
             'passing_score' => __('Passing score'),
             'max_attempts' => __('Tentativi massimi'),
             'permitted_submission' => __('Modalità'),
+            'access_delay_minutes' => __('Accesso tempo finale'),
             'max_score' => __('Maximum score'),
         ];
     }

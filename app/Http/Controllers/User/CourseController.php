@@ -12,6 +12,7 @@ use App\Models\ModuleQuizSubmission;
 use App\Models\User;
 use App\Services\Certificates\UserCourseCertificateLocator;
 use App\Services\CourseClassScheduleResolver;
+use App\Services\QuizAccessDelayService;
 use App\Services\SyncCourseModuleProgresses;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -29,6 +30,7 @@ class CourseController extends Controller
     public function __construct(
         private readonly AbandonLearningQuizAttempt $abandonLearningQuizAttempt,
         private readonly SyncCourseModuleProgresses $syncCourseModuleProgresses,
+        private readonly QuizAccessDelayService $quizAccessDelayService,
     ) {}
 
     public function index(): View
@@ -153,7 +155,9 @@ class CourseController extends Controller
             ->orderBy('order')
             ->first();
 
-        return view('user.courses.module', compact('course', 'module', 'enrollment', 'progress', 'nextModule', 'modules'));
+        $quizAccessGate = $this->quizAccessDelayService->resolve($enrollment, $module);
+
+        return view('user.courses.module', compact('course', 'module', 'enrollment', 'progress', 'nextModule', 'modules', 'quizAccessGate'));
     }
 
     public function downloadPosterPdf(Course $course): StreamedResponse

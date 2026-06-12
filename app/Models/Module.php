@@ -93,6 +93,7 @@ class Module extends Model
         'max_score',
         'max_attempts',
         'permitted_submission',
+        'access_delay_minutes',
         'belongsTo',
         'video_id', // ID del video associato dalla libreria video Mux
     ];
@@ -121,6 +122,7 @@ class Module extends Model
             'passing_score' => 'integer',
             'max_score' => 'integer',
             'max_attempts' => 'integer',
+            'access_delay_minutes' => 'integer',
         ];
     }
 
@@ -342,6 +344,11 @@ class Module extends Model
     public function isLearningQuiz(): bool
     {
         return $this->type === self::TYPE_LEARNING_QUIZ;
+    }
+
+    public function hasAccessDelay(): bool
+    {
+        return ($this->access_delay_minutes ?? 0) > 0;
     }
 
     public function isSatisfactionQuiz(): bool

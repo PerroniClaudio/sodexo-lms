@@ -12,6 +12,7 @@ use App\Models\ModuleQuizAnswer;
 use App\Models\ModuleQuizQuestion;
 use App\Models\ModuleQuizSubmission;
 use App\Models\ModuleQuizSubmissionAnswer;
+use App\Services\QuizAccessDelayService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,7 +22,10 @@ use Illuminate\Support\Facades\DB;
 
 class QuizModuleController extends Controller
 {
-    public function __construct(private readonly AbandonLearningQuizAttempt $abandonLearningQuizAttempt) {}
+    public function __construct(
+        private readonly AbandonLearningQuizAttempt $abandonLearningQuizAttempt,
+        private readonly QuizAccessDelayService $quizAccessDelayService,
+    ) {}
 
     /**
      * Get the current status of the quiz module for the user.
@@ -36,6 +40,8 @@ class QuizModuleController extends Controller
 
         $progress = $this->resolveProgress($enrollment, $module);
         abort_unless($progress !== null, 404);
+
+        $accessGate = $this->quizAccessDelayService->resolve($enrollment, $module);
 
         // Ottieni tutti i tentativi consumati
         $submissions = ModuleQuizSubmission::query()
@@ -78,12 +84,13 @@ class QuizModuleController extends Controller
             'progress' => [
                 'status' => $progress->status,
                 'attempts_used' => $attemptsUsed,
-                'can_start_new_attempt' => $canStartNewAttempt && ! $passed,
+                'can_start_new_attempt' => $canStartNewAttempt && ! $passed && ! ($accessGate['active'] ?? false),
                 'passed' => $passed,
                 'best_score' => $bestScore,
                 'quiz_score' => $progress->quiz_score,
                 'quiz_total_score' => $progress->quiz_total_score,
             ],
+            'access_gate' => $accessGate,
             'active_submission' => $activeSubmission ? [
                 'id' => $activeSubmission->id,
                 'status' => $activeSubmission->status,
@@ -112,6 +119,10 @@ class QuizModuleController extends Controller
 
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
+
+        if ($lockedResponse = $this->quizDelayLockedResponse($enrollment, $module)) {
+            return $lockedResponse;
+        }
 
         $progress = $this->resolveProgress($enrollment, $module);
         abort_unless($progress !== null, 404);
@@ -183,6 +194,10 @@ class QuizModuleController extends Controller
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
 
+        if ($lockedResponse = $this->quizDelayLockedResponse($enrollment, $module)) {
+            return $lockedResponse;
+        }
+
         // Verifica che la modalità online sia permessa
         if ($module->permitted_submission === 'upload') {
             return response()->json(['error' => 'Questo quiz non può essere svolto online.'], 403);
@@ -247,6 +262,10 @@ class QuizModuleController extends Controller
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
 
+        if ($lockedResponse = $this->quizDelayLockedResponse($enrollment, $module)) {
+            return $lockedResponse;
+        }
+
         return response()->json([
             'passing_score' => $module->passing_score,
             'max_score' => $module->max_score,
@@ -280,6 +299,10 @@ class QuizModuleController extends Controller
 
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
+
+        if ($lockedResponse = $this->quizDelayLockedResponse($enrollment, $module)) {
+            return $lockedResponse;
+        }
 
         $progress = $this->resolveProgress($enrollment, $module);
         abort_unless($progress !== null, 404);
@@ -351,6 +374,10 @@ class QuizModuleController extends Controller
 
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
+
+        if ($lockedResponse = $this->quizDelayLockedResponse($enrollment, $module)) {
+            return $lockedResponse;
+        }
 
         // Verifica il tentativo in corso
         $submission = ModuleQuizSubmission::query()
@@ -429,6 +456,10 @@ class QuizModuleController extends Controller
 
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
+
+        if ($lockedResponse = $this->quizDelayLockedResponse($enrollment, $module)) {
+            return $lockedResponse;
+        }
 
         $progress = $this->resolveProgress($enrollment, $module);
         abort_unless($progress !== null, 404);
@@ -512,6 +543,10 @@ class QuizModuleController extends Controller
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
 
+        if ($lockedResponse = $this->quizDelayLockedResponse($enrollment, $module)) {
+            return $lockedResponse;
+        }
+
         $progress = $this->resolveProgress($enrollment, $module);
         abort_unless($progress !== null, 404);
 
@@ -553,6 +588,20 @@ class QuizModuleController extends Controller
             ->where('course_user_id', $enrollment->getKey())
             ->where('module_id', $module->getKey())
             ->first();
+    }
+
+    private function quizDelayLockedResponse(CourseEnrollment $enrollment, Module $module): ?JsonResponse
+    {
+        $accessGate = $this->quizAccessDelayService->resolve($enrollment, $module);
+
+        if (! ($accessGate['active'] ?? false)) {
+            return null;
+        }
+
+        return response()->json([
+            'error' => 'Questo quiz sarà disponibile allo scadere del timer di accesso.',
+            'access_gate' => $accessGate,
+        ], 423);
     }
 
     /**

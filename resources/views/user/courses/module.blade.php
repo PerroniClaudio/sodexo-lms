@@ -70,6 +70,11 @@
         data-quiz-submit-url="{{ $module->isSatisfactionQuiz() ? route('user.courses.modules.satisfaction-survey.submit', [$course, $module]) : route('user.courses.modules.quiz.submit', [$course, $module]) }}"
         data-next-module-url="{{ $nextModule ? route('user.courses.modules.player', [$course, $nextModule]) : '' }}"
         data-next-module-title="{{ $nextModule->title ?? '' }}"
+        data-quiz-access-gate-active="{{ ($quizAccessGate['active'] ?? false) ? 'true' : 'false' }}"
+        data-quiz-access-gate-remaining-seconds="{{ $quizAccessGate['remaining_seconds'] ?? 0 }}"
+        data-quiz-access-gate-available-at="{{ $quizAccessGate['available_at'] ?? '' }}"
+        data-quiz-access-gate-previous-module-title="{{ $quizAccessGate['previous_module_title'] ?? '' }}"
+        data-quiz-access-gate-delay-minutes="{{ $quizAccessGate['delay_minutes'] ?? '' }}"
         data-csrf="{{ csrf_token() }}"
     >
         <div class="card border border-base-300 bg-base-200/40 shadow-sm">

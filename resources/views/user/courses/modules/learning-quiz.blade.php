@@ -1,7 +1,37 @@
 {{-- Componente per quiz di apprendimento --}}
 
+@php
+    $quizAccessGateActive = (bool) ($quizAccessGate['active'] ?? false);
+@endphp
+
+@if ($quizAccessGateActive)
+    <div id="quiz-access-gate" class="card border border-warning/40 bg-warning/10 shadow-sm">
+        <div class="card-body gap-4">
+            <div class="alert alert-warning">
+                <x-lucide-alert-triangle class="h-5 w-5" />
+                <span>{{ __('Questo quiz sarà disponibile dopo il tempo di attesa previsto dal modulo precedente.') }}</span>
+            </div>
+
+            <div class="stats stats-vertical shadow sm:stats-horizontal">
+                <div class="stat">
+                    <div class="stat-title">{{ __('Modulo precedente') }}</div>
+                    <div class="stat-value text-lg" data-quiz-access-gate-previous-module>{{ $quizAccessGate['previous_module_title'] }}</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-title">{{ __('Tempo residuo') }}</div>
+                    <div class="stat-value text-primary" data-quiz-access-gate-timer>--:--:--</div>
+                </div>
+            </div>
+
+            <p class="text-sm text-base-content/70">
+                {{ __('La pagina si aggiornerà automaticamente allo scadere del timer.') }}
+            </p>
+        </div>
+    </div>
+@endif
+
 {{-- UI iniziale: stato del quiz --}}
-<div id="quiz-status" class="card border border-base-300 bg-base-100 shadow-sm">
+<div id="quiz-status" @class(['card border border-base-300 bg-base-100 shadow-sm', 'hidden' => $quizAccessGateActive])>
     <div class="card-body gap-6">
         <div id="status-loading" class="flex items-center justify-center py-12">
             <span class="loading loading-spinner loading-lg"></span>
