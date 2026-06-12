@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\CustomCertificateController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DocumentConversionJobDebugController;
 use App\Http\Controllers\Admin\DocumentTypeController;
+use App\Http\Controllers\Admin\FundingEntityController;
 use App\Http\Controllers\Admin\HomepageCustomizationController;
 use App\Http\Controllers\Admin\JobCategoryController;
 use App\Http\Controllers\Admin\JobLevelController;
@@ -169,6 +170,7 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::resource('job-sectors', JobSectorController::class)->except(['show']);
             Route::resource('job-units', JobUnitController::class)->except(['show']);
             Route::resource('document-types', DocumentTypeController::class)->except(['show']);
+            Route::resource('funding-entities', FundingEntityController::class)->except(['show']);
 
             // NACE/ATECO codes
             Route::get('nace-ateco', [NaceAtecoController::class, 'index'])->name('nace-ateco.index');
@@ -185,6 +187,7 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::post('job-sectors/{id}/restore', [JobSectorController::class, 'restore'])->name('job-sectors.restore');
             Route::post('job-units/{id}/restore', [JobUnitController::class, 'restore'])->name('job-units.restore');
             Route::post('document-types/{id}/restore', [DocumentTypeController::class, 'restore'])->name('document-types.restore');
+            Route::post('funding-entities/{id}/restore', [FundingEntityController::class, 'restore'])->name('funding-entities.restore');
 
             // Job Task - Sector associations
             Route::post('job-tasks/{job_task}/sectors', [JobTaskController::class, 'attachSector'])->name('job-tasks.sectors.attach');

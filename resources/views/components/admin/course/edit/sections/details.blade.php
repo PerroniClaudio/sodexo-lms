@@ -4,10 +4,11 @@
     'courseDetailAccordionFields',
     'courseStatusLabels',
     'courseValidator',
+    'fundingEntities',
     'updateUrl',
 ])
 
-<form method="POST" action="{{ $updateUrl }}" class="flex flex-col gap-6">
+<div class="flex flex-col gap-6">
     @include('admin.course.partials.course-edit-badge-bar')
 
     <div class="card border border-base-300 bg-base-100 shadow-sm">
@@ -21,6 +22,7 @@
                 </div>
             </div>
 
+            <form method="POST" action="{{ $updateUrl }}" class="flex flex-col gap-6">
             @csrf
             @method('PUT')
 
@@ -35,7 +37,6 @@
                         type="text"
                         value="{{ $courseBaseValues['title'] }}"
                         class="input input-bordered w-full @error('title') input-error @enderror"
-                        required
                     >
                     @error('title')
                         <p class="text-sm text-error">{{ $message }}</p>
@@ -52,7 +53,6 @@
                         type="text"
                         value="{{ $courseBaseValues['code'] }}"
                         class="input input-bordered w-full @error('code') input-error @enderror"
-                        required
                     >
                     @error('code')
                         <p class="text-sm text-error">{{ $message }}</p>
@@ -67,7 +67,6 @@
                         id="description"
                         name="description"
                         class="textarea textarea-bordered min-h-32 w-full @error('description') textarea-error @enderror"
-                        required
                     >{{ $courseBaseValues['description'] }}</textarea>
                     @error('description')
                         <p class="text-sm text-error">{{ $message }}</p>
@@ -105,11 +104,52 @@
                         class="input input-bordered w-full @error('year') input-error @enderror"
                         min="1900"
                         max="2100"
-                        required
                     >
                     @error('year')
                         <p class="text-sm text-error">{{ $message }}</p>
                     @enderror
+                </div>
+
+                <div class="form-control flex flex-col gap-2 md:col-span-2">
+                    <label class="label cursor-pointer justify-start gap-3 p-0">
+                        <input
+                            id="is_financed"
+                            name="is_financed"
+                            type="checkbox"
+                            value="1"
+                            class="checkbox checkbox-primary"
+                            data-course-financed-toggle
+                            @checked(old('is_financed', $courseBaseValues['is_financed'] ?? $course->is_financed))
+                        >
+                        <span class="label-text font-medium">{{ __('Corso finanziato') }}</span>
+                    </label>
+                    @error('is_financed')
+                        <p class="text-sm text-error">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                @php
+                    $selectedFundingEntityId = old('funding_entity_id', $courseBaseValues['funding_entity_id'] ?? $course->funding_entity_id);
+                    $fundingEntityOptions = $fundingEntities
+                        ->map(fn ($fundingEntity): array => [
+                            'value' => (string) $fundingEntity->getKey(),
+                            'label' => $fundingEntity->company_name,
+                            'search' => $fundingEntity->company_name,
+                        ])
+                        ->values()
+                        ->all();
+                @endphp
+
+                <div class="md:col-span-2" data-funding-entity-wrapper>
+                    <x-searchable-select
+                        name="funding_entity_id"
+                        id="funding_entity_id"
+                        :required="false"
+                        :selected-value="$selectedFundingEntityId"
+                        :options="$fundingEntityOptions"
+                        :label="__('Ente finanziatore')"
+                        :placeholder="__('Cerca o seleziona un ente finanziatore...')"
+                    />
                 </div>
 
                 @if ($course->edition > 1)
@@ -149,7 +189,6 @@
                         id="status"
                         name="status"
                         class="select select-bordered w-full @error('status') select-error @enderror"
-                        required
                     >
                         @foreach ($courseStatusLabels as $courseStatus => $courseStatusLabel)
                             <option value="{{ $courseStatus }}" @selected($courseBaseValues['status'] === $courseStatus)>
@@ -195,4 +234,36 @@
             <x-lucide-save class="h-4 w-4" />
         </button>
     </div>
-</form>
+            </form>
+</div>
+
+@push('scripts')
+    <script>
+        (() => {
+            const financedToggle = document.querySelector('[data-course-financed-toggle]');
+            const fundingEntityWrapper = document.querySelector('[data-funding-entity-wrapper]');
+            const fundingEntityInput = fundingEntityWrapper?.querySelector('[data-input]');
+            const fundingEntityHidden = fundingEntityWrapper?.querySelector('[data-hidden]');
+
+            if (!financedToggle || !fundingEntityWrapper || !fundingEntityInput || !fundingEntityHidden) {
+                return;
+            }
+
+            const syncFundingEntityVisibility = () => {
+                const isVisible = financedToggle.checked;
+
+                fundingEntityWrapper.classList.toggle('hidden', !isVisible);
+                fundingEntityInput.disabled = !isVisible;
+
+                if (!isVisible) {
+                    fundingEntityInput.value = '';
+                    fundingEntityHidden.value = '';
+                    fundingEntityInput.setCustomValidity('');
+                }
+            };
+
+            financedToggle.addEventListener('change', syncFundingEntityVisibility);
+            syncFundingEntityVisibility();
+        })();
+    </script>
+@endpush

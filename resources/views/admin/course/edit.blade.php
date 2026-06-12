@@ -12,8 +12,8 @@
             ['key' => 'details', 'label' => __('Dati anagrafici corso'), 'icon' => 'lucide-book-open-text'],
             ['key' => 'attachments', 'label' => __('Allegati'), 'icon' => 'lucide-paperclip'],
             ['key' => 'duration', 'label' => __('Durata corso'), 'icon' => 'lucide-clock-3'],
-            ['key' => 'survey', 'label' => __('Questionario di gradimento'), 'icon' => 'lucide-message-square-heart'],
-            ['key' => 'certificates', 'label' => __('Abilitazioni di rischio acquisite'), 'icon' => 'lucide-file-badge'],
+            ['key' => 'survey', 'label' => __('Gradimento'), 'icon' => 'lucide-message-square-heart'],
+            ['key' => 'certificates', 'label' => __('Abilitazioni di rischio'), 'icon' => 'lucide-file-badge'],
             ['key' => 'modules', 'label' => __('Moduli'), 'icon' => 'lucide-blocks'],
             ['key' => 'teachers', 'label' => __('Docenti'), 'icon' => 'lucide-graduation-cap'],
             ['key' => 'tutors', 'label' => __('Tutor'), 'icon' => 'lucide-users-round'],
@@ -60,6 +60,8 @@
             'year' => old('year', $course->year),
             'expiry_date' => old('expiry_date', $course->expiry_date?->format('Y-m-d')),
             'status' => old('status', $course->status),
+            'is_financed' => (bool) old('is_financed', $course->is_financed),
+            'funding_entity_id' => old('funding_entity_id', $course->funding_entity_id),
             'has_satisfaction_survey' => (bool) old('has_satisfaction_survey', $course->has_satisfaction_survey),
             'satisfaction_survey_required_for_certificate' => (bool) old(
                 'satisfaction_survey_required_for_certificate',
@@ -154,6 +156,7 @@
                                 :course-detail-accordion-fields="$courseDetailAccordionFields"
                                 :course-status-labels="$courseStatusLabels"
                                 :course-validator="$courseValidator"
+                                :funding-entities="$fundingEntities"
                                 :update-url="$courseDetailsUpdateUrl"
                             />
                         @elseif ($activeCourseEditSection === 'duration')

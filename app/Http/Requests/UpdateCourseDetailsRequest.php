@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Course;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -32,7 +33,24 @@ class UpdateCourseDetailsRequest extends FormRequest
             'regulatory_reference' => ['nullable', 'string'],
             'year' => ['required', 'integer', 'min:1900', 'max:2100'],
             'status' => ['required', 'string', Rule::in(Course::availableStatuses())],
+            'is_financed' => ['nullable', 'boolean'],
+            'funding_entity_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('funding_entities', 'id'),
+                Rule::requiredIf($this->boolean('is_financed')),
+            ],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $isFinanced = $this->boolean('is_financed');
+
+        $this->merge([
+            'is_financed' => $isFinanced,
+            'funding_entity_id' => $isFinanced ? $this->input('funding_entity_id') : null,
+        ]);
     }
 
     /**
@@ -54,6 +72,8 @@ class UpdateCourseDetailsRequest extends FormRequest
             'regulatory_reference' => __('Riferimento normativo'),
             'year' => __('Anno del corso'),
             'status' => __('Stato'),
+            'is_financed' => __('Corso finanziato'),
+            'funding_entity_id' => __('Ente finanziatore'),
         ];
     }
 }

@@ -125,6 +125,18 @@
                                 {{ __('Audit trail') }}
                             </a>
                         </li>
+                        <li class="w-full">
+                            <a
+                                href="{{ route('admin.funding-entities.index') }}"
+                                @class([
+                                    'w-full',
+                                    'menu-active' => request()->routeIs('admin.funding-entities.*'),
+                                ])
+                            >
+                                <x-lucide-building-2 class="mr-2 inline-block h-5 w-5" />
+                                {{ __('Enti finanziatori') }}
+                            </a>
+                        </li>
                     @endrole
 
                     @role('superadmin')

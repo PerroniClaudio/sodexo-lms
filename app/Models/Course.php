@@ -66,6 +66,8 @@ class Course extends Model
         'year',
         'expiry_date',
         'status',
+        'is_financed',
+        'funding_entity_id',
         'edition',
         'original_course_id',
         'has_satisfaction_survey',
@@ -84,6 +86,8 @@ class Course extends Model
             'id' => 'integer',
             'expiry_date' => 'datetime',
             'max_participants' => 'integer',
+            'is_financed' => 'boolean',
+            'funding_entity_id' => 'integer',
             'edition' => 'integer',
             'original_course_id' => 'integer',
             'course_start_date' => 'date',
@@ -170,6 +174,11 @@ class Course extends Model
     public function originalCourse(): BelongsTo
     {
         return $this->belongsTo(self::class, 'original_course_id');
+    }
+
+    public function fundingEntity(): BelongsTo
+    {
+        return $this->belongsTo(FundingEntity::class);
     }
 
     public function familyRootCourseId(): int

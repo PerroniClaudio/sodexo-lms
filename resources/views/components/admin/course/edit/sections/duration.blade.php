@@ -5,7 +5,7 @@
     'updateUrl',
 ])
 
-<form method="POST" action="{{ $updateUrl }}" class="flex flex-col gap-6">
+<div class="flex flex-col gap-6">
     @include('admin.course.partials.course-edit-badge-bar')
 
     <div class="card border border-base-300 bg-base-100 shadow-sm">
@@ -19,6 +19,7 @@
                 </div>
             </div>
 
+            <form method="POST" action="{{ $updateUrl }}" class="flex flex-col gap-6">
             @csrf
             @method('PUT')
 
@@ -131,4 +132,5 @@
             </div>
         </div>
     </div>
-</form>
+            </form>
+</div>

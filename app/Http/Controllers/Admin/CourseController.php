@@ -15,6 +15,7 @@ use App\Http\Requests\UpdateCourseDetailsRequest;
 use App\Http\Requests\UpdateCourseDurationRequest;
 use App\Http\Requests\UpdateCourseSurveyRequest;
 use App\Models\Course;
+use App\Models\FundingEntity;
 use App\Models\Module;
 use App\Models\RiskBasedRequirement;
 use App\Models\SatisfactionSurveyTemplate;
@@ -130,6 +131,7 @@ class CourseController extends Controller
             'activeSatisfactionSurveyTemplate' => SatisfactionSurveyTemplate::active(),
             'riskBasedRequirements' => RiskBasedRequirement::query()->orderBy('name')->get(),
             'riskLevels' => RiskLevel::ordered(),
+            'fundingEntities' => FundingEntity::query()->orderBy('company_name')->get(),
         ]);
     }
 
@@ -343,6 +345,8 @@ class CourseController extends Controller
             'competences' => (string) ($course->competences ?? ''),
             'regulatory_reference' => (string) ($course->regulatory_reference ?? ''),
             'year' => (int) $course->year,
+            'is_financed' => (bool) $course->is_financed,
+            'funding_entity_id' => $course->funding_entity_id === null ? null : (int) $course->funding_entity_id,
             'status' => (string) $course->status,
         ];
 
@@ -361,13 +365,17 @@ class CourseController extends Controller
             'competences' => (string) ($attributes['competences'] ?? ''),
             'regulatory_reference' => (string) ($attributes['regulatory_reference'] ?? ''),
             'year' => (int) ($attributes['year'] ?? 0),
+            'is_financed' => (bool) ($attributes['is_financed'] ?? false),
+            'funding_entity_id' => array_key_exists('funding_entity_id', $attributes) && $attributes['funding_entity_id'] !== null
+                ? (int) $attributes['funding_entity_id']
+                : null,
             'status' => (string) ($attributes['status'] ?? ''),
         ];
 
         return collect($normalizedOriginal)
-            ->except('status')
+            ->except(['status', 'is_financed', 'funding_entity_id'])
             ->all() === collect($normalizedIncoming)
-            ->except('status')
+            ->except(['status', 'is_financed', 'funding_entity_id'])
             ->all()
             && $normalizedIncoming['status'] !== $course->status;
     }

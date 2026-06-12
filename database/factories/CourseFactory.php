@@ -32,6 +32,8 @@ class CourseFactory extends Factory
             'year' => now()->year,
             'expiry_date' => now()->copy()->endOfYear(),
             'status' => 'draft',
+            'is_financed' => false,
+            'funding_entity_id' => null,
             'edition' => 1,
             'original_course_id' => null,
             'has_satisfaction_survey' => false,
