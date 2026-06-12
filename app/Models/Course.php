@@ -186,6 +186,13 @@ class Course extends Model
         return $this->belongsTo(FundingEntity::class);
     }
 
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(CourseCategory::class, 'course_category_course')
+            ->orderBy('name')
+            ->withTimestamps();
+    }
+
     public function familyRootCourseId(): int
     {
         return $this->original_course_id ?? (int) $this->getKey();

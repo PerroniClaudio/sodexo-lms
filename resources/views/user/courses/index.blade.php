@@ -21,7 +21,19 @@
                             <tbody>
                                 @foreach($enrollments as $enrollment)
                                     <tr>
-                                        <td class="font-semibold">{{ $enrollment->course?->title ?? __('Corso non disponibile') }}</td>
+                                        <td>
+                                            <div class="flex flex-col gap-2">
+                                                <span class="font-semibold">{{ $enrollment->course?->title ?? __('Corso non disponibile') }}</span>
+
+                                                @if($enrollment->course?->categories?->isNotEmpty())
+                                                    <div class="flex flex-wrap gap-1.5">
+                                                        @foreach($enrollment->course->categories as $courseCategory)
+                                                            <span class="badge badge-outline badge-primary h-fit">{{ $courseCategory->name }}</span>
+                                                        @endforeach
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        </td>
                                         <td>
                                             <span class="badge badge-ghost h-fit">{{ __($enrollment->status) }}</span>
                                         </td>

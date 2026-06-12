@@ -75,6 +75,15 @@
                     </div>
                 @endif
                 <h2 class="text-2xl font-semibold text-base-content">{{ __('Informazioni sul corso') }}</h2>
+
+                @if($course->categories->isNotEmpty())
+                    <div class="flex flex-wrap gap-2">
+                        @foreach($course->categories as $courseCategory)
+                            <span class="badge badge-outline badge-primary h-fit">{{ $courseCategory->name }}</span>
+                        @endforeach
+                    </div>
+                @endif
+
                 <p class="max-w-4xl text-base leading-8 text-base-content/80">
                     {{ $course->description }}
                 </p>

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\CourseCategoryController;
 use App\Http\Controllers\Admin\CourseClassController;
 use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\CourseEnrollmentController;
@@ -101,6 +102,7 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::put('/courses/{course}/duration', [CourseController::class, 'updateDuration'])->name('courses.duration.update');
         Route::put('/courses/{course}/attachments', [CourseController::class, 'updateAttachments'])->name('courses.attachments.update');
         Route::put('/courses/{course}/survey', [CourseController::class, 'updateSurvey'])->name('courses.survey.update');
+        Route::put('/courses/{course}/categories', [CourseController::class, 'updateCategories'])->name('courses.categories.update');
         Route::get('/courses/{course}/attachments/cover-image', [CourseController::class, 'previewCoverImage'])->name('courses.attachments.cover-image.preview');
         Route::get('/courses/{course}/attachments/poster-pdf', [CourseController::class, 'previewPosterPdf'])->name('courses.attachments.poster-pdf.preview');
         Route::put('/courses/{course}/certificates', [CourseController::class, 'updateCertificates'])->name('courses.certificates.update');
@@ -133,6 +135,8 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::delete('/courses/{course}/modules/{module}/scorm/{scormPackage}', [ScormPackageController::class, 'destroy'])->name('courses.modules.scorm.destroy');
         });
         Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
+        Route::resource('course-categories', CourseCategoryController::class)->except(['show']);
+        Route::post('course-categories/{id}/restore', [CourseCategoryController::class, 'restore'])->name('course-categories.restore');
         Route::get('/video-reports', [VideoReportController::class, 'index'])->name('video-reports.index');
         Route::post('/video-reports', [VideoReportController::class, 'store'])->name('video-reports.store');
         Route::get('/video-reports/{videoReportRequest}', [VideoReportController::class, 'show'])->name('video-reports.show');

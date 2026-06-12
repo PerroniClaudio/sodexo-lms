@@ -10,11 +10,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\DuplicateCourseStructureRequest;
 use App\Http\Requests\StoreCourseRequest;
 use App\Http\Requests\UpdateCourseAttachmentsRequest;
+use App\Http\Requests\UpdateCourseCategoriesRequest;
 use App\Http\Requests\UpdateCourseCertificatesRequest;
 use App\Http\Requests\UpdateCourseDetailsRequest;
 use App\Http\Requests\UpdateCourseDurationRequest;
 use App\Http\Requests\UpdateCourseSurveyRequest;
 use App\Models\Course;
+use App\Models\CourseCategory;
 use App\Models\FundingEntity;
 use App\Models\Module;
 use App\Models\RiskBasedRequirement;
@@ -114,7 +116,7 @@ class CourseController extends Controller
     public function edit(Course $course): View
     {
         $modules = $course->modules()->get();
-        $course->load('riskBasedRequirements');
+        $course->load(['categories', 'riskBasedRequirements']);
 
         return view('admin.course.edit', [
             'course' => $course,
@@ -132,6 +134,7 @@ class CourseController extends Controller
             'riskBasedRequirements' => RiskBasedRequirement::query()->orderBy('name')->get(),
             'riskLevels' => RiskLevel::ordered(),
             'fundingEntities' => FundingEntity::query()->orderBy('company_name')->get(),
+            'courseCategories' => CourseCategory::query()->orderBy('name')->get(),
         ]);
     }
 
@@ -229,6 +232,19 @@ class CourseController extends Controller
         );
 
         return $this->redirectToSection($course, 'certificates', __('Abilitazioni del corso aggiornate con successo.'));
+    }
+
+    public function updateCategories(UpdateCourseCategoriesRequest $request, Course $course): RedirectResponse
+    {
+        $categoryIds = collect($request->validated('category_ids', []))
+            ->map(fn (mixed $categoryId): int => (int) $categoryId)
+            ->unique()
+            ->values()
+            ->all();
+
+        $course->categories()->sync($categoryIds);
+
+        return $this->redirectToSection($course, 'categorization', __('Categorie del corso aggiornate con successo.'));
     }
 
     public function previewCoverImage(Course $course): StreamedResponse

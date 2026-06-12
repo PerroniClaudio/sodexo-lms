@@ -14,6 +14,7 @@
             ['key' => 'duration', 'label' => __('Durata corso'), 'icon' => 'lucide-clock-3'],
             ['key' => 'survey', 'label' => __('Gradimento'), 'icon' => 'lucide-message-square-heart'],
             ['key' => 'certificates', 'label' => __('Abilitazioni di rischio'), 'icon' => 'lucide-file-badge'],
+            ['key' => 'categorization', 'label' => __('Categorizzazione'), 'icon' => 'lucide-tags'],
             ['key' => 'modules', 'label' => __('Moduli'), 'icon' => 'lucide-blocks'],
             ['key' => 'teachers', 'label' => __('Docenti'), 'icon' => 'lucide-graduation-cap'],
             ['key' => 'tutors', 'label' => __('Tutor'), 'icon' => 'lucide-users-round'],
@@ -31,6 +32,7 @@
         $courseAttachmentsUpdateUrl = route('admin.courses.attachments.update', $course);
         $courseSurveyUpdateUrl = route('admin.courses.survey.update', $course);
         $courseCertificatesUpdateUrl = route('admin.courses.certificates.update', $course);
+        $courseCategoriesUpdateUrl = route('admin.courses.categories.update', $course);
         $courseDetailAccordionFields = [
             'teaching_material' => __('Materiale didattico'),
             'internal_notes' => __('Note interne corso'),
@@ -193,6 +195,16 @@
                                 :risk-levels="$riskLevels"
                                 :selected-risk-based-requirements-payload="$selectedRiskBasedRequirementsPayload"
                                 :update-url="$courseCertificatesUpdateUrl"
+                            />
+                        @endif
+
+                        @if ($activeCourseEditSection === 'categorization')
+                            <x-admin.course.edit.sections.categorization
+                                :course="$course"
+                                :course-categories="$courseCategories"
+                                :course-type-labels="$courseTypeLabels"
+                                :course-validator="$courseValidator"
+                                :update-url="$courseCategoriesUpdateUrl"
                             />
                         @endif
 

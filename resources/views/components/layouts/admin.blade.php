@@ -47,6 +47,21 @@
                         </a>
                     </li>
 
+                    @role(['admin', 'superadmin'])
+                        <li class="w-full">
+                            <a
+                                href="{{ route('admin.course-categories.index') }}"
+                                @class([
+                                    'w-full',
+                                    'menu-active' => request()->routeIs('admin.course-categories.*'),
+                                ])
+                            >
+                                <x-lucide-tags class="mr-2 inline-block h-5 w-5" />
+                                {{ __('Categorie corsi') }}
+                            </a>
+                        </li>
+                    @endrole
+
                     <li class="w-full">
                         <a
                             href="{{ route('admin.regia.index') }}"

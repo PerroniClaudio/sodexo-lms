@@ -210,7 +210,7 @@ class CourseController extends Controller
     private function userIndex(User $user): View
     {
         $enrollments = $user->courseEnrollments()
-            ->with('course')
+            ->with('course.categories')
             ->whereHas('course')
             ->get();
 
@@ -233,6 +233,8 @@ class CourseController extends Controller
 
     private function userShow(User $user, Course $course): View
     {
+        $course->loadMissing('categories');
+
         $enrollment = $user->courseEnrollments()->where('course_id', $course->id)->first();
         abort_unless($enrollment !== null, 403);
 
