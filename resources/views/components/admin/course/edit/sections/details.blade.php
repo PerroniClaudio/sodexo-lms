@@ -8,13 +8,13 @@
     'updateUrl',
 ])
 
-<div class="flex flex-col gap-6">
+<div class="flex min-w-0 flex-col gap-6">
     @include('admin.course.partials.course-edit-badge-bar')
 
-    <div class="card border border-base-300 bg-base-100 shadow-sm">
-        <div class="card-body gap-6">
-            <div class="flex items-start gap-4">
-                <div class="flex-1">
+    <div class="card min-w-0 border border-base-300 bg-base-100 shadow-sm">
+        <div class="card-body min-w-0 gap-6 p-4 sm:p-6 lg:p-8">
+            <div class="flex min-w-0 items-start gap-4">
+                <div class="min-w-0 flex-1">
                     <h2 class="card-title">{{ __('Dati anagrafici corso') }}</h2>
                     <p class="text-sm text-base-content/70">
                         {{ __('Gestisci le informazioni principali del corso.') }}
@@ -22,7 +22,7 @@
                 </div>
             </div>
 
-            <form method="POST" action="{{ $updateUrl }}" class="flex flex-col gap-6">
+            <form method="POST" action="{{ $updateUrl }}" class="flex min-w-0 flex-col gap-6">
             @csrf
             @method('PUT')
 
@@ -205,9 +205,9 @@
         </div>
     </div>
 
-    <div class="flex flex-col gap-3">
+    <div class="flex min-w-0 flex-col gap-3">
         @foreach ($courseDetailAccordionFields as $fieldKey => $fieldLabel)
-            <div class="collapse collapse-arrow border border-base-300 bg-base-100 shadow-sm">
+            <div class="collapse collapse-arrow min-w-0 border border-base-300 bg-base-100 shadow-sm">
                 <input type="radio" name="course-details-accordion" @checked($loop->first) />
                 <div class="collapse-title text-base font-medium">
                     {{ $fieldLabel }}

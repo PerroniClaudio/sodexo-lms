@@ -21,11 +21,13 @@
             ['key' => 'enrollments', 'label' => __('Iscritti'), 'icon' => 'lucide-user-plus'],
             ['key' => 'operations', 'label' => __('Operazioni corso'), 'icon' => 'lucide-wrench'],
         ]);
-        $activeCourseEditSection = request('section', 'certificates');
+        $activeCourseEditSection = request('section', 'details');
 
         if (! $courseEditSections->contains(fn (array $section): bool => $section['key'] === $activeCourseEditSection)) {
             $activeCourseEditSection = 'details';
         }
+
+        $activeCourseEditSectionConfig = $courseEditSections->firstWhere('key', $activeCourseEditSection);
 
         $courseDetailsUpdateUrl = route('admin.courses.details.update', $course);
         $courseDurationUpdateUrl = route('admin.courses.duration.update', $course);
@@ -117,22 +119,47 @@
     @endphp
 
     <div
-        class="min-h-screen bg-base-100"
+        class="min-h-screen max-w-full overflow-x-hidden bg-base-100"
         data-course-edit-page
         data-has-create-module-errors="{{ $errors->has('type') || $errors->has('title') ? 'true' : 'false' }}"
         data-course-is-published="{{ $course->status === 'published' ? 'true' : 'false' }}"
     >
-        <div class="grid min-h-screen w-full lg:grid-cols-[18rem_minmax(0,1fr)]">
-            <aside class="border-b border-base-300 bg-base-200 p-4 lg:min-h-screen lg:border-b-0 lg:border-r">
+        <div class="grid min-h-screen w-full min-w-0 grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)]">
+            <aside class="min-w-0 border-b border-base-300 bg-base-200 p-4 lg:min-h-screen lg:border-b-0 lg:border-r">
                 <div class="lg:sticky lg:top-4">
-                    <div class="overflow-x-auto">
-                        <ul class="menu menu-horizontal w-max gap-1 lg:menu-vertical lg:w-full">
+                    <details class="collapse collapse-arrow border border-base-300 bg-base-100 shadow-sm lg:hidden">
+                        <summary class="collapse-title flex min-h-0 items-center gap-3 px-4 py-3 text-base font-medium">
+                            <x-dynamic-component :component="$activeCourseEditSectionConfig['icon']" class="h-5 w-5 shrink-0" />
+                            <span class="min-w-0 truncate">{{ $activeCourseEditSectionConfig['label'] }}</span>
+                        </summary>
+                        <div class="collapse-content px-2 pb-2">
+                            <ul class="menu w-full gap-1">
+                                @foreach ($courseEditSections as $section)
+                                    <li class="w-full">
+                                        <a
+                                            href="{{ route('admin.courses.edit', $course).'?section='.$section['key'] }}"
+                                            @class([
+                                                'w-full',
+                                                'menu-active' => $activeCourseEditSection === $section['key'],
+                                            ])
+                                        >
+                                            <x-dynamic-component :component="$section['icon']" class="mr-2 inline-block h-5 w-5" />
+                                            {{ $section['label'] }}
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </details>
+
+                    <div class="hidden lg:block">
+                        <ul class="menu w-full gap-1">
                             @foreach ($courseEditSections as $section)
                                 <li class="w-full">
                                     <a
                                         href="{{ route('admin.courses.edit', $course).'?section='.$section['key'] }}"
                                         @class([
-                                            'w-full whitespace-nowrap',
+                                            'w-full',
                                             'menu-active' => $activeCourseEditSection === $section['key'],
                                         ])
                                     >
@@ -146,8 +173,8 @@
                 </div>
             </aside>
 
-            <main class="min-w-0">
-                <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+            <main class="min-w-0 overflow-hidden">
+                <div class="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
                     <x-page-header :title="__('Modifica corso')" />
 
                     <div class="flex flex-col gap-6">
@@ -179,7 +206,9 @@
                         @if ($activeCourseEditSection === 'survey')
                             <x-admin.course.edit.sections.survey
                                 :active-satisfaction-survey-template="$activeSatisfactionSurveyTemplate"
+                                :course="$course"
                                 :course-base-values="$courseBaseValues"
+                                :course-type-labels="$courseTypeLabels"
                                 :course-validator="$courseValidator"
                                 :update-url="$courseSurveyUpdateUrl"
                             />
@@ -202,6 +231,7 @@
                             <x-admin.course.edit.sections.categorization
                                 :course="$course"
                                 :course-categories="$courseCategories"
+                                :course-event-type-labels="$courseEventTypeLabels"
                                 :course-type-labels="$courseTypeLabels"
                                 :course-validator="$courseValidator"
                                 :update-url="$courseCategoriesUpdateUrl"

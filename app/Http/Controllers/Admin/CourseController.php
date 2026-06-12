@@ -122,6 +122,7 @@ class CourseController extends Controller
             'course' => $course,
             'courseTypeLabels' => Course::availableTypeLabels(),
             'courseStatusLabels' => Course::availableStatusLabels(),
+            'courseEventTypeLabels' => Course::availableEventTypeLabels(),
             'courseRiskRequirementValidityTypeLabels' => CourseRiskRequirementValidityType::labels(),
             'moduleTypeLabels' => collect(Module::availableTypeLabels()),
             'creatableModuleTypeLabels' => collect(Module::availableTypeLabels())
@@ -236,12 +237,16 @@ class CourseController extends Controller
 
     public function updateCategories(UpdateCourseCategoriesRequest $request, Course $course): RedirectResponse
     {
-        $categoryIds = collect($request->validated('category_ids', []))
+        $validated = $request->validated();
+        $categoryIds = collect($validated['category_ids'] ?? [])
             ->map(fn (mixed $categoryId): int => (int) $categoryId)
             ->unique()
             ->values()
             ->all();
 
+        $course->update([
+            'event_type' => $validated['event_type'] ?? null,
+        ]);
         $course->categories()->sync($categoryIds);
 
         return $this->redirectToSection($course, 'categorization', __('Categorie del corso aggiornate con successo.'));

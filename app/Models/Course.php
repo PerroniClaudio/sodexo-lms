@@ -38,6 +38,13 @@ class Course extends Model
         'archived',
     ];
 
+    public const EVENT_TYPES = [
+        'aggiornamento',
+        'formazione obbligatoria',
+        'addestramento',
+        'corso normativo',
+    ];
+
     /**
      * The attributes that are mass assignable.
      *
@@ -63,6 +70,7 @@ class Course extends Model
         'course_duration_hours',
         'interaction_duration_minutes',
         'type',
+        'event_type',
         'year',
         'expiry_date',
         'status',
@@ -147,6 +155,31 @@ class Course extends Model
             'draft' => __('Bozza'),
             'published' => __('Pubblicato'),
             'archived' => __('Archiviato'),
+        ];
+    }
+
+    /**
+     * Get the available event types.
+     *
+     * @return array<int, string>
+     */
+    public static function availableEventTypes(): array
+    {
+        return self::EVENT_TYPES;
+    }
+
+    /**
+     * Get the translated labels for the available event types.
+     *
+     * @return array<string, string>
+     */
+    public static function availableEventTypeLabels(): array
+    {
+        return [
+            'aggiornamento' => __('Aggiornamento'),
+            'formazione obbligatoria' => __('Formazione obbligatoria'),
+            'addestramento' => __('Addestramento'),
+            'corso normativo' => __('Corso normativo'),
         ];
     }
 

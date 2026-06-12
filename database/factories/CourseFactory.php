@@ -29,6 +29,7 @@ class CourseFactory extends Factory
             'course_duration_hours' => fake()->optional()->numberBetween(1, 80),
             'interaction_duration_minutes' => fake()->optional()->numberBetween(1, 480),
             'type' => fake()->randomElement(Course::availableTypes()),
+            'event_type' => null,
             'year' => now()->year,
             'expiry_date' => now()->copy()->endOfYear(),
             'status' => 'draft',

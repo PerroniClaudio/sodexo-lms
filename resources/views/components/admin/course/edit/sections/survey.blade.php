@@ -1,6 +1,8 @@
 @props([
     'activeSatisfactionSurveyTemplate',
+    'course',
     'courseBaseValues',
+    'courseTypeLabels',
     'courseValidator',
     'updateUrl',
 ])

@@ -28,7 +28,7 @@
             @foreach ($courses as $course)
                 <tr
                     class="cursor-pointer hover"
-                    onclick="window.location='{{ route('admin.courses.edit', $course) }}'"
+                    onclick="window.location='{{ route('admin.courses.edit', [$course, 'section' => 'details']) }}'"
                 >
                     <td>{{ $course->id }}</td>
                     <td>{{ $course->title }}</td>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Course;
 use App\Models\CourseCategory;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -25,6 +26,7 @@ class UpdateCourseCategoriesRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'event_type' => ['nullable', 'string', Rule::in(Course::availableEventTypes())],
             'category_ids' => ['nullable', 'array'],
             'category_ids.*' => ['integer', Rule::exists(CourseCategory::class, 'id')->withoutTrashed()],
         ];
@@ -36,6 +38,7 @@ class UpdateCourseCategoriesRequest extends FormRequest
     public function attributes(): array
     {
         return [
+            'event_type' => __('Tipologia evento'),
             'category_ids' => __('Categorie'),
             'category_ids.*' => __('Categoria'),
         ];

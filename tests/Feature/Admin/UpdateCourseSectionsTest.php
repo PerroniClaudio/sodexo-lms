@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Course;
+use App\Models\CourseCategory;
 use App\Models\FundingEntity;
 use App\Models\Module;
 
@@ -194,4 +195,48 @@ it('updates survey settings through the dedicated endpoint and syncs the survey 
         ->and($course->satisfaction_survey_required_for_certificate)->toBeTrue()
         ->and($course->satisfactionModules()->count())->toBe(1)
         ->and($course->satisfactionModules()->first()?->type)->toBe(Module::TYPE_SATISFACTION_QUIZ);
+});
+
+it('updates course categorization event type and categories', function () {
+    $course = Course::factory()->create([
+        'event_type' => null,
+    ]);
+    $category = CourseCategory::factory()->create();
+
+    $response = $this->put(route('admin.courses.categories.update', $course), [
+        'event_type' => 'formazione obbligatoria',
+        'category_ids' => [$category->getKey()],
+    ]);
+
+    $response->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'categorization']));
+
+    $course->refresh();
+
+    expect($course->event_type)->toBe('formazione obbligatoria')
+        ->and($course->categories)->toHaveCount(1)
+        ->and($course->categories->first()?->is($category))->toBeTrue();
+});
+
+it('shows event type field in course categorization section', function () {
+    $course = Course::factory()->create([
+        'event_type' => 'addestramento',
+    ]);
+
+    $response = $this->get(route('admin.courses.edit', [$course, 'section' => 'categorization']));
+
+    $response->assertOk()
+        ->assertSeeText('Tipologia evento')
+        ->assertSee('addestramento');
+});
+
+it('validates course categorization event type', function () {
+    $course = Course::factory()->create();
+
+    $response = $this->from(route('admin.courses.edit', [$course, 'section' => 'categorization']))
+        ->put(route('admin.courses.categories.update', $course), [
+            'event_type' => 'non valido',
+        ]);
+
+    $response->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'categorization']))
+        ->assertSessionHasErrors('event_type');
 });
