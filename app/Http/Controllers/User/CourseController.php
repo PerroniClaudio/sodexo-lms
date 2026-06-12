@@ -108,7 +108,7 @@ class CourseController extends Controller
         $enrollment = $user->courseEnrollments()->where('course_id', $course->id)->first();
         abort_unless($enrollment !== null, 403);
 
-        $module->loadMissing('video');
+        $module->loadMissing('video', 'teachingMaterials');
 
         $progress = $enrollment->moduleProgresses()
             ->where('module_id', $module->getKey())

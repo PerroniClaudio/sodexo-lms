@@ -21,6 +21,8 @@ class VideoTrackingEvent extends Model
 
     public const TYPE_LOADED = 'loaded';
 
+    public const TYPE_TEACHING_MATERIAL_DOWNLOADED = 'teaching_material_downloaded';
+
     public const TYPES = [
         self::TYPE_HEARTBEAT,
         self::TYPE_PLAY,
@@ -29,6 +31,7 @@ class VideoTrackingEvent extends Model
         self::TYPE_ENDED,
         self::TYPE_RESUME,
         self::TYPE_LOADED,
+        self::TYPE_TEACHING_MATERIAL_DOWNLOADED,
     ];
 
     protected $fillable = [

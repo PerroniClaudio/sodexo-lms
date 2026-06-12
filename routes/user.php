@@ -57,6 +57,7 @@ Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
             Route::post('/courses/{course}/modules/{module}/video/progress', [VideoModuleController::class, 'progress'])->name('courses.modules.video.progress');
             // Modulo video: segna completato
             Route::post('/courses/{course}/modules/{module}/video/complete', [VideoModuleController::class, 'complete'])->name('courses.modules.video.complete');
+            Route::get('/courses/{course}/modules/{module}/video/teaching-materials/{moduleTeachingMaterial}/download', [VideoModuleController::class, 'downloadTeachingMaterial'])->name('courses.modules.video.teaching-materials.download');
 
             // Modulo quiz: stato
             Route::get('/courses/{course}/modules/{module}/quiz/status', [QuizModuleController::class, 'getStatus'])->name('courses.modules.quiz.status');

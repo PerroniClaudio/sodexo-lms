@@ -8,13 +8,18 @@ use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleProgress;
+use App\Models\ModuleTeachingMaterial;
+use App\Models\VideoTrackingEvent;
 use App\Services\MuxService;
 use App\Services\VideoTrackingService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class VideoModuleController extends Controller
 {
@@ -166,6 +171,47 @@ class VideoModuleController extends Controller
             'resume_second' => $result['resume_second'],
             'max_allowed_second' => $result['max_allowed_second'],
         ]);
+    }
+
+    public function downloadTeachingMaterial(Course $course, Module $module, ModuleTeachingMaterial $moduleTeachingMaterial): StreamedResponse
+    {
+        abort_unless((string) $module->belongsTo === (string) $course->getKey(), 404);
+        abort_unless($module->isVideo(), 404);
+        abort_unless($moduleTeachingMaterial->module_id === $module->getKey(), 404);
+
+        $enrollment = $this->resolveEnrollment($course);
+        abort_unless($enrollment !== null, Response::HTTP_FORBIDDEN);
+
+        $progress = $this->resolveProgress($enrollment, $module);
+        abort_unless($progress !== null, Response::HTTP_NOT_FOUND);
+        abort_if($progress->status === ModuleProgress::STATUS_LOCKED, Response::HTTP_FORBIDDEN);
+
+        $disk = Storage::disk($moduleTeachingMaterial->disk);
+        abort_unless($disk->exists($moduleTeachingMaterial->path), Response::HTTP_NOT_FOUND);
+
+        VideoTrackingEvent::query()->create([
+            'module_progress_id' => $progress->getKey(),
+            'course_user_id' => $enrollment->getKey(),
+            'module_id' => $module->getKey(),
+            'video_id' => $module->video_id,
+            'user_id' => Auth::id(),
+            'session_uuid' => (string) Str::uuid(),
+            'event_uuid' => (string) Str::uuid(),
+            'event_type' => VideoTrackingEvent::TYPE_TEACHING_MATERIAL_DOWNLOADED,
+            'occurred_at' => now(),
+            'client_payload' => [
+                'material_id' => $moduleTeachingMaterial->getKey(),
+                'original_name' => $moduleTeachingMaterial->original_name,
+                'mime_type' => $moduleTeachingMaterial->mime_type,
+                'size_bytes' => $moduleTeachingMaterial->size_bytes,
+            ],
+        ]);
+
+        return $disk->download(
+            $moduleTeachingMaterial->path,
+            $moduleTeachingMaterial->original_name,
+            ['Content-Type' => $moduleTeachingMaterial->mime_type ?: 'application/octet-stream'],
+        );
     }
 
     private function resolveEnrollment(Course $course): ?CourseEnrollment

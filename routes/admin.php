@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\LiveStreamLogController;
 use App\Http\Controllers\Admin\ModuleQuizController;
 use App\Http\Controllers\Admin\ModuleQuizDocumentUploadController;
 use App\Http\Controllers\Admin\ModuleQuizSubmissionController;
+use App\Http\Controllers\Admin\ModuleTeachingMaterialController;
 use App\Http\Controllers\Admin\NaceAtecoController;
 use App\Http\Controllers\Admin\RegiaController;
 use App\Http\Controllers\Admin\RiskBasedRequirementController;
@@ -218,6 +219,10 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::post('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}/set-correct', [ModuleQuizController::class, 'setCorrectAnswer'])->name('courses.modules.quiz.answers.set-correct');
 
         Route::scopeBindings()->group(function () {
+            Route::post('/courses/{course}/modules/{module}/teaching-materials', [ModuleTeachingMaterialController::class, 'store'])->name('courses.modules.teaching-materials.store');
+            Route::get('/courses/{course}/modules/{module}/teaching-materials/{moduleTeachingMaterial}/download', [ModuleTeachingMaterialController::class, 'download'])->name('courses.modules.teaching-materials.download');
+            Route::delete('/courses/{course}/modules/{module}/teaching-materials/{moduleTeachingMaterial}', [ModuleTeachingMaterialController::class, 'destroy'])->name('courses.modules.teaching-materials.destroy');
+
             // Document uploads
             Route::post('/courses/{course}/modules/{module}/quiz/document-uploads', [ModuleQuizDocumentUploadController::class, 'store'])->name('courses.modules.quiz.document-uploads.store');
             Route::get('/courses/{course}/modules/{module}/quiz/document-uploads', [ModuleQuizDocumentUploadController::class, 'index'])->name('courses.modules.quiz.document-uploads.index');

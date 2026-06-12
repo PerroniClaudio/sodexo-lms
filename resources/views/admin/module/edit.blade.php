@@ -69,6 +69,7 @@
         @endif
 
         @if ($module->type === 'video')
+            @include('admin.module.partials.teaching-materials', ['course' => $course, 'module' => $module])
             @include('admin.module.partials.video-table', ['course' => $course, 'module' => $module])
         @endif
 

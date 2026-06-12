@@ -163,6 +163,16 @@ class Module extends Model
         return $this->hasMany(LiveStreamDocument::class);
     }
 
+    public function teachingMaterials(): HasMany
+    {
+        return $this->hasMany(ModuleTeachingMaterial::class)->orderByDesc('uploaded_at');
+    }
+
+    public function moduleTeachingMaterials(): HasMany
+    {
+        return $this->teachingMaterials();
+    }
+
     public function liveStreamLogs(): HasMany
     {
         return $this->hasMany(LiveStreamSessionLog::class);
