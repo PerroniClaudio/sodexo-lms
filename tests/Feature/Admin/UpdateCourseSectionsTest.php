@@ -19,6 +19,7 @@ it('updates only the course details through the dedicated endpoint', function ()
         'title' => 'Titolo originale',
         'code' => 'CRS-OLD',
         'description' => 'Descrizione originale',
+        'type' => 'res',
         'year' => 2025,
         'status' => 'draft',
         'expiry_date' => '2026-12-31',
@@ -31,6 +32,7 @@ it('updates only the course details through the dedicated endpoint', function ()
         'description' => 'Descrizione aggiornata',
         'teaching_material' => 'Dispensa',
         'max_participants' => 25,
+        'participant_presence_verification' => 'badge_qr',
         'internal_notes' => 'Note',
         'training_objective' => 'Obiettivo',
         'knowledge' => 'Conoscenze',
@@ -52,6 +54,7 @@ it('updates only the course details through the dedicated endpoint', function ()
         ->and($course->description)->toBe('Descrizione aggiornata')
         ->and($course->is_financed)->toBeTrue()
         ->and($course->funding_entity_id)->toBe($fundingEntity->getKey())
+        ->and($course->participant_presence_verification)->toBe('badge_qr')
         ->and($course->course_duration_hours)->toBe(8);
 });
 
@@ -108,6 +111,50 @@ it('shows funding fields on course details page', function () {
         ->assertSeeText('Corso finanziato')
         ->assertSeeText('Ente finanziatore')
         ->assertSeeText('Ente Visualizzato');
+});
+
+it('shows participant presence verification for res and blended courses only', function (string $type, bool $shouldSeeField) {
+    $course = Course::factory()->create([
+        'type' => $type,
+        'participant_presence_verification' => 'signature',
+    ]);
+
+    $response = $this->get(route('admin.courses.edit', [$course, 'section' => 'details']));
+
+    $response->assertOk();
+
+    if ($shouldSeeField) {
+        $response
+            ->assertSeeText('Verifica Presenza Partecipanti')
+            ->assertSeeText('Firma presenza')
+            ->assertSeeText('Badge/QR')
+            ->assertSeeText('Altra modalità');
+    } else {
+        $response->assertDontSeeText('Verifica Presenza Partecipanti');
+    }
+})->with([
+    'res' => ['res', true],
+    'blended' => ['blended', true],
+    'fad' => ['fad', false],
+]);
+
+it('rejects participant presence verification for unsupported course types', function () {
+    $course = Course::factory()->create([
+        'type' => 'fad',
+    ]);
+
+    $response = $this->from(route('admin.courses.edit', [$course, 'section' => 'details']))
+        ->put(route('admin.courses.details.update', $course), [
+            'title' => $course->title,
+            'code' => $course->code,
+            'description' => $course->description,
+            'year' => $course->year,
+            'status' => $course->status,
+            'participant_presence_verification' => 'signature',
+        ]);
+
+    $response->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'details']))
+        ->assertSessionHasErrors('participant_presence_verification');
 });
 
 it('does not change financing fields when published course update is status only', function () {

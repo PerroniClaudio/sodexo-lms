@@ -50,6 +50,10 @@
             'description' => old('description', $course->description),
             'teaching_material' => old('teaching_material', $course->teaching_material),
             'max_participants' => old('max_participants', $course->max_participants),
+            'participant_presence_verification' => old(
+                'participant_presence_verification',
+                $course->participant_presence_verification
+            ),
             'internal_notes' => old('internal_notes', $course->internal_notes),
             'training_objective' => old('training_objective', $course->training_objective),
             'knowledge' => old('knowledge', $course->knowledge),
@@ -183,6 +187,7 @@
                                 :course="$course"
                                 :course-base-values="$courseBaseValues"
                                 :course-detail-accordion-fields="$courseDetailAccordionFields"
+                                :course-participant-presence-verification-labels="\App\Models\Course::availableParticipantPresenceVerificationLabels()"
                                 :course-status-labels="$courseStatusLabels"
                                 :course-validator="$courseValidator"
                                 :funding-entities="$fundingEntities"

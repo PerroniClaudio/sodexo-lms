@@ -2,6 +2,7 @@
     'course',
     'courseBaseValues',
     'courseDetailAccordionFields',
+    'courseParticipantPresenceVerificationLabels',
     'courseStatusLabels',
     'courseValidator',
     'fundingEntities',
@@ -87,6 +88,29 @@
                             class="input input-bordered w-full @error('max_participants') input-error @enderror"
                         >
                         @error('max_participants')
+                            <p class="text-sm text-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+                @endif
+
+                @if (in_array($course->type, ['res', 'blended'], true))
+                    <div class="form-control flex flex-col gap-2">
+                        <label for="participant_presence_verification" class="label p-0">
+                            <span class="label-text font-medium">{{ __('Verifica Presenza Partecipanti') }}</span>
+                        </label>
+                        <select
+                            id="participant_presence_verification"
+                            name="participant_presence_verification"
+                            class="select select-bordered w-full @error('participant_presence_verification') select-error @enderror"
+                        >
+                            <option value="">{{ __('Seleziona modalità') }}</option>
+                            @foreach ($courseParticipantPresenceVerificationLabels as $verification => $verificationLabel)
+                                <option value="{{ $verification }}" @selected($courseBaseValues['participant_presence_verification'] === $verification)>
+                                    {{ $verificationLabel }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('participant_presence_verification')
                             <p class="text-sm text-error">{{ $message }}</p>
                         @enderror
                     </div>

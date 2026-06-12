@@ -17,6 +17,7 @@ class CourseFactory extends Factory
             'poster_pdf_path' => null,
             'teaching_material' => fake()->optional()->paragraph(),
             'max_participants' => fake()->optional()->numberBetween(5, 100),
+            'participant_presence_verification' => null,
             'internal_notes' => fake()->optional()->paragraph(),
             'training_objective' => fake()->optional()->paragraph(),
             'knowledge' => fake()->optional()->paragraph(),

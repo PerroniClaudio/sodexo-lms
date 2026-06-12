@@ -45,6 +45,12 @@ class Course extends Model
         'corso normativo',
     ];
 
+    public const PARTICIPANT_PRESENCE_VERIFICATIONS = [
+        'signature',
+        'badge_qr',
+        'other',
+    ];
+
     /**
      * The attributes that are mass assignable.
      *
@@ -58,6 +64,7 @@ class Course extends Model
         'poster_pdf_path',
         'teaching_material',
         'max_participants',
+        'participant_presence_verification',
         'internal_notes',
         'training_objective',
         'knowledge',
@@ -180,6 +187,30 @@ class Course extends Model
             'formazione obbligatoria' => __('Formazione obbligatoria'),
             'addestramento' => __('Addestramento'),
             'corso normativo' => __('Corso normativo'),
+        ];
+    }
+
+    /**
+     * Get the available participant presence verification modes.
+     *
+     * @return array<int, string>
+     */
+    public static function availableParticipantPresenceVerifications(): array
+    {
+        return self::PARTICIPANT_PRESENCE_VERIFICATIONS;
+    }
+
+    /**
+     * Get the translated labels for the participant presence verification modes.
+     *
+     * @return array<string, string>
+     */
+    public static function availableParticipantPresenceVerificationLabels(): array
+    {
+        return [
+            'signature' => __('Firma presenza'),
+            'badge_qr' => __('Badge/QR'),
+            'other' => __('Altra modalità'),
         ];
     }
 
