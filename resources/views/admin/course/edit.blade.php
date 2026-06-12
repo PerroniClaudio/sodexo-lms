@@ -14,6 +14,7 @@
             ['key' => 'duration', 'label' => __('Durata corso'), 'icon' => 'lucide-clock-3'],
             ['key' => 'survey', 'label' => __('Gradimento'), 'icon' => 'lucide-message-square-heart'],
             ['key' => 'certificates', 'label' => __('Abilitazioni di rischio'), 'icon' => 'lucide-file-badge'],
+            ['key' => 'certificate-templates', 'label' => __('Template attestati'), 'icon' => 'lucide-file-text'],
             ['key' => 'categorization', 'label' => __('Categorizzazione'), 'icon' => 'lucide-tags'],
             ['key' => 'modules', 'label' => __('Moduli'), 'icon' => 'lucide-blocks'],
             ['key' => 'teachers', 'label' => __('Docenti'), 'icon' => 'lucide-graduation-cap'],
@@ -34,6 +35,7 @@
         $courseAttachmentsUpdateUrl = route('admin.courses.attachments.update', $course);
         $courseSurveyUpdateUrl = route('admin.courses.survey.update', $course);
         $courseCertificatesUpdateUrl = route('admin.courses.certificates.update', $course);
+        $courseCertificateTemplatesUpdateUrl = route('admin.courses.certificate-templates.update', $course);
         $courseCategoriesUpdateUrl = route('admin.courses.categories.update', $course);
         $courseDetailAccordionFields = [
             'teaching_material' => __('Materiale didattico'),
@@ -229,6 +231,16 @@
                                 :risk-levels="$riskLevels"
                                 :selected-risk-based-requirements-payload="$selectedRiskBasedRequirementsPayload"
                                 :update-url="$courseCertificatesUpdateUrl"
+                            />
+                        @endif
+
+                        @if ($activeCourseEditSection === 'certificate-templates')
+                            <x-admin.course.edit.sections.certificate-templates
+                                :course="$course"
+                                :course-certificate-templates="$courseCertificateTemplates"
+                                :course-validator="$courseValidator"
+                                :custom-certificate-type-labels="$customCertificateTypeLabels"
+                                :update-url="$courseCertificateTemplatesUpdateUrl"
                             />
                         @endif
 

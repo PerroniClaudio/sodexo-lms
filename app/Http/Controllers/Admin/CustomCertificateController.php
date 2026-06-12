@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\ActivateCustomCertificateTemplate;
 use App\Enums\DocumentConversionJobStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PreviewCustomCertificateRequest;
@@ -26,6 +27,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class CustomCertificateController extends Controller
 {
     private const STORAGE_DISK = 's3';
+
+    public function __construct(
+        private readonly ActivateCustomCertificateTemplate $activateCustomCertificateTemplate
+    ) {}
 
     public function index(): View
     {
@@ -61,49 +66,13 @@ class CustomCertificateController extends Controller
 
     public function store(StoreCustomCertificateRequest $request): RedirectResponse
     {
-        $certificate = DB::transaction(function () use ($request): CustomCertificate {
-            $validated = $request->validated();
-            $uploadedFile = $request->file('template');
-            $path = $uploadedFile->store(
-                sprintf('custom-certificates/%s', $validated['type']),
-                self::STORAGE_DISK
-            );
+        $validated = $request->validated();
 
-            $currentActive = CustomCertificate::query()
-                ->active()
-                ->ofType($validated['type'])
-                ->whereNull('deleted_at')
-                ->first();
-
-            if ($currentActive !== null) {
-                $currentActive->forceFill([
-                    'is_active' => false,
-                    'archived_at' => now(),
-                ])->save();
-            }
-
-            $certificate = CustomCertificate::query()->create([
-                'type' => $validated['type'],
-                'name' => $this->generateVersionName($validated['type']),
-                'storage_disk' => self::STORAGE_DISK,
-                'template_path' => $path,
-                'original_filename' => $uploadedFile->getClientOriginalName(),
-                'mime_type' => $uploadedFile->getMimeType() ?? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'is_active' => true,
-                'course_ids' => $validated['course_ids'] ?? null,
-                'replaced_by_id' => null,
-                'activated_at' => now(),
-                'archived_at' => null,
-            ]);
-
-            if ($currentActive !== null) {
-                $currentActive->forceFill([
-                    'replaced_by_id' => $certificate->getKey(),
-                ])->save();
-            }
-
-            return $certificate;
-        });
+        $certificate = $this->activateCustomCertificateTemplate->handle(
+            type: $validated['type'],
+            uploadedFile: $request->file('template'),
+            courseIds: $validated['course_ids'] ?? null,
+        );
 
         return redirect()
             ->route('admin.certificates.edit', $certificate)
@@ -133,39 +102,11 @@ class CustomCertificateController extends Controller
 
         if ($request->hasFile('template')) {
             $certificate = DB::transaction(function () use ($request, $validated, $customCertificate): CustomCertificate {
-                CustomCertificate::query()
-                    ->active()
-                    ->ofType($customCertificate->type)
-                    ->whereKeyNot($customCertificate->getKey())
-                    ->update([
-                        'is_active' => false,
-                        'archived_at' => now(),
-                    ]);
-
-                $customCertificate->forceFill([
-                    'is_active' => false,
-                    'archived_at' => now(),
-                ])->save();
-
-                $uploadedFile = $request->file('template');
-                $path = $uploadedFile->store(
-                    sprintf('custom-certificates/%s', $validated['type']),
-                    self::STORAGE_DISK
+                $newCertificate = $this->activateCustomCertificateTemplate->handle(
+                    type: $validated['type'],
+                    uploadedFile: $request->file('template'),
+                    courseIds: $validated['course_ids'] ?? null,
                 );
-
-                $newCertificate = CustomCertificate::query()->create([
-                    'type' => $validated['type'],
-                    'name' => $this->generateVersionName($validated['type']),
-                    'storage_disk' => self::STORAGE_DISK,
-                    'template_path' => $path,
-                    'original_filename' => $uploadedFile->getClientOriginalName(),
-                    'mime_type' => $uploadedFile->getMimeType() ?? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                    'is_active' => true,
-                    'course_ids' => $validated['course_ids'] ?? null,
-                    'replaced_by_id' => null,
-                    'activated_at' => now(),
-                    'archived_at' => null,
-                ]);
 
                 $customCertificate->forceFill([
                     'replaced_by_id' => $newCertificate->getKey(),
@@ -321,12 +262,5 @@ class CustomCertificateController extends Controller
             '${DATA_CORSO}' => __('Campo Data inizio per moduli RES/live'),
             '${ORARIO_CORSO}' => __('Campo Orario del corso per moduli RES/live'),
         ];
-    }
-
-    private function generateVersionName(string $type): string
-    {
-        $label = CustomCertificate::availableTypeLabels()[$type] ?? $type;
-
-        return sprintf('%s %s', $label, now()->format('Y-m-d H:i:s'));
     }
 }

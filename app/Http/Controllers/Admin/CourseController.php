@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\ActivateCustomCertificateTemplate;
 use App\Actions\DuplicateCourse;
 use App\Actions\DuplicateCourseStructure;
 use App\Enums\CourseRiskRequirementValidityType;
@@ -12,15 +13,18 @@ use App\Http\Requests\StoreCourseRequest;
 use App\Http\Requests\UpdateCourseAttachmentsRequest;
 use App\Http\Requests\UpdateCourseCategoriesRequest;
 use App\Http\Requests\UpdateCourseCertificatesRequest;
+use App\Http\Requests\UpdateCourseCertificateTemplateRequest;
 use App\Http\Requests\UpdateCourseDetailsRequest;
 use App\Http\Requests\UpdateCourseDurationRequest;
 use App\Http\Requests\UpdateCourseSurveyRequest;
 use App\Models\Course;
 use App\Models\CourseCategory;
+use App\Models\CustomCertificate;
 use App\Models\FundingEntity;
 use App\Models\Module;
 use App\Models\RiskBasedRequirement;
 use App\Models\SatisfactionSurveyTemplate;
+use App\Services\Certificates\CustomCertificateResolver;
 use App\Services\CourseValidation\CourseValidatorService;
 use App\Services\SyncCourseSatisfactionSurvey;
 use Illuminate\Http\RedirectResponse;
@@ -113,17 +117,35 @@ class CourseController extends Controller
             ->with('status', __('Corso creato con successo.'));
     }
 
-    public function edit(Course $course): View
+    public function edit(Course $course, CustomCertificateResolver $customCertificateResolver): View
     {
         $modules = $course->modules()->get();
         $course->load(['categories', 'riskBasedRequirements']);
+        $courseCertificateTemplates = collect(CustomCertificate::availableTypes())
+            ->mapWithKeys(function (string $type) use ($course, $customCertificateResolver): array {
+                $specificCertificate = CustomCertificate::query()
+                    ->active()
+                    ->ofType($type)
+                    ->get()
+                    ->first(fn (CustomCertificate $customCertificate): bool => ! $customCertificate->isGeneric()
+                        && $customCertificate->supportsCourse((int) $course->getKey()));
+
+                return [
+                    $type => [
+                        'specific' => $specificCertificate,
+                        'resolved' => $customCertificateResolver->resolve($type, $course),
+                    ],
+                ];
+            });
 
         return view('admin.course.edit', [
             'course' => $course,
+            'courseCertificateTemplates' => $courseCertificateTemplates,
             'courseTypeLabels' => Course::availableTypeLabels(),
             'courseStatusLabels' => Course::availableStatusLabels(),
             'courseEventTypeLabels' => Course::availableEventTypeLabels(),
             'courseRiskRequirementValidityTypeLabels' => CourseRiskRequirementValidityType::labels(),
+            'customCertificateTypeLabels' => CustomCertificate::availableTypeLabels(),
             'moduleTypeLabels' => collect(Module::availableTypeLabels()),
             'creatableModuleTypeLabels' => collect(Module::availableTypeLabels())
                 ->only(Module::creatableTypes())
@@ -233,6 +255,22 @@ class CourseController extends Controller
         );
 
         return $this->redirectToSection($course, 'certificates', __('Abilitazioni del corso aggiornate con successo.'));
+    }
+
+    public function updateCertificateTemplate(
+        UpdateCourseCertificateTemplateRequest $request,
+        Course $course,
+        ActivateCustomCertificateTemplate $activateCustomCertificateTemplate,
+    ): RedirectResponse {
+        $validated = $request->validated();
+
+        $activateCustomCertificateTemplate->handle(
+            type: $validated['type'],
+            uploadedFile: $request->file('template'),
+            courseIds: [(int) $course->getKey()],
+        );
+
+        return $this->redirectToSection($course, 'certificate-templates', __('Template attestato aggiornato con successo.'));
     }
 
     public function updateCategories(UpdateCourseCategoriesRequest $request, Course $course): RedirectResponse
