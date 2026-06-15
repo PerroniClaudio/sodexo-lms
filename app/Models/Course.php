@@ -83,6 +83,8 @@ class Course extends Model
         'status',
         'is_financed',
         'funding_entity_id',
+        'job_unit_id',
+        'venue_id',
         'edition',
         'original_course_id',
         'has_satisfaction_survey',
@@ -104,6 +106,8 @@ class Course extends Model
             'max_participants' => 'integer',
             'is_financed' => 'boolean',
             'funding_entity_id' => 'integer',
+            'job_unit_id' => 'integer',
+            'venue_id' => 'integer',
             'edition' => 'integer',
             'original_course_id' => 'integer',
             'course_start_date' => 'date',
@@ -250,6 +254,16 @@ class Course extends Model
     public function fundingEntity(): BelongsTo
     {
         return $this->belongsTo(FundingEntity::class);
+    }
+
+    public function jobUnit(): BelongsTo
+    {
+        return $this->belongsTo(JobUnit::class);
+    }
+
+    public function venue(): BelongsTo
+    {
+        return $this->belongsTo(Venue::class);
     }
 
     public function categories(): BelongsToMany

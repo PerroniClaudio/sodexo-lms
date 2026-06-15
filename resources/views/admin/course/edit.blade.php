@@ -10,6 +10,9 @@
         ];
         $courseEditSections = collect([
             ['key' => 'details', 'label' => __('Dati anagrafici corso'), 'icon' => 'lucide-book-open-text'],
+            ...in_array($course->type, ['res', 'blended'], true)
+                ? [['key' => 'venue', 'label' => __('Sede'), 'icon' => 'lucide-map-pin']]
+                : [],
             ['key' => 'attachments', 'label' => __('Allegati'), 'icon' => 'lucide-paperclip'],
             ['key' => 'duration', 'label' => __('Durata corso'), 'icon' => 'lucide-clock-3'],
             ['key' => 'survey', 'label' => __('Gradimento'), 'icon' => 'lucide-message-square-heart'],
@@ -76,6 +79,8 @@
             'status' => old('status', $course->status),
             'is_financed' => (bool) old('is_financed', $course->is_financed),
             'funding_entity_id' => old('funding_entity_id', $course->funding_entity_id),
+            'job_unit_id' => old('job_unit_id', $course->job_unit_id),
+            'venue_id' => old('venue_id', $course->venue_id),
             'has_satisfaction_survey' => (bool) old('has_satisfaction_survey', $course->has_satisfaction_survey),
             'satisfaction_survey_required_for_certificate' => (bool) old(
                 'satisfaction_survey_required_for_certificate',
@@ -211,6 +216,15 @@
                                 :course="$course"
                                 :course-validator="$courseValidator"
                                 :update-url="$courseAttachmentsUpdateUrl"
+                            />
+                        @elseif ($activeCourseEditSection === 'venue' && in_array($course->type, ['res', 'blended'], true))
+                            <x-admin.course.edit.sections.venue
+                                :course="$course"
+                                :course-base-values="$courseBaseValues"
+                                :course-validator="$courseValidator"
+                                :job-units="$jobUnits"
+                                :update-url="$courseDetailsUpdateUrl"
+                                :venues="$venues"
                             />
                         @endif
 

@@ -3,7 +3,9 @@
 use App\Models\Course;
 use App\Models\CourseCategory;
 use App\Models\FundingEntity;
+use App\Models\JobUnit;
 use App\Models\Module;
+use App\Models\Venue;
 
 beforeEach(function () {
     actingAsRole('admin');
@@ -137,6 +139,104 @@ it('shows participant presence verification for res and blended courses only', f
     'blended' => ['blended', true],
     'fad' => ['fad', false],
 ]);
+
+it('shows venue section for res and blended courses only', function (string $type, bool $shouldSeeSection) {
+    $course = Course::factory()->create([
+        'type' => $type,
+    ]);
+
+    $response = $this->get(route('admin.courses.edit', [$course, 'section' => 'venue']));
+
+    $response->assertOk();
+
+    if ($shouldSeeSection) {
+        $response
+            ->assertSeeText('Sede')
+            ->assertSeeText('Unità produttiva esistente');
+    } else {
+        $response->assertDontSeeText('Unità produttiva esistente');
+    }
+})->with([
+    'res' => ['res', true],
+    'blended' => ['blended', true],
+    'fad' => ['fad', false],
+]);
+
+it('updates course venue with an existing job unit', function () {
+    $jobUnit = JobUnit::factory()->create();
+    $venue = Venue::factory()->create();
+    $course = Course::factory()->res()->create([
+        'venue_id' => $venue->getKey(),
+        'job_unit_id' => null,
+    ]);
+
+    $response = $this->put(route('admin.courses.details.update', $course), [
+        'title' => $course->title,
+        'code' => $course->code,
+        'description' => $course->description,
+        'year' => $course->year,
+        'status' => $course->status,
+        'venue_mode' => 'job_unit',
+        'job_unit_id' => $jobUnit->getKey(),
+        'update_section' => 'venue',
+    ]);
+
+    $response->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'venue']));
+
+    expect($course->fresh()->job_unit_id)->toBe($jobUnit->getKey())
+        ->and($course->fresh()->venue_id)->toBeNull();
+});
+
+it('creates a reusable venue and assigns it to the course', function () {
+    $jobUnit = JobUnit::factory()->create();
+    $course = Course::factory()->res()->create();
+
+    $response = $this->put(route('admin.courses.details.update', $course), [
+        'title' => $course->title,
+        'code' => $course->code,
+        'description' => $course->description,
+        'year' => $course->year,
+        'status' => $course->status,
+        'venue_mode' => 'venue',
+        'venue_name' => 'Palazzo della regione',
+        'country' => $jobUnit->country->code,
+        'region' => $jobUnit->region->name,
+        'province' => $jobUnit->province->name,
+        'city' => $jobUnit->city->name,
+        'postal_code' => '00100',
+        'address' => 'Via Roma 1',
+        'update_section' => 'venue',
+    ]);
+
+    $response->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'venue']));
+
+    $venue = Venue::query()->where('name', 'Palazzo della regione')->firstOrFail();
+
+    expect($course->fresh()->venue_id)->toBe($venue->getKey())
+        ->and($course->fresh()->job_unit_id)->toBeNull()
+        ->and($venue->address)->toBe('Via Roma 1');
+});
+
+it('rejects venue fields for unsupported course types', function () {
+    $jobUnit = JobUnit::factory()->create();
+    $course = Course::factory()->create([
+        'type' => 'fad',
+    ]);
+
+    $response = $this->from(route('admin.courses.edit', [$course, 'section' => 'details']))
+        ->put(route('admin.courses.details.update', $course), [
+            'title' => $course->title,
+            'code' => $course->code,
+            'description' => $course->description,
+            'year' => $course->year,
+            'status' => $course->status,
+            'venue_mode' => 'job_unit',
+            'job_unit_id' => $jobUnit->getKey(),
+        ]);
+
+    $response->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'details']))
+        ->assertSessionHasErrors(['venue_mode', 'job_unit_id']);
+});
 
 it('rejects participant presence verification for unsupported course types', function () {
     $course = Course::factory()->create([

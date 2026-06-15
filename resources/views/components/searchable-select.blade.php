@@ -59,14 +59,14 @@
                         data-option-label="{{ $option['label'] }}"
                         data-search-text="{{ $option['search'] ?? $option['label'] }}"
                     >
-                        <a class="flex w-full items-start gap-2" data-option-link>
+                        <a class="group flex w-full items-start gap-2" data-option-link>
                             @if (!empty($option['badge']))
                                 <code class="badge badge-sm badge-ghost shrink-0 h-fit">{{ $option['badge'] }}</code>
                             @endif
                             <span class="flex-1">
                                 <span class="block truncate">{{ $option['label'] }}</span>
                                 @if (!empty($option['description']))
-                                    <span class="block text-xs text-base-content/60">{{ $option['description'] }}</span>
+                                    <span class="block text-xs text-base-content/60 group-[.menu-active]:text-primary-content/80">{{ $option['description'] }}</span>
                                 @endif
                             </span>
                         </a>

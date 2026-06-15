@@ -22,7 +22,35 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeTutorAssignmentsTable(courseEditPage);
     initializeEnrollmentsTable(courseEditPage);
     initializeCourseRecipients(courseEditPage);
+    initializeCourseVenueForm(courseEditPage);
 });
+
+function initializeCourseVenueForm(scope) {
+    const form = scope.querySelector('[data-course-venue-form]');
+
+    if (!form) {
+        return;
+    }
+
+    const sync = () => {
+        const mode = form.querySelector('[data-course-venue-mode]:checked')?.value || 'venue';
+
+        form.querySelectorAll('[data-course-venue-panel]').forEach((panel) => {
+            const isActive = panel.dataset.courseVenuePanel === mode;
+
+            panel.classList.toggle('hidden', !isActive);
+            panel.querySelectorAll('input, select, textarea').forEach((field) => {
+                field.disabled = !isActive;
+            });
+        });
+    };
+
+    form.querySelectorAll('[data-course-venue-mode]').forEach((radio) => {
+        radio.addEventListener('change', sync);
+    });
+
+    sync();
+}
 
 function initializeCourseRecipients(scope) {
     const form = scope.querySelector('[data-course-recipients-form]');

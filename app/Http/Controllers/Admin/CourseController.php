@@ -28,8 +28,13 @@ use App\Models\JobTask;
 use App\Models\JobUnit;
 use App\Models\Module;
 use App\Models\Partner;
+use App\Models\Province;
 use App\Models\RiskBasedRequirement;
 use App\Models\SatisfactionSurveyTemplate;
+use App\Models\Venue;
+use App\Models\WorldCity;
+use App\Models\WorldCountry;
+use App\Models\WorldDivision;
 use App\Services\Certificates\CustomCertificateResolver;
 use App\Services\CourseValidation\CourseValidatorService;
 use App\Services\SyncCourseSatisfactionSurvey;
@@ -126,7 +131,7 @@ class CourseController extends Controller
     public function edit(Course $course, CustomCertificateResolver $customCertificateResolver): View
     {
         $modules = $course->modules()->get();
-        $course->load(['categories', 'jobRoles', 'jobTasks', 'jobUnits', 'partners', 'riskBasedRequirements']);
+        $course->load(['categories', 'jobUnit', 'jobRoles', 'jobTasks', 'jobUnits', 'partners', 'riskBasedRequirements', 'venue']);
         $courseCertificateTemplates = collect(CustomCertificate::availableTypes())
             ->mapWithKeys(function (string $type) use ($course, $customCertificateResolver): array {
                 $specificCertificate = CustomCertificate::query()
@@ -168,6 +173,7 @@ class CourseController extends Controller
             'jobRoles' => JobRole::query()->orderBy('name')->get(),
             'jobTasks' => JobTask::query()->orderBy('name')->get(),
             'jobUnits' => JobUnit::query()->orderBy('name')->get(),
+            'venues' => Venue::query()->with(['city', 'province', 'region'])->orderBy('name')->get(),
         ]);
     }
 
@@ -178,7 +184,11 @@ class CourseController extends Controller
     ): RedirectResponse {
         try {
             $validated = $request->validated();
-            $attributes = $validated;
+            $venueAttributes = $this->resolveCourseVenueAttributes($course, $validated);
+            $attributes = [
+                ...$this->courseDetailsAttributes($validated),
+                ...$venueAttributes,
+            ];
 
             if ($this->isPublishedCourseDetailsStatusOnlyUpdate($course, $attributes)) {
                 $attributes = [
@@ -217,7 +227,9 @@ class CourseController extends Controller
                 ]);
             }
 
-            return $this->redirectToSection($course, 'details', __('Corso aggiornato con successo.'));
+            $section = $request->input('update_section') === 'venue' ? 'venue' : 'details';
+
+            return $this->redirectToSection($course, $section, __('Corso aggiornato con successo.'));
         } catch (RuntimeException $e) {
             return redirect()
                 ->back()
@@ -418,6 +430,81 @@ class CourseController extends Controller
                 'section' => $section,
             ])
             ->with('status', $message);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function courseDetailsAttributes(array $validated): array
+    {
+        return collect($validated)
+            ->except(['venue_mode', 'job_unit_id', 'venue_id', 'venue_name', 'country', 'region', 'province', 'city', 'address', 'postal_code'])
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array{job_unit_id: int|null, venue_id: int|null}|array{}
+     */
+    private function resolveCourseVenueAttributes(Course $course, array $validated): array
+    {
+        if (! in_array($course->type, ['res', 'blended'], true) || blank($validated['venue_mode'] ?? null)) {
+            return [];
+        }
+
+        if ($validated['venue_mode'] === 'job_unit') {
+            return [
+                'job_unit_id' => (int) $validated['job_unit_id'],
+                'venue_id' => null,
+            ];
+        }
+
+        if (filled($validated['venue_id'] ?? null)) {
+            return [
+                'job_unit_id' => null,
+                'venue_id' => (int) $validated['venue_id'],
+            ];
+        }
+
+        $venue = Venue::query()->create([
+            'name' => $validated['venue_name'],
+            ...$this->convertGeographicNamesToIds($validated),
+            'address' => $validated['address'] ?? null,
+            'postal_code' => $validated['postal_code'] ?? null,
+        ]);
+
+        return [
+            'job_unit_id' => null,
+            'venue_id' => (int) $venue->getKey(),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{country_id: int|null, region_id: int|null, province_id: int|null, city_id: int|null}
+     */
+    private function convertGeographicNamesToIds(array $data): array
+    {
+        $country = filled($data['country'] ?? null)
+            ? WorldCountry::query()->where('code', $data['country'])->first()
+            : null;
+        $region = filled($data['region'] ?? null)
+            ? WorldDivision::query()->where('name', $data['region'])->first()
+            : null;
+        $province = filled($data['province'] ?? null)
+            ? Province::query()->where('name', $data['province'])->first()
+            : null;
+        $city = filled($data['city'] ?? null)
+            ? WorldCity::query()->where('name', $data['city'])->first()
+            : null;
+
+        return [
+            'country_id' => $country?->getKey(),
+            'region_id' => $region?->getKey(),
+            'province_id' => $province?->getKey(),
+            'city_id' => $city?->getKey(),
+        ];
     }
 
     /**
