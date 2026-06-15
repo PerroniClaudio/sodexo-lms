@@ -10,6 +10,7 @@ use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\ModuleTeachingMaterial;
 use App\Models\VideoExercise;
+use App\Models\VideoExerciseAuditEvent;
 use App\Models\VideoExerciseMaterial;
 use App\Models\VideoExerciseSubmission;
 use App\Models\VideoTrackingEvent;
@@ -235,6 +236,16 @@ class VideoModuleController extends Controller
                 ->with('answers'),
         ]);
 
+        $module->videoExercises->each(function (VideoExercise $exercise) use ($enrollment): void {
+            $submission = $exercise->submissions->first();
+
+            if ($submission === null || $submission->status === VideoExerciseSubmission::STATUS_COMPLETED) {
+                return;
+            }
+
+            $this->logExerciseAuditEvent($exercise, $submission, $enrollment, VideoExerciseAuditEvent::TYPE_REOPENED);
+        });
+
         return response()->json([
             'exercises' => $module->videoExercises->map(fn (VideoExercise $exercise): array => $this->exercisePayload($course, $module, $exercise, $enrollment))->values(),
         ]);
@@ -255,7 +266,7 @@ class VideoModuleController extends Controller
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, Response::HTTP_FORBIDDEN);
 
-        $submission = $this->saveExerciseDraft($videoExercise, $enrollment, $validated);
+        $submission = $this->saveExerciseDraft($videoExercise, $enrollment, $validated, true);
 
         return response()->json([
             'submission' => $this->submissionPayload($submission),
@@ -277,7 +288,7 @@ class VideoModuleController extends Controller
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, Response::HTTP_FORBIDDEN);
 
-        $submission = $this->saveExerciseDraft($videoExercise, $enrollment, $validated);
+        $submission = $this->saveExerciseDraft($videoExercise, $enrollment, $validated, false);
         $submission->loadMissing('answers', 'exercise.questions');
 
         $errors = $this->exerciseSubmissionErrors($submission);
@@ -294,6 +305,8 @@ class VideoModuleController extends Controller
             'status' => VideoExerciseSubmission::STATUS_COMPLETED,
             'completed_at' => now(),
         ])->save();
+
+        $this->logExerciseAuditEvent($videoExercise, $submission, $enrollment, VideoExerciseAuditEvent::TYPE_SUBMITTED);
 
         return response()->json([
             'submission' => $this->submissionPayload($submission->fresh('answers')),
@@ -416,9 +429,9 @@ class VideoModuleController extends Controller
     /**
      * @param  array<string, mixed>  $validated
      */
-    private function saveExerciseDraft(VideoExercise $exercise, CourseEnrollment $enrollment, array $validated): VideoExerciseSubmission
+    private function saveExerciseDraft(VideoExercise $exercise, CourseEnrollment $enrollment, array $validated, bool $logSavedEvent): VideoExerciseSubmission
     {
-        return DB::transaction(function () use ($exercise, $enrollment, $validated): VideoExerciseSubmission {
+        return DB::transaction(function () use ($exercise, $enrollment, $validated, $logSavedEvent): VideoExerciseSubmission {
             $submission = VideoExerciseSubmission::query()->firstOrCreate(
                 [
                     'video_exercise_id' => $exercise->getKey(),
@@ -437,6 +450,14 @@ class VideoModuleController extends Controller
                     'downloaded_material_ids' => $this->normalizedDownloadedMaterialIds($exercise, $validated['downloaded_material_ids'] ?? [], $submission),
                     'started_at' => $submission->started_at ?? now(),
                 ])->save();
+
+                if ($submission->wasRecentlyCreated) {
+                    $this->logExerciseAuditEvent($exercise, $submission, $enrollment, VideoExerciseAuditEvent::TYPE_STARTED);
+                }
+
+                if ($logSavedEvent) {
+                    $this->logExerciseAuditEvent($exercise, $submission, $enrollment, VideoExerciseAuditEvent::TYPE_SAVED);
+                }
             }
 
             foreach (($validated['answers'] ?? []) as $questionId => $answerText) {
@@ -574,5 +595,42 @@ class VideoModuleController extends Controller
             ->unique()
             ->values()
             ->all();
+    }
+
+    private function logExerciseAuditEvent(
+        VideoExercise $exercise,
+        VideoExerciseSubmission $submission,
+        CourseEnrollment $enrollment,
+        string $eventType,
+    ): void {
+        VideoExerciseAuditEvent::query()->create([
+            'video_exercise_id' => $exercise->getKey(),
+            'video_exercise_submission_id' => $submission->getKey(),
+            'course_user_id' => $enrollment->getKey(),
+            'user_id' => $enrollment->user_id,
+            'event_type' => $eventType,
+            'completion_percentage' => $this->completionPercentage($exercise, $submission),
+            'elapsed_seconds' => $submission->elapsed_seconds ?? 0,
+            'started_at' => $submission->started_at,
+            'completed_at' => $submission->completed_at,
+            'occurred_at' => now(),
+            'updated_at_snapshot' => $submission->updated_at,
+        ]);
+    }
+
+    private function completionPercentage(VideoExercise $exercise, VideoExerciseSubmission $submission): int
+    {
+        if ($exercise->questions->isEmpty()) {
+            return 100;
+        }
+
+        $answersByQuestionId = $submission->answers->keyBy('video_exercise_question_id');
+        $validAnswers = $exercise->questions->filter(function ($question) use ($answersByQuestionId) {
+            $answer = trim((string) ($answersByQuestionId->get($question->getKey())?->answer_text ?? ''));
+
+            return mb_strlen($answer) >= $question->minimum_characters;
+        })->count();
+
+        return (int) floor(($validAnswers / max($exercise->questions->count(), 1)) * 100);
     }
 }

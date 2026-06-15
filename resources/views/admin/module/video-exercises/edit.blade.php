@@ -274,6 +274,26 @@
                 </form>
             </dialog>
         @endforeach
+
+        <div class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-5">
+                <div>
+                    <h2 class="text-lg font-semibold">{{ __('Esportazioni') }}</h2>
+                    <p class="text-sm text-base-content/60">{{ __('Scarica le risposte degli utenti per questa esercitazione.') }}</p>
+                </div>
+
+                <div class="flex flex-wrap justify-end gap-2">
+                    <a href="{{ route('admin.courses.modules.video-exercises.activity-export', [$course, $module, $videoExercise]) }}" class="btn btn-outline">
+                        <x-lucide-download class="h-4 w-4" />
+                        <span>{{ __('Attività utenti') }}</span>
+                    </a>
+                    <a href="{{ route('admin.courses.modules.video-exercises.responses-export', [$course, $module, $videoExercise]) }}" class="btn btn-primary">
+                        <x-lucide-download class="h-4 w-4" />
+                        <span>{{ __('Esporta risposte') }}</span>
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 
     <dialog id="add-material-modal" class="modal" data-video-exercise-material-modal>

@@ -8,6 +8,8 @@ use App\Models\Module;
 use App\Models\VideoExercise;
 use App\Models\VideoExerciseMaterial;
 use App\Models\VideoExerciseQuestion;
+use App\Services\VideoExerciseActivityExporter;
+use App\Services\VideoExerciseResponsesExporter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -55,6 +57,42 @@ class VideoExerciseController extends Controller
         $videoExercise->load(['materials', 'questions']);
 
         return view('admin.module.video-exercises.edit', compact('course', 'module', 'videoExercise'));
+    }
+
+    public function exportResponses(
+        Course $course,
+        Module $module,
+        VideoExercise $videoExercise,
+        VideoExerciseResponsesExporter $exporter,
+    ): StreamedResponse {
+        $this->ensureVideoExercise($course, $module, $videoExercise);
+
+        $contents = $exporter->buildWorkbookContents($videoExercise);
+        $fileName = Str::slug($course->title.' '.$module->title.' '.$videoExercise->title).'-risposte.xlsx';
+
+        return response()->streamDownload(function () use ($contents): void {
+            echo $contents;
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    public function exportActivity(
+        Course $course,
+        Module $module,
+        VideoExercise $videoExercise,
+        VideoExerciseActivityExporter $exporter,
+    ): StreamedResponse {
+        $this->ensureVideoExercise($course, $module, $videoExercise);
+
+        $contents = $exporter->buildWorkbookContents($videoExercise);
+        $fileName = Str::slug($course->title.' '.$module->title.' '.$videoExercise->title).'-attivita-utenti.xlsx';
+
+        return response()->streamDownload(function () use ($contents): void {
+            echo $contents;
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
     }
 
     public function update(Request $request, Course $course, Module $module, VideoExercise $videoExercise): RedirectResponse

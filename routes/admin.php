@@ -227,6 +227,8 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::get('/courses/{course}/modules/{module}/video-exercises/create', [VideoExerciseController::class, 'create'])->name('courses.modules.video-exercises.create');
             Route::post('/courses/{course}/modules/{module}/video-exercises', [VideoExerciseController::class, 'store'])->name('courses.modules.video-exercises.store');
             Route::get('/courses/{course}/modules/{module}/video-exercises/{videoExercise}/edit', [VideoExerciseController::class, 'edit'])->name('courses.modules.video-exercises.edit');
+            Route::get('/courses/{course}/modules/{module}/video-exercises/{videoExercise}/responses-export', [VideoExerciseController::class, 'exportResponses'])->name('courses.modules.video-exercises.responses-export');
+            Route::get('/courses/{course}/modules/{module}/video-exercises/{videoExercise}/activity-export', [VideoExerciseController::class, 'exportActivity'])->name('courses.modules.video-exercises.activity-export');
             Route::put('/courses/{course}/modules/{module}/video-exercises/{videoExercise}', [VideoExerciseController::class, 'update'])->name('courses.modules.video-exercises.update');
             Route::delete('/courses/{course}/modules/{module}/video-exercises/{videoExercise}', [VideoExerciseController::class, 'destroy'])->name('courses.modules.video-exercises.destroy');
             Route::post('/courses/{course}/modules/{module}/video-exercises/{videoExercise}/materials', [VideoExerciseController::class, 'storeMaterial'])->name('courses.modules.video-exercises.materials.store');

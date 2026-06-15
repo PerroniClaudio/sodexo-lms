@@ -53,6 +53,11 @@ class VideoExercise extends Model
         return $this->hasMany(VideoExerciseSubmission::class);
     }
 
+    public function auditEvents(): HasMany
+    {
+        return $this->hasMany(VideoExerciseAuditEvent::class)->latest('occurred_at');
+    }
+
     public function youtubeEmbedUrl(): ?string
     {
         if ($this->youtube_url === null || trim($this->youtube_url) === '') {

@@ -13,6 +13,7 @@ use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Spatie\LaravelPdf\Facades\Pdf;
 use Spatie\LaravelPdf\PdfBuilder;
 
@@ -233,4 +234,76 @@ it('downloads exercise report pdf', function () {
 
         return true;
     });
+});
+
+it('exports exercise responses as xlsx', function () {
+    [, $course, $module, , $exercise, $question] = videoExerciseScenario();
+
+    $this->postJson(route('user.courses.modules.video.exercises.submit', [$course, $module, $exercise]), [
+        'elapsed_seconds' => 60,
+        'answers' => [
+            $question->getKey() => 'Risposta sufficientemente lunga',
+        ],
+    ])->assertOk();
+
+    $response = $this->get(route('admin.courses.modules.video-exercises.responses-export', [$course, $module, $exercise]));
+
+    $response->assertOk()
+        ->assertDownload();
+
+    $temporaryFile = tempnam(sys_get_temp_dir(), 'video-exercise-responses-');
+    file_put_contents($temporaryFile, $response->streamedContent());
+
+    expect(zipCanOpen($temporaryFile))->toBeTrue();
+
+    $spreadsheet = IOFactory::load($temporaryFile);
+
+    expect($spreadsheet->getSheetCount())->toBe(1)
+        ->and($spreadsheet->getSheet(0)->getCell('A1')->getValue())->toBe('UID')
+        ->and($spreadsheet->getSheet(0)->getCell('A9')->getValue())->toBe('Question ID')
+        ->and($spreadsheet->getSheet(0)->getCell('B10')->getValue())->toBe('Cosa hai imparato?')
+        ->and($spreadsheet->getSheet(0)->getCell('C10')->getValue())->toBe('Risposta sufficientemente lunga');
+
+    @unlink($temporaryFile);
+});
+
+it('exports user activity for a video exercise as xlsx', function () {
+    [, $course, $module, , $exercise, $question] = videoExerciseScenario();
+
+    $this->postJson(route('user.courses.modules.video.exercises.autosave', [$course, $module, $exercise]), [
+        'elapsed_seconds' => 20,
+        'answers' => [
+            $question->getKey() => 'bozza risposta',
+        ],
+    ])->assertOk();
+
+    $this->getJson(route('user.courses.modules.video.exercises.index', [$course, $module]))
+        ->assertOk();
+
+    $this->postJson(route('user.courses.modules.video.exercises.submit', [$course, $module, $exercise]), [
+        'elapsed_seconds' => 60,
+        'answers' => [
+            $question->getKey() => 'Risposta sufficientemente lunga',
+        ],
+    ])->assertOk();
+
+    $response = $this->get(route('admin.courses.modules.video-exercises.activity-export', [$course, $module, $exercise]));
+
+    $response->assertOk()
+        ->assertDownload();
+
+    $temporaryFile = tempnam(sys_get_temp_dir(), 'video-exercise-activity-');
+    file_put_contents($temporaryFile, $response->streamedContent());
+
+    expect(zipCanOpen($temporaryFile))->toBeTrue();
+
+    $spreadsheet = IOFactory::load($temporaryFile);
+
+    expect($spreadsheet->getSheet(0)->getTitle())->toBe('Attivita utenti')
+        ->and($spreadsheet->getSheet(0)->getCell('F2')->getValue())->toBe('STARTED')
+        ->and($spreadsheet->getSheet(0)->getCell('F3')->getValue())->toBe('SAVED')
+        ->and($spreadsheet->getSheet(0)->getCell('F4')->getValue())->toBe('REOPENED')
+        ->and($spreadsheet->getSheet(0)->getCell('F5')->getValue())->toBe('SUBMITTED');
+
+    @unlink($temporaryFile);
 });
