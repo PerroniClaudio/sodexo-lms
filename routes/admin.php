@@ -32,6 +32,7 @@ use App\Http\Controllers\Admin\ScormPackageController;
 use App\Http\Controllers\Admin\UserCertificateController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VideoController;
+use App\Http\Controllers\Admin\VideoExerciseController;
 use App\Http\Controllers\Admin\VideoReportController;
 use App\Http\Controllers\LiveStreamController;
 use App\Models\Course;
@@ -223,6 +224,19 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::post('/courses/{course}/modules/{module}/teaching-materials', [ModuleTeachingMaterialController::class, 'store'])->name('courses.modules.teaching-materials.store');
             Route::get('/courses/{course}/modules/{module}/teaching-materials/{moduleTeachingMaterial}/download', [ModuleTeachingMaterialController::class, 'download'])->name('courses.modules.teaching-materials.download');
             Route::delete('/courses/{course}/modules/{module}/teaching-materials/{moduleTeachingMaterial}', [ModuleTeachingMaterialController::class, 'destroy'])->name('courses.modules.teaching-materials.destroy');
+            Route::get('/courses/{course}/modules/{module}/video-exercises/create', [VideoExerciseController::class, 'create'])->name('courses.modules.video-exercises.create');
+            Route::post('/courses/{course}/modules/{module}/video-exercises', [VideoExerciseController::class, 'store'])->name('courses.modules.video-exercises.store');
+            Route::get('/courses/{course}/modules/{module}/video-exercises/{videoExercise}/edit', [VideoExerciseController::class, 'edit'])->name('courses.modules.video-exercises.edit');
+            Route::put('/courses/{course}/modules/{module}/video-exercises/{videoExercise}', [VideoExerciseController::class, 'update'])->name('courses.modules.video-exercises.update');
+            Route::delete('/courses/{course}/modules/{module}/video-exercises/{videoExercise}', [VideoExerciseController::class, 'destroy'])->name('courses.modules.video-exercises.destroy');
+            Route::post('/courses/{course}/modules/{module}/video-exercises/{videoExercise}/materials', [VideoExerciseController::class, 'storeMaterial'])->name('courses.modules.video-exercises.materials.store');
+            Route::put('/courses/{course}/modules/{module}/video-exercises/{videoExercise}/materials/{material}', [VideoExerciseController::class, 'updateMaterial'])->name('courses.modules.video-exercises.materials.update');
+            Route::get('/courses/{course}/modules/{module}/video-exercises/{videoExercise}/materials/{material}', [VideoExerciseController::class, 'downloadMaterial'])->name('courses.modules.video-exercises.materials.download');
+            Route::delete('/courses/{course}/modules/{module}/video-exercises/{videoExercise}/materials/{material}', [VideoExerciseController::class, 'destroyMaterial'])->name('courses.modules.video-exercises.materials.destroy');
+            Route::post('/courses/{course}/modules/{module}/video-exercises/{videoExercise}/questions', [VideoExerciseController::class, 'storeQuestion'])->name('courses.modules.video-exercises.questions.store');
+            Route::put('/courses/{course}/modules/{module}/video-exercises/{videoExercise}/questions/{question}', [VideoExerciseController::class, 'updateQuestion'])->name('courses.modules.video-exercises.questions.update');
+            Route::delete('/courses/{course}/modules/{module}/video-exercises/{videoExercise}/questions/{question}', [VideoExerciseController::class, 'destroyQuestion'])->name('courses.modules.video-exercises.questions.destroy');
+            Route::delete('/courses/{course}/modules/{module}/video-exercises/{videoExercise}/self-evaluation', [VideoExerciseController::class, 'destroySelfEvaluation'])->name('courses.modules.video-exercises.self-evaluation.destroy');
 
             // Document uploads
             Route::post('/courses/{course}/modules/{module}/quiz/document-uploads', [ModuleQuizDocumentUploadController::class, 'store'])->name('courses.modules.quiz.document-uploads.store');

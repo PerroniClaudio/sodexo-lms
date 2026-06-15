@@ -65,6 +65,7 @@
         data-video-events-url="{{ route('user.courses.modules.video.events', [$course, $module]) }}"
         data-video-progress-url="{{ route('user.courses.modules.video.progress', [$course, $module]) }}"
         data-video-complete-url="{{ route('user.courses.modules.video.complete', [$course, $module]) }}"
+        data-video-exercises-url="{{ route('user.courses.modules.video.exercises.index', [$course, $module]) }}"
         data-scorm-packages-url="{{ route('user.courses.modules.scorm.packages.index', [$course, $module]) }}"
         data-quiz-url="{{ $module->isSatisfactionQuiz() ? route('user.courses.modules.satisfaction-survey.show', [$course, $module]) : route('user.courses.modules.quiz.show', [$course, $module]) }}"
         data-quiz-submit-url="{{ $module->isSatisfactionQuiz() ? route('user.courses.modules.satisfaction-survey.submit', [$course, $module]) : route('user.courses.modules.quiz.submit', [$course, $module]) }}"

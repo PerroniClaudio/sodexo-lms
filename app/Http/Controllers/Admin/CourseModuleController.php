@@ -143,6 +143,7 @@ class CourseModuleController extends Controller
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
 
         $videos = Video::orderByDesc('created_at')->get();
+        $module->loadMissing(['videoExercises.materials', 'videoExercises.questions']);
 
         return view('admin.module.edit', [
             'course' => $course,

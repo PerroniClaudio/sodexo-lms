@@ -58,6 +58,12 @@ Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
             // Modulo video: segna completato
             Route::post('/courses/{course}/modules/{module}/video/complete', [VideoModuleController::class, 'complete'])->name('courses.modules.video.complete');
             Route::get('/courses/{course}/modules/{module}/video/teaching-materials/{moduleTeachingMaterial}/download', [VideoModuleController::class, 'downloadTeachingMaterial'])->name('courses.modules.video.teaching-materials.download');
+            Route::get('/courses/{course}/modules/{module}/video/exercises', [VideoModuleController::class, 'exercises'])->name('courses.modules.video.exercises.index');
+            Route::post('/courses/{course}/modules/{module}/video/exercises/{videoExercise}/autosave', [VideoModuleController::class, 'autosaveExercise'])->name('courses.modules.video.exercises.autosave');
+            Route::post('/courses/{course}/modules/{module}/video/exercises/{videoExercise}/submit', [VideoModuleController::class, 'submitExercise'])->name('courses.modules.video.exercises.submit');
+            Route::get('/courses/{course}/modules/{module}/video/exercises/{videoExercise}/materials/{material}', [VideoModuleController::class, 'downloadExerciseMaterial'])->name('courses.modules.video.exercises.materials.download');
+            Route::get('/courses/{course}/modules/{module}/video/exercises/{videoExercise}/self-evaluation', [VideoModuleController::class, 'downloadSelfEvaluation'])->name('courses.modules.video.exercises.self-evaluation');
+            Route::get('/courses/{course}/modules/{module}/video/exercises/{videoExercise}/report', [VideoModuleController::class, 'downloadExerciseReport'])->name('courses.modules.video.exercises.report');
 
             // Modulo quiz: stato
             Route::get('/courses/{course}/modules/{module}/quiz/status', [QuizModuleController::class, 'getStatus'])->name('courses.modules.quiz.status');

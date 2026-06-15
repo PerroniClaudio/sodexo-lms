@@ -168,6 +168,11 @@ class Module extends Model
         return $this->hasMany(ModuleTeachingMaterial::class)->orderByDesc('uploaded_at');
     }
 
+    public function videoExercises(): HasMany
+    {
+        return $this->hasMany(VideoExercise::class)->orderBy('appears_at_seconds')->orderBy('id');
+    }
+
     public function moduleTeachingMaterials(): HasMany
     {
         return $this->teachingMaterials();

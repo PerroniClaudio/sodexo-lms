@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ModuleProgress;
 use App\Models\Video;
+use App\Models\VideoExerciseSubmission;
 use App\Models\VideoTrackingEvent;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -190,7 +191,24 @@ class VideoTrackingService
             return false;
         }
 
-        return (($progress->video_max_second ?? 0) / $durationSeconds) >= (self::COMPLETION_THRESHOLD_PERCENT / 100);
+        if ((($progress->video_max_second ?? 0) / $durationSeconds) < (self::COMPLETION_THRESHOLD_PERCENT / 100)) {
+            return false;
+        }
+
+        $exerciseIds = $progress->module->videoExercises()->pluck('id');
+
+        if ($exerciseIds->isEmpty()) {
+            return true;
+        }
+
+        $completedExercises = VideoExerciseSubmission::query()
+            ->where('course_user_id', $progress->course_user_id)
+            ->whereIn('video_exercise_id', $exerciseIds)
+            ->where('status', VideoExerciseSubmission::STATUS_COMPLETED)
+            ->distinct('video_exercise_id')
+            ->count('video_exercise_id');
+
+        return $completedExercises === $exerciseIds->count();
     }
 
     /**

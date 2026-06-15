@@ -37,6 +37,7 @@ export function getModuleData(root) {
         videoEventsUrl: root.dataset.videoEventsUrl,
         videoProgressUrl: root.dataset.videoProgressUrl,
         videoCompleteUrl: root.dataset.videoCompleteUrl,
+        videoExercisesUrl: root.dataset.videoExercisesUrl,
         scormPackagesUrl: root.dataset.scormPackagesUrl,
         quizUrl: root.dataset.quizUrl,
         quizSubmitUrl: root.dataset.quizSubmitUrl,

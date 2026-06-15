@@ -21,6 +21,52 @@
     </div>
 </template>
 
+<dialog id="video-exercise-modal" class="modal" data-video-exercise-modal>
+    <div class="modal-box max-w-4xl">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <h3 class="text-lg font-bold" data-video-exercise-title></h3>
+                <p class="text-sm text-base-content/60" data-video-exercise-timer></p>
+            </div>
+            <span class="badge badge-primary badge-outline">{{ __('Esercitazione') }}</span>
+        </div>
+
+        <div class="mt-4 grid gap-3" data-video-exercise-content></div>
+
+        <div class="modal-action">
+            <div class="flex w-full flex-col gap-3">
+                <div class="hidden alert alert-error" data-video-exercise-error></div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" class="btn btn-primary" data-video-exercise-submit disabled>
+                        <x-lucide-check class="h-4 w-4" />
+                        <span>{{ __('Invia esercitazione') }}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</dialog>
+
+<dialog id="video-exercise-downloads-modal" class="modal" data-video-exercise-downloads-modal>
+    <div class="modal-box max-w-2xl">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <h3 class="text-lg font-bold">{{ __('Esercitazione completata') }}</h3>
+                <p class="text-sm text-base-content/60">{{ __('Scarica i documenti finali prima di proseguire.') }}</p>
+            </div>
+            <span class="badge badge-success badge-outline">{{ __('Completata') }}</span>
+        </div>
+
+        <div class="mt-4 grid gap-3" data-video-exercise-downloads-content></div>
+
+        <div class="modal-action">
+            <form method="dialog">
+                <button type="submit" class="btn btn-primary">{{ __('Chiudi') }}</button>
+            </form>
+        </div>
+    </div>
+</dialog>
+
 @if ($module->teachingMaterials->isNotEmpty())
     <div class="card border border-base-300 bg-base-100 shadow-sm">
         <div class="card-body gap-4">
