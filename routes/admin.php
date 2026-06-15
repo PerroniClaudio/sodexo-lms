@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\CourseCategoryController;
 use App\Http\Controllers\Admin\CourseClassController;
 use App\Http\Controllers\Admin\CourseController;
+use App\Http\Controllers\Admin\CourseDocumentController;
 use App\Http\Controllers\Admin\CourseEnrollmentController;
 use App\Http\Controllers\Admin\CourseModuleController;
 use App\Http\Controllers\Admin\CourseTeacherEnrollmentController;
@@ -104,6 +105,9 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::put('/courses/{course}/details', [CourseController::class, 'updateDetails'])->name('courses.details.update');
         Route::put('/courses/{course}/duration', [CourseController::class, 'updateDuration'])->name('courses.duration.update');
         Route::put('/courses/{course}/attachments', [CourseController::class, 'updateAttachments'])->name('courses.attachments.update');
+        Route::post('/courses/{course}/documents', [CourseDocumentController::class, 'store'])->name('courses.documents.store');
+        Route::get('/courses/{course}/documents/{document}', [CourseDocumentController::class, 'download'])->name('courses.documents.download');
+        Route::delete('/courses/{course}/documents/{document}', [CourseDocumentController::class, 'destroy'])->name('courses.documents.destroy');
         Route::put('/courses/{course}/survey', [CourseController::class, 'updateSurvey'])->name('courses.survey.update');
         Route::put('/courses/{course}/categories', [CourseController::class, 'updateCategories'])->name('courses.categories.update');
         Route::put('/courses/{course}/partners', [CourseController::class, 'updatePartners'])->name('courses.partners.update');

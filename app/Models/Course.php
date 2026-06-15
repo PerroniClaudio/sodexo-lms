@@ -236,6 +236,11 @@ class Course extends Model
         return $this->hasMany(CourseEnrollment::class);
     }
 
+    public function documents(): HasMany
+    {
+        return $this->hasMany(CourseDocument::class)->latest();
+    }
+
     public function teacherEnrollments(): HasMany
     {
         return $this->hasMany(CourseTeacherEnrollment::class);

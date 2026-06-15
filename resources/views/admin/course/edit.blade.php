@@ -14,6 +14,7 @@
                 ? [['key' => 'venue', 'label' => __('Sede'), 'icon' => 'lucide-map-pin']]
                 : [],
             ['key' => 'attachments', 'label' => __('Allegati'), 'icon' => 'lucide-paperclip'],
+            ['key' => 'documents', 'label' => __('Documenti'), 'icon' => 'lucide-file-up'],
             ['key' => 'duration', 'label' => __('Durata corso'), 'icon' => 'lucide-clock-3'],
             ['key' => 'survey', 'label' => __('Gradimento'), 'icon' => 'lucide-message-square-heart'],
             ['key' => 'certificates', 'label' => __('Abilitazioni di rischio'), 'icon' => 'lucide-file-badge'],
@@ -38,6 +39,7 @@
         $courseDetailsUpdateUrl = route('admin.courses.details.update', $course);
         $courseDurationUpdateUrl = route('admin.courses.duration.update', $course);
         $courseAttachmentsUpdateUrl = route('admin.courses.attachments.update', $course);
+        $courseDocumentsStoreUrl = route('admin.courses.documents.store', $course);
         $courseSurveyUpdateUrl = route('admin.courses.survey.update', $course);
         $courseCertificatesUpdateUrl = route('admin.courses.certificates.update', $course);
         $courseCertificateTemplatesUpdateUrl = route('admin.courses.certificate-templates.update', $course);
@@ -216,6 +218,14 @@
                                 :course="$course"
                                 :course-validator="$courseValidator"
                                 :update-url="$courseAttachmentsUpdateUrl"
+                            />
+                        @elseif ($activeCourseEditSection === 'documents')
+                            <x-admin.course.edit.sections.documents
+                                :category-labels="$courseDocumentCategoryLabels"
+                                :course="$course"
+                                :course-validator="$courseValidator"
+                                :file-type-labels="$courseDocumentFileTypeLabels"
+                                :store-url="$courseDocumentsStoreUrl"
                             />
                         @elseif ($activeCourseEditSection === 'venue' && in_array($course->type, ['res', 'blended'], true))
                             <x-admin.course.edit.sections.venue

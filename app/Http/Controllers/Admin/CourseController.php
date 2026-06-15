@@ -21,6 +21,7 @@ use App\Http\Requests\UpdateCourseRecipientsRequest;
 use App\Http\Requests\UpdateCourseSurveyRequest;
 use App\Models\Course;
 use App\Models\CourseCategory;
+use App\Models\CourseDocument;
 use App\Models\CustomCertificate;
 use App\Models\FundingEntity;
 use App\Models\JobRole;
@@ -131,7 +132,7 @@ class CourseController extends Controller
     public function edit(Course $course, CustomCertificateResolver $customCertificateResolver): View
     {
         $modules = $course->modules()->get();
-        $course->load(['categories', 'jobUnit', 'jobRoles', 'jobTasks', 'jobUnits', 'partners', 'riskBasedRequirements', 'venue']);
+        $course->load(['categories', 'documents', 'jobUnit', 'jobRoles', 'jobTasks', 'jobUnits', 'partners', 'riskBasedRequirements', 'venue']);
         $courseCertificateTemplates = collect(CustomCertificate::availableTypes())
             ->mapWithKeys(function (string $type) use ($course, $customCertificateResolver): array {
                 $specificCertificate = CustomCertificate::query()
@@ -155,6 +156,8 @@ class CourseController extends Controller
             'courseTypeLabels' => Course::availableTypeLabels(),
             'courseStatusLabels' => Course::availableStatusLabels(),
             'courseEventTypeLabels' => Course::availableEventTypeLabels(),
+            'courseDocumentCategoryLabels' => CourseDocument::categoryLabels(),
+            'courseDocumentFileTypeLabels' => CourseDocument::fileTypeLabels(),
             'courseRiskRequirementValidityTypeLabels' => CourseRiskRequirementValidityType::labels(),
             'customCertificateTypeLabels' => CustomCertificate::availableTypeLabels(),
             'moduleTypeLabels' => collect(Module::availableTypeLabels()),
