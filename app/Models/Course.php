@@ -88,6 +88,7 @@ class Course extends Model
         'has_satisfaction_survey',
         'satisfaction_survey_required_for_certificate',
         'hasMany',
+        'visible_to_all',
     ];
 
     /**
@@ -112,6 +113,7 @@ class Course extends Model
             'interaction_duration_minutes' => 'integer',
             'has_satisfaction_survey' => 'boolean',
             'satisfaction_survey_required_for_certificate' => 'boolean',
+            'visible_to_all' => 'boolean',
         ];
     }
 
@@ -255,6 +257,87 @@ class Course extends Model
         return $this->belongsToMany(CourseCategory::class, 'course_category_course')
             ->orderBy('name')
             ->withTimestamps();
+    }
+
+    public function partners(): BelongsToMany
+    {
+        return $this->belongsToMany(Partner::class)
+            ->orderBy('ragione_sociale')
+            ->withTimestamps();
+    }
+
+    public function jobRoles(): BelongsToMany
+    {
+        return $this->belongsToMany(JobRole::class, 'course_job_role')
+            ->orderBy('name')
+            ->withTimestamps();
+    }
+
+    public function jobTasks(): BelongsToMany
+    {
+        return $this->belongsToMany(JobTask::class, 'course_job_task')
+            ->orderBy('name')
+            ->withTimestamps();
+    }
+
+    public function jobUnits(): BelongsToMany
+    {
+        return $this->belongsToMany(JobUnit::class, 'course_job_unit')
+            ->orderBy('name')
+            ->withTimestamps();
+    }
+
+    public function scopeVisibleToUser(Builder $query, User $user): Builder
+    {
+        return $query->where(function (Builder $query) use ($user): void {
+            $query
+                ->where('visible_to_all', true)
+                ->orWhere(function (Builder $query) use ($user): void {
+                    $query
+                        ->where('visible_to_all', false)
+                        ->where(function (Builder $query): void {
+                            $query
+                                ->has('jobRoles')
+                                ->orHas('jobTasks')
+                                ->orHas('jobUnits');
+                        })
+                        ->where(function (Builder $query) use ($user): void {
+                            $query
+                                ->doesntHave('jobRoles')
+                                ->orWhereHas('jobRoles', fn (Builder $query): Builder => $query->whereKey($user->job_role_id));
+                        })
+                        ->where(function (Builder $query) use ($user): void {
+                            $query
+                                ->doesntHave('jobTasks')
+                                ->orWhereHas('jobTasks', fn (Builder $query): Builder => $query->whereKey($user->job_task_id));
+                        })
+                        ->where(function (Builder $query) use ($user): void {
+                            $query
+                                ->doesntHave('jobUnits')
+                                ->orWhereHas('jobUnits', fn (Builder $query): Builder => $query->whereKey($user->job_unit_id));
+                        });
+                });
+        });
+    }
+
+    public function isVisibleTo(User $user): bool
+    {
+        if ($this->visible_to_all) {
+            return true;
+        }
+
+        $hasRecipients = $this->jobRoles()->exists()
+            || $this->jobTasks()->exists()
+            || $this->jobUnits()->exists();
+
+        if (! $hasRecipients) {
+            // ponytail: empty restricted course hides from everyone; add explicit "none selected" UX if admins need it.
+            return false;
+        }
+
+        return (! $this->jobRoles()->exists() || $this->jobRoles()->whereKey($user->job_role_id)->exists())
+            && (! $this->jobTasks()->exists() || $this->jobTasks()->whereKey($user->job_task_id)->exists())
+            && (! $this->jobUnits()->exists() || $this->jobUnits()->whereKey($user->job_unit_id)->exists());
     }
 
     public function familyRootCourseId(): int

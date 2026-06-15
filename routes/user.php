@@ -29,7 +29,7 @@ Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
         Route::post('/live-stream/{module}/hand-raises', [LiveStreamController::class, 'storeHandRaise'])->name('live-stream.hand-raises.store');
         Route::delete('/live-stream/{module}/hand-raises/current', [LiveStreamController::class, 'destroyHandRaise'])->name('live-stream.hand-raises.destroy');
 
-        Route::scopeBindings()->group(function () {
+        Route::scopeBindings()->middleware('course.visible')->group(function () {
             Route::get('/courses/{course}/modules/{module}/scorm/packages', [ScormModulePackageController::class, 'index'])->name('courses.modules.scorm.packages.index');
             Route::post('/courses/{course}/modules/{module}/scorm/{scormPackage}/launch', [ScormPlayerController::class, 'launch'])->name('courses.modules.scorm.launch');
             Route::get('/courses/{course}/modules/{module}/scorm/{scormPackage}/player', [ScormPlayerController::class, 'player'])->name('courses.modules.scorm.player');
@@ -99,8 +99,10 @@ Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
         Route::get('completed-courses', [CourseController::class, 'completed'])->name('completed-courses.index');
         Route::get('completed-courses/{courseEnrollment}/certificate', [CourseController::class, 'downloadCertificate'])
             ->name('completed-courses.certificate.download');
-        Route::get('courses/{course}/cover-image', [CourseController::class, 'showCoverImage'])->name('courses.cover-image.show');
-        Route::get('courses/{course}/poster-pdf', [CourseController::class, 'downloadPosterPdf'])->name('courses.poster-pdf.download');
-        Route::get('courses/{course}', [CourseController::class, 'show'])->name('courses.show');
+        Route::middleware('course.visible')->group(function () {
+            Route::get('courses/{course}/cover-image', [CourseController::class, 'showCoverImage'])->name('courses.cover-image.show');
+            Route::get('courses/{course}/poster-pdf', [CourseController::class, 'downloadPosterPdf'])->name('courses.poster-pdf.download');
+            Route::get('courses/{course}', [CourseController::class, 'show'])->name('courses.show');
+        });
     });
 });

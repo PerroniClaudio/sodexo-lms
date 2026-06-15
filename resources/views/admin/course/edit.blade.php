@@ -16,6 +16,8 @@
             ['key' => 'certificates', 'label' => __('Abilitazioni di rischio'), 'icon' => 'lucide-file-badge'],
             ['key' => 'certificate-templates', 'label' => __('Template attestati'), 'icon' => 'lucide-file-text'],
             ['key' => 'categorization', 'label' => __('Categorizzazione'), 'icon' => 'lucide-tags'],
+            ['key' => 'partners', 'label' => __('Partner'), 'icon' => 'lucide-handshake'],
+            ['key' => 'recipients', 'label' => __('Destinatari'), 'icon' => 'lucide-users'],
             ['key' => 'modules', 'label' => __('Moduli'), 'icon' => 'lucide-blocks'],
             ['key' => 'teachers', 'label' => __('Docenti'), 'icon' => 'lucide-graduation-cap'],
             ['key' => 'tutors', 'label' => __('Tutor'), 'icon' => 'lucide-users-round'],
@@ -37,6 +39,8 @@
         $courseCertificatesUpdateUrl = route('admin.courses.certificates.update', $course);
         $courseCertificateTemplatesUpdateUrl = route('admin.courses.certificate-templates.update', $course);
         $courseCategoriesUpdateUrl = route('admin.courses.categories.update', $course);
+        $coursePartnersUpdateUrl = route('admin.courses.partners.update', $course);
+        $courseRecipientsUpdateUrl = route('admin.courses.recipients.update', $course);
         $courseDetailAccordionFields = [
             'teaching_material' => __('Materiale didattico'),
             'internal_notes' => __('Note interne corso'),
@@ -252,6 +256,25 @@
                                 :course-type-labels="$courseTypeLabels"
                                 :course-validator="$courseValidator"
                                 :update-url="$courseCategoriesUpdateUrl"
+                            />
+                        @endif
+
+                        @if ($activeCourseEditSection === 'partners')
+                            <x-admin.course.edit.sections.partners
+                                :course="$course"
+                                :partners="$partners"
+                                :update-url="$coursePartnersUpdateUrl"
+                            />
+                        @endif
+
+                        @if ($activeCourseEditSection === 'recipients')
+                            <x-admin.course.edit.sections.recipients
+                                :course="$course"
+                                :course-validator="$courseValidator"
+                                :job-roles="$jobRoles"
+                                :job-tasks="$jobTasks"
+                                :job-units="$jobUnits"
+                                :update-url="$courseRecipientsUpdateUrl"
                             />
                         @endif
 

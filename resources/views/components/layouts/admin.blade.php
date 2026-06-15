@@ -152,6 +152,18 @@
                                 {{ __('Enti finanziatori') }}
                             </a>
                         </li>
+                        <li class="w-full">
+                            <a
+                                href="{{ route('admin.partners.index') }}"
+                                @class([
+                                    'w-full',
+                                    'menu-active' => request()->routeIs('admin.partners.*'),
+                                ])
+                            >
+                                <x-lucide-handshake class="mr-2 inline-block h-5 w-5" />
+                                {{ __('Partner') }}
+                            </a>
+                        </li>
                     @endrole
 
                     @role('superadmin')

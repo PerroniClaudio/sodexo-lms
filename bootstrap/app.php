@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\StartPendingDocumentConversionJobs;
+use App\Http\Middleware\EnsureCourseVisibleToUser;
 use App\Http\Middleware\EnsureUserOnboarded;
 use App\Http\Middleware\IncreaseVideoUploadLimitMiddleware;
 use Illuminate\Auth\AuthenticationException;
@@ -46,6 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             'uploadlimit' => IncreaseVideoUploadLimitMiddleware::class,
+            'course.visible' => EnsureCourseVisibleToUser::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

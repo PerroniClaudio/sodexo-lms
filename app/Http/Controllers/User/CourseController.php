@@ -211,7 +211,7 @@ class CourseController extends Controller
     {
         $enrollments = $user->courseEnrollments()
             ->with('course.categories')
-            ->whereHas('course')
+            ->whereHas('course', fn ($query) => $query->visibleToUser($user))
             ->get();
 
         return view('user.courses.index', compact('enrollments'));

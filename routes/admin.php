@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\ModuleQuizDocumentUploadController;
 use App\Http\Controllers\Admin\ModuleQuizSubmissionController;
 use App\Http\Controllers\Admin\ModuleTeachingMaterialController;
 use App\Http\Controllers\Admin\NaceAtecoController;
+use App\Http\Controllers\Admin\PartnerController;
 use App\Http\Controllers\Admin\RegiaController;
 use App\Http\Controllers\Admin\RiskBasedRequirementController;
 use App\Http\Controllers\Admin\SatisfactionSurveyController;
@@ -105,6 +106,8 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::put('/courses/{course}/attachments', [CourseController::class, 'updateAttachments'])->name('courses.attachments.update');
         Route::put('/courses/{course}/survey', [CourseController::class, 'updateSurvey'])->name('courses.survey.update');
         Route::put('/courses/{course}/categories', [CourseController::class, 'updateCategories'])->name('courses.categories.update');
+        Route::put('/courses/{course}/partners', [CourseController::class, 'updatePartners'])->name('courses.partners.update');
+        Route::put('/courses/{course}/recipients', [CourseController::class, 'updateRecipients'])->name('courses.recipients.update');
         Route::put('/courses/{course}/certificate-templates', [CourseController::class, 'updateCertificateTemplate'])->name('courses.certificate-templates.update');
         Route::get('/courses/{course}/attachments/cover-image', [CourseController::class, 'previewCoverImage'])->name('courses.attachments.cover-image.preview');
         Route::get('/courses/{course}/attachments/poster-pdf', [CourseController::class, 'previewPosterPdf'])->name('courses.attachments.poster-pdf.preview');
@@ -140,6 +143,8 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
         Route::resource('course-categories', CourseCategoryController::class)->except(['show']);
         Route::post('course-categories/{id}/restore', [CourseCategoryController::class, 'restore'])->name('course-categories.restore');
+        Route::resource('partners', PartnerController::class)->only(['index', 'store', 'edit', 'update', 'destroy']);
+        Route::delete('partners/{partner}/courses/{course}', [PartnerController::class, 'detachCourse'])->name('partners.courses.destroy');
         Route::get('/video-reports', [VideoReportController::class, 'index'])->name('video-reports.index');
         Route::post('/video-reports', [VideoReportController::class, 'store'])->name('video-reports.store');
         Route::get('/video-reports/{videoReportRequest}', [VideoReportController::class, 'show'])->name('video-reports.show');

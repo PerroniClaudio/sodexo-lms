@@ -41,6 +41,7 @@ class CourseFactory extends Factory
             'has_satisfaction_survey' => false,
             'satisfaction_survey_required_for_certificate' => false,
             'hasMany' => '1',
+            'visible_to_all' => true,
         ];
     }
 

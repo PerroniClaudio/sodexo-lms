@@ -16,12 +16,18 @@ use App\Http\Requests\UpdateCourseCertificatesRequest;
 use App\Http\Requests\UpdateCourseCertificateTemplateRequest;
 use App\Http\Requests\UpdateCourseDetailsRequest;
 use App\Http\Requests\UpdateCourseDurationRequest;
+use App\Http\Requests\UpdateCoursePartnersRequest;
+use App\Http\Requests\UpdateCourseRecipientsRequest;
 use App\Http\Requests\UpdateCourseSurveyRequest;
 use App\Models\Course;
 use App\Models\CourseCategory;
 use App\Models\CustomCertificate;
 use App\Models\FundingEntity;
+use App\Models\JobRole;
+use App\Models\JobTask;
+use App\Models\JobUnit;
 use App\Models\Module;
+use App\Models\Partner;
 use App\Models\RiskBasedRequirement;
 use App\Models\SatisfactionSurveyTemplate;
 use App\Services\Certificates\CustomCertificateResolver;
@@ -120,7 +126,7 @@ class CourseController extends Controller
     public function edit(Course $course, CustomCertificateResolver $customCertificateResolver): View
     {
         $modules = $course->modules()->get();
-        $course->load(['categories', 'riskBasedRequirements']);
+        $course->load(['categories', 'jobRoles', 'jobTasks', 'jobUnits', 'partners', 'riskBasedRequirements']);
         $courseCertificateTemplates = collect(CustomCertificate::availableTypes())
             ->mapWithKeys(function (string $type) use ($course, $customCertificateResolver): array {
                 $specificCertificate = CustomCertificate::query()
@@ -158,6 +164,10 @@ class CourseController extends Controller
             'riskLevels' => RiskLevel::ordered(),
             'fundingEntities' => FundingEntity::query()->orderBy('company_name')->get(),
             'courseCategories' => CourseCategory::query()->orderBy('name')->get(),
+            'partners' => Partner::query()->orderBy('ragione_sociale')->get(),
+            'jobRoles' => JobRole::query()->orderBy('name')->get(),
+            'jobTasks' => JobTask::query()->orderBy('name')->get(),
+            'jobUnits' => JobUnit::query()->orderBy('name')->get(),
         ]);
     }
 
@@ -290,6 +300,34 @@ class CourseController extends Controller
         return $this->redirectToSection($course, 'categorization', __('Categorie del corso aggiornate con successo.'));
     }
 
+    public function updatePartners(UpdateCoursePartnersRequest $request, Course $course): RedirectResponse
+    {
+        $partnerIds = collect($request->validated('partner_ids', []))
+            ->map(fn (mixed $partnerId): int => (int) $partnerId)
+            ->unique()
+            ->values()
+            ->all();
+
+        $course->partners()->sync($partnerIds);
+
+        return $this->redirectToSection($course, 'partners', __('Partner del corso aggiornati con successo.'));
+    }
+
+    public function updateRecipients(UpdateCourseRecipientsRequest $request, Course $course): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $course->update([
+            'visible_to_all' => (bool) ($validated['visible_to_all'] ?? false),
+        ]);
+
+        $course->jobRoles()->sync($this->uniqueIds($validated['job_role_ids'] ?? []));
+        $course->jobTasks()->sync($this->uniqueIds($validated['job_task_ids'] ?? []));
+        $course->jobUnits()->sync($this->uniqueIds($validated['job_unit_ids'] ?? []));
+
+        return $this->redirectToSection($course, 'recipients', __('Destinatari del corso aggiornati con successo.'));
+    }
+
     public function previewCoverImage(Course $course): StreamedResponse
     {
         abort_unless($course->cover_image_path !== null, Response::HTTP_NOT_FOUND);
@@ -380,6 +418,19 @@ class CourseController extends Controller
                 'section' => $section,
             ])
             ->with('status', $message);
+    }
+
+    /**
+     * @param  array<int, mixed>  $ids
+     * @return array<int, int>
+     */
+    private function uniqueIds(array $ids): array
+    {
+        return collect($ids)
+            ->map(fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**

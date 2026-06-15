@@ -21,7 +21,109 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeTeacherAssignmentsTable(courseEditPage);
     initializeTutorAssignmentsTable(courseEditPage);
     initializeEnrollmentsTable(courseEditPage);
+    initializeCourseRecipients(courseEditPage);
 });
+
+function initializeCourseRecipients(scope) {
+    const form = scope.querySelector('[data-course-recipients-form]');
+
+    if (!form) {
+        return;
+    }
+
+    const status = form.querySelector('[data-course-recipients-status]');
+    let saveTimer = null;
+
+    const setStatus = (message, className = 'text-base-content/70') => {
+        if (!status) {
+            return;
+        }
+
+        status.textContent = message;
+        status.className = `text-sm ${className}`;
+        status.classList.remove('hidden');
+    };
+
+    const save = async () => {
+        window.clearTimeout(saveTimer);
+        setStatus('Salvataggio...', 'text-base-content/70');
+
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': form.querySelector('input[name="_token"]')?.value || '',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Save failed');
+            }
+
+            setStatus('Salvato', 'text-success');
+            saveTimer = window.setTimeout(() => status?.classList.add('hidden'), 1500);
+        } catch {
+            setStatus('Errore durante il salvataggio. Usa il pulsante Salva.', 'text-error');
+        }
+    };
+
+    form.querySelectorAll('[data-auto-submit]').forEach((input) => {
+        input.addEventListener('change', () => {
+            save();
+        });
+    });
+
+    form.querySelectorAll('[data-recipient-table]').forEach((table) => {
+        const search = table.querySelector('[data-recipient-search]');
+        const rows = Array.from(table.querySelectorAll('[data-recipient-row]'));
+        const summary = table.querySelector('[data-recipient-summary]');
+        const empty = table.querySelector('[data-recipient-empty]');
+        const previous = table.querySelector('[data-recipient-prev]');
+        const next = table.querySelector('[data-recipient-next]');
+        const pageSize = Number(table.dataset.pageSize || 10);
+        let page = 1;
+
+        const render = () => {
+            const term = (search?.value || '').trim().toLowerCase();
+            const filtered = rows.filter((row) => (row.dataset.recipientName || '').includes(term));
+            const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
+            page = Math.min(page, pages);
+            const start = (page - 1) * pageSize;
+            const visibleRows = new Set(filtered.slice(start, start + pageSize));
+
+            rows.forEach((row) => {
+                row.classList.toggle('hidden', !visibleRows.has(row));
+            });
+
+            if (summary) {
+                summary.textContent = filtered.length === 0
+                    ? '0 risultati'
+                    : `${start + 1}-${Math.min(start + pageSize, filtered.length)} di ${filtered.length}`;
+            }
+
+            empty?.classList.toggle('hidden', filtered.length !== 0);
+            previous?.toggleAttribute('disabled', page <= 1);
+            next?.toggleAttribute('disabled', page >= pages);
+        };
+
+        search?.addEventListener('input', () => {
+            page = 1;
+            render();
+        });
+        previous?.addEventListener('click', () => {
+            page = Math.max(1, page - 1);
+            render();
+        });
+        next?.addEventListener('click', () => {
+            page += 1;
+            render();
+        });
+
+        render();
+    });
+}
 
 function initializeValidityIssueDialogs(scope) {
     const containers = scope.querySelectorAll('[data-validity-details]');
