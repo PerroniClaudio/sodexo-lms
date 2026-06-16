@@ -251,6 +251,11 @@ class Course extends Model
         return $this->hasMany(CourseTutorEnrollment::class);
     }
 
+    public function facultyMembers(): HasMany
+    {
+        return $this->hasMany(CourseFacultyMember::class);
+    }
+
     public function originalCourse(): BelongsTo
     {
         return $this->belongsTo(self::class, 'original_course_id');

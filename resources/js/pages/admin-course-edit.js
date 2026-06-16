@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeCourseClasses(courseEditPage);
     initializeTeacherAssignmentsTable(courseEditPage);
     initializeTutorAssignmentsTable(courseEditPage);
+    initializeFacultyTable(courseEditPage);
     initializeEnrollmentsTable(courseEditPage);
     initializeCourseRecipients(courseEditPage);
     initializeCourseVenueForm(courseEditPage);
@@ -1677,6 +1678,408 @@ function initializeEnrollmentsTable(courseEditPage) {
 
     updateSortIndicators();
     loadEnrollments();
+}
+
+function initializeFacultyTable(courseEditPage) {
+    const container = courseEditPage.querySelector('[data-faculty-table]');
+
+    if (!container) {
+        return;
+    }
+
+    const apiUrl = container.dataset.facultyApiUrl;
+    const searchUsersApiUrl = container.dataset.facultySearchUsersApiUrl;
+    const storeApiUrl = container.dataset.facultyStoreApiUrl;
+    const tbody = container.querySelector('[data-faculty-tbody]');
+    const template = container.querySelector('[data-faculty-row-template]');
+    const emptyState = container.querySelector('[data-faculty-empty]');
+    const tableContainer = container.querySelector('[data-faculty-table-container]');
+    const tableLoader = container.querySelector('[data-faculty-loader]');
+    const searchInput = container.querySelector('[data-faculty-search]');
+    const searchButton = container.querySelector('[data-faculty-search-button]');
+    const showTrashedCheckbox = container.querySelector('[data-faculty-show-trashed]');
+    const paginationContainer = container.querySelector('[data-faculty-pagination]');
+    const summaryElement = container.querySelector('[data-faculty-summary]');
+    const openModalButton = container.querySelector('[data-open-faculty-modal]');
+    const modal = container.querySelector('[data-create-faculty-modal]');
+    const modalTitle = container.querySelector('[data-faculty-modal-title]');
+    const modalDescription = container.querySelector('[data-faculty-modal-description]');
+    const closeModalButton = container.querySelector('[data-close-faculty-modal]');
+    const documentModal = container.querySelector('[data-faculty-document-modal]');
+    const documentModalTitle = container.querySelector('[data-faculty-document-modal-title]');
+    const documentModalDescription = container.querySelector('[data-faculty-document-modal-description]');
+    const documentResultsBody = container.querySelector('[data-faculty-document-results]');
+    const documentResultsEmptyState = container.querySelector('[data-faculty-document-results-empty]');
+    const documentRowTemplate = container.querySelector('[data-faculty-document-row-template]');
+    const closeDocumentModalButton = container.querySelector('[data-close-faculty-document-modal]');
+    const openDocumentModalButtons = Array.from(container.querySelectorAll('[data-open-faculty-document-modal]'));
+    const form = container.querySelector('[data-faculty-form]');
+    const saveButton = container.querySelector('[data-save-faculty]');
+    const userSearchInput = container.querySelector('[data-faculty-user-search]');
+    const userSearchButton = container.querySelector('[data-faculty-user-search-button]');
+    const userResultsBody = container.querySelector('[data-faculty-user-results]');
+    const userResultsEmptyState = container.querySelector('[data-faculty-user-results-empty]');
+    const userRowTemplate = container.querySelector('[data-faculty-user-row-template]');
+    const compensationCheckbox = container.querySelector('[data-faculty-has-compensation]');
+    const compensationAmount = container.querySelector('[data-faculty-compensation-amount]');
+
+    if (!apiUrl || !searchUsersApiUrl || !storeApiUrl || !tbody || !template || !emptyState || !tableContainer || !tableLoader || !searchInput || !searchButton || !showTrashedCheckbox || !paginationContainer || !summaryElement || !openModalButton || !modal || !modalTitle || !modalDescription || !closeModalButton || !documentModal || !documentModalTitle || !documentModalDescription || !documentResultsBody || !documentResultsEmptyState || !documentRowTemplate || !closeDocumentModalButton || openDocumentModalButtons.length === 0 || !form || !saveButton || !userSearchInput || !userSearchButton || !userResultsBody || !userResultsEmptyState || !userRowTemplate || !compensationCheckbox || !compensationAmount) {
+        return;
+    }
+
+    const state = { page: 1, search: '', showTrashed: false, loading: false, selectedUser: null, editingMember: null, members: [], documentType: null };
+    const currentMode = () => form.querySelector('[data-faculty-mode]:checked')?.value || 'existing';
+    const modeInputs = Array.from(form.querySelectorAll('[data-faculty-mode]'));
+
+    const resetModalState = () => {
+        form.reset();
+        state.selectedUser = null;
+        state.editingMember = null;
+        userSearchInput.value = '';
+        userResultsBody.innerHTML = '';
+        userResultsEmptyState.classList.add('hidden');
+        modalTitle.textContent = 'Nuovo membro Faculty';
+        modalDescription.textContent = 'Seleziona un utente esistente o inserisci una nuova anagrafica Faculty.';
+        saveButton.textContent = 'Salva';
+        modeInputs.forEach((input) => {
+            input.disabled = false;
+        });
+        const existingModeInput = form.querySelector('[data-faculty-mode][value="existing"]');
+        if (existingModeInput) {
+            existingModeInput.checked = true;
+        }
+    };
+
+    const syncMode = () => {
+        const mode = currentMode();
+
+        form.querySelectorAll('[data-faculty-panel]').forEach((panel) => {
+            const active = panel.dataset.facultyPanel === mode;
+
+            panel.classList.toggle('hidden', !active);
+            panel.classList.toggle('flex', active && mode === 'existing');
+            panel.classList.toggle('grid', active && mode === 'manual');
+            panel.querySelectorAll('input, button, textarea').forEach((field) => {
+                field.disabled = !active;
+            });
+        });
+    };
+
+    const syncCompensation = () => {
+        compensationAmount.disabled = !compensationCheckbox.checked;
+
+        if (!compensationCheckbox.checked) {
+            compensationAmount.value = '';
+        }
+    };
+
+    const buildQueryString = () => {
+        const params = new URLSearchParams({
+            page: String(state.page),
+            show_trashed: state.showTrashed ? '1' : '0',
+            sort: 'surname',
+            direction: 'asc',
+        });
+
+        if (state.search !== '') {
+            params.set('search', state.search);
+        }
+
+        return params.toString();
+    };
+
+    const setLoadingState = (loading) => {
+        state.loading = loading;
+        toggleAsyncTableLoading({ scope: container, container: tableContainer, loader: tableLoader }, loading);
+    };
+
+    const renderPagination = (meta) => {
+        paginationContainer.innerHTML = '';
+
+        if (meta.last_page <= 1) {
+            return;
+        }
+
+        const pageButton = (label, page, disabled = false, active = false) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `join-item btn btn-sm ${active ? 'btn-primary' : 'btn-ghost'}`;
+            button.textContent = label;
+            button.disabled = disabled;
+            button.addEventListener('click', () => {
+                state.page = page;
+                loadFaculty();
+            });
+
+            return button;
+        };
+
+        paginationContainer.appendChild(pageButton('«', Math.max(meta.current_page - 1, 1), meta.current_page <= 1));
+        paginationContainer.appendChild(pageButton(String(meta.current_page), meta.current_page, false, true));
+        paginationContainer.appendChild(pageButton('»', Math.min(meta.current_page + 1, meta.last_page), meta.current_page >= meta.last_page));
+    };
+
+    const renderRows = (rows) => {
+        tbody.innerHTML = '';
+
+        rows.forEach((row) => {
+            const fragment = template.content.cloneNode(true);
+            const tr = fragment.querySelector('tr');
+            const editButton = fragment.querySelector('[data-action="edit"]');
+            const deleteButton = fragment.querySelector('[data-action="delete"]');
+            const restoreButton = fragment.querySelector('[data-action="restore"]');
+
+            fragment.querySelector('[data-cell="surname"]').textContent = row.surname || '-';
+            fragment.querySelector('[data-cell="name"]').textContent = row.name || '-';
+            fragment.querySelector('[data-cell="fiscal_code"]').textContent = row.fiscal_code || '-';
+            fragment.querySelector('[data-cell="role"]').textContent = row.role?.label || '-';
+            const affiliationCell = fragment.querySelector('[data-cell="affiliation"]');
+            affiliationCell.textContent = row.affiliation || '-';
+            affiliationCell.title = row.affiliation || '';
+            fragment.querySelector('[data-cell="compensation_amount"]').textContent = row.compensation_amount_formatted || '0,00 €';
+            editButton.classList.toggle('hidden', row.is_deleted);
+            deleteButton.classList.toggle('hidden', !row.actions.can_delete);
+            restoreButton.classList.toggle('hidden', !row.actions.can_restore);
+            editButton.addEventListener('click', () => {
+                resetModalState();
+                state.editingMember = row;
+                modalTitle.textContent = 'Modifica membro Faculty';
+                modalDescription.textContent = 'Aggiorna i dati del membro Faculty selezionato.';
+                saveButton.textContent = 'Salva modifiche';
+                form.elements.role.value = row.role?.key || '';
+                form.elements.affiliation.value = row.affiliation || '';
+                compensationCheckbox.checked = Number(row.compensation_amount ?? 0) > 0;
+                compensationAmount.value = row.compensation_amount ?? '';
+
+                if (row.user?.id) {
+                    const existingModeInput = form.querySelector('[data-faculty-mode][value="existing"]');
+                    if (existingModeInput) {
+                        existingModeInput.checked = true;
+                    }
+                    state.selectedUser = {
+                        id: row.user.id,
+                        name: row.name,
+                        surname: row.surname,
+                        fiscal_code: row.fiscal_code,
+                        email: row.user.email,
+                    };
+                } else {
+                    const manualModeInput = form.querySelector('[data-faculty-mode][value="manual"]');
+                    if (manualModeInput) {
+                        manualModeInput.checked = true;
+                    }
+                    form.elements.name.value = row.name || '';
+                    form.elements.surname.value = row.surname || '';
+                    form.elements.fiscal_code.value = row.fiscal_code || '';
+                }
+
+                syncMode();
+                syncCompensation();
+                modal.showModal();
+            });
+            deleteButton.addEventListener('click', async () => {
+                if (window.confirm('Vuoi eliminare questo membro Faculty?')) {
+                    await window.axios.delete(row.actions.delete_url, { headers: { Accept: 'application/json' } });
+                    await loadFaculty();
+                }
+            });
+            restoreButton.addEventListener('click', async () => {
+                await window.axios.post(row.actions.restore_url, {}, { headers: { Accept: 'application/json' } });
+                await loadFaculty();
+            });
+
+            if (row.is_deleted) {
+                tr.classList.add('opacity-70');
+            }
+
+            tbody.appendChild(fragment);
+        });
+    };
+
+    const renderDocumentRows = () => {
+        documentResultsBody.innerHTML = '';
+
+        const activeMembers = state.members.filter((member) => !member.is_deleted);
+
+        activeMembers.forEach((member) => {
+            const fragment = documentRowTemplate.content.cloneNode(true);
+            const selectButton = fragment.querySelector('[data-action="generate-document"]');
+
+            fragment.querySelector('[data-cell="surname"]').textContent = member.surname || '-';
+            fragment.querySelector('[data-cell="name"]').textContent = member.name || '-';
+            fragment.querySelector('[data-cell="role"]').textContent = member.role?.label || '-';
+            selectButton.addEventListener('click', () => {
+                const documentLabel = state.documentType === 'letter' ? 'lettera di incarico' : 'attestato';
+                window.alert(`Placeholder: genera ${documentLabel} per ${member.surname || ''} ${member.name || ''}`.trim());
+                documentModal.close();
+            });
+
+            documentResultsBody.appendChild(fragment);
+        });
+
+        documentResultsEmptyState.classList.toggle('hidden', activeMembers.length > 0);
+    };
+
+    const loadFaculty = async () => {
+        if (state.loading) {
+            return;
+        }
+
+        setLoadingState(true);
+
+        try {
+            const response = await window.axios.get(`${apiUrl}?${buildQueryString()}`, { headers: { Accept: 'application/json' } });
+            const rows = response.data.data ?? [];
+            const meta = response.data.meta ?? { current_page: 1, last_page: 1, total: 0, from: null, to: null };
+
+            state.members = rows;
+            renderRows(rows);
+            summaryElement.textContent = meta.total === 0 || meta.from === null ? '0 membri Faculty' : `Mostrati ${meta.from}-${meta.to} di ${meta.total} membri Faculty`;
+            renderPagination(meta);
+            emptyState.classList.toggle('hidden', rows.length > 0);
+        } catch (error) {
+            tbody.innerHTML = '';
+            emptyState.classList.remove('hidden');
+            summaryElement.textContent = 'Errore nel caricamento della Faculty.';
+        } finally {
+            setLoadingState(false);
+        }
+    };
+
+    const renderUserResults = (users) => {
+        userResultsBody.innerHTML = '';
+
+        users.forEach((user) => {
+            const fragment = userRowTemplate.content.cloneNode(true);
+            const selectButton = fragment.querySelector('[data-action="select-user"]');
+
+            fragment.querySelector('[data-cell="id"]').textContent = user.id;
+            fragment.querySelector('[data-cell="surname"]').textContent = user.surname || '-';
+            fragment.querySelector('[data-cell="name"]').textContent = user.name || '-';
+            fragment.querySelector('[data-cell="fiscal_code"]').textContent = user.fiscal_code || '-';
+            fragment.querySelector('[data-cell="email"]').textContent = user.email || '-';
+            selectButton.addEventListener('click', () => {
+                state.selectedUser = user;
+                userResultsBody.querySelectorAll('tr').forEach((row) => row.classList.remove('bg-primary/10'));
+                selectButton.closest('tr')?.classList.add('bg-primary/10');
+            });
+            userResultsBody.appendChild(fragment);
+        });
+
+        userResultsEmptyState.classList.toggle('hidden', users.length > 0);
+    };
+
+    const searchUsers = async () => {
+        const search = userSearchInput.value.trim();
+
+        if (search === '') {
+            renderUserResults([]);
+
+            return;
+        }
+
+        const response = await window.axios.get(searchUsersApiUrl, { params: { search }, headers: { Accept: 'application/json' } });
+
+        renderUserResults(response.data.data ?? []);
+    };
+
+    const saveFaculty = async () => {
+        const data = Object.fromEntries(new FormData(form).entries());
+        const payload = {
+            role: data.role,
+            affiliation: data.affiliation || null,
+            has_compensation: compensationCheckbox.checked,
+            compensation_amount: compensationCheckbox.checked ? data.compensation_amount : null,
+        };
+
+        if (currentMode() === 'existing') {
+            if (!state.selectedUser) {
+                window.alert('Seleziona un utente.');
+
+                return;
+            }
+
+            payload.user_id = state.selectedUser.id;
+        } else {
+            payload.name = data.name;
+            payload.surname = data.surname;
+            payload.fiscal_code = data.fiscal_code;
+        }
+
+        setButtonLoading(saveButton, true, { loadingText: 'Salvataggio...' });
+
+        try {
+            if (state.editingMember?.actions?.update_url) {
+                await window.axios.put(state.editingMember.actions.update_url, payload, { headers: { Accept: 'application/json' } });
+            } else {
+                await window.axios.post(storeApiUrl, payload, { headers: { Accept: 'application/json' } });
+            }
+            modal.close();
+            await loadFaculty();
+        } catch (error) {
+            const responseData = error.response?.data;
+
+            if (!state.editingMember && error.response?.status === 409 && responseData?.requires_restore && responseData?.restore_url && window.confirm(responseData.message)) {
+                await window.axios.post(responseData.restore_url, {}, { headers: { Accept: 'application/json' } });
+                modal.close();
+                await loadFaculty();
+            } else {
+                window.alert(responseData?.message || 'Errore durante il salvataggio del membro Faculty.');
+            }
+        } finally {
+            setButtonLoading(saveButton, false);
+        }
+    };
+
+    openModalButton.addEventListener('click', () => {
+        resetModalState();
+        syncMode();
+        syncCompensation();
+        modal.showModal();
+    });
+    closeModalButton.addEventListener('click', () => modal.close());
+    openDocumentModalButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            state.documentType = button.dataset.documentType || 'letter';
+            documentModalTitle.textContent = state.documentType === 'letter' ? 'Genera lettera di incarico' : 'Genera attestato';
+            documentModalDescription.textContent = 'Scegli il membro Faculty per continuare.';
+            renderDocumentRows();
+            documentModal.showModal();
+        });
+    });
+    closeDocumentModalButton.addEventListener('click', () => documentModal.close());
+    form.querySelectorAll('[data-faculty-mode]').forEach((input) => input.addEventListener('change', syncMode));
+    compensationCheckbox.addEventListener('change', syncCompensation);
+    userSearchButton.addEventListener('click', searchUsers);
+    userSearchInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            searchUsers();
+        }
+    });
+    saveButton.addEventListener('click', saveFaculty);
+    searchButton.addEventListener('click', () => {
+        state.search = searchInput.value.trim();
+        state.page = 1;
+        loadFaculty();
+    });
+    searchInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            state.search = searchInput.value.trim();
+            state.page = 1;
+            loadFaculty();
+        }
+    });
+    showTrashedCheckbox.addEventListener('change', () => {
+        state.showTrashed = showTrashedCheckbox.checked;
+        state.page = 1;
+        loadFaculty();
+    });
+
+    syncMode();
+    syncCompensation();
+    loadFaculty();
 }
 
 function initializeTeacherAssignmentsTable(courseEditPage) {

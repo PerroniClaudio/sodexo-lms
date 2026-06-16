@@ -25,6 +25,7 @@
             ['key' => 'modules', 'label' => __('Moduli'), 'icon' => 'lucide-blocks'],
             ['key' => 'teachers', 'label' => __('Docenti'), 'icon' => 'lucide-graduation-cap'],
             ['key' => 'tutors', 'label' => __('Tutor'), 'icon' => 'lucide-users-round'],
+            ['key' => 'faculty', 'label' => __('Faculty'), 'icon' => 'lucide-id-card'],
             ['key' => 'enrollments', 'label' => __('Iscritti'), 'icon' => 'lucide-user-plus'],
             ['key' => 'operations', 'label' => __('Operazioni corso'), 'icon' => 'lucide-wrench'],
         ]);
@@ -332,6 +333,14 @@
                             <x-admin.course.edit.sections.enrollments
                                 :course="$course"
                                 :course-validator="$courseValidator"
+                            />
+                        @endif
+
+                        @if ($activeCourseEditSection === 'faculty')
+                            <x-admin.course.edit.sections.faculty
+                                :course="$course"
+                                :course-validator="$courseValidator"
+                                :role-labels="\App\Models\CourseFacultyMember::roleLabels()"
                             />
                         @endif
 
