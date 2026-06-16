@@ -322,6 +322,145 @@ it('updates only the course duration through the dedicated endpoint', function (
         ->and($course->title)->toBe('Titolo invariato');
 });
 
+it('shows the course program section', function () {
+    $course = Course::factory()->create([
+        'program_schedule' => [[
+            'starts_at' => '09:00',
+            'ends_at' => '10:30',
+            'duration_hours' => 1,
+            'duration_minutes' => 30,
+            'teaching_method' => 'lezione_frontale_video_lezione',
+            'topic' => 'Sicurezza generale',
+        ]],
+    ]);
+
+    $response = $this->get(route('admin.courses.edit', [$course, 'section' => 'program']));
+
+    $response->assertOk()
+        ->assertSeeText('Programma corso')
+        ->assertSeeText('Crea nuovo')
+        ->assertSeeText('Crea nuovo programma')
+        ->assertSeeText('Metodologie Didattiche')
+        ->assertSee('Sicurezza generale')
+        ->assertSeeText('Lezione frontale / video lezione');
+});
+
+it('updates the course program through the dedicated endpoint', function () {
+    $course = Course::factory()->create([
+        'program_schedule' => null,
+    ]);
+
+    $response = $this->put(route('admin.courses.program.update', $course), [
+        'program_schedule' => [
+            [
+                'starts_at' => '09:00',
+                'ends_at' => '10:30',
+                'duration_hours' => '1',
+                'duration_minutes' => '30',
+                'teaching_method' => 'lezione_frontale_video_lezione',
+                'topic' => 'Introduzione',
+            ],
+            [
+                'starts_at' => '10:45',
+                'ends_at' => '12:00',
+                'duration_hours' => '1',
+                'duration_minutes' => '15',
+                'teaching_method' => 'esercitazione',
+                'topic' => 'Esercizio guidato',
+            ],
+        ],
+    ]);
+
+    $response->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'program']));
+
+    expect($course->fresh()->program_schedule)->toBe([
+        [
+            'starts_at' => '09:00',
+            'ends_at' => '10:30',
+            'duration_hours' => 1,
+            'duration_minutes' => 30,
+            'teaching_method' => 'lezione_frontale_video_lezione',
+            'topic' => 'Introduzione',
+        ],
+        [
+            'starts_at' => '10:45',
+            'ends_at' => '12:00',
+            'duration_hours' => 1,
+            'duration_minutes' => 15,
+            'teaching_method' => 'esercitazione',
+            'topic' => 'Esercizio guidato',
+        ],
+    ]);
+});
+
+it('drops empty course program rows', function () {
+    $course = Course::factory()->create();
+
+    $response = $this->put(route('admin.courses.program.update', $course), [
+        'program_schedule' => [
+            [
+                'starts_at' => '',
+                'ends_at' => '',
+                'duration_hours' => '',
+                'duration_minutes' => '',
+                'teaching_method' => '',
+                'topic' => '',
+            ],
+            [
+                'starts_at' => '14:00',
+                'ends_at' => '',
+                'duration_hours' => '',
+                'duration_minutes' => '',
+                'teaching_method' => '',
+                'topic' => '',
+            ],
+        ],
+    ]);
+
+    $response->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'program']));
+
+    expect($course->fresh()->program_schedule)->toHaveCount(1)
+        ->and($course->fresh()->program_schedule[0]['starts_at'])->toBe('14:00');
+});
+
+it('validates course program teaching methods', function () {
+    $course = Course::factory()->create();
+
+    $response = $this->from(route('admin.courses.edit', [$course, 'section' => 'program']))
+        ->put(route('admin.courses.program.update', $course), [
+            'program_schedule' => [[
+                'starts_at' => '09:00',
+                'ends_at' => '10:00',
+                'duration_hours' => 1,
+                'duration_minutes' => 0,
+                'teaching_method' => 'non_valida',
+                'topic' => 'Argomento',
+            ]],
+        ]);
+
+    $response->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'program']))
+        ->assertSessionHasErrors('program_schedule.0.teaching_method');
+});
+
+it('validates course program times', function () {
+    $course = Course::factory()->create();
+
+    $response = $this->from(route('admin.courses.edit', [$course, 'section' => 'program']))
+        ->put(route('admin.courses.program.update', $course), [
+            'program_schedule' => [[
+                'starts_at' => '9',
+                'ends_at' => '10:00',
+                'duration_hours' => 1,
+                'duration_minutes' => 0,
+                'teaching_method' => 'esercitazione',
+                'topic' => 'Argomento',
+            ]],
+        ]);
+
+    $response->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'program']))
+        ->assertSessionHasErrors('program_schedule.0.starts_at');
+});
+
 it('updates survey settings through the dedicated endpoint and syncs the survey module', function () {
     $course = Course::factory()->create([
         'status' => 'draft',

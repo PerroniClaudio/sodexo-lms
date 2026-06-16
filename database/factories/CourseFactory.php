@@ -29,6 +29,7 @@ class CourseFactory extends Factory
             'access_closure_date' => fake()->optional()->dateTimeBetween('+2 months', '+3 months'),
             'course_duration_hours' => fake()->optional()->numberBetween(1, 80),
             'interaction_duration_minutes' => fake()->optional()->numberBetween(1, 480),
+            'program_schedule' => null,
             'type' => fake()->randomElement(Course::availableTypes()),
             'event_type' => null,
             'year' => now()->year,

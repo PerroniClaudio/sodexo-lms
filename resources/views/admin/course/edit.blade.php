@@ -16,6 +16,7 @@
             ['key' => 'attachments', 'label' => __('Allegati'), 'icon' => 'lucide-paperclip'],
             ['key' => 'documents', 'label' => __('Documenti'), 'icon' => 'lucide-file-up'],
             ['key' => 'duration', 'label' => __('Durata corso'), 'icon' => 'lucide-clock-3'],
+            ['key' => 'program', 'label' => __('Programma corso'), 'icon' => 'lucide-calendar-clock'],
             ['key' => 'survey', 'label' => __('Gradimento'), 'icon' => 'lucide-message-square-heart'],
             ['key' => 'certificates', 'label' => __('Abilitazioni di rischio'), 'icon' => 'lucide-file-badge'],
             ['key' => 'certificate-templates', 'label' => __('Template attestati'), 'icon' => 'lucide-file-text'],
@@ -39,6 +40,7 @@
 
         $courseDetailsUpdateUrl = route('admin.courses.details.update', $course);
         $courseDurationUpdateUrl = route('admin.courses.duration.update', $course);
+        $courseProgramUpdateUrl = route('admin.courses.program.update', $course);
         $courseAttachmentsUpdateUrl = route('admin.courses.attachments.update', $course);
         $courseDocumentsStoreUrl = route('admin.courses.documents.store', $course);
         $courseSurveyUpdateUrl = route('admin.courses.survey.update', $course);
@@ -90,6 +92,7 @@
                 $course->satisfaction_survey_required_for_certificate
             ),
         ];
+        $courseProgramSchedule = old('program_schedule', $course->program_schedule ?? []);
         $selectedRiskBasedRequirementIds = collect(old(
             'risk_based_requirement_ids',
             $course->riskBasedRequirements->pluck('id')->map(fn ($id) => (string) $id)->all(),
@@ -213,6 +216,14 @@
                                 :course-base-values="$courseBaseValues"
                                 :course-validator="$courseValidator"
                                 :update-url="$courseDurationUpdateUrl"
+                            />
+                        @elseif ($activeCourseEditSection === 'program')
+                            <x-admin.course.edit.sections.program
+                                :course="$course"
+                                :course-program-schedule="$courseProgramSchedule"
+                                :course-program-teaching-method-labels="$courseProgramTeachingMethodLabels"
+                                :course-validator="$courseValidator"
+                                :update-url="$courseProgramUpdateUrl"
                             />
                         @elseif ($activeCourseEditSection === 'attachments')
                             <x-admin.course.edit.sections.attachments

@@ -76,6 +76,7 @@ class Course extends Model
         'access_closure_date',
         'course_duration_hours',
         'interaction_duration_minutes',
+        'program_schedule',
         'type',
         'event_type',
         'year',
@@ -115,6 +116,7 @@ class Course extends Model
             'access_closure_date' => 'date',
             'course_duration_hours' => 'integer',
             'interaction_duration_minutes' => 'integer',
+            'program_schedule' => 'array',
             'has_satisfaction_survey' => 'boolean',
             'satisfaction_survey_required_for_certificate' => 'boolean',
             'visible_to_all' => 'boolean',
@@ -217,6 +219,37 @@ class Course extends Model
             'signature' => __('Firma presenza'),
             'badge_qr' => __('Badge/QR'),
             'other' => __('Altra modalità'),
+        ];
+    }
+
+    /**
+     * Get the available teaching methods for course programs.
+     *
+     * @return array<int, string>
+     */
+    public static function availableProgramTeachingMethods(): array
+    {
+        return array_keys(self::availableProgramTeachingMethodLabels());
+    }
+
+    /**
+     * Get the translated labels for course program teaching methods.
+     *
+     * @return array<string, string>
+     */
+    public static function availableProgramTeachingMethodLabels(): array
+    {
+        return [
+            'lezione_frontale_video_lezione' => __('Lezione frontale / video lezione'),
+            'asincrona' => __('Asincrona'),
+            'video_lezione_sincrona' => __('Video lezione Sincrona'),
+            'discussione_casi' => __('Discussione casi'),
+            'esercitazione' => __('Esercitazione'),
+            'simulazione' => __('Simulazione'),
+            'prova_pratica' => __('Prova pratica'),
+            'role_playing' => __('Role-playing'),
+            'lavoro_di_gruppo' => __('Lavoro di gruppo'),
+            'minibreak_formativi' => __('Minibreak formativi'),
         ];
     }
 

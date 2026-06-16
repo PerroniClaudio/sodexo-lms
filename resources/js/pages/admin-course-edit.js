@@ -24,7 +24,120 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeEnrollmentsTable(courseEditPage);
     initializeCourseRecipients(courseEditPage);
     initializeCourseVenueForm(courseEditPage);
+    initializeCourseProgram(courseEditPage);
 });
+
+function initializeCourseProgram(scope) {
+    const form = scope.querySelector('[data-course-program-form]');
+    const tbody = scope.querySelector('[data-course-program-rows]');
+    const template = scope.querySelector('[data-course-program-row-template]');
+    const openModalButton = scope.querySelector('[data-open-course-program-modal]');
+    const modal = scope.querySelector('[data-course-program-modal]');
+    const confirmModalButton = scope.querySelector('[data-confirm-course-program-modal]');
+    const emptyState = scope.querySelector('[data-course-program-empty]');
+    const labelsScript = scope.querySelector('[data-course-program-teaching-method-labels]');
+
+    if (!form || !tbody || !(template instanceof HTMLTemplateElement) || !openModalButton || !(modal instanceof HTMLDialogElement) || !confirmModalButton) {
+        return;
+    }
+
+    const fields = ['starts_at', 'ends_at', 'duration_hours', 'duration_minutes', 'teaching_method', 'topic'];
+    const teachingMethodLabels = JSON.parse(labelsScript?.textContent || '{}');
+    const modalFields = Object.fromEntries(fields.map((field) => [
+        field,
+        modal.querySelector(`[data-program-modal-field="${field}"]`),
+    ]));
+
+    const textOrFallback = (value) => String(value || '').trim() || 'n/d';
+
+    const durationLabel = (values) => {
+        if (!values.duration_hours && !values.duration_minutes) {
+            return 'n/d';
+        }
+
+        return `${Number(values.duration_hours || 0)} h ${Number(values.duration_minutes || 0)} min`;
+    };
+
+    const syncEmptyState = () => {
+        emptyState?.classList.toggle('hidden', tbody.querySelectorAll('[data-course-program-row]').length !== 0);
+    };
+
+    const renumber = () => {
+        tbody.querySelectorAll('[data-course-program-row]').forEach((row, index) => {
+            fields.forEach((field) => {
+                const input = row.querySelector(`[data-program-field="${field}"]`);
+
+                if (input) {
+                    input.name = `program_schedule[${index}][${field}]`;
+                }
+            });
+        });
+
+        syncEmptyState();
+    };
+
+    const clearModal = () => {
+        Object.values(modalFields).forEach((input) => {
+            if (input) {
+                input.value = '';
+            }
+        });
+    };
+
+    const appendRow = (values = {}) => {
+        const row = template.content.firstElementChild.cloneNode(true);
+
+        fields.forEach((field) => {
+            const input = row.querySelector(`[data-program-field="${field}"]`);
+
+            if (input) {
+                input.value = values[field] || '';
+            }
+        });
+
+        row.querySelector('[data-program-display="starts_at"]').textContent = textOrFallback(values.starts_at);
+        row.querySelector('[data-program-display="ends_at"]').textContent = textOrFallback(values.ends_at);
+        row.querySelector('[data-program-display="duration"]').textContent = durationLabel(values);
+        row.querySelector('[data-program-display="teaching_method"]').textContent = teachingMethodLabels[values.teaching_method] || 'n/d';
+        row.querySelector('[data-program-display="topic"]').textContent = textOrFallback(values.topic);
+
+        tbody.appendChild(row);
+        bindRemove(row);
+        renumber();
+    };
+
+    const bindRemove = (row) => {
+        row.querySelector('[data-remove-course-program-row]')?.addEventListener('click', () => {
+            row.remove();
+            renumber();
+        });
+    };
+
+    tbody.querySelectorAll('[data-course-program-row]').forEach(bindRemove);
+    renumber();
+
+    openModalButton.addEventListener('click', () => {
+        clearModal();
+        modal.showModal();
+    });
+
+    modal.querySelectorAll('[data-close-course-program-modal]').forEach((button) => {
+        button.addEventListener('click', () => {
+            modal.close();
+        });
+    });
+
+    confirmModalButton.addEventListener('click', () => {
+        appendRow(Object.fromEntries(fields.map((field) => [
+            field,
+            modalFields[field]?.value || '',
+        ])));
+        clearModal();
+        modal.close();
+    });
+
+    form.addEventListener('submit', renumber);
+}
 
 function initializeCourseVenueForm(scope) {
     const form = scope.querySelector('[data-course-venue-form]');

@@ -17,6 +17,7 @@ use App\Http\Requests\UpdateCourseCertificateTemplateRequest;
 use App\Http\Requests\UpdateCourseDetailsRequest;
 use App\Http\Requests\UpdateCourseDurationRequest;
 use App\Http\Requests\UpdateCoursePartnersRequest;
+use App\Http\Requests\UpdateCourseProgramRequest;
 use App\Http\Requests\UpdateCourseRecipientsRequest;
 use App\Http\Requests\UpdateCourseSurveyRequest;
 use App\Models\Course;
@@ -156,6 +157,7 @@ class CourseController extends Controller
             'courseTypeLabels' => Course::availableTypeLabels(),
             'courseStatusLabels' => Course::availableStatusLabels(),
             'courseEventTypeLabels' => Course::availableEventTypeLabels(),
+            'courseProgramTeachingMethodLabels' => Course::availableProgramTeachingMethodLabels(),
             'courseDocumentCategoryLabels' => CourseDocument::categoryLabels(),
             'courseDocumentFileTypeLabels' => CourseDocument::fileTypeLabels(),
             'courseRiskRequirementValidityTypeLabels' => CourseRiskRequirementValidityType::labels(),
@@ -246,6 +248,15 @@ class CourseController extends Controller
         $course->update($request->validated());
 
         return $this->redirectToSection($course, 'duration', __('Durata del corso aggiornata con successo.'));
+    }
+
+    public function updateProgram(UpdateCourseProgramRequest $request, Course $course): RedirectResponse
+    {
+        $course->update([
+            'program_schedule' => $request->programSchedule(),
+        ]);
+
+        return $this->redirectToSection($course, 'program', __('Programma corso aggiornato con successo.'));
     }
 
     public function updateAttachments(UpdateCourseAttachmentsRequest $request, Course $course): RedirectResponse
