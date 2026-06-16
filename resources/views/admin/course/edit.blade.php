@@ -174,7 +174,7 @@
                             <ul class="menu w-full gap-1">
                                 @foreach ($courseEditSectionGroups as $group => $sections)
                                     <li>
-                                        <details @if($sections->contains('key', $activeCourseEditSection)) open @endif>
+                                        <details open>
                                             <summary>
                                                 <x-dynamic-component :component="$courseEditGroupIcons[$group]" class="mr-2 inline-block h-5 w-5" />
                                                 {{ $courseEditGroupLabels[$group] }}
@@ -205,7 +205,7 @@
                         <ul class="menu w-full gap-1">
                             @foreach ($courseEditSectionGroups as $group => $sections)
                                 <li>
-                                    <details @if($sections->contains('key', $activeCourseEditSection)) open @endif>
+                                    <details open>
                                         <summary>
                                             <x-dynamic-component :component="$courseEditGroupIcons[$group]" class="mr-2 inline-block h-5 w-5" />
                                             {{ $courseEditGroupLabels[$group] }}
