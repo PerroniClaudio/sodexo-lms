@@ -9,27 +9,44 @@
             'satisfaction_quiz' => 'lucide-message-square-heart',
         ];
         $courseEditSections = collect([
-            ['key' => 'details', 'label' => __('Dati anagrafici corso'), 'icon' => 'lucide-book-open-text'],
+            ['key' => 'details', 'label' => __('Dati anagrafici corso'), 'icon' => 'lucide-book-open-text', 'group' => 'course'],
             ...in_array($course->type, ['res', 'blended'], true)
-                ? [['key' => 'venue', 'label' => __('Sede'), 'icon' => 'lucide-map-pin']]
+                ? [['key' => 'venue', 'label' => __('Sede'), 'icon' => 'lucide-map-pin', 'group' => 'course']]
                 : [],
-            ['key' => 'attachments', 'label' => __('Allegati'), 'icon' => 'lucide-paperclip'],
-            ['key' => 'documents', 'label' => __('Documenti'), 'icon' => 'lucide-file-up'],
-            ['key' => 'duration', 'label' => __('Durata corso'), 'icon' => 'lucide-clock-3'],
-            ['key' => 'program', 'label' => __('Programma corso'), 'icon' => 'lucide-calendar-clock'],
-            ['key' => 'survey', 'label' => __('Gradimento'), 'icon' => 'lucide-message-square-heart'],
-            ['key' => 'certificates', 'label' => __('Abilitazioni di rischio'), 'icon' => 'lucide-file-badge'],
-            ['key' => 'certificate-templates', 'label' => __('Template attestati'), 'icon' => 'lucide-file-text'],
-            ['key' => 'categorization', 'label' => __('Categorizzazione'), 'icon' => 'lucide-tags'],
-            ['key' => 'partners', 'label' => __('Partner'), 'icon' => 'lucide-handshake'],
-            ['key' => 'recipients', 'label' => __('Destinatari'), 'icon' => 'lucide-users'],
-            ['key' => 'modules', 'label' => __('Moduli'), 'icon' => 'lucide-blocks'],
-            ['key' => 'teachers', 'label' => __('Docenti'), 'icon' => 'lucide-graduation-cap'],
-            ['key' => 'tutors', 'label' => __('Tutor'), 'icon' => 'lucide-users-round'],
-            ['key' => 'faculty', 'label' => __('Faculty'), 'icon' => 'lucide-id-card'],
-            ['key' => 'enrollments', 'label' => __('Iscritti'), 'icon' => 'lucide-user-plus'],
-            ['key' => 'operations', 'label' => __('Operazioni corso'), 'icon' => 'lucide-wrench'],
+            ['key' => 'attachments', 'label' => __('Allegati'), 'icon' => 'lucide-paperclip', 'group' => 'course'],
+            ['key' => 'documents', 'label' => __('Documenti'), 'icon' => 'lucide-file-up', 'group' => 'course'],
+            ['key' => 'duration', 'label' => __('Durata corso'), 'icon' => 'lucide-clock-3', 'group' => 'planning'],
+            ['key' => 'program', 'label' => __('Programma corso'), 'icon' => 'lucide-calendar-clock', 'group' => 'planning'],
+            ['key' => 'survey', 'label' => __('Gradimento'), 'icon' => 'lucide-message-square-heart', 'group' => 'planning'],
+            ['key' => 'certificates', 'label' => __('Abilitazioni di rischio'), 'icon' => 'lucide-file-badge', 'group' => 'certificates'],
+            ['key' => 'certificate-templates', 'label' => __('Template attestati'), 'icon' => 'lucide-file-text', 'group' => 'certificates'],
+            ['key' => 'categorization', 'label' => __('Categorizzazione'), 'icon' => 'lucide-tags', 'group' => 'audience'],
+            ['key' => 'partners', 'label' => __('Partner'), 'icon' => 'lucide-handshake', 'group' => 'audience'],
+            ['key' => 'recipients', 'label' => __('Destinatari'), 'icon' => 'lucide-users', 'group' => 'audience'],
+            ['key' => 'modules', 'label' => __('Moduli'), 'icon' => 'lucide-blocks', 'group' => 'delivery'],
+            ['key' => 'teachers', 'label' => __('Docenti'), 'icon' => 'lucide-graduation-cap', 'group' => 'delivery'],
+            ['key' => 'tutors', 'label' => __('Tutor'), 'icon' => 'lucide-users-round', 'group' => 'delivery'],
+            ['key' => 'faculty', 'label' => __('Faculty'), 'icon' => 'lucide-id-card', 'group' => 'delivery'],
+            ['key' => 'enrollments', 'label' => __('Iscritti'), 'icon' => 'lucide-user-plus', 'group' => 'delivery'],
+            ['key' => 'operations', 'label' => __('Operazioni corso'), 'icon' => 'lucide-wrench', 'group' => 'operations'],
         ]);
+        $courseEditGroupLabels = [
+            'course' => __('Corso'),
+            'planning' => __('Pianificazione'),
+            'certificates' => __('Attestati'),
+            'audience' => __('Destinatari e partner'),
+            'delivery' => __('Erogazione'),
+            'operations' => __('Operazioni'),
+        ];
+        $courseEditGroupIcons = [
+            'course' => 'lucide-book-open',
+            'planning' => 'lucide-calendar-days',
+            'certificates' => 'lucide-award',
+            'audience' => 'lucide-users',
+            'delivery' => 'lucide-presentation',
+            'operations' => 'lucide-settings',
+        ];
+        $courseEditSectionGroups = $courseEditSections->groupBy('group');
         $activeCourseEditSection = request('section', 'details');
 
         if (! $courseEditSections->contains(fn (array $section): bool => $section['key'] === $activeCourseEditSection)) {
@@ -155,18 +172,29 @@
                         </summary>
                         <div class="collapse-content px-2 pb-2">
                             <ul class="menu w-full gap-1">
-                                @foreach ($courseEditSections as $section)
-                                    <li class="w-full">
-                                        <a
-                                            href="{{ route('admin.courses.edit', $course).'?section='.$section['key'] }}"
-                                            @class([
-                                                'w-full',
-                                                'menu-active' => $activeCourseEditSection === $section['key'],
-                                            ])
-                                        >
-                                            <x-dynamic-component :component="$section['icon']" class="mr-2 inline-block h-5 w-5" />
-                                            {{ $section['label'] }}
-                                        </a>
+                                @foreach ($courseEditSectionGroups as $group => $sections)
+                                    <li>
+                                        <details @if($sections->contains('key', $activeCourseEditSection)) open @endif>
+                                            <summary>
+                                                <x-dynamic-component :component="$courseEditGroupIcons[$group]" class="mr-2 inline-block h-5 w-5" />
+                                                {{ $courseEditGroupLabels[$group] }}
+                                            </summary>
+                                            <ul>
+                                                @foreach ($sections as $section)
+                                                    <li>
+                                                        <a
+                                                            href="{{ route('admin.courses.edit', $course).'?section='.$section['key'] }}"
+                                                            @class([
+                                                                'menu-active' => $activeCourseEditSection === $section['key'],
+                                                            ])
+                                                        >
+                                                            <x-dynamic-component :component="$section['icon']" class="mr-2 inline-block h-5 w-5" />
+                                                            {{ $section['label'] }}
+                                                        </a>
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                        </details>
                                     </li>
                                 @endforeach
                             </ul>
@@ -175,18 +203,29 @@
 
                     <div class="hidden lg:block">
                         <ul class="menu w-full gap-1">
-                            @foreach ($courseEditSections as $section)
-                                <li class="w-full">
-                                    <a
-                                        href="{{ route('admin.courses.edit', $course).'?section='.$section['key'] }}"
-                                        @class([
-                                            'w-full',
-                                            'menu-active' => $activeCourseEditSection === $section['key'],
-                                        ])
-                                    >
-                                        <x-dynamic-component :component="$section['icon']" class="mr-2 inline-block h-5 w-5" />
-                                        {{ $section['label'] }}
-                                    </a>
+                            @foreach ($courseEditSectionGroups as $group => $sections)
+                                <li>
+                                    <details @if($sections->contains('key', $activeCourseEditSection)) open @endif>
+                                        <summary>
+                                            <x-dynamic-component :component="$courseEditGroupIcons[$group]" class="mr-2 inline-block h-5 w-5" />
+                                            {{ $courseEditGroupLabels[$group] }}
+                                        </summary>
+                                        <ul>
+                                            @foreach ($sections as $section)
+                                                <li>
+                                                    <a
+                                                        href="{{ route('admin.courses.edit', $course).'?section='.$section['key'] }}"
+                                                        @class([
+                                                            'menu-active' => $activeCourseEditSection === $section['key'],
+                                                        ])
+                                                    >
+                                                        <x-dynamic-component :component="$section['icon']" class="mr-2 inline-block h-5 w-5" />
+                                                        {{ $section['label'] }}
+                                                    </a>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </details>
                                 </li>
                             @endforeach
                         </ul>
