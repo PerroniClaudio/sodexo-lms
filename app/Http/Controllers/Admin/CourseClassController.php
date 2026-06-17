@@ -3,24 +3,29 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\SyncCourseClassTeachers;
+use App\Actions\SyncCourseClassTutors;
 use App\Actions\SyncCourseClassUsers;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\DeleteCourseClassTeachersRequest;
+use App\Http\Requests\DeleteCourseClassTutorsRequest;
 use App\Http\Requests\DeleteCourseClassUsersRequest;
 use App\Http\Requests\StoreCourseClassRequest;
 use App\Http\Requests\StoreCourseClassTeachersRequest;
+use App\Http\Requests\StoreCourseClassTutorsRequest;
 use App\Http\Requests\StoreCourseClassUsersRequest;
 use App\Http\Requests\UpdateCourseClassRequest;
 use App\Models\Course;
 use App\Models\CourseClass;
 use App\Models\CourseClassSchedule;
 use App\Models\CourseClassTeacher;
+use App\Models\CourseClassTutor;
 use App\Models\CourseClassUser;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
 
 class CourseClassController extends Controller
 {
@@ -34,6 +39,7 @@ class CourseClassController extends Controller
                 'schedules',
                 'userAssignments.user' => fn ($query) => $query->select(['id', 'name', 'surname', 'email', 'fiscal_code']),
                 'teacherAssignments.user' => fn ($query) => $query->select(['id', 'name', 'surname', 'email', 'fiscal_code']),
+                'tutorAssignments.user' => fn ($query) => $query->select(['id', 'name', 'surname', 'email', 'fiscal_code']),
             ])
             ->whereHas('module', fn ($query) => $query->where('belongsTo', (string) $course->getKey()))
             ->get()
@@ -46,6 +52,18 @@ class CourseClassController extends Controller
             ->map(fn (CourseClass $courseClass): array => $this->classPayload($course, $courseClass));
 
         return response()->json(['data' => $classes]);
+    }
+
+    public function edit(Course $course, CourseClass $courseClass): View
+    {
+        $this->abortUnlessClassBelongsToCourse($course, $courseClass);
+
+        return view('admin.course-classes.edit', [
+            'course' => $course,
+            'module' => $courseClass->module,
+            'courseClass' => $courseClass,
+            'courseClassPayloads' => collect([$this->classPayload($course, $courseClass)]),
+        ]);
     }
 
     public function store(StoreCourseClassRequest $request, Course $course): JsonResponse
@@ -85,6 +103,7 @@ class CourseClassController extends Controller
         DB::transaction(function () use ($courseClass): void {
             $courseClass->userAssignments()->delete();
             $courseClass->teacherAssignments()->delete();
+            $courseClass->tutorAssignments()->delete();
             $courseClass->delete();
         });
 
@@ -105,6 +124,13 @@ class CourseClassController extends Controller
         $this->abortUnlessCourseSupportsClasses($course);
 
         return $this->searchCourseTeachers($course);
+    }
+
+    public function searchTutors(Course $course): JsonResponse
+    {
+        $this->abortUnlessCourseSupportsClasses($course);
+
+        return $this->searchCourseTutors($course);
     }
 
     public function storeUsers(
@@ -201,6 +227,53 @@ class CourseClassController extends Controller
         ]);
     }
 
+    public function storeTutors(
+        StoreCourseClassTutorsRequest $request,
+        Course $course,
+        CourseClass $courseClass,
+        SyncCourseClassTutors $syncCourseClassTutors,
+    ): JsonResponse {
+        $this->abortUnlessClassBelongsToCourse($course, $courseClass);
+
+        $syncCourseClassTutors->handle($courseClass, $request->tutorIds());
+
+        return response()->json([
+            'data' => $this->classPayload($course, $courseClass->fresh()),
+            'message' => __('Tutor assegnati con successo.'),
+        ], Response::HTTP_CREATED);
+    }
+
+    public function destroyTutor(Course $course, CourseClass $courseClass, CourseClassTutor $assignment): JsonResponse
+    {
+        $this->abortUnlessClassBelongsToCourse($course, $courseClass);
+        abort_unless($assignment->course_class_id === $courseClass->getKey(), Response::HTTP_NOT_FOUND);
+
+        $assignment->delete();
+
+        return response()->json([
+            'data' => $this->classPayload($course, $courseClass->fresh()),
+            'message' => __('Tutor rimosso dalla classe.'),
+        ]);
+    }
+
+    public function destroyTutors(
+        DeleteCourseClassTutorsRequest $request,
+        Course $course,
+        CourseClass $courseClass,
+    ): JsonResponse {
+        $this->abortUnlessClassBelongsToCourse($course, $courseClass);
+
+        CourseClassTutor::query()
+            ->where('course_class_id', $courseClass->getKey())
+            ->whereKey($request->assignmentIds())
+            ->delete();
+
+        return response()->json([
+            'data' => $this->classPayload($course, $courseClass->fresh()),
+            'message' => __('Tutor rimossi dalla classe.'),
+        ]);
+    }
+
     private function searchCourseUsers(Course $course): JsonResponse
     {
         return response()->json([
@@ -212,6 +285,13 @@ class CourseClassController extends Controller
     {
         return response()->json([
             'data' => $this->searchPeopleCollection($course->getTeachersQuery())->values(),
+        ]);
+    }
+
+    private function searchCourseTutors(Course $course): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->searchPeopleCollection($course->getTutorsQuery())->values(),
         ]);
     }
 
@@ -273,6 +353,8 @@ class CourseClassController extends Controller
             'userAssignments.user' => fn ($query) => $query->select(['id', 'name', 'surname', 'email', 'fiscal_code']),
             'teacherAssignments' => fn ($query) => $query->select(['id', 'course_class_id', 'user_id']),
             'teacherAssignments.user' => fn ($query) => $query->select(['id', 'name', 'surname', 'email', 'fiscal_code']),
+            'tutorAssignments' => fn ($query) => $query->select(['id', 'course_class_id', 'user_id']),
+            'tutorAssignments.user' => fn ($query) => $query->select(['id', 'name', 'surname', 'email', 'fiscal_code']),
         ]);
 
         $resolvedSchedule = $courseClass->resolvedSchedule();
@@ -301,6 +383,7 @@ class CourseClassController extends Controller
             ])->values(),
             'users_count' => $courseClass->userAssignments->count(),
             'teachers_count' => $courseClass->teacherAssignments->count(),
+            'tutors_count' => $courseClass->tutorAssignments->count(),
             'remaining_user_slots' => $courseClass->remainingUserSlots(),
             'users' => $courseClass->userAssignments
                 ->map(fn (CourseClassUser $assignment): array => [
@@ -316,13 +399,23 @@ class CourseClassController extends Controller
                     ...$this->userPayload($assignment->user),
                 ])
                 ->values(),
+            'tutors' => $courseClass->tutorAssignments
+                ->map(fn (CourseClassTutor $assignment): array => [
+                    'assignment_id' => $assignment->getKey(),
+                    'delete_url' => route('admin.courses.classes.tutors.destroy', [$course, $courseClass, $assignment]),
+                    ...$this->userPayload($assignment->user),
+                ])
+                ->values(),
             'routes' => [
+                'edit' => route('admin.courses.classes.edit', [$course, $courseClass]),
                 'update' => route('admin.courses.classes.update', [$course, $courseClass]),
                 'delete' => route('admin.courses.classes.destroy', [$course, $courseClass]),
                 'users_store' => route('admin.courses.classes.users.store', [$course, $courseClass]),
                 'users_destroy_many' => route('admin.courses.classes.users.destroy-many', [$course, $courseClass]),
                 'teachers_store' => route('admin.courses.classes.teachers.store', [$course, $courseClass]),
                 'teachers_destroy_many' => route('admin.courses.classes.teachers.destroy-many', [$course, $courseClass]),
+                'tutors_store' => route('admin.courses.classes.tutors.store', [$course, $courseClass]),
+                'tutors_destroy_many' => route('admin.courses.classes.tutors.destroy-many', [$course, $courseClass]),
             ],
         ];
     }

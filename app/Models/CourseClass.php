@@ -44,6 +44,11 @@ class CourseClass extends Model
         return $this->hasMany(CourseClassTeacher::class);
     }
 
+    public function tutorAssignments(): HasMany
+    {
+        return $this->hasMany(CourseClassTutor::class);
+    }
+
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'course_class_users')
@@ -59,6 +64,18 @@ class CourseClass extends Model
     public function teachers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'course_class_teachers')
+            ->withPivot([
+                'id',
+                'assigned_at',
+                'deleted_at',
+            ])
+            ->wherePivotNull('deleted_at')
+            ->withTimestamps();
+    }
+
+    public function tutors(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'course_class_tutors')
             ->withPivot([
                 'id',
                 'assigned_at',

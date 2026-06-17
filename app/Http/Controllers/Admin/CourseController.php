@@ -42,6 +42,9 @@ use App\Services\CourseValidation\CourseValidatorService;
 use App\Services\SyncCourseSatisfactionSurvey;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -179,7 +182,64 @@ class CourseController extends Controller
             'jobTasks' => JobTask::query()->orderBy('name')->get(),
             'jobUnits' => JobUnit::query()->orderBy('name')->get(),
             'venues' => Venue::query()->with(['city', 'province', 'region'])->orderBy('name')->get(),
+            'attendanceRows' => request('section') === 'attendees' ? $this->attendanceRows($course) : collect(),
         ]);
+    }
+
+    private function attendanceRows(Course $course): Collection
+    {
+        if (! in_array($course->type, ['res', 'blended'], true)) {
+            return collect();
+        }
+
+        return DB::table('course_attendance_records')
+            ->join('course_user', function ($join): void {
+                $join
+                    ->on('course_user.user_id', '=', 'course_attendance_records.user_id')
+                    ->on('course_user.course_id', '=', 'course_attendance_records.course_id')
+                    ->whereNull('course_user.deleted_at');
+            })
+            ->join('users', 'users.id', '=', 'course_attendance_records.user_id')
+            ->where('course_attendance_records.course_id', $course->getKey())
+            ->select([
+                'users.id as user_id',
+                'users.name',
+                'users.surname',
+                'users.email',
+                'course_attendance_records.type',
+                'course_attendance_records.recorded_at',
+            ])
+            ->orderBy('users.surname')
+            ->orderBy('users.name')
+            ->orderBy('course_attendance_records.recorded_at')
+            ->get()
+            ->groupBy('user_id')
+            ->map(function (Collection $records): array {
+                $firstRecord = $records->first();
+                $lastEntryAt = null;
+                $totalSeconds = 0;
+
+                foreach ($records as $record) {
+                    if ($record->type === 'entry') {
+                        $lastEntryAt = Carbon::parse($record->recorded_at);
+
+                        continue;
+                    }
+
+                    if ($record->type === 'exit' && $lastEntryAt !== null) {
+                        $totalSeconds += $lastEntryAt->diffInSeconds(Carbon::parse($record->recorded_at), false);
+                        $lastEntryAt = null;
+                    }
+                }
+
+                return [
+                    'user' => trim($firstRecord->surname.' '.$firstRecord->name),
+                    'email' => $firstRecord->email,
+                    'records_count' => $records->count(),
+                    'attendance_seconds' => (int) max(0, $totalSeconds),
+                ];
+            })
+            ->values();
     }
 
     public function updateDetails(

@@ -614,6 +614,10 @@ function initializeCourseClasses(courseEditPage) {
     const storeUrl = container.dataset.classesStoreUrl;
     const searchUsersUrl = container.dataset.classesSearchUsersUrl;
     const searchTeachersUrl = container.dataset.classesSearchTeachersUrl;
+    const searchTutorsUrl = container.dataset.classesSearchTutorsUrl;
+    const isStandaloneClassPage = container.dataset.standaloneClassPage === 'true';
+    const initialCourseClassId = container.dataset.initialCourseClassId;
+    const classBackUrl = container.dataset.classBackUrl;
     const initialScript = container.querySelector('[data-course-classes-initial]');
     const tbody = container.querySelector('[data-course-classes-tbody]');
     const emptyState = container.querySelector('[data-course-classes-empty]');
@@ -629,6 +633,16 @@ function initializeCourseClasses(courseEditPage) {
     const classFormError = container.querySelector('[data-course-class-form-error]');
     const schedulesContainer = container.querySelector('[data-course-class-schedules]');
     const addScheduleButton = container.querySelector('[data-add-course-class-schedule]');
+    const classEditTools = container.querySelector('[data-course-class-edit-tools]');
+    const classDetailUsers = container.querySelector('[data-class-detail-users]');
+    const classDetailTeachers = container.querySelector('[data-class-detail-teachers]');
+    const classDetailTutors = container.querySelector('[data-class-detail-tutors]');
+    const manageClassUsersButton = classEditTools?.querySelector('[data-manage-class-users]');
+    const manageClassTeachersButton = classEditTools?.querySelector('[data-manage-class-teachers]');
+    const manageClassTutorsButton = classEditTools?.querySelector('[data-manage-class-tutors]');
+    const assignedUsersTable = container.querySelector('[data-class-assigned-users]');
+    const assignedTeachersTable = container.querySelector('[data-class-assigned-teachers]');
+    const assignedTutorsTable = container.querySelector('[data-class-assigned-tutors]');
     const peopleModal = container.querySelector('[data-course-class-people-modal]');
     const closePeopleModalButton = container.querySelector('[data-close-course-class-people-modal]');
     const peopleTitle = container.querySelector('[data-course-class-people-title]');
@@ -642,7 +656,7 @@ function initializeCourseClasses(courseEditPage) {
     const peopleConfirmRemovalButton = container.querySelector('[data-course-class-people-confirm-removal]');
     const peopleError = container.querySelector('[data-course-class-people-error]');
 
-    if (!indexUrl || !storeUrl || !tbody || !emptyState || !tableContainer || !tableLoader || !rowTemplate || !scheduleTemplate || !openClassModalButton || !classModal || !closeClassModalButton || !classForm || !classModalTitle || !classFormError || !schedulesContainer || !addScheduleButton || !peopleModal || !closePeopleModalButton || !peopleTitle || !peopleSubtitle || !peopleCount || !peopleSearch || !peopleSearchButton || !peopleResults || !peopleConfirmButton || !peopleAssigned || !peopleConfirmRemovalButton || !peopleError) {
+    if (!indexUrl || !storeUrl || !searchUsersUrl || !searchTeachersUrl || !searchTutorsUrl || !scheduleTemplate || (!isStandaloneClassPage && (!tbody || !emptyState || !tableContainer || !tableLoader || !rowTemplate || !openClassModalButton)) || !classModal || (!isStandaloneClassPage && !closeClassModalButton) || !classForm || (!isStandaloneClassPage && !classModalTitle) || !classFormError || !schedulesContainer || !addScheduleButton || !classEditTools || !classDetailUsers || !classDetailTeachers || !classDetailTutors || !manageClassUsersButton || !manageClassTeachersButton || !manageClassTutorsButton || !peopleModal || !closePeopleModalButton || !peopleTitle || !peopleSubtitle || !peopleCount || !peopleSearch || !peopleSearchButton || !peopleResults || !peopleConfirmButton || !peopleAssigned || !peopleConfirmRemovalButton || !peopleError) {
         return;
     }
 
@@ -674,6 +688,12 @@ function initializeCourseClasses(courseEditPage) {
 
     const getClassById = (classId) => state.classes.find((courseClass) => Number(courseClass.id) === Number(classId));
 
+    const syncClassDetailCounts = (courseClass) => {
+        classDetailUsers.textContent = courseClass?.users_count ?? 0;
+        classDetailTeachers.textContent = courseClass?.teachers_count ?? 0;
+        classDetailTutors.textContent = courseClass?.tutors_count ?? 0;
+    };
+
     const replaceClass = (updatedClass) => {
         state.classes = state.classes.map((courseClass) => {
             if (Number(courseClass.id) === Number(updatedClass.id)) {
@@ -685,6 +705,9 @@ function initializeCourseClasses(courseEditPage) {
 
         renderClasses();
         state.peopleClass = getClassById(updatedClass.id) || updatedClass;
+        state.editingClass = Number(state.editingClass?.id) === Number(updatedClass.id) ? state.peopleClass : state.editingClass;
+        syncClassDetailCounts(state.editingClass);
+        renderClassPeopleCards(state.editingClass);
     };
 
     const updatePeopleActionButtons = () => {
@@ -702,8 +725,19 @@ function initializeCourseClasses(courseEditPage) {
     };
 
     const isUserMode = () => state.peopleMode === 'users';
+    const isTeacherMode = () => state.peopleMode === 'teachers';
 
-    const getAssignedPeople = () => (isUserMode() ? (state.peopleClass?.users || []) : (state.peopleClass?.teachers || []));
+    const getAssignedPeople = () => {
+        if (isUserMode()) {
+            return state.peopleClass?.users || [];
+        }
+
+        if (isTeacherMode()) {
+            return state.peopleClass?.teachers || [];
+        }
+
+        return state.peopleClass?.tutors || [];
+    };
 
     const getPendingIds = () => new Set(state.pendingPeople.map((person) => Number(person.id)));
 
@@ -730,6 +764,10 @@ function initializeCourseClasses(courseEditPage) {
     };
 
     const syncClassesLoadingState = () => {
+        if (!tableContainer || !tableLoader) {
+            return;
+        }
+
         toggleAsyncTableLoading({ container: tableContainer, loader: tableLoader }, state.reloadingClasses);
     };
 
@@ -748,25 +786,61 @@ function initializeCourseClasses(courseEditPage) {
     };
 
     const renderClasses = () => {
+        if (!tbody || !emptyState || !rowTemplate) {
+            return;
+        }
+
         tbody.innerHTML = '';
         emptyState.classList.toggle('hidden', state.classes.length > 0);
 
         state.classes.forEach((courseClass) => {
             const row = rowTemplate.content.firstElementChild.cloneNode(true);
             row.dataset.classId = courseClass.id;
-            row.querySelector('[data-class-module]').textContent = courseClass.module_title || '-';
+            row.querySelector('[data-class-id]').textContent = courseClass.id;
             row.querySelector('[data-class-name]').textContent = courseClass.name;
-            row.querySelector('[data-class-starts]').textContent = courseClass.starts_at_label || '-';
-            row.querySelector('[data-class-ends]').textContent = courseClass.ends_at_label || '-';
-            row.querySelector('[data-class-schedules-count]').textContent = courseClass.schedules_count || 0;
-            row.querySelector('[data-class-users]').textContent = `${courseClass.users_count}/30`;
-            row.querySelector('[data-class-teachers]').textContent = courseClass.teachers_count;
-            row.querySelector('[data-edit-class]').addEventListener('click', () => openClassForm(courseClass));
-            row.querySelector('[data-manage-class-users]').addEventListener('click', () => openPeopleModal(courseClass, 'users'));
-            row.querySelector('[data-manage-class-teachers]').addEventListener('click', () => openPeopleModal(courseClass, 'teachers'));
+            row.querySelector('[data-class-starts]').textContent = courseClass.starts_at_label?.split(' ')[0] || '-';
+            row.querySelector('[data-class-users]').textContent = courseClass.users_count || 0;
+            row.querySelector('[data-edit-class]').href = courseClass.routes.edit;
             row.querySelector('[data-delete-class]').addEventListener('click', () => deleteClass(courseClass));
             tbody.appendChild(row);
         });
+    };
+
+    const renderClassPeopleTable = (table, people) => {
+        if (!table) {
+            return;
+        }
+
+        table.innerHTML = '';
+
+        if (!people || people.length === 0) {
+            table.innerHTML = '<tr><td class="text-sm text-base-content/60">Nessuna assegnazione presente.</td></tr>';
+
+            return;
+        }
+
+        people.forEach((person) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <div class="font-medium">${escapeHtml(person.full_name || '-')}</div>
+                    <div class="text-xs text-base-content/60">${escapeHtml(person.email || '')}</div>
+                </td>
+                <td class="text-right">
+                    <button type="button" class="btn btn-accent btn-sm">
+                        Rimuovi
+                    </button>
+                </td>
+            `;
+            row.querySelector('button').addEventListener('click', () => removeAssignedPerson(person));
+            table.appendChild(row);
+        });
+    };
+
+    const renderClassPeopleCards = (courseClass) => {
+        renderClassPeopleTable(assignedUsersTable, courseClass?.users || []);
+        renderClassPeopleTable(assignedTeachersTable, courseClass?.teachers || []);
+        renderClassPeopleTable(assignedTutorsTable, courseClass?.tutors || []);
     };
 
     const hydrateScheduleInputNames = () => {
@@ -798,9 +872,16 @@ function initializeCourseClasses(courseEditPage) {
 
     const openClassForm = (courseClass = null) => {
         state.editingClass = courseClass;
-        classModalTitle.textContent = courseClass ? 'Modifica classe' : 'Nuova classe';
+        if (classModalTitle) {
+            classModalTitle.textContent = courseClass ? 'Modifica classe' : 'Nuova classe';
+        }
         classForm.module_id.value = courseClass?.module_id || defaultModuleId;
         classForm.name.value = courseClass?.name || '';
+        if (!isStandaloneClassPage) {
+            classEditTools.classList.toggle('hidden', !courseClass);
+        }
+        syncClassDetailCounts(courseClass);
+        renderClassPeopleCards(courseClass);
         schedulesContainer.innerHTML = '';
         (courseClass?.schedules || []).forEach((schedule) => appendScheduleRow(schedule));
 
@@ -809,7 +890,20 @@ function initializeCourseClasses(courseEditPage) {
         }
 
         showError(classFormError, '');
-        classModal.showModal();
+
+        if (!isStandaloneClassPage) {
+            classModal.showModal();
+        }
+    };
+
+    const closeClassForm = () => {
+        if (isStandaloneClassPage) {
+            window.location.href = classBackUrl;
+
+            return;
+        }
+
+        classModal.close();
     };
 
     const deleteClass = async (courseClass) => {
@@ -842,14 +936,21 @@ function initializeCourseClasses(courseEditPage) {
         try {
             setButtonLoading(submitButton, true, { loadingText: 'Salvataggio...' });
 
+            let response;
+
             if (state.editingClass) {
-                await window.axios.put(url, payload, { headers: { Accept: 'application/json' } });
+                response = await window.axios.put(url, payload, { headers: { Accept: 'application/json' } });
             } else {
-                await window.axios.post(url, payload, { headers: { Accept: 'application/json' } });
+                response = await window.axios.post(url, payload, { headers: { Accept: 'application/json' } });
             }
 
-            classModal.close();
-            await refreshClasses();
+            if (isStandaloneClassPage) {
+                replaceClass(response.data.data);
+                openClassForm(response.data.data);
+            } else {
+                classModal.close();
+                await refreshClasses();
+            }
         } catch (error) {
             showError(classFormError, error.response?.data?.message || 'Errore durante il salvataggio della classe.');
         } finally {
@@ -867,18 +968,31 @@ function initializeCourseClasses(courseEditPage) {
         peopleResults.innerHTML = '';
         showError(peopleError, '');
         renderAssignedPeople();
-        peopleTitle.textContent = mode === 'users' ? `Utenti - ${courseClass.name}` : `Docenti - ${courseClass.name}`;
+        peopleTitle.textContent = mode === 'users'
+            ? `Utenti - ${courseClass.name}`
+            : (mode === 'teachers' ? `Docenti - ${courseClass.name}` : `Tutor - ${courseClass.name}`);
         peopleSubtitle.textContent = mode === 'users'
             ? 'Aggiungi utenti standard alla classe. Il limite massimo è 30 utenti.'
-            : 'Aggiungi docenti alla classe. Non è previsto un limite numerico.';
+            : (mode === 'teachers'
+                ? 'Aggiungi docenti alla classe. Non è previsto un limite numerico.'
+                : 'Aggiungi tutor alla classe. Non è previsto un limite numerico.');
         syncPeopleLoadingState();
         peopleModal.showModal();
+    };
+
+    const removeAssignedPerson = async (person) => {
+        if (!person?.delete_url) {
+            return;
+        }
+
+        const response = await window.axios.delete(person.delete_url, { headers: { Accept: 'application/json' } });
+        replaceClass(response.data.data);
     };
 
     const renderAssignedPeople = () => {
         const courseClass = state.peopleClass;
         const mode = state.peopleMode;
-        const assigned = mode === 'users' ? (courseClass?.users || []) : (courseClass?.teachers || []);
+        const assigned = getAssignedPeople();
         peopleAssigned.innerHTML = '';
         peopleCount.textContent = mode === 'users' ? `${assigned.length}/30` : assigned.length;
 
@@ -933,7 +1047,9 @@ function initializeCourseClasses(courseEditPage) {
 
     const searchPeople = async () => {
         const mode = state.peopleMode;
-        const url = mode === 'users' ? searchUsersUrl : searchTeachersUrl;
+        const url = mode === 'users'
+            ? searchUsersUrl
+            : (mode === 'teachers' ? searchTeachersUrl : searchTutorsUrl);
 
         if (!url) {
             return;
@@ -998,8 +1114,12 @@ function initializeCourseClasses(courseEditPage) {
         const mode = state.peopleMode;
         const payload = mode === 'users'
             ? { user_ids: state.pendingPeople.map((person) => Number(person.id)) }
-            : { teacher_ids: state.pendingPeople.map((person) => Number(person.id)) };
-        const url = mode === 'users' ? state.peopleClass.routes.users_store : state.peopleClass.routes.teachers_store;
+            : (mode === 'teachers'
+                ? { teacher_ids: state.pendingPeople.map((person) => Number(person.id)) }
+                : { tutor_ids: state.pendingPeople.map((person) => Number(person.id)) });
+        const url = mode === 'users'
+            ? state.peopleClass.routes.users_store
+            : (mode === 'teachers' ? state.peopleClass.routes.teachers_store : state.peopleClass.routes.tutors_store);
 
         try {
             state.peopleMutating = true;
@@ -1029,7 +1149,9 @@ function initializeCourseClasses(courseEditPage) {
         }
 
         showError(peopleError, '');
-        const url = isUserMode() ? state.peopleClass.routes.users_destroy_many : state.peopleClass.routes.teachers_destroy_many;
+        const url = isUserMode()
+            ? state.peopleClass.routes.users_destroy_many
+            : (isTeacherMode() ? state.peopleClass.routes.teachers_destroy_many : state.peopleClass.routes.tutors_destroy_many);
 
         try {
             state.peopleMutating = true;
@@ -1056,9 +1178,12 @@ function initializeCourseClasses(courseEditPage) {
         }
     };
 
-    openClassModalButton.addEventListener('click', () => openClassForm());
-    closeClassModalButton.addEventListener('click', () => classModal.close());
+    openClassModalButton?.addEventListener('click', () => openClassForm());
+    closeClassModalButton?.addEventListener('click', closeClassForm);
     addScheduleButton.addEventListener('click', () => appendScheduleRow());
+    manageClassUsersButton.addEventListener('click', () => openPeopleModal(state.editingClass, 'users'));
+    manageClassTeachersButton.addEventListener('click', () => openPeopleModal(state.editingClass, 'teachers'));
+    manageClassTutorsButton.addEventListener('click', () => openPeopleModal(state.editingClass, 'tutors'));
     closePeopleModalButton.addEventListener('click', () => peopleModal.close());
     peopleModal.addEventListener('cancel', (event) => {
         event.preventDefault();
@@ -1080,6 +1205,10 @@ function initializeCourseClasses(courseEditPage) {
     });
 
     renderClasses();
+
+    if (isStandaloneClassPage) {
+        openClassForm(getClassById(initialCourseClassId));
+    }
 }
 
 function initializeCreateModuleDialog(courseEditPage) {

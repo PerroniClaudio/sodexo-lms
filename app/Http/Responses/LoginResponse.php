@@ -19,7 +19,7 @@ class LoginResponse implements LoginResponseContract
         } elseif ($user?->hasAnyRole(['teacher', 'docente'])) {
             $redirectTo = route('teacher.courses.index');
         } elseif ($user?->hasRole('tutor')) {
-            $redirectTo = route('tutor.courses.index');
+            $redirectTo = route('tutor.dashboard');
         } elseif ($user?->hasRole('user')) {
             $redirectTo = route('user.dashboard');
         } else {

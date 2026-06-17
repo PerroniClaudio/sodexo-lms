@@ -77,8 +77,8 @@ function renderDayEvents(dateKey, eventsByDay) {
   const events = eventsByDay.get(dateKey) ?? [];
 
   if (events.length === 0) {
-    dayEventsContainer.classList.add('hidden');
-    dayEventsTitle.textContent = '';
+    dayEventsContainer.classList.remove('hidden');
+    dayEventsTitle.textContent = calendarEl.dataset.emptyLabel;
     dayEventsList.innerHTML = '';
 
     return;
@@ -95,6 +95,7 @@ function renderDayEvents(dateKey, eventsByDay) {
   dayEventsList.innerHTML = events.map((event) => {
     const timeRange = formatTimeRange(event);
     const courseTitle = event.extendedProps?.course_title ?? '';
+    const courseUrl = event.extendedProps?.course_url ?? '';
     const courseType = event.extendedProps?.course_type ?? 'unknown';
     const className = event.extendedProps?.class_name ?? '';
     const moduleTitle = event.extendedProps?.module_title ?? event.title;
@@ -108,12 +109,23 @@ function renderDayEvents(dateKey, eventsByDay) {
             <span class="mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full" style="background-color: ${color}"></span>
             <div class="min-w-0">
               <h3 class="truncate text-sm font-semibold text-base-content sm:text-base">${moduleTitle}</h3>
-              <p class="mt-1 text-xs text-base-content/70 sm:text-sm">${courseTitle}</p>
+              ${courseUrl
+                ? `<a href="${courseUrl}" class="mt-1 block text-xs font-medium text-primary hover:underline sm:text-sm">${courseTitle}</a>`
+                : `<p class="mt-1 text-xs text-base-content/70 sm:text-sm">${courseTitle}</p>`}
               <p class="mt-1 text-xs text-base-content/60 sm:text-sm">${className}${timeRange ? ` • ${timeRange}` : ''}</p>
             </div>
           </div>
           <span class="badge badge-primary badge-outline shrink-0 h-fit">${type}</span>
         </div>
+        ${courseUrl
+          ? `
+            <div class="mt-3 flex justify-end">
+              <a href="${courseUrl}" class="btn btn-primary btn-sm">
+                Accedi al corso
+              </a>
+            </div>
+          `
+          : ''}
       </article>
     `;
   }).join('');
@@ -154,6 +166,7 @@ async function bootstrapCalendar() {
     const events = Array.isArray(payload.events)
       ? payload.events.map((event) => ({
         ...event,
+        url: event.extendedProps?.course_url ?? '',
         title: event.extendedProps?.course_title ?? event.title,
         backgroundColor: eventColor(event.extendedProps?.course_type ?? 'unknown'),
         borderColor: eventColor(event.extendedProps?.course_type ?? 'unknown'),
@@ -202,13 +215,26 @@ async function bootstrapCalendar() {
       },
       eventDidMount(info) {
         info.el.style.setProperty('--calendar-event-color', info.event.backgroundColor);
+        info.el.style.cursor = info.event.url ? 'pointer' : 'default';
       },
       eventClick(info) {
-        renderDayEvents(info.event.startStr.slice(0, 10), eventsByDay);
+        if (info.event.url) {
+          info.jsEvent.preventDefault();
+          window.location.assign(info.event.url);
+
+          return;
+        }
+
+        const date = info.event.startStr.slice(0, 10);
+        markSelectedDay(date);
+        renderDayEvents(date, eventsByDay);
       },
     });
 
     calendar.render();
+    const today = formatDateKey(new Date());
+    markSelectedDay(today);
+    renderDayEvents(today, eventsByDay);
 
     calendarEl.addEventListener('click', (event) => {
       const dayCell = event.target.closest('td[data-date]');

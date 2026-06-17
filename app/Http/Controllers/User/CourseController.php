@@ -14,6 +14,12 @@ use App\Services\Certificates\UserCourseCertificateLocator;
 use App\Services\CourseClassScheduleResolver;
 use App\Services\QuizAccessDelayService;
 use App\Services\SyncCourseModuleProgresses;
+use BaconQrCode\Renderer\Color\Rgb;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\Fill;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
@@ -233,14 +239,23 @@ class CourseController extends Controller
 
     private function userShow(User $user, Course $course): View
     {
-        $course->loadMissing('categories');
+        $course->loadMissing('categories', 'venue');
 
         $enrollment = $user->courseEnrollments()->where('course_id', $course->id)->first();
         abort_unless($enrollment !== null, 403);
 
         $modules = $this->loadCourseModulesForEnrollment($course, $enrollment, $user);
+        $residentialAttendanceQrCode = $course->type === Module::TYPE_RESIDENTIAL
+            ? $this->buildResidentialAttendanceQrCode($user, $enrollment)
+            : null;
 
-        return view('user.courses.show', compact('course', 'enrollment', 'modules'));
+        return view('user.courses.show', [
+            'course' => $course,
+            'enrollment' => $enrollment,
+            'modules' => $modules,
+            'residentialAttendanceQrCodeContent' => $residentialAttendanceQrCode['content'] ?? null,
+            'residentialAttendanceQrCodeDataUri' => $residentialAttendanceQrCode['data_uri'] ?? null,
+        ]);
     }
 
     /**
@@ -363,5 +378,30 @@ class CourseController extends Controller
         }
 
         return 'user';
+    }
+
+    /**
+     * @return array{content: string, data_uri: string}
+     */
+    private function buildResidentialAttendanceQrCode(User $user, CourseEnrollment $enrollment): array
+    {
+        $content = base64_encode($user->getAuthIdentifier().'*'.$enrollment->getKey());
+        $svgMarkup = $this->qrCodeWriter()->writeString($content);
+        $svg = trim(substr($svgMarkup, strpos($svgMarkup, "\n") + 1));
+
+        return [
+            'content' => $content,
+            'data_uri' => 'data:image/svg+xml;base64,'.base64_encode($svg),
+        ];
+    }
+
+    private function qrCodeWriter(): Writer
+    {
+        return new Writer(
+            new ImageRenderer(
+                new RendererStyle(220, 0, null, null, Fill::uniformColor(new Rgb(255, 255, 255), new Rgb(17, 24, 39))),
+                new SvgImageBackEnd
+            )
+        );
     }
 }

@@ -3,11 +3,14 @@
 use App\Models\Course;
 use App\Models\CourseClass;
 use App\Models\CourseClassTeacher;
+use App\Models\CourseClassTutor;
 use App\Models\CourseClassUser;
 use App\Models\CourseEnrollment;
 use App\Models\CourseTeacherEnrollment;
+use App\Models\CourseTutorEnrollment;
 use App\Models\Module;
 use App\Models\ModuleTeacherEnrollment;
+use App\Models\ModuleTutorEnrollment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -75,6 +78,24 @@ it('creates a class with multiple schedules', function () {
     $courseClass = CourseClass::query()->where('module_id', $module->getKey())->firstOrFail();
 
     expect($courseClass->schedules()->count())->toBe(2);
+});
+
+it('shows a dedicated class edit page with a back button', function () {
+    $course = Course::factory()->res()->create();
+    $module = Module::factory()->create(['type' => 'live', 'belongsTo' => (string) $course->getKey()]);
+    $courseClass = CourseClass::factory()->forModule($module)->create(['name' => 'Classe A']);
+
+    $this->get(route('admin.courses.classes.edit', [$course, $courseClass]))
+        ->assertOk()
+        ->assertViewIs('admin.course-classes.edit')
+        ->assertSeeText('Modifica classe')
+        ->assertSeeText('Date e orari')
+        ->assertSeeText('Utenti')
+        ->assertSeeText('Docenti')
+        ->assertSeeText('Tutor')
+        ->assertSeeText('Aggiungi')
+        ->assertSeeText('Indietro')
+        ->assertSee(route('admin.courses.modules.edit', [$course, $module]), false);
 });
 
 it('rejects invalid class date ranges and unsupported courses', function () {
@@ -244,6 +265,81 @@ it('searches class teachers among teachers assigned to the course', function () 
         ->assertJsonMissing(['id' => $otherTeacher->getKey()]);
 });
 
+it('assigns tutors and syncs them to live and res modules only', function () {
+    $course = Course::factory()->res()->create();
+    $tutor = createClassTutor();
+    $liveModule = Module::factory()->create(['type' => 'live', 'belongsTo' => (string) $course->getKey()]);
+    $videoModule = Module::factory()->create(['type' => 'video', 'belongsTo' => (string) $course->getKey()]);
+    $courseClass = CourseClass::factory()->forModule($liveModule)->create();
+    CourseEnrollment::enroll($tutor, $course);
+    CourseTutorEnrollment::factory()->create([
+        'course_id' => $course->getKey(),
+        'user_id' => $tutor->getKey(),
+    ]);
+
+    $this->postJson(route('admin.courses.classes.tutors.store', [$course, $courseClass]), [
+        'tutor_ids' => [$tutor->getKey()],
+    ])->assertCreated();
+
+    expect(CourseClassTutor::query()->where('course_class_id', $courseClass->getKey())->where('user_id', $tutor->getKey())->exists())->toBeTrue()
+        ->and(CourseTutorEnrollment::query()->where('course_id', $course->getKey())->where('user_id', $tutor->getKey())->exists())->toBeTrue()
+        ->and(ModuleTutorEnrollment::query()->where('module_id', $liveModule->getKey())->where('user_id', $tutor->getKey())->exists())->toBeTrue()
+        ->and(ModuleTutorEnrollment::query()->where('module_id', $videoModule->getKey())->where('user_id', $tutor->getKey())->exists())->toBeFalse();
+});
+
+it('searches class tutors among tutors assigned to the course', function () {
+    $course = Course::factory()->res()->create();
+    $tutor = createClassTutor();
+    $tutor->forceFill([
+        'name' => 'Giulia',
+        'surname' => 'Rossi',
+        'email' => 'giulia.rossi.tutor@example.test',
+        'fiscal_code' => 'RSSGLI80A01H501Y',
+    ])->save();
+
+    $otherTutor = createClassTutor();
+    $otherTutor->forceFill([
+        'name' => 'Luca',
+        'surname' => 'Bianchi',
+        'email' => 'luca.bianchi.tutor@example.test',
+        'fiscal_code' => 'BNCLCU80A01H501Y',
+    ])->save();
+
+    CourseEnrollment::enroll($tutor, $course);
+    CourseTutorEnrollment::factory()->create([
+        'course_id' => $course->getKey(),
+        'user_id' => $tutor->getKey(),
+    ]);
+
+    $this->getJson(route('admin.courses.classes.search-tutors', ['course' => $course, 'search' => 'Gi']))
+        ->assertOk()
+        ->assertJsonPath('data.0.id', $tutor->getKey())
+        ->assertJsonMissing(['id' => $otherTutor->getKey()]);
+});
+
+it('rejects assigning non tutors as class tutors', function () {
+    $course = Course::factory()->res()->create();
+    $courseClass = CourseClass::factory()->forCourse($course)->create();
+    $user = createClassUser();
+
+    $this->postJson(route('admin.courses.classes.tutors.store', [$course, $courseClass]), [
+        'tutor_ids' => [$user->getKey()],
+    ])->assertUnprocessable();
+});
+
+it('rejects assigning tutors who are not assigned to the course', function () {
+    $course = Course::factory()->res()->create();
+    $courseClass = CourseClass::factory()->forCourse($course)->create();
+    $tutor = createClassTutor();
+
+    CourseEnrollment::enroll($tutor, $course);
+
+    $this->postJson(route('admin.courses.classes.tutors.store', [$course, $courseClass]), [
+        'tutor_ids' => [$tutor->getKey()],
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors(['tutor_ids']);
+});
+
 it('rejects assigning non teachers as class teachers', function () {
     $course = Course::factory()->res()->create();
     $courseClass = CourseClass::factory()->forCourse($course)->create();
@@ -272,6 +368,7 @@ it('soft deletes classes and class assignments without deleting course enrollmen
     $courseClass = CourseClass::factory()->forCourse($course)->create();
     $user = createClassUser();
     $teacher = createClassTeacher();
+    $tutor = createClassTutor();
     $module = Module::factory()->create(['type' => 'live', 'belongsTo' => (string) $course->getKey()]);
     $userAssignment = CourseClassUser::query()->create([
         'course_class_id' => $courseClass->getKey(),
@@ -283,16 +380,25 @@ it('soft deletes classes and class assignments without deleting course enrollmen
         'user_id' => $teacher->getKey(),
         'assigned_at' => now(),
     ]);
+    $tutorAssignment = CourseClassTutor::query()->create([
+        'course_class_id' => $courseClass->getKey(),
+        'user_id' => $tutor->getKey(),
+        'assigned_at' => now(),
+    ]);
     CourseEnrollment::enroll($user, $course);
     ModuleTeacherEnrollment::query()->create(['module_id' => $module->getKey(), 'user_id' => $teacher->getKey(), 'assigned_at' => now()]);
+    ModuleTutorEnrollment::query()->create(['module_id' => $module->getKey(), 'user_id' => $tutor->getKey(), 'assigned_at' => now()]);
 
     $this->deleteJson(route('admin.courses.classes.users.destroy', [$course, $courseClass, $userAssignment]))->assertOk();
     $this->deleteJson(route('admin.courses.classes.teachers.destroy', [$course, $courseClass, $teacherAssignment]))->assertOk();
+    $this->deleteJson(route('admin.courses.classes.tutors.destroy', [$course, $courseClass, $tutorAssignment]))->assertOk();
 
     expect($userAssignment->fresh()->trashed())->toBeTrue()
         ->and($teacherAssignment->fresh()->trashed())->toBeTrue()
+        ->and($tutorAssignment->fresh()->trashed())->toBeTrue()
         ->and(CourseEnrollment::query()->where('course_id', $course->getKey())->where('user_id', $user->getKey())->exists())->toBeTrue()
-        ->and(ModuleTeacherEnrollment::query()->where('module_id', $module->getKey())->where('user_id', $teacher->getKey())->exists())->toBeTrue();
+        ->and(ModuleTeacherEnrollment::query()->where('module_id', $module->getKey())->where('user_id', $teacher->getKey())->exists())->toBeTrue()
+        ->and(ModuleTutorEnrollment::query()->where('module_id', $module->getKey())->where('user_id', $tutor->getKey())->exists())->toBeTrue();
 
     $this->deleteJson(route('admin.courses.classes.destroy', [$course, $courseClass]))->assertOk();
 
@@ -334,6 +440,25 @@ function createClassTeacher(): User
     ]);
 
     $user->assignRole('teacher');
+
+    return $user;
+}
+
+function createClassTutor(): User
+{
+    $user = User::query()->create([
+        'email' => fake()->unique()->safeEmail(),
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'name' => fake()->firstName(),
+        'surname' => fake()->lastName(),
+        'fiscal_code' => fake()->unique()->regexify('[A-Z0-9]{16}'),
+        'is_foreigner_or_immigrant' => false,
+    ]);
+
+    $user->assignRole('tutor');
 
     return $user;
 }

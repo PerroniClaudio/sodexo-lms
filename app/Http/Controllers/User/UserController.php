@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseClass;
 use App\Models\CourseClassSchedule;
+use App\Models\CourseClassTutor;
 use App\Models\CourseEnrollment;
 use App\Models\CourseTeacherEnrollment;
 use App\Models\Module;
@@ -50,6 +51,11 @@ class UserController extends Controller
         return view('teacher.dashboard', [
             'nextEvents' => $this->formattedTeacherEvents($events, 5),
         ]);
+    }
+
+    public function tutorDashboard(): View
+    {
+        return view('tutor.dashboard');
     }
 
     public function teacherAllEvents(Request $request): View
@@ -184,6 +190,9 @@ class UserController extends Controller
                                 'type' => $eventType,
                                 'course_title' => $courseTitle,
                                 'course_type' => $courseType,
+                                'course_url' => $courseClass->module?->course !== null
+                                    ? route('user.courses.show', $courseClass->module->course)
+                                    : null,
                                 'class_name' => $courseClass->name,
                                 'module_id' => $courseClass->module?->getKey(),
                                 'course_class_id' => $courseClass->getKey(),
@@ -281,6 +290,69 @@ class UserController extends Controller
                     ],
                 ],
             ],
+        ]);
+    }
+
+    public function tutorCalendarEvents(): JsonResponse
+    {
+        $assignedClasses = CourseClassTutor::query()
+            ->with([
+                'courseClass' => fn ($query) => $query
+                    ->select(['id', 'module_id', 'name'])
+                    ->with([
+                        'module' => fn ($moduleQuery) => $moduleQuery
+                            ->select(['id', 'title', 'type', 'belongsTo'])
+                            ->with('course:id,title,type'),
+                        'schedules' => fn ($scheduleQuery) => $scheduleQuery
+                            ->select(['id', 'course_class_id', 'starts_at', 'ends_at'])
+                            ->orderBy('starts_at'),
+                    ]),
+            ])
+            ->where('user_id', $this->authUser()->getKey())
+            ->whereHas('courseClass.module', fn ($query) => $query->whereIn('type', [
+                Module::TYPE_LIVE,
+                Module::TYPE_RESIDENTIAL,
+            ]))
+            ->get()
+            ->pluck('courseClass')
+            ->filter(fn (?CourseClass $courseClass): bool => $courseClass instanceof CourseClass)
+            ->unique(fn (CourseClass $courseClass): int => (int) $courseClass->getKey())
+            ->values();
+
+        $events = $assignedClasses
+            ->flatMap(function (CourseClass $courseClass) {
+                $courseTitle = $courseClass->module?->course?->title ?? __('Corso senza titolo');
+                $courseType = $courseClass->module?->course?->type;
+                $moduleTitle = $courseClass->module?->title ?? __('Modulo senza titolo');
+                $eventType = $courseClass->module?->type;
+
+                return $courseClass->schedules
+                    ->map(function (CourseClassSchedule $schedule) use ($courseClass, $courseTitle, $courseType, $moduleTitle, $eventType): array {
+                        return [
+                            'id' => sprintf('tutor-class-%d-schedule-%d', $courseClass->getKey(), $schedule->getKey()),
+                            'title' => $moduleTitle,
+                            'start' => $schedule->starts_at->toAtomString(),
+                            'end' => $schedule->ends_at->toAtomString(),
+                            'allDay' => false,
+                            'extendedProps' => [
+                                'type' => $eventType,
+                                'course_title' => $courseTitle,
+                                'course_type' => $courseType,
+                                'course_url' => $courseClass->module?->course !== null
+                                    ? route('tutor.courses.show', $courseClass->module->course)
+                                    : null,
+                                'class_name' => $courseClass->name,
+                                'module_id' => $courseClass->module?->getKey(),
+                                'course_class_id' => $courseClass->getKey(),
+                            ],
+                        ];
+                    });
+            })
+            ->sortBy('start')
+            ->values();
+
+        return response()->json([
+            'events' => $events,
         ]);
     }
 
@@ -969,7 +1041,6 @@ class UserController extends Controller
                 'course' => fn ($query) => $query
                     ->select(['id', 'title', 'type', 'expiry_date'])
                     ->withCount('modules'),
-                'currentModule:id,title,belongsTo',
             ])
             ->whereNotNull('last_accessed_at')
             ->orderByDesc('last_accessed_at')
@@ -995,7 +1066,6 @@ class UserController extends Controller
             })
             ->map(function (CourseEnrollment $enrollment) use ($typeLabels): array {
                 $course = $enrollment->course;
-                $currentModule = $enrollment->currentModule;
 
                 return [
                     'title' => $course?->title ?? __('Corso senza titolo'),
@@ -1008,9 +1078,7 @@ class UserController extends Controller
                     'modules_count' => (int) ($course?->modules_count ?? 0),
                     'open_url' => $course === null
                         ? route('user.courses.index')
-                        : ($currentModule !== null
-                            ? route('user.courses.modules.player', [$course, $currentModule])
-                            : route('user.courses.show', $course)),
+                        : route('user.courses.show', $course),
                 ];
             })
             ->values();

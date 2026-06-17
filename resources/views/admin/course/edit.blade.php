@@ -28,6 +28,9 @@
             ['key' => 'tutors', 'label' => __('Tutor'), 'icon' => 'lucide-users-round', 'group' => 'delivery'],
             ['key' => 'faculty', 'label' => __('Faculty'), 'icon' => 'lucide-id-card', 'group' => 'delivery'],
             ['key' => 'enrollments', 'label' => __('Iscritti'), 'icon' => 'lucide-user-plus', 'group' => 'delivery'],
+            ...in_array($course->type, ['res', 'blended'], true)
+                ? [['key' => 'attendees', 'label' => __('Presenti'), 'icon' => 'lucide-clipboard-check', 'group' => 'delivery']]
+                : [],
             ['key' => 'operations', 'label' => __('Operazioni corso'), 'icon' => 'lucide-wrench', 'group' => 'operations'],
         ]);
         $courseEditGroupLabels = [
@@ -391,6 +394,14 @@
                                 :course="$course"
                                 :course-validator="$courseValidator"
                                 :role-labels="\App\Models\CourseFacultyMember::roleLabels()"
+                            />
+                        @endif
+
+                        @if ($activeCourseEditSection === 'attendees' && in_array($course->type, ['res', 'blended'], true))
+                            <x-admin.course.edit.sections.attendees
+                                :attendance-rows="$attendanceRows"
+                                :course="$course"
+                                :course-validator="$courseValidator"
                             />
                         @endif
 

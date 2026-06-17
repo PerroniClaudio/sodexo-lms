@@ -2,10 +2,14 @@
 
 use App\Models\Course;
 use App\Models\CourseCategory;
+use App\Models\CourseEnrollment;
 use App\Models\FundingEntity;
 use App\Models\JobUnit;
 use App\Models\Module;
+use App\Models\User;
 use App\Models\Venue;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     actingAsRole('admin');
@@ -161,6 +165,61 @@ it('shows venue section for res and blended courses only', function (string $typ
     'blended' => ['blended', true],
     'fad' => ['fad', false],
 ]);
+
+it('shows attendees section for res and blended courses only', function (string $type, bool $shouldSeeSection) {
+    $course = Course::factory()->create([
+        'type' => $type,
+    ]);
+
+    $response = $this->get(route('admin.courses.edit', [$course, 'section' => 'attendees']));
+
+    $response->assertOk();
+
+    if ($shouldSeeSection) {
+        $response->assertSeeText('Presenti');
+    } else {
+        $response->assertDontSeeText('Presenti');
+    }
+})->with([
+    'res' => ['res', true],
+    'blended' => ['blended', true],
+    'fad' => ['fad', false],
+]);
+
+it('calculates attendee permanence from consecutive entry and exit records', function () {
+    $course = Course::factory()->create([
+        'type' => 'res',
+    ]);
+    $user = User::factory()->create([
+        'name' => 'Mario',
+        'surname' => 'Rossi',
+        'email' => 'mario.rossi@example.test',
+    ]);
+
+    CourseEnrollment::enroll($user, $course);
+
+    foreach ([
+        ['entry', '2026-06-17 09:00:00'],
+        ['exit', '2026-06-17 10:15:00'],
+        ['entry', '2026-06-17 10:30:00'],
+        ['exit', '2026-06-17 11:00:00'],
+    ] as [$type, $recordedAt]) {
+        DB::table('course_attendance_records')->insert([
+            'user_id' => $user->getKey(),
+            'course_id' => $course->getKey(),
+            'type' => $type,
+            'session_id' => (string) Str::uuid(),
+            'created_by_user_id' => auth()->id(),
+            'recorded_at' => $recordedAt,
+        ]);
+    }
+
+    $this->get(route('admin.courses.edit', [$course, 'section' => 'attendees']))
+        ->assertOk()
+        ->assertSeeText('Rossi Mario')
+        ->assertSeeText('mario.rossi@example.test')
+        ->assertSeeText('01:45');
+});
 
 it('updates course venue with an existing job unit', function () {
     $jobUnit = JobUnit::factory()->create();

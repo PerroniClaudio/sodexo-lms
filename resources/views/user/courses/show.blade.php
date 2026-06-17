@@ -2,6 +2,9 @@
     @php
         $completedModules = $modules->filter(fn ($module) => $module->pivot->status === 'completed')->count();
         $totalModules = $modules->count();
+        $firstResidentialStartAt = $modules
+            ->first(fn ($module) => $module->type === 'res' && $module->effective_starts_at !== null)
+            ?->effective_starts_at;
 
         $moduleTypeMeta = [
             'video' => [
@@ -75,6 +78,30 @@
                     </div>
                 @endif
                 <h2 class="text-2xl font-semibold text-base-content">{{ __('Informazioni sul corso') }}</h2>
+
+                @if($course->type === 'res')
+                    <dl class="grid gap-4 sm:grid-cols-2">
+                        <div class="rounded-box border border-base-300 bg-base-200/50 p-4">
+                            <dt class="flex items-center gap-2 text-sm font-medium text-base-content/60">
+                                <x-lucide-calendar-clock class="h-4 w-4" />
+                                {{ __('Inizio') }}
+                            </dt>
+                            <dd class="mt-2 text-lg font-semibold text-base-content">
+                                {{ $firstResidentialStartAt?->format('d/m/Y H:i') ?? __('Non disponibile') }}
+                            </dd>
+                        </div>
+
+                        <div class="rounded-box border border-base-300 bg-base-200/50 p-4">
+                            <dt class="flex items-center gap-2 text-sm font-medium text-base-content/60">
+                                <x-lucide-map-pin class="h-4 w-4" />
+                                {{ __('Sede') }}
+                            </dt>
+                            <dd class="mt-2 text-lg font-semibold text-base-content">
+                                {{ $course->venue?->address ?? __('Non disponibile') }}
+                            </dd>
+                        </div>
+                    </dl>
+                @endif
 
                 @if($course->categories->isNotEmpty())
                     <div class="flex flex-wrap gap-2">
@@ -193,14 +220,27 @@
                                         @endif
                                     </div>
                                 @elseif($isCurrent)
-                                    <a href="{{ route('user.courses.modules.player', [$course, $module]) }}" class="btn btn-primary gap-2">
-                                        {{ __('Inizia') }}
-                                        <x-lucide-chevron-right class="h-4 w-4" />
-                                    </a>
+                                    @if($module->type === 'res' && $residentialAttendanceQrCodeDataUri)
+                                        <button type="button" class="btn btn-primary gap-2" onclick="document.getElementById('residential-attendance-qr-modal').showModal()">
+                                            {{ __('Certifica presenza') }}
+                                            <x-lucide-chevron-right class="h-4 w-4" />
+                                        </button>
+                                    @else
+                                        <a href="{{ route('user.courses.modules.player', [$course, $module]) }}" class="btn btn-primary gap-2">
+                                            {{ __('Inizia') }}
+                                            <x-lucide-chevron-right class="h-4 w-4" />
+                                        </a>
+                                    @endif
                                 @elseif($isAccessible)
-                                    <a href="{{ route('user.courses.modules.player', [$course, $module]) }}" class="btn btn-outline btn-primary">
-                                        {{ __('Apri') }}
-                                    </a>
+                                    @if($module->type === 'res' && $residentialAttendanceQrCodeDataUri)
+                                        <button type="button" class="btn btn-outline btn-primary" onclick="document.getElementById('residential-attendance-qr-modal').showModal()">
+                                            {{ __('Apri') }}
+                                        </button>
+                                    @else
+                                        <a href="{{ route('user.courses.modules.player', [$course, $module]) }}" class="btn btn-outline btn-primary">
+                                            {{ __('Apri') }}
+                                        </a>
+                                    @endif
                                 @else
                                     <span class="inline-flex items-center gap-2 text-base font-medium text-base-content/40">
                                         <x-lucide-lock class="h-5 w-5" />
@@ -214,4 +254,28 @@
             </div>
         </section>
     </div>
+
+    @if($residentialAttendanceQrCodeDataUri)
+        <dialog id="residential-attendance-qr-modal" class="modal">
+            <div class="modal-box max-w-md">
+                <h3 class="text-lg font-semibold text-base-content">{{ __('Codice QR presenza') }}</h3>
+                <p class="mt-2 text-sm text-base-content/70">{{ __('Mostra questo codice QR per registrare la tua presenza al corso.') }}</p>
+                <div class="mt-6 flex justify-center">
+                    <img
+                        src="{{ $residentialAttendanceQrCodeDataUri }}"
+                        alt="{{ __('Codice QR presenza') }}"
+                        class="w-full max-w-56 rounded-box border border-base-300 bg-white p-3"
+                    >
+                </div>
+                <div class="modal-action">
+                    <form method="dialog">
+                        <button class="btn btn-primary">{{ __('Chiudi') }}</button>
+                    </form>
+                </div>
+            </div>
+            <form method="dialog" class="modal-backdrop">
+                <button>{{ __('Chiudi') }}</button>
+            </form>
+        </dialog>
+    @endif
 </x-layouts.user>

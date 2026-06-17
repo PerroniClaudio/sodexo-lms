@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:tutor|superadmin'])->group(function () {
     Route::group(['prefix' => 'tutor', 'as' => 'tutor.'], function () {
+        Route::get('dashboard', [UserController::class, 'tutorDashboard'])->name('dashboard');
+        Route::get('dashboard/calendar-events', [UserController::class, 'tutorCalendarEvents'])->name('dashboard.calendar-events');
+        Route::get('dashboard/calendar-events/fake', [UserController::class, 'fakeCalendarEvents'])->name('dashboard.calendar-events.fake');
+
         // Corsi tutor
         Route::get('courses', [CourseController::class, 'index'])->name('courses.index');
         Route::get('courses/{course}', [CourseController::class, 'show'])->name('courses.show');

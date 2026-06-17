@@ -38,6 +38,7 @@ return new class extends Migration
         return [
             'course_class_users' => 'course_class_id',
             'course_class_teachers' => 'course_class_id',
+            'course_class_tutors' => 'course_class_id',
         ];
     }
 

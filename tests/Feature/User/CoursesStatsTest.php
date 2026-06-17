@@ -125,6 +125,8 @@ test('user dashboard shows last four accessed courses ordered by recent access',
             'Corso 1',
             'Corso 4',
         ])
+        ->assertSee(route('user.courses.show', $courses[1]), escape: false)
+        ->assertDontSee(route('user.courses.modules.player', [$courses[1], $courses[1]->modules()->first()]), escape: false)
         ->assertSee('Scadenza')
         ->assertSee(now()->addDays(2)->format('d/m/Y'))
         ->assertDontSee('Corso 5');

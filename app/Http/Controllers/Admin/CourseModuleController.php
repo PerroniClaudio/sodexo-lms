@@ -13,6 +13,7 @@ use App\Models\Course;
 use App\Models\CourseClass;
 use App\Models\CourseClassSchedule;
 use App\Models\CourseClassTeacher;
+use App\Models\CourseClassTutor;
 use App\Models\CourseClassUser;
 use App\Models\Module;
 use App\Models\ModuleTeacherEnrollment;
@@ -204,6 +205,7 @@ class CourseModuleController extends Controller
                 'schedules',
                 'userAssignments.user',
                 'teacherAssignments.user',
+                'tutorAssignments.user',
             ])
             ->where('module_id', $module->getKey())
             ->get()
@@ -235,6 +237,7 @@ class CourseModuleController extends Controller
                     ])->values(),
                     'users_count' => $courseClass->userAssignments->count(),
                     'teachers_count' => $courseClass->teacherAssignments->count(),
+                    'tutors_count' => $courseClass->tutorAssignments->count(),
                     'remaining_user_slots' => $courseClass->remainingUserSlots(),
                     'users' => $courseClass->userAssignments->map(fn (CourseClassUser $assignment): array => [
                         'assignment_id' => $assignment->getKey(),
@@ -252,13 +255,24 @@ class CourseModuleController extends Controller
                         'email' => $assignment->user?->email,
                         'fiscal_code' => $assignment->user?->fiscal_code,
                     ])->values(),
+                    'tutors' => $courseClass->tutorAssignments->map(fn (CourseClassTutor $assignment): array => [
+                        'assignment_id' => $assignment->getKey(),
+                        'delete_url' => route('admin.courses.classes.tutors.destroy', [$course, $courseClass, $assignment]),
+                        'id' => $assignment->user?->getKey(),
+                        'full_name' => $assignment->user?->full_name,
+                        'email' => $assignment->user?->email,
+                        'fiscal_code' => $assignment->user?->fiscal_code,
+                    ])->values(),
                     'routes' => [
+                        'edit' => route('admin.courses.classes.edit', [$course, $courseClass]),
                         'update' => route('admin.courses.classes.update', [$course, $courseClass]),
                         'delete' => route('admin.courses.classes.destroy', [$course, $courseClass]),
                         'users_store' => route('admin.courses.classes.users.store', [$course, $courseClass]),
                         'users_destroy_many' => route('admin.courses.classes.users.destroy-many', [$course, $courseClass]),
                         'teachers_store' => route('admin.courses.classes.teachers.store', [$course, $courseClass]),
                         'teachers_destroy_many' => route('admin.courses.classes.teachers.destroy-many', [$course, $courseClass]),
+                        'tutors_store' => route('admin.courses.classes.tutors.store', [$course, $courseClass]),
+                        'tutors_destroy_many' => route('admin.courses.classes.tutors.destroy-many', [$course, $courseClass]),
                     ],
                 ];
             });
