@@ -22,9 +22,14 @@ use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -169,9 +174,8 @@ class CourseController extends Controller
     public function downloadPosterPdf(Course $course): StreamedResponse
     {
         $user = $this->authUser();
-        $enrollment = $user->courseEnrollments()->where('course_id', $course->id)->first();
 
-        abort_unless($enrollment !== null, Response::HTTP_FORBIDDEN);
+        abort_unless($this->canAccessCourseAssets($user, $course), Response::HTTP_FORBIDDEN);
         abort_unless($course->poster_pdf_path !== null, Response::HTTP_NOT_FOUND);
 
         $disk = Storage::disk(self::ATTACHMENTS_DISK);
@@ -193,9 +197,8 @@ class CourseController extends Controller
     public function showCoverImage(Course $course): StreamedResponse
     {
         $user = $this->authUser();
-        $enrollment = $user->courseEnrollments()->where('course_id', $course->id)->first();
 
-        abort_unless($enrollment !== null, Response::HTTP_FORBIDDEN);
+        abort_unless($this->canAccessCourseAssets($user, $course), Response::HTTP_FORBIDDEN);
         abort_unless($course->cover_image_path !== null, Response::HTTP_NOT_FOUND);
 
         $disk = Storage::disk(self::ATTACHMENTS_DISK);
@@ -235,6 +238,130 @@ class CourseController extends Controller
         $courses = $user->getTutoringCourses();
 
         return view('tutor.courses.index', compact('courses'));
+    }
+
+    public function tutorAttendance(Course $course): View
+    {
+        $user = $this->authUser();
+
+        abort_unless($this->routeArea() === 'tutor', 404);
+        $this->ensureTutorCanAccessResidentialCourse($user, $course);
+
+        $enrollments = CourseEnrollment::query()
+            ->whereBelongsTo($course, 'course')
+            ->leftJoin('users', 'users.id', '=', 'course_user.user_id')
+            ->select('course_user.*')
+            ->with([
+                'user' => fn ($query) => $query->select(['id', 'name', 'surname']),
+            ])
+            ->orderBy('users.surname')
+            ->orderBy('users.name')
+            ->orderBy('course_user.id')
+            ->get();
+
+        $selectedAttendanceUserId = request()->filled('attendance_user_id')
+            ? request()->integer('attendance_user_id')
+            : null;
+        $attendanceUserOptions = $enrollments
+            ->filter(fn (CourseEnrollment $enrollment): bool => $enrollment->user !== null)
+            ->map(fn (CourseEnrollment $enrollment): array => [
+                'id' => (int) $enrollment->user_id,
+                'label' => trim(($enrollment->user?->surname ?? '').' '.($enrollment->user?->name ?? '')),
+            ])
+            ->unique('id')
+            ->values();
+
+        if ($selectedAttendanceUserId !== null && ! $attendanceUserOptions->contains('id', $selectedAttendanceUserId)) {
+            $selectedAttendanceUserId = null;
+        }
+
+        return view('tutor.courses.attendance', [
+            'course' => $course,
+            'enrollments' => $enrollments,
+            'attendanceRecords' => $this->tutorAttendanceRecords($course, $selectedAttendanceUserId),
+            'attendanceUserOptions' => $attendanceUserOptions,
+            'selectedAttendanceUserId' => $selectedAttendanceUserId,
+        ]);
+    }
+
+    public function storeTutorAttendance(Request $request, Course $course, CourseEnrollment $enrollment): RedirectResponse
+    {
+        $user = $this->authUser();
+
+        abort_unless($this->routeArea() === 'tutor', 404);
+        $this->ensureTutorCanAccessResidentialCourse($user, $course);
+        abort_unless((int) $enrollment->course_id === (int) $course->getKey(), 404);
+        abort_if($enrollment->trashed(), 404);
+
+        $validated = $request->validate([
+            'type' => ['required', 'in:entry,exit'],
+        ]);
+
+        $type = $validated['type'];
+
+        $this->createAttendanceRecord(
+            $course,
+            $enrollment,
+            $user,
+            $type,
+        );
+
+        return back()->with('status', $type === 'entry'
+            ? __('Entrata registrata con successo.')
+            : __('Uscita registrata con successo.'));
+    }
+
+    public function scanTutorAttendanceQr(Request $request, Course $course): JsonResponse
+    {
+        $user = $this->authUser();
+
+        abort_unless($this->routeArea() === 'tutor', 404);
+        $this->ensureTutorCanAccessResidentialCourse($user, $course);
+
+        $validated = $request->validate([
+            'qr_content' => ['required', 'string'],
+        ]);
+
+        $qrPayload = $this->decodeResidentialAttendanceQrPayload($validated['qr_content']);
+
+        if ($qrPayload === null) {
+            return response()->json([
+                'message' => __('QR code non valido.'),
+            ], 422);
+        }
+
+        $enrollment = CourseEnrollment::withTrashed()
+            ->with('user')
+            ->find($qrPayload['enrollment_id']);
+
+        if ($enrollment === null || (int) $enrollment->user_id !== $qrPayload['user_id']) {
+            return response()->json([
+                'message' => __('Utente non registrato.'),
+            ], 422);
+        }
+
+        if ((int) $enrollment->course_id !== (int) $course->getKey()) {
+            return response()->json([
+                'message' => __('Utente non registrato a questo corso.'),
+            ], 422);
+        }
+
+        if (! $this->isTutorAttendanceEnrollmentValid($enrollment)) {
+            return response()->json([
+                'message' => __('Iscrizione non valida.'),
+            ], 422);
+        }
+
+        $type = $this->inferAttendanceTypeForToday($course, $enrollment);
+        $this->createAttendanceRecord($course, $enrollment, $user, $type);
+
+        return response()->json([
+            'message' => $type === 'entry'
+                ? __('Entrata registrata con successo.')
+                : __('Uscita registrata con successo.'),
+            'type' => $type,
+            'user' => trim(($enrollment->user?->name ?? '').' '.($enrollment->user?->surname ?? '')),
+        ]);
     }
 
     private function userShow(User $user, Course $course): View
@@ -314,18 +441,26 @@ class CourseController extends Controller
 
     private function tutorShow(User $user, Course $course): View
     {
-        $assignedCourse = $user->getTutoringCoursesQuery()
-            ->whereKey($course->getKey())
-            ->first();
-
-        abort_unless($assignedCourse !== null, 403);
+        $this->ensureTutorCanAccessCourse($user, $course);
 
         $assignedModules = $user->tutoringModules()
             ->where('belongsTo', (string) $course->getKey())
             ->whereNull('modules.deleted_at')
             ->orderBy('order')
             ->get();
-        $modules = $course->modules()->get();
+        $modules = $course->modules()->orderBy('order')->get();
+
+        if ($course->type === Module::TYPE_RESIDENTIAL) {
+            $course->loadMissing('categories', 'venue');
+
+            return view('tutor.courses.show-residential', [
+                'course' => $course,
+                'modules' => $modules,
+                'firstResidentialStartAt' => $modules
+                    ->first(fn (Module $module) => $module->type === Module::TYPE_RESIDENTIAL && $module->appointment_start_time !== null)
+                    ?->appointment_start_time,
+            ]);
+        }
 
         $this->normalizeAssignedModuleDates($assignedModules);
         $this->decorateStaffCourseModules($modules, $assignedModules);
@@ -378,6 +513,136 @@ class CourseController extends Controller
         }
 
         return 'user';
+    }
+
+    private function canAccessCourseAssets(User $user, Course $course): bool
+    {
+        return match ($this->routeArea()) {
+            'teacher' => $user->getTeachingCoursesQuery()->whereKey($course->getKey())->exists(),
+            'tutor' => $user->getTutoringCoursesQuery()->whereKey($course->getKey())->exists(),
+            default => $user->courseEnrollments()->where('course_id', $course->getKey())->exists(),
+        };
+    }
+
+    private function ensureTutorCanAccessCourse(User $user, Course $course): void
+    {
+        abort_unless(
+            $user->getTutoringCoursesQuery()->whereKey($course->getKey())->exists(),
+            403,
+        );
+    }
+
+    private function ensureTutorCanAccessResidentialCourse(User $user, Course $course): void
+    {
+        $this->ensureTutorCanAccessCourse($user, $course);
+        abort_unless($course->type === Module::TYPE_RESIDENTIAL, 404);
+    }
+
+    private function isTutorAttendanceEnrollmentValid(CourseEnrollment $enrollment): bool
+    {
+        return ! $enrollment->trashed()
+            && $enrollment->user !== null
+            && ! in_array($enrollment->status, [
+                CourseEnrollment::STATUS_CANCELLED,
+                CourseEnrollment::STATUS_EXPIRED,
+            ], true);
+    }
+
+    /**
+     * @return array{user_id: int, enrollment_id: int}|null
+     */
+    private function decodeResidentialAttendanceQrPayload(string $qrContent): ?array
+    {
+        $decoded = base64_decode(trim($qrContent), true);
+
+        if ($decoded === false) {
+            return null;
+        }
+
+        [$userId, $enrollmentId] = array_pad(explode('*', $decoded, 2), 2, null);
+
+        if (! is_string($userId) || ! ctype_digit($userId) || ! is_string($enrollmentId) || ! ctype_digit($enrollmentId)) {
+            return null;
+        }
+
+        return [
+            'user_id' => (int) $userId,
+            'enrollment_id' => (int) $enrollmentId,
+        ];
+    }
+
+    private function inferAttendanceTypeForToday(Course $course, CourseEnrollment $enrollment): string
+    {
+        $latestRecord = $this->latestAttendanceRecordForToday($course, $enrollment);
+
+        return $latestRecord?->type === 'entry' ? 'exit' : 'entry';
+    }
+
+    private function createAttendanceRecord(
+        Course $course,
+        CourseEnrollment $enrollment,
+        User $recordingUser,
+        string $type,
+    ): void {
+        $latestRecord = $this->latestAttendanceRecordForToday($course, $enrollment);
+
+        $sessionId = $type === 'exit' && $latestRecord?->type === 'entry' && filled($latestRecord->session_id)
+            ? $latestRecord->session_id
+            : (string) Str::uuid();
+
+        DB::table('course_attendance_records')->insert([
+            'user_id' => $enrollment->user_id,
+            'course_id' => $course->getKey(),
+            'type' => $type,
+            'session_id' => $sessionId,
+            'created_by_user_id' => $recordingUser->getKey(),
+            'recorded_at' => now(),
+        ]);
+    }
+
+    private function latestAttendanceRecordForToday(Course $course, CourseEnrollment $enrollment): ?object
+    {
+        return DB::table('course_attendance_records')
+            ->where('course_id', $course->getKey())
+            ->where('user_id', $enrollment->user_id)
+            ->whereBetween('recorded_at', [now()->startOfDay(), now()->endOfDay()])
+            ->orderByDesc('recorded_at')
+            ->orderByDesc('id')
+            ->first(['type', 'session_id', 'recorded_at']);
+    }
+
+    private function tutorAttendanceRecords(Course $course, ?int $selectedAttendanceUserId = null): Collection
+    {
+        return DB::table('course_attendance_records')
+            ->join('users', 'users.id', '=', 'course_attendance_records.user_id')
+            ->where('course_attendance_records.course_id', $course->getKey())
+            ->when($selectedAttendanceUserId !== null, function ($query) use ($selectedAttendanceUserId): void {
+                $query->where('course_attendance_records.user_id', $selectedAttendanceUserId);
+            })
+            ->select([
+                'course_attendance_records.user_id',
+                'users.name',
+                'users.surname',
+                'course_attendance_records.type',
+                'course_attendance_records.session_id',
+                'course_attendance_records.recorded_at',
+            ])
+            ->orderBy('users.surname')
+            ->orderBy('users.name')
+            ->orderBy('course_attendance_records.user_id')
+            ->orderBy('course_attendance_records.recorded_at')
+            ->orderBy('course_attendance_records.id')
+            ->get()
+            ->map(function (object $record): array {
+                return [
+                    'user_id' => (int) $record->user_id,
+                    'name' => $record->name,
+                    'surname' => $record->surname,
+                    'type' => $record->type === 'entry' ? __('Entrata') : __('Uscita'),
+                    'session_id' => $record->session_id,
+                    'recorded_at' => CarbonImmutable::parse($record->recorded_at)->format('d/m/Y H:i'),
+                ];
+            });
     }
 
     /**

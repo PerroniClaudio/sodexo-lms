@@ -12,6 +12,7 @@ use App\Models\ModuleTutorEnrollment;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 uses(RefreshDatabase::class);
@@ -96,9 +97,11 @@ it('shows tutor courses derived from assigned modules', function () {
 
     $visibleCourse = Course::factory()->create([
         'title' => 'Corso visibile tutor',
+        'type' => 'fad',
     ]);
     $hiddenCourse = Course::factory()->create([
         'title' => 'Corso nascosto tutor',
+        'type' => 'fad',
     ]);
 
     $visibleModule = Module::factory()->create([
@@ -140,6 +143,345 @@ it('shows tutor courses derived from assigned modules', function () {
     $detailResponse->assertSee(route('tutor.api.courses.enrollments.index', $visibleCourse), escape: false);
     $detailResponse->assertSeeText('Assegnato il');
     $detailResponse->assertDontSeeText($hiddenModule->title);
+});
+
+it('shows residential tutor course detail with attendance call to action', function () {
+    $tutor = actingAsRole('tutor');
+
+    $course = Course::factory()->create([
+        'title' => 'Corso RES tutor',
+        'type' => 'res',
+        'description' => 'Descrizione corso tutor',
+    ]);
+
+    $module = Module::factory()->create([
+        'belongsTo' => (string) $course->getKey(),
+        'title' => 'Modulo res tutor',
+        'type' => Module::TYPE_RESIDENTIAL,
+    ]);
+
+    ModuleTutorEnrollment::factory()->create([
+        'user_id' => $tutor->getKey(),
+        'module_id' => $module->getKey(),
+    ]);
+
+    $response = $this->get(route('tutor.courses.show', $course));
+
+    $response->assertOk();
+    $response->assertSeeText('Informazioni sul corso');
+    $response->assertSeeText('Registra presenze utenti');
+    $response->assertSee(route('tutor.courses.attendance.index', $course), escape: false);
+    $response->assertDontSeeText('Moduli del corso');
+});
+
+it('allows tutor to view and record residential attendance', function () {
+    $tutor = actingAsRole('tutor');
+
+    $course = Course::factory()->create([
+        'type' => 'res',
+    ]);
+
+    $module = Module::factory()->create([
+        'belongsTo' => (string) $course->getKey(),
+        'type' => Module::TYPE_RESIDENTIAL,
+    ]);
+
+    ModuleTutorEnrollment::factory()->create([
+        'user_id' => $tutor->getKey(),
+        'module_id' => $module->getKey(),
+    ]);
+
+    $enrolledUser = User::query()->create([
+        'name' => 'Luca',
+        'surname' => 'Verdi',
+        'email' => 'luca.verdi@example.test',
+        'fiscal_code' => 'VRDLCU80A01H501Z',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'is_foreigner_or_immigrant' => false,
+    ]);
+
+    $enrollment = CourseEnrollment::enroll($enrolledUser, $course);
+
+    $pageResponse = $this->get(route('tutor.courses.attendance.index', $course));
+
+    $pageResponse->assertOk();
+    $pageResponse->assertSeeText('Luca');
+    $pageResponse->assertSeeText('Verdi');
+    $pageResponse->assertSeeText('Entrata');
+    $pageResponse->assertSeeText('Uscita');
+    $pageResponse->assertSeeText('Prima di registrare l\'entrata, verifica tramite un documento l\'identità del partecipante.');
+    $pageResponse->assertSeeText('Prima di registrare l\'uscita, verifica tramite un documento l\'identità del partecipante.');
+    $pageResponse->assertSeeText('Registra presenza con QR');
+    $pageResponse->assertSeeText('Presenze registrate');
+    $pageResponse->assertSeeText('Tutti gli utenti');
+    $pageResponse->assertSeeText('Nessuna presenza registrata fino a questo momento.');
+    $pageResponse->assertSee(route('tutor.courses.attendance.scan', $course), escape: false);
+
+    $entryResponse = $this->post(route('tutor.courses.attendance.store', [$course, $enrollment]), [
+        'type' => 'entry',
+    ]);
+
+    $entryResponse->assertRedirect();
+    $entryResponse->assertSessionHas('status', 'Entrata registrata con successo.');
+
+    $entryRecord = DB::table('course_attendance_records')
+        ->where('course_id', $course->getKey())
+        ->where('user_id', $enrolledUser->getKey())
+        ->where('type', 'entry')
+        ->first();
+
+    expect($entryRecord)->not->toBeNull();
+    expect($entryRecord->created_by_user_id)->toBe($tutor->getKey());
+
+    $exitResponse = $this->post(route('tutor.courses.attendance.store', [$course, $enrollment]), [
+        'type' => 'exit',
+    ]);
+
+    $exitResponse->assertRedirect();
+    $exitResponse->assertSessionHas('status', 'Uscita registrata con successo.');
+
+    $exitRecord = DB::table('course_attendance_records')
+        ->where('course_id', $course->getKey())
+        ->where('user_id', $enrolledUser->getKey())
+        ->where('type', 'exit')
+        ->first();
+
+    expect($exitRecord)->not->toBeNull();
+    expect($exitRecord->session_id)->toBe($entryRecord->session_id);
+
+    $updatedPageResponse = $this->get(route('tutor.courses.attendance.index', $course));
+
+    $updatedPageResponse->assertOk();
+    $updatedPageResponse->assertSeeText('Presenze registrate');
+    $updatedPageResponse->assertSeeText('Luca');
+    $updatedPageResponse->assertSeeText('Verdi');
+    $updatedPageResponse->assertSeeText('Entrata');
+    $updatedPageResponse->assertSeeText('Uscita');
+    $updatedPageResponse->assertViewHas('attendanceRecords', function ($records) use ($enrolledUser): bool {
+        return $records->pluck('user_id')->every(fn ($userId): bool => (int) $userId === $enrolledUser->getKey())
+            && $records->pluck('type')->values()->all() === ['Entrata', 'Uscita'];
+    });
+});
+
+it('orders attendance records by user and filters a selected user', function () {
+    $tutor = actingAsRole('tutor');
+
+    $course = Course::factory()->create([
+        'type' => 'res',
+    ]);
+
+    $module = Module::factory()->create([
+        'belongsTo' => (string) $course->getKey(),
+        'type' => Module::TYPE_RESIDENTIAL,
+    ]);
+
+    ModuleTutorEnrollment::factory()->create([
+        'user_id' => $tutor->getKey(),
+        'module_id' => $module->getKey(),
+    ]);
+
+    $firstUser = User::query()->create([
+        'name' => 'Anna',
+        'surname' => 'Bianchi',
+        'email' => 'anna.bianchi@example.test',
+        'fiscal_code' => 'BNCNNA80A01H501Z',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'is_foreigner_or_immigrant' => false,
+    ]);
+
+    $secondUser = User::query()->create([
+        'name' => 'Zoe',
+        'surname' => 'Rossi',
+        'email' => 'zoe.rossi@example.test',
+        'fiscal_code' => 'RSSZOE80A01H501Z',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'is_foreigner_or_immigrant' => false,
+    ]);
+
+    $firstEnrollment = CourseEnrollment::enroll($firstUser, $course);
+    $secondEnrollment = CourseEnrollment::enroll($secondUser, $course);
+
+    DB::table('course_attendance_records')->insert([
+        [
+            'user_id' => $secondEnrollment->user_id,
+            'course_id' => $course->getKey(),
+            'type' => 'entry',
+            'session_id' => 'session-zoe-1',
+            'created_by_user_id' => $tutor->getKey(),
+            'recorded_at' => '2026-06-17 11:00:00',
+        ],
+        [
+            'user_id' => $firstEnrollment->user_id,
+            'course_id' => $course->getKey(),
+            'type' => 'entry',
+            'session_id' => 'session-anna-1',
+            'created_by_user_id' => $tutor->getKey(),
+            'recorded_at' => '2026-06-17 09:00:00',
+        ],
+        [
+            'user_id' => $firstEnrollment->user_id,
+            'course_id' => $course->getKey(),
+            'type' => 'exit',
+            'session_id' => 'session-anna-1',
+            'created_by_user_id' => $tutor->getKey(),
+            'recorded_at' => '2026-06-17 10:00:00',
+        ],
+        [
+            'user_id' => $secondEnrollment->user_id,
+            'course_id' => $course->getKey(),
+            'type' => 'exit',
+            'session_id' => 'session-zoe-1',
+            'created_by_user_id' => $tutor->getKey(),
+            'recorded_at' => '2026-06-17 12:00:00',
+        ],
+    ]);
+
+    $response = $this->get(route('tutor.courses.attendance.index', $course));
+
+    $response->assertOk();
+    $response->assertViewHas('attendanceRecords', function ($records) use ($firstUser, $secondUser): bool {
+        return $records->map(fn (array $record): array => [
+            (int) $record['user_id'],
+            $record['surname'],
+            $record['name'],
+            $record['type'],
+            $record['session_id'],
+        ])->values()->all() === [
+            [$firstUser->getKey(), 'Bianchi', 'Anna', 'Entrata', 'session-anna-1'],
+            [$firstUser->getKey(), 'Bianchi', 'Anna', 'Uscita', 'session-anna-1'],
+            [$secondUser->getKey(), 'Rossi', 'Zoe', 'Entrata', 'session-zoe-1'],
+            [$secondUser->getKey(), 'Rossi', 'Zoe', 'Uscita', 'session-zoe-1'],
+        ];
+    });
+
+    $filteredResponse = $this->get(route('tutor.courses.attendance.index', [$course, 'attendance_user_id' => $secondUser->getKey()]));
+
+    $filteredResponse->assertOk();
+    $filteredResponse->assertSeeText('Reset');
+    $filteredResponse->assertViewHas('selectedAttendanceUserId', $secondUser->getKey());
+    $filteredResponse->assertViewHas('attendanceRecords', function ($records) use ($secondUser): bool {
+        return $records->pluck('user_id')->map(fn ($userId): int => (int) $userId)->unique()->all() === [$secondUser->getKey()]
+            && $records->pluck('type')->values()->all() === ['Entrata', 'Uscita'];
+    });
+});
+
+it('registers tutor attendance from qr alternating entry and exit on the same day', function () {
+    $tutor = actingAsRole('tutor');
+
+    $course = Course::factory()->create([
+        'type' => 'res',
+    ]);
+
+    $module = Module::factory()->create([
+        'belongsTo' => (string) $course->getKey(),
+        'type' => Module::TYPE_RESIDENTIAL,
+    ]);
+
+    ModuleTutorEnrollment::factory()->create([
+        'user_id' => $tutor->getKey(),
+        'module_id' => $module->getKey(),
+    ]);
+
+    $enrolledUser = User::query()->create([
+        'name' => 'Giulia',
+        'surname' => 'Neri',
+        'email' => 'giulia.neri@example.test',
+        'fiscal_code' => 'NREGLL80A01H501Z',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'is_foreigner_or_immigrant' => false,
+    ]);
+
+    $enrollment = CourseEnrollment::enroll($enrolledUser, $course);
+    $qrContent = base64_encode($enrolledUser->getKey().'*'.$enrollment->getKey());
+
+    $firstResponse = $this->postJson(route('tutor.courses.attendance.scan', $course), [
+        'qr_content' => $qrContent,
+    ]);
+
+    $firstResponse->assertOk()
+        ->assertJsonPath('message', 'Entrata registrata con successo.')
+        ->assertJsonPath('type', 'entry');
+
+    $entryRecord = DB::table('course_attendance_records')
+        ->where('course_id', $course->getKey())
+        ->where('user_id', $enrolledUser->getKey())
+        ->where('type', 'entry')
+        ->first();
+
+    expect($entryRecord)->not->toBeNull();
+
+    $secondResponse = $this->postJson(route('tutor.courses.attendance.scan', $course), [
+        'qr_content' => $qrContent,
+    ]);
+
+    $secondResponse->assertOk()
+        ->assertJsonPath('message', 'Uscita registrata con successo.')
+        ->assertJsonPath('type', 'exit');
+
+    $exitRecord = DB::table('course_attendance_records')
+        ->where('course_id', $course->getKey())
+        ->where('user_id', $enrolledUser->getKey())
+        ->where('type', 'exit')
+        ->first();
+
+    expect($exitRecord)->not->toBeNull();
+    expect($exitRecord->session_id)->toBe($entryRecord->session_id);
+});
+
+it('rejects qr attendance when enrollment is not valid', function () {
+    $tutor = actingAsRole('tutor');
+
+    $course = Course::factory()->create([
+        'type' => 'res',
+    ]);
+
+    $module = Module::factory()->create([
+        'belongsTo' => (string) $course->getKey(),
+        'type' => Module::TYPE_RESIDENTIAL,
+    ]);
+
+    ModuleTutorEnrollment::factory()->create([
+        'user_id' => $tutor->getKey(),
+        'module_id' => $module->getKey(),
+    ]);
+
+    $enrolledUser = User::query()->create([
+        'name' => 'Paolo',
+        'surname' => 'Riva',
+        'email' => 'paolo.riva@example.test',
+        'fiscal_code' => 'RVIPLA80A01H501Z',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'is_foreigner_or_immigrant' => false,
+    ]);
+
+    $enrollment = CourseEnrollment::enroll($enrolledUser, $course);
+    $enrollment->forceFill([
+        'status' => CourseEnrollment::STATUS_EXPIRED,
+    ])->save();
+
+    $response = $this->postJson(route('tutor.courses.attendance.scan', $course), [
+        'qr_content' => base64_encode($enrolledUser->getKey().'*'.$enrollment->getKey()),
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonPath('message', 'Iscrizione non valida.');
+
+    expect(DB::table('course_attendance_records')->count())->toBe(0);
 });
 
 it('returns read only enrollments api for teacher assigned course', function () {

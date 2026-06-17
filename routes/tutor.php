@@ -14,7 +14,12 @@ Route::middleware(['auth', 'role:tutor|superadmin'])->group(function () {
 
         // Corsi tutor
         Route::get('courses', [CourseController::class, 'index'])->name('courses.index');
+        Route::get('courses/{course}/cover-image', [CourseController::class, 'showCoverImage'])->name('courses.cover-image.show');
+        Route::get('courses/{course}/poster-pdf', [CourseController::class, 'downloadPosterPdf'])->name('courses.poster-pdf.download');
         Route::get('courses/{course}', [CourseController::class, 'show'])->name('courses.show');
+        Route::get('courses/{course}/attendance', [CourseController::class, 'tutorAttendance'])->name('courses.attendance.index');
+        Route::post('courses/{course}/attendance/scan', [CourseController::class, 'scanTutorAttendanceQr'])->name('courses.attendance.scan');
+        Route::post('courses/{course}/attendance/{enrollment}', [CourseController::class, 'storeTutorAttendance'])->name('courses.attendance.store');
         Route::get('api/courses/{course}/enrollments', [CourseEnrollmentController::class, 'indexApi'])->name('api.courses.enrollments.index');
 
         Route::get('/live-stream/{module}/player', [LiveStreamController::class, 'tutorPlayer'])->name('live-stream.player');
