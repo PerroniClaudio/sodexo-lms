@@ -9,6 +9,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\DeleteCourseClassTeachersRequest;
 use App\Http\Requests\DeleteCourseClassTutorsRequest;
 use App\Http\Requests\DeleteCourseClassUsersRequest;
+use App\Http\Requests\StoreCourseClassAttendanceRegisterRequest;
+use App\Http\Requests\StoreCourseClassAttendanceRequest;
 use App\Http\Requests\StoreCourseClassRequest;
 use App\Http\Requests\StoreCourseClassTeachersRequest;
 use App\Http\Requests\StoreCourseClassTutorsRequest;
@@ -23,12 +25,24 @@ use App\Models\CourseClassUser;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CourseClassController extends Controller
 {
+    private const ATTENDANCE_REGISTER_DISK = 's3';
+
     public function index(Course $course): JsonResponse
     {
         $this->abortUnlessCourseSupportsClasses($course);
@@ -63,6 +77,211 @@ class CourseClassController extends Controller
             'module' => $courseClass->module,
             'courseClass' => $courseClass,
             'courseClassPayloads' => collect([$this->classPayload($course, $courseClass)]),
+        ]);
+    }
+
+    public function attendance(Course $course, CourseClass $courseClass): View
+    {
+        $this->abortUnlessClassBelongsToCourse($course, $courseClass);
+        abort_unless($this->classHasEnded($courseClass), Response::HTTP_NOT_FOUND);
+
+        $courseClass->loadMissing([
+            'module',
+            'userAssignments.user' => fn ($query) => $query->select(['id', 'name', 'surname', 'fiscal_code']),
+        ]);
+        $recordedUserIds = $this->recordedAttendanceUserIds($course);
+
+        return view('admin.course-classes.attendance', [
+            'course' => $course,
+            'module' => $courseClass->module,
+            'courseClass' => $courseClass,
+            'existingAttendanceRows' => $this->existingAttendanceRows($course, $recordedUserIds),
+            'attendanceRegisterFile' => $this->attendanceRegisterFile($courseClass),
+            'assignments' => $courseClass->userAssignments
+                ->reject(fn (CourseClassUser $assignment): bool => $recordedUserIds->contains($assignment->user_id))
+                ->sortBy([
+                    ['user.surname', 'asc'],
+                    ['user.name', 'asc'],
+                ])
+                ->values(),
+        ]);
+    }
+
+    public function storeAttendanceRegister(
+        StoreCourseClassAttendanceRegisterRequest $request,
+        Course $course,
+        CourseClass $courseClass,
+    ): RedirectResponse {
+        $this->abortUnlessClassBelongsToCourse($course, $courseClass);
+        abort_unless($this->classHasEnded($courseClass), Response::HTTP_NOT_FOUND);
+
+        $existingFile = $this->attendanceRegisterFile($courseClass);
+        if ($existingFile !== null) {
+            Storage::disk($existingFile->disk)->delete($existingFile->path);
+        }
+
+        $file = $request->file('register_file');
+        $path = $file->storeAs(
+            'course-classes/'.$courseClass->getKey().'/attendance-register',
+            Str::uuid().'.'.($file->getClientOriginalExtension() ?: 'pdf'),
+            self::ATTENDANCE_REGISTER_DISK,
+        );
+
+        DB::table('course_class_attendance_register_files')->updateOrInsert(
+            ['course_class_id' => $courseClass->getKey()],
+            [
+                'uploaded_by_user_id' => $request->user()->getKey(),
+                'disk' => self::ATTENDANCE_REGISTER_DISK,
+                'path' => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'mime_type' => $file->getClientMimeType(),
+                'size_bytes' => $file->getSize() ?: 0,
+                'updated_at' => now(),
+                'created_at' => $existingFile?->created_at ?? now(),
+            ],
+        );
+
+        return redirect()
+            ->route('admin.courses.classes.attendance', [$course, $courseClass])
+            ->with('status', __('Registro presenze caricato.'));
+    }
+
+    public function downloadAttendanceRegister(Course $course, CourseClass $courseClass): StreamedResponse
+    {
+        $this->abortUnlessClassBelongsToCourse($course, $courseClass);
+
+        $file = $this->attendanceRegisterFile($courseClass);
+        abort_unless($file !== null, Response::HTTP_NOT_FOUND);
+
+        $disk = Storage::disk($file->disk);
+        abort_unless($disk->exists($file->path), Response::HTTP_NOT_FOUND);
+
+        return $disk->download($file->path, $file->original_name, [
+            'Content-Type' => $file->mime_type ?: 'application/octet-stream',
+        ]);
+    }
+
+    public function storeAttendance(
+        StoreCourseClassAttendanceRequest $request,
+        Course $course,
+        CourseClass $courseClass,
+    ): RedirectResponse {
+        $this->abortUnlessClassBelongsToCourse($course, $courseClass);
+        abort_unless($this->classHasEnded($courseClass), Response::HTTP_NOT_FOUND);
+
+        $allowedUsersByFiscalCode = $courseClass->userAssignments()
+            ->with('user:id,fiscal_code')
+            ->whereNotIn('user_id', $this->recordedAttendanceUserIds($course))
+            ->get()
+            ->mapWithKeys(fn (CourseClassUser $assignment): array => [
+                Str::upper((string) $assignment->user?->fiscal_code) => (int) $assignment->user_id,
+            ]);
+
+        $recordDate = $courseClass->scheduledEndAt()?->toDateString() ?? now()->toDateString();
+        $records = $this->attendanceImportRows($request->file('attendance_file')->getRealPath())
+            ->map(fn (array $row): array => [
+                ...$row,
+                'user_id' => $allowedUsersByFiscalCode[Str::upper($row['fiscal_code'])] ?? null,
+            ])
+            ->filter(fn (array $row): bool => $row['user_id'] !== null)
+            ->flatMap(function (array $pair) use ($course, $recordDate, $request): array {
+                $sessionId = (string) Str::uuid();
+
+                return [
+                    [
+                        'user_id' => $pair['user_id'],
+                        'course_id' => $course->getKey(),
+                        'type' => 'entry',
+                        'session_id' => $sessionId,
+                        'created_by_user_id' => $request->user()->getKey(),
+                        'recorded_at' => "{$recordDate} {$pair['in']}:00",
+                    ],
+                    [
+                        'user_id' => $pair['user_id'],
+                        'course_id' => $course->getKey(),
+                        'type' => 'exit',
+                        'session_id' => $sessionId,
+                        'created_by_user_id' => $request->user()->getKey(),
+                        'recorded_at' => "{$recordDate} {$pair['out']}:00",
+                    ],
+                ];
+            })
+            ->values();
+
+        if ($records->isNotEmpty()) {
+            DB::table('course_attendance_records')->insert($records->all());
+        }
+
+        return redirect()
+            ->route('admin.courses.classes.attendance', [$course, $courseClass])
+            ->with('status', $records->isEmpty() ? __('Nessuna presenza importata.') : __('Presenze importate.'));
+    }
+
+    public function downloadAttendanceTemplate(Course $course, CourseClass $courseClass): StreamedResponse
+    {
+        $this->abortUnlessClassBelongsToCourse($course, $courseClass);
+        abort_unless($this->classHasEnded($courseClass), Response::HTTP_NOT_FOUND);
+
+        $recordedUserIds = $this->recordedAttendanceUserIds($course);
+        $courseClass->loadMissing(['userAssignments.user:id,name,surname,fiscal_code']);
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Presenze');
+        $participants = $courseClass->userAssignments
+            ->reject(fn (CourseClassUser $assignment): bool => $recordedUserIds->contains($assignment->user_id))
+            ->sortBy([['user.surname', 'asc'], ['user.name', 'asc']])
+            ->values();
+
+        $sheet->fromArray([[
+            'nome',
+            'cognome',
+            'codice fiscale',
+            'orario entrata',
+            'orario uscita',
+        ]]);
+
+        $participants
+            ->each(function (CourseClassUser $assignment, int $index) use ($sheet): void {
+                $sheet->fromArray([[
+                    $assignment->user?->name,
+                    $assignment->user?->surname,
+                    $assignment->user?->fiscal_code,
+                    '',
+                    '',
+                ]], null, 'A'.($index + 2));
+            });
+
+        foreach (range(1, 5) as $column) {
+            $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($column))->setAutoSize(true);
+        }
+
+        $participantsSheet = $spreadsheet->createSheet();
+        $participantsSheet->setTitle('Partecipanti');
+        $participantsSheet->fromArray([[
+            'nome',
+            'cognome',
+            'codice fiscale',
+        ]]);
+        $participants->each(function (CourseClassUser $assignment, int $index) use ($participantsSheet): void {
+            $participantsSheet->fromArray([[
+                $assignment->user?->name,
+                $assignment->user?->surname,
+                $assignment->user?->fiscal_code,
+            ]], null, 'A'.($index + 2));
+        });
+
+        foreach (range(1, 3) as $column) {
+            $participantsSheet->getColumnDimension(Coordinate::stringFromColumnIndex($column))->setAutoSize(true);
+        }
+
+        $spreadsheet->setActiveSheetIndex(0);
+
+        return response()->streamDownload(function () use ($spreadsheet): void {
+            (new Xlsx($spreadsheet))->save('php://output');
+            $spreadsheet->disconnectWorksheets();
+        }, 'template-presenze.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);
     }
 
@@ -408,6 +627,7 @@ class CourseClassController extends Controller
                 ->values(),
             'routes' => [
                 'edit' => route('admin.courses.classes.edit', [$course, $courseClass]),
+                'attendance' => $this->classHasEnded($courseClass) ? route('admin.courses.classes.attendance', [$course, $courseClass]) : null,
                 'update' => route('admin.courses.classes.update', [$course, $courseClass]),
                 'delete' => route('admin.courses.classes.destroy', [$course, $courseClass]),
                 'users_store' => route('admin.courses.classes.users.store', [$course, $courseClass]),
@@ -418,6 +638,112 @@ class CourseClassController extends Controller
                 'tutors_destroy_many' => route('admin.courses.classes.tutors.destroy-many', [$course, $courseClass]),
             ],
         ];
+    }
+
+    private function classHasEnded(CourseClass $courseClass): bool
+    {
+        return $courseClass->scheduledEndAt()?->lte(now()) ?? false;
+    }
+
+    private function recordedAttendanceUserIds(Course $course): Collection
+    {
+        return DB::table('course_attendance_records')
+            ->where('course_id', $course->getKey())
+            ->pluck('user_id')
+            ->map(fn (int|string $userId): int => (int) $userId);
+    }
+
+    private function existingAttendanceRows(Course $course, Collection $userIds): Collection
+    {
+        if ($userIds->isEmpty()) {
+            return collect();
+        }
+
+        return DB::table('course_attendance_records')
+            ->join('users', 'users.id', '=', 'course_attendance_records.user_id')
+            ->where('course_attendance_records.course_id', $course->getKey())
+            ->whereIn('course_attendance_records.user_id', $userIds)
+            ->select([
+                'course_attendance_records.user_id',
+                'users.name',
+                'users.surname',
+                'users.fiscal_code',
+                'course_attendance_records.session_id',
+                'course_attendance_records.type',
+                'course_attendance_records.recorded_at',
+            ])
+            ->orderBy('users.surname')
+            ->orderBy('users.name')
+            ->orderBy('course_attendance_records.recorded_at')
+            ->get()
+            ->groupBy(fn (object $record): string => $record->user_id.'-'.$record->session_id)
+            ->map(function (Collection $records): array {
+                $firstRecord = $records->first();
+
+                return [
+                    'name' => $firstRecord->name,
+                    'surname' => $firstRecord->surname,
+                    'fiscal_code' => $firstRecord->fiscal_code,
+                    'entry' => $records->firstWhere('type', 'entry')?->recorded_at,
+                    'exit' => $records->firstWhere('type', 'exit')?->recorded_at,
+                ];
+            })
+            ->values();
+    }
+
+    private function attendanceRegisterFile(CourseClass $courseClass): ?object
+    {
+        return DB::table('course_class_attendance_register_files')
+            ->where('course_class_id', $courseClass->getKey())
+            ->first();
+    }
+
+    private function attendanceImportRows(string $path): Collection
+    {
+        $spreadsheet = IOFactory::load($path);
+        $sheet = $spreadsheet->getActiveSheet();
+        $rows = collect();
+
+        for ($row = 2; $row <= $sheet->getHighestDataRow(); $row++) {
+            $fiscalCode = trim((string) $sheet->getCell("C{$row}")->getValue());
+            $entry = $this->excelTime($sheet->getCell("D{$row}")->getValue());
+            $exit = $this->excelTime($sheet->getCell("E{$row}")->getValue());
+
+            if ($fiscalCode === '' || $entry === null || $exit === null) {
+                continue;
+            }
+
+            $rows->push([
+                'fiscal_code' => $fiscalCode,
+                'in' => $entry,
+                'out' => $exit,
+            ]);
+        }
+
+        $spreadsheet->disconnectWorksheets();
+
+        return $rows;
+    }
+
+    private function excelTime(mixed $value): ?string
+    {
+        if (is_numeric($value)) {
+            return Date::excelToDateTimeObject((float) $value)->format('H:i');
+        }
+
+        $value = trim((string) $value);
+
+        if (preg_match('/^\d{1,2}:\d{2}$/', $value) !== 1) {
+            return null;
+        }
+
+        [$hour, $minute] = array_map('intval', explode(':', $value));
+
+        if ($hour > 23 || $minute > 59) {
+            return null;
+        }
+
+        return sprintf('%02d:%02d', $hour, $minute);
     }
 
     /**

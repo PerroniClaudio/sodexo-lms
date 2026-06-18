@@ -4,8 +4,13 @@ const typesWithoutManualTitle = new Set(['learning_quiz', 'satisfaction_quiz']);
 
 document.addEventListener('DOMContentLoaded', () => {
     const courseEditPage = document.querySelector('[data-course-edit-page]');
+    const attendancePage = document.querySelector('[data-course-class-attendance-page]');
 
     if (!courseEditPage) {
+        if (attendancePage) {
+            initializeCourseClassAttendance(attendancePage);
+        }
+
         return;
     }
 
@@ -25,7 +30,34 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeCourseRecipients(courseEditPage);
     initializeCourseVenueForm(courseEditPage);
     initializeCourseProgram(courseEditPage);
+    initializeCourseClassAttendance(courseEditPage);
 });
+
+function initializeCourseClassAttendance(scope) {
+    const table = scope.querySelector('[data-course-class-attendance]');
+    const template = scope.querySelector('[data-attendance-pair-template]');
+
+    if (!table || !(template instanceof HTMLTemplateElement)) {
+        return;
+    }
+
+    table.querySelectorAll('[data-add-attendance-pair]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const target = table.querySelector(`[data-attendance-pairs="${button.dataset.userId}"]`);
+
+            if (!target) {
+                return;
+            }
+
+            const pair = template.content.firstElementChild.cloneNode(true);
+            const index = target.children.length;
+
+            pair.querySelector('[data-attendance-in]').name = `attendance[${button.dataset.userId}][${index}][in]`;
+            pair.querySelector('[data-attendance-out]').name = `attendance[${button.dataset.userId}][${index}][out]`;
+            target.appendChild(pair);
+        });
+    });
+}
 
 function initializeCourseProgram(scope) {
     const form = scope.querySelector('[data-course-program-form]');
@@ -801,6 +833,9 @@ function initializeCourseClasses(courseEditPage) {
             row.querySelector('[data-class-starts]').textContent = courseClass.starts_at_label?.split(' ')[0] || '-';
             row.querySelector('[data-class-users]').textContent = courseClass.users_count || 0;
             row.querySelector('[data-edit-class]').href = courseClass.routes.edit;
+            const attendanceLink = row.querySelector('[data-attendance-class]');
+            attendanceLink.href = courseClass.routes.attendance || '#';
+            attendanceLink.classList.toggle('hidden', !courseClass.routes.attendance);
             row.querySelector('[data-delete-class]').addEventListener('click', () => deleteClass(courseClass));
             tbody.appendChild(row);
         });

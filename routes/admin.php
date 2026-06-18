@@ -122,6 +122,11 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::get('/courses/{course}/classes', [CourseClassController::class, 'index'])->name('courses.classes.index');
         Route::post('/courses/{course}/classes', [CourseClassController::class, 'store'])->name('courses.classes.store');
         Route::get('/courses/{course}/classes/{courseClass}/edit', [CourseClassController::class, 'edit'])->name('courses.classes.edit');
+        Route::get('/courses/{course}/classes/{courseClass}/attendance', [CourseClassController::class, 'attendance'])->name('courses.classes.attendance');
+        Route::post('/courses/{course}/classes/{courseClass}/attendance', [CourseClassController::class, 'storeAttendance'])->name('courses.classes.attendance.store');
+        Route::get('/courses/{course}/classes/{courseClass}/attendance/template', [CourseClassController::class, 'downloadAttendanceTemplate'])->name('courses.classes.attendance.template');
+        Route::post('/courses/{course}/classes/{courseClass}/attendance/register', [CourseClassController::class, 'storeAttendanceRegister'])->name('courses.classes.attendance.register.store');
+        Route::get('/courses/{course}/classes/{courseClass}/attendance/register', [CourseClassController::class, 'downloadAttendanceRegister'])->name('courses.classes.attendance.register.download');
         Route::put('/courses/{course}/classes/{courseClass}', [CourseClassController::class, 'update'])->name('courses.classes.update');
         Route::delete('/courses/{course}/classes/{courseClass}', [CourseClassController::class, 'destroy'])->name('courses.classes.destroy');
         Route::get('/courses/{course}/classes/search-users', [CourseClassController::class, 'searchUsers'])->name('courses.classes.search-users');

@@ -121,6 +121,10 @@
                         <x-lucide-pencil class="h-4 w-4" />
                         <span>{{ __('Modifica') }}</span>
                     </a>
+                    <a class="btn btn-primary btn-sm hidden" data-attendance-class>
+                        <x-lucide-clock class="h-4 w-4" />
+                        <span>{{ __('Gestisci presenze') }}</span>
+                    </a>
                     <button type="button" class="btn btn-accent btn-sm" data-delete-class>
                         <x-lucide-trash-2 class="h-4 w-4" />
                         <span>{{ __('Elimina') }}</span>

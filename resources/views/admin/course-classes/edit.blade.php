@@ -9,10 +9,18 @@
     >
         <x-page-header :title="__('Modifica classe')">
             <x-slot:actions>
-                <a href="{{ route('admin.courses.modules.edit', [$course, $module]) }}" class="btn btn-ghost">
-                    <x-lucide-arrow-left class="h-4 w-4" />
-                    <span>{{ __('Indietro') }}</span>
-                </a>
+                <div class="flex flex-wrap justify-end gap-2">
+                    @if ($courseClassPayload['routes']['attendance'])
+                        <a href="{{ $courseClassPayload['routes']['attendance'] }}" class="btn btn-primary">
+                            <x-lucide-clock class="h-4 w-4" />
+                            <span>{{ __('Gestisci presenze') }}</span>
+                        </a>
+                    @endif
+                    <a href="{{ route('admin.courses.modules.edit', [$course, $module]) }}" class="btn btn-ghost">
+                        <x-lucide-arrow-left class="h-4 w-4" />
+                        <span>{{ __('Indietro') }}</span>
+                    </a>
+                </div>
             </x-slot:actions>
 
             {{ __('Classe: :class. Modulo: :module.', ['class' => $courseClass->name, 'module' => $module->title]) }}
