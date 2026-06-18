@@ -31,7 +31,26 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeCourseVenueForm(courseEditPage);
     initializeCourseProgram(courseEditPage);
     initializeCourseClassAttendance(courseEditPage);
+    initializeResAttendanceDialog(courseEditPage);
 });
+
+function initializeResAttendanceDialog(scope) {
+    const modal = scope.querySelector('#confirm-res-attendance-modal');
+    const openButton = scope.querySelector('[data-open-res-attendance-confirmation-modal]');
+    const closeButton = scope.querySelector('[data-close-res-attendance-confirmation-modal]');
+
+    if (!modal || !openButton || !closeButton) {
+        return;
+    }
+
+    openButton.addEventListener('click', () => {
+        modal.showModal();
+    });
+
+    closeButton.addEventListener('click', () => {
+        modal.close();
+    });
+}
 
 function initializeCourseClassAttendance(scope) {
     const table = scope.querySelector('[data-course-class-attendance]');

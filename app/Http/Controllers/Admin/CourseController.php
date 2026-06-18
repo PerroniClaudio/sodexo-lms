@@ -8,6 +8,7 @@ use App\Actions\DuplicateCourseStructure;
 use App\Enums\CourseRiskRequirementValidityType;
 use App\Enums\RiskLevel;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ConfirmResAttendanceRequest;
 use App\Http\Requests\DuplicateCourseStructureRequest;
 use App\Http\Requests\StoreCourseRequest;
 use App\Http\Requests\UpdateCourseAttachmentsRequest;
@@ -39,6 +40,7 @@ use App\Models\WorldCountry;
 use App\Models\WorldDivision;
 use App\Services\Certificates\CustomCertificateResolver;
 use App\Services\CourseValidation\CourseValidatorService;
+use App\Services\ResCourseAttendanceService;
 use App\Services\SyncCourseSatisfactionSurvey;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -206,7 +208,30 @@ class CourseController extends Controller
                 ->orderBy('name')
                 ->get(['id', 'name', 'address', 'postal_code', 'city_id', 'province_id', 'region_id']),
             'attendanceRows' => request('section') === 'attendees' ? $this->attendanceRows($course) : collect(),
+            'resAttendanceModules' => request('section') === 'attendees'
+                ? $modules->where('type', Module::TYPE_RESIDENTIAL)->sortBy('order')->values()
+                : collect(),
         ]);
+    }
+
+    public function confirmAttendance(
+        ConfirmResAttendanceRequest $request,
+        Course $course,
+        ResCourseAttendanceService $resCourseAttendanceService,
+    ): RedirectResponse {
+        abort_unless(in_array($course->type, ['res', 'blended'], true), 404);
+
+        $module = $course->modules()
+            ->whereKey($request->moduleId())
+            ->where('type', Module::TYPE_RESIDENTIAL)
+            ->firstOrFail();
+
+        $stats = $resCourseAttendanceService->confirmAttendance(
+            $module,
+            $request->minimumAttendancePercentage(),
+        );
+
+        return $this->redirectToSection($course, 'attendees', $this->attendanceConfirmationStatusMessage($stats));
     }
 
     private function attendanceRows(Course $course): Collection
@@ -214,6 +239,16 @@ class CourseController extends Controller
         if (! in_array($course->type, ['res', 'blended'], true)) {
             return collect();
         }
+
+        $completedResidentialUserIds = DB::table('module_user')
+            ->join('course_user', 'course_user.id', '=', 'module_user.course_user_id')
+            ->join('modules', 'modules.id', '=', 'module_user.module_id')
+            ->where('course_user.course_id', $course->getKey())
+            ->whereNull('course_user.deleted_at')
+            ->where('modules.type', Module::TYPE_RESIDENTIAL)
+            ->where('module_user.status', 'completed')
+            ->pluck('course_user.user_id')
+            ->flip();
 
         return DB::table('course_attendance_records')
             ->join('course_user', function ($join): void {
@@ -237,7 +272,7 @@ class CourseController extends Controller
             ->orderBy('course_attendance_records.recorded_at')
             ->get()
             ->groupBy('user_id')
-            ->map(function (Collection $records): array {
+            ->map(function (Collection $records) use ($completedResidentialUserIds): array {
                 $firstRecord = $records->first();
                 $lastEntryAt = null;
                 $totalSeconds = 0;
@@ -260,6 +295,7 @@ class CourseController extends Controller
                     'email' => $firstRecord->email,
                     'records_count' => $records->count(),
                     'attendance_seconds' => (int) max(0, $totalSeconds),
+                    'completed' => $completedResidentialUserIds->has($firstRecord->user_id),
                 ];
             })
             ->values();
@@ -527,6 +563,18 @@ class CourseController extends Controller
                 'section' => $section,
             ])
             ->with('status', $message);
+    }
+
+    /**
+     * @param  array<string, int>  $stats
+     */
+    private function attendanceConfirmationStatusMessage(array $stats): string
+    {
+        return __('Presenze confermate. :confirmed utenti abilitati, :alreadyCompleted già completati, :notCurrent sopra soglia ma non ancora sul modulo corrente.', [
+            'confirmed' => $stats['confirmed'],
+            'alreadyCompleted' => $stats['already_completed'],
+            'notCurrent' => $stats['skipped_not_current'],
+        ]);
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Models\CourseEnrollment;
 use App\Models\FundingEntity;
 use App\Models\JobUnit;
 use App\Models\Module;
+use App\Models\ModuleProgress;
 use App\Models\User;
 use App\Models\Venue;
 use Illuminate\Support\Facades\DB;
@@ -195,8 +196,15 @@ it('calculates attendee permanence from consecutive entry and exit records', fun
         'surname' => 'Rossi',
         'email' => 'mario.rossi@example.test',
     ]);
+    $module = Module::factory()->create([
+        'type' => Module::TYPE_RESIDENTIAL,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
 
-    CourseEnrollment::enroll($user, $course);
+    $enrollment = CourseEnrollment::enroll($user, $course);
+    $enrollment->moduleProgresses()
+        ->where('module_id', $module->getKey())
+        ->update(['status' => ModuleProgress::STATUS_COMPLETED]);
 
     foreach ([
         ['entry', '2026-06-17 09:00:00'],
@@ -218,7 +226,9 @@ it('calculates attendee permanence from consecutive entry and exit records', fun
         ->assertOk()
         ->assertSeeText('Rossi Mario')
         ->assertSeeText('mario.rossi@example.test')
-        ->assertSeeText('01:45');
+        ->assertSeeText('01:45')
+        ->assertSeeText('Completato')
+        ->assertSeeText('Sì');
 });
 
 it('updates course venue with an existing job unit', function () {

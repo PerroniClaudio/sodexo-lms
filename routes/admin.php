@@ -118,6 +118,7 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::get('/courses/{course}/attachments/cover-image', [CourseController::class, 'previewCoverImage'])->name('courses.attachments.cover-image.preview');
         Route::get('/courses/{course}/attachments/poster-pdf', [CourseController::class, 'previewPosterPdf'])->name('courses.attachments.poster-pdf.preview');
         Route::put('/courses/{course}/certificates', [CourseController::class, 'updateCertificates'])->name('courses.certificates.update');
+        Route::post('/courses/{course}/attendance/confirm', [CourseController::class, 'confirmAttendance'])->name('courses.attendance.confirm');
         Route::delete('/courses/{course}', [CourseController::class, 'destroy'])->name('courses.destroy');
         Route::get('/courses/{course}/classes', [CourseClassController::class, 'index'])->name('courses.classes.index');
         Route::post('/courses/{course}/classes', [CourseClassController::class, 'store'])->name('courses.classes.store');

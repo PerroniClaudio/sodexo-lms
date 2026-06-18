@@ -402,6 +402,7 @@
                                 :attendance-rows="$attendanceRows"
                                 :course="$course"
                                 :course-validator="$courseValidator"
+                                :res-attendance-modules="$resAttendanceModules"
                             />
                         @endif
 
