@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('course_class_attendance_register_files')) {
+            return;
+        }
+
         Schema::create('course_class_attendance_register_files', function (Blueprint $table) {
             $table->id();
             $table->foreignId('course_class_id')->unique('cc_att_reg_files_course_class_unique');
