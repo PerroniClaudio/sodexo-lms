@@ -15,7 +15,7 @@ return new class extends Migration
             Schema::create('video_exercise_audit_events', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('video_exercise_id')->constrained('video_exercises')->cascadeOnDelete();
-                $table->foreignId('video_exercise_submission_id')->nullable()->constrained('video_exercise_submissions')->nullOnDelete();
+                $table->foreignId('video_exercise_submission_id')->nullable()->constrained(table: 'video_exercise_submissions', indexName: 've_audit_events_submission_fk')->nullOnDelete();
                 $table->foreignId('course_user_id')->constrained('course_user')->cascadeOnDelete();
                 $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
                 $table->string('event_type');
@@ -27,7 +27,7 @@ return new class extends Migration
                 $table->timestamp('updated_at_snapshot')->nullable();
                 $table->timestamps();
 
-                $table->index(['video_exercise_id', 'event_type', 'occurred_at']);
+                $table->index(['video_exercise_id', 'event_type', 'occurred_at'], 've_audit_events_exercise_event_occ_idx');
             });
         }
     }

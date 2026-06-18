@@ -27,7 +27,7 @@ return new class extends Migration
                 $table->unsignedBigInteger('self_evaluation_size_bytes')->nullable();
                 $table->timestamps();
 
-                $table->index(['module_id', 'appears_at_seconds']);
+                $table->index(['module_id', 'appears_at_seconds'], 've_module_appears_idx');
             });
         }
 
@@ -59,7 +59,7 @@ return new class extends Migration
                 $table->unsignedInteger('order')->default(1);
                 $table->timestamps();
 
-                $table->index(['video_exercise_id', 'order']);
+                $table->index(['video_exercise_id', 'order'], 've_questions_exercise_order_idx');
             });
         }
 
@@ -75,8 +75,8 @@ return new class extends Migration
                 $table->timestamp('completed_at')->nullable();
                 $table->timestamps();
 
-                $table->unique(['video_exercise_id', 'course_user_id']);
-                $table->index(['course_user_id', 'status']);
+                $table->unique(['video_exercise_id', 'course_user_id'], 've_submissions_exercise_course_user_uq');
+                $table->index(['course_user_id', 'status'], 've_submissions_course_user_status_idx');
             });
         }
 
@@ -88,7 +88,7 @@ return new class extends Migration
                 $table->text('answer_text')->nullable();
                 $table->timestamps();
 
-                $table->unique(['video_exercise_submission_id', 'video_exercise_question_id']);
+                $table->unique(['video_exercise_submission_id', 'video_exercise_question_id'], 've_answers_submission_question_uq');
             });
         }
     }
