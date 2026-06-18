@@ -71,7 +71,8 @@ class CourseController extends Controller
         $user = $this->authUser();
 
         $completedEnrollments = $user->courseEnrollments()
-            ->with('course')
+            ->select(['id', 'user_id', 'course_id', 'status', 'completed_at'])
+            ->with('course:id,title')
             ->whereHas('course')
             ->where('status', CourseEnrollment::STATUS_COMPLETED)
             ->orderByDesc('completed_at')
@@ -219,7 +220,19 @@ class CourseController extends Controller
     private function userIndex(User $user): View
     {
         $enrollments = $user->courseEnrollments()
-            ->with('course.categories')
+            ->select([
+                'id',
+                'user_id',
+                'course_id',
+                'status',
+                'completion_percentage',
+                'last_accessed_at',
+                'expires_at',
+            ])
+            ->with([
+                'course:id,title,type',
+                'course.categories:id,name',
+            ])
             ->whereHas('course', fn ($query) => $query->visibleToUser($user))
             ->get();
 

@@ -82,6 +82,7 @@ class CourseController extends Controller
 
         return view('admin.course.index', [
             'courses' => Course::query()
+                ->select(['id', 'title', 'type', 'status', 'year'])
                 ->when($search !== '', function ($query) use ($search) {
                     $query->where(function ($query) use ($search) {
                         $query
@@ -136,7 +137,17 @@ class CourseController extends Controller
     public function edit(Course $course, CustomCertificateResolver $customCertificateResolver): View
     {
         $modules = $course->modules()->get();
-        $course->load(['categories', 'documents', 'jobUnit', 'jobRoles', 'jobTasks', 'jobUnits', 'partners', 'riskBasedRequirements', 'venue']);
+        $course->load([
+            'categories',
+            'documents',
+            'jobUnit',
+            'jobRoles',
+            'jobTasks',
+            'jobUnits',
+            'partners',
+            'riskBasedRequirements',
+            'venue',
+        ]);
         $courseCertificateTemplates = collect(CustomCertificate::availableTypes())
             ->mapWithKeys(function (string $type) use ($course, $customCertificateResolver): array {
                 $specificCertificate = CustomCertificate::query()
@@ -173,15 +184,27 @@ class CourseController extends Controller
             'modules' => $modules,
             'courseValidator' => $this->courseValidator,
             'activeSatisfactionSurveyTemplate' => SatisfactionSurveyTemplate::active(),
-            'riskBasedRequirements' => RiskBasedRequirement::query()->orderBy('name')->get(),
+            'riskBasedRequirements' => RiskBasedRequirement::query()
+                ->orderBy('name')
+                ->get(['id', 'name', 'description', 'risk_levels']),
             'riskLevels' => RiskLevel::ordered(),
-            'fundingEntities' => FundingEntity::query()->orderBy('company_name')->get(),
-            'courseCategories' => CourseCategory::query()->orderBy('name')->get(),
-            'partners' => Partner::query()->orderBy('ragione_sociale')->get(),
-            'jobRoles' => JobRole::query()->orderBy('name')->get(),
-            'jobTasks' => JobTask::query()->orderBy('name')->get(),
-            'jobUnits' => JobUnit::query()->orderBy('name')->get(),
-            'venues' => Venue::query()->with(['city', 'province', 'region'])->orderBy('name')->get(),
+            'fundingEntities' => FundingEntity::query()->orderBy('company_name')->get(['id', 'company_name']),
+            'courseCategories' => CourseCategory::query()->orderBy('name')->get(['id', 'name']),
+            'partners' => Partner::query()->orderBy('ragione_sociale')->get(['id', 'ragione_sociale']),
+            'jobRoles' => JobRole::query()->orderBy('name')->get(['id', 'name']),
+            'jobTasks' => JobTask::query()->orderBy('name')->get(['id', 'name']),
+            'jobUnits' => JobUnit::query()
+                ->with('city:id,name')
+                ->orderBy('name')
+                ->get(['id', 'name', 'unit_code', 'address', 'postal_code', 'city_id']),
+            'venues' => Venue::query()
+                ->with([
+                    'city:id,name',
+                    'province:id,name',
+                    'region:id,name',
+                ])
+                ->orderBy('name')
+                ->get(['id', 'name', 'address', 'postal_code', 'city_id', 'province_id', 'region_id']),
             'attendanceRows' => request('section') === 'attendees' ? $this->attendanceRows($course) : collect(),
         ]);
     }

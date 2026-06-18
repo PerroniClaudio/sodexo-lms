@@ -27,6 +27,7 @@ class JobTaskController extends Controller
 
         return view('admin.job-task.index', [
             'tasks' => JobTask::query()
+                ->select(['id', 'name', 'code', 'deleted_at'])
                 ->when($showTrashed, function ($query) {
                     $query->withTrashed();
                 })
@@ -76,7 +77,7 @@ class JobTaskController extends Controller
 
         return view('admin.job-task.edit', [
             'task' => $jobTask,
-            'allSectors' => JobSector::query()->orderBy('name')->get(),
+            'allSectors' => JobSector::query()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 

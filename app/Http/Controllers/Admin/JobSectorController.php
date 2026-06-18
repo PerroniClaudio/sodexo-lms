@@ -27,6 +27,7 @@ class JobSectorController extends Controller
 
         return view('admin.job-sector.index', [
             'sectors' => JobSector::query()
+                ->select(['id', 'name', 'deleted_at'])
                 ->when($showTrashed, function ($query) {
                     $query->withTrashed();
                 })

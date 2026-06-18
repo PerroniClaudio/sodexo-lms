@@ -25,8 +25,11 @@ Route::middleware('auth')->get('/area-riservata', function (CourseClassScheduleR
 
     if ($user->hasAnyRole(['teacher', 'docente'])) {
         $teacherLiveAssignments = $user->teachingCourseClassAssignments()
+            ->select(['id', 'course_class_id', 'user_id'])
             ->with([
-                'courseClass.schedules',
+                'courseClass:id,module_id,name',
+                'courseClass.schedules:id,course_class_id,starts_at,ends_at',
+                'courseClass.module:id,title,type,belongsTo,appointment_start_time,appointment_end_time',
                 'courseClass.module.course:id,title',
             ])
             ->whereHas('courseClass.module', function ($query): void {

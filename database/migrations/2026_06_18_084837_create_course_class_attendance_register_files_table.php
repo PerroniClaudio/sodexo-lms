@@ -13,8 +13,16 @@ return new class extends Migration
     {
         Schema::create('course_class_attendance_register_files', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('course_class_id')->unique()->constrained()->cascadeOnDelete();
-            $table->foreignId('uploaded_by_user_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('course_class_id')->unique('cc_att_reg_files_course_class_unique');
+            $table->foreign('course_class_id', 'cc_att_reg_files_course_class_fk')
+                ->references('id')
+                ->on('course_classes')
+                ->cascadeOnDelete();
+            $table->foreignId('uploaded_by_user_id');
+            $table->foreign('uploaded_by_user_id', 'cc_att_reg_files_uploaded_by_fk')
+                ->references('id')
+                ->on('users')
+                ->cascadeOnDelete();
             $table->string('disk')->default('s3');
             $table->string('path');
             $table->string('original_name');

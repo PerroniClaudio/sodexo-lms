@@ -30,7 +30,24 @@ class JobUnitController extends Controller
 
         return view('admin.job-unit.index', [
             'units' => JobUnit::query()
-                ->with(['country', 'region', 'province', 'city'])
+                ->select([
+                    'id',
+                    'name',
+                    'unit_code',
+                    'address',
+                    'postal_code',
+                    'country_id',
+                    'region_id',
+                    'province_id',
+                    'city_id',
+                    'deleted_at',
+                ])
+                ->with([
+                    'country:id,name',
+                    'region:id,name',
+                    'province:id,name',
+                    'city:id,name',
+                ])
                 ->when($showTrashed, function ($query) {
                     $query->withTrashed();
                 })
@@ -71,7 +88,18 @@ class JobUnitController extends Controller
                     $relation = $relationMap[$sort];
                     $query->leftJoin($relation['table'], "job_units.{$relation['foreign_key']}", '=', "{$relation['table']}.id")
                         ->orderBy("{$relation['table']}.name", $direction)
-                        ->select('job_units.*');
+                        ->select([
+                            'job_units.id',
+                            'job_units.name',
+                            'job_units.unit_code',
+                            'job_units.address',
+                            'job_units.postal_code',
+                            'job_units.country_id',
+                            'job_units.region_id',
+                            'job_units.province_id',
+                            'job_units.city_id',
+                            'job_units.deleted_at',
+                        ]);
                 })
                 ->when(! in_array($sort, ['city', 'region', 'country', 'status']), function ($query) use ($sort, $direction) {
                     $query->orderBy($sort, $direction);

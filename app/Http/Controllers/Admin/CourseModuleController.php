@@ -143,8 +143,14 @@ class CourseModuleController extends Controller
     {
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
 
-        $videos = Video::orderByDesc('created_at')->get();
-        $module->loadMissing(['videoExercises.materials', 'videoExercises.questions']);
+        $videos = Video::query()
+            ->orderByDesc('created_at')
+            ->get(['id', 'title']);
+        $module->loadMissing([
+            'video:id',
+            'videoExercises.materials',
+            'videoExercises.questions',
+        ]);
 
         return view('admin.module.edit', [
             'course' => $course,
@@ -165,15 +171,41 @@ class CourseModuleController extends Controller
             'courseClassPayloads' => $this->courseClassPayloads($course, $module),
             'recentQuizSubmissions' => $module->type === 'learning_quiz'
                 ? $module->quizSubmissions()
-                    ->with(['user', 'uploadedBy'])
+                    ->select([
+                        'id',
+                        'module_id',
+                        'user_id',
+                        'uploaded_by',
+                        'source_type',
+                        'status',
+                        'score',
+                        'total_score',
+                        'submitted_at',
+                        'created_at',
+                    ])
+                    ->with([
+                        'user:id,name,surname',
+                        'uploadedBy:id,name,surname',
+                    ])
                     ->latest()
                     ->limit(5)
                     ->get()
                 : collect(),
             'moduleEnrollments' => $course->enrollments()
+                ->select(['id', 'course_id', 'user_id'])
                 ->with([
-                    'user',
-                    'moduleProgresses' => fn ($q) => $q->where('module_id', $module->getKey()),
+                    'user:id,name,surname',
+                    'moduleProgresses' => fn ($q) => $q
+                        ->select([
+                            'id',
+                            'course_user_id',
+                            'module_id',
+                            'status',
+                            'quiz_attempts',
+                            'quiz_score',
+                            'quiz_total_score',
+                        ])
+                        ->where('module_id', $module->getKey()),
                 ])
                 ->get()
                 ->map(function ($enrollment) {
@@ -555,7 +587,7 @@ class CourseModuleController extends Controller
     private function assignedTeachers(Module $module)
     {
         return $module->teacherEnrollments()
-            ->with('user')
+            ->with('user:id,name,surname,email')
             ->whereNull('deleted_at')
             ->latest('assigned_at')
             ->get();
@@ -568,6 +600,7 @@ class CourseModuleController extends Controller
             ->pluck('user_id');
 
         return User::query()
+            ->select(['id', 'name', 'surname', 'email'])
             ->whereHas('roles', fn ($query) => $query->where('name', 'teacher'))
             ->whereNotIn('id', $assignedTeacherIds)
             ->orderBy('surname')
@@ -578,7 +611,7 @@ class CourseModuleController extends Controller
     private function assignedTutors(Module $module)
     {
         return $module->tutorEnrollments()
-            ->with('user')
+            ->with('user:id,name,surname,email')
             ->whereNull('deleted_at')
             ->latest('assigned_at')
             ->get();
@@ -591,6 +624,7 @@ class CourseModuleController extends Controller
             ->pluck('user_id');
 
         return User::query()
+            ->select(['id', 'name', 'surname', 'email'])
             ->whereHas('roles', fn ($query) => $query->where('name', 'tutor'))
             ->whereNotIn('id', $assignedTutorIds)
             ->orderBy('surname')

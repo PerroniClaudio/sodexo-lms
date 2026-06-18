@@ -26,7 +26,23 @@ class VideoReportController extends Controller
     {
         return view('admin.video-reports.index', [
             'videoReportRequests' => VideoReportRequest::query()
-                ->with(['course', 'requester'])
+                ->select([
+                    'id',
+                    'requested_by',
+                    'status',
+                    'scope_type',
+                    'report_type',
+                    'course_id',
+                    'job_dimension',
+                    'job_dimension_id',
+                    'date_from',
+                    'date_to',
+                    'error_message',
+                ])
+                ->with([
+                    'course:id,title',
+                    'requester:id,name,surname',
+                ])
                 ->latest()
                 ->paginate(20),
             'courses' => Course::query()
