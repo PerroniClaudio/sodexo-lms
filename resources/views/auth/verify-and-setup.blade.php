@@ -13,7 +13,9 @@
                             {{ __('Attiva il tuo account') }}
                         </h1>
                         <p class="text-sm text-base-content/70 mt-2">
-                            {{ __('Imposta la tua password per completare l\'attivazione') }}
+                            {{ $requiresProfileDetails
+                                ? __('Imposta la tua password e completa gli ultimi dati richiesti per attivare il tuo account')
+                                : __('Imposta la tua password per completare l\'attivazione') }}
                         </p>
                     </div>
 
@@ -21,7 +23,11 @@
                         <x-lucide-info class="h-5 w-5 shrink-0" />
                         <div class="text-sm">
                             <p><strong>{{ __('Email:') }}</strong> {{ $user->email }}</p>
-                            <p class="mt-1">{{ __('Completa gli ultimi dati richiesti per attivare il tuo account.') }}</p>
+                            <p class="mt-1">
+                                {{ $requiresProfileDetails
+                                    ? __('Completa gli ultimi dati richiesti per attivare il tuo account.')
+                                    : __('Ti basta impostare la password per attivare il tuo account.') }}
+                            </p>
                         </div>
                     </div>
 
@@ -50,7 +56,7 @@
                                 id="password"
                                 name="password"
                                 type="password"
-                                class="input input-bordered @error('password') input-error @enderror"
+                                class="input input-bordered w-full @error('password') input-error @enderror"
                                 required
                                 autofocus
                                 autocomplete="new-password"
@@ -75,7 +81,7 @@
                                 id="password_confirmation"
                                 name="password_confirmation"
                                 type="password"
-                                class="input input-bordered @error('password_confirmation') input-error @enderror"
+                                class="input input-bordered w-full @error('password_confirmation') input-error @enderror"
                                 required
                                 autocomplete="new-password"
                                 minlength="8"
@@ -87,47 +93,49 @@
                             @enderror
                         </div>
 
-                        <div class="form-control">
-                            <label for="birth_date" class="label">
-                                <span class="label-text font-medium">{{ __('Data di nascita') }}</span>
-                            </label>
-                            <input
-                                id="birth_date"
-                                name="birth_date"
-                                type="date"
-                                value="{{ old('birth_date', $user->birth_date?->format('Y-m-d')) }}"
-                                class="input input-bordered @error('birth_date') input-error @enderror"
-                                required
-                            >
-                        </div>
+                        @if ($requiresProfileDetails)
+                            <div class="form-control">
+                                <label for="birth_date" class="label">
+                                    <span class="label-text font-medium">{{ __('Data di nascita') }}</span>
+                                </label>
+                                <input
+                                    id="birth_date"
+                                    name="birth_date"
+                                    type="date"
+                                    value="{{ old('birth_date', $user->birth_date?->format('Y-m-d')) }}"
+                                    class="input input-bordered w-full @error('birth_date') input-error @enderror"
+                                    required
+                                >
+                            </div>
 
-                        <div class="form-control">
-                            <label for="birth_place" class="label">
-                                <span class="label-text font-medium">{{ __('Luogo di nascita') }}</span>
-                            </label>
-                            <input
-                                id="birth_place"
-                                name="birth_place"
-                                type="text"
-                                value="{{ old('birth_place', $user->birth_place) }}"
-                                class="input input-bordered @error('birth_place') input-error @enderror"
-                                required
-                            >
-                        </div>
+                            <div class="form-control">
+                                <label for="birth_place" class="label">
+                                    <span class="label-text font-medium">{{ __('Luogo di nascita') }}</span>
+                                </label>
+                                <input
+                                    id="birth_place"
+                                    name="birth_place"
+                                    type="text"
+                                    value="{{ old('birth_place', $user->birth_place) }}"
+                                    class="input input-bordered w-full @error('birth_place') input-error @enderror"
+                                    required
+                                >
+                            </div>
 
-                        <div class="form-control">
-                            <label for="citizenship_country_id" class="label">
-                                <span class="label-text font-medium">{{ __('Paese di cittadinanza') }}</span>
-                            </label>
-                            <select id="citizenship_country_id" name="citizenship_country_id" class="select select-bordered @error('citizenship_country_id') select-error @enderror">
-                                <option value="">{{ __('Seleziona un paese') }}</option>
-                                @foreach ($availableCountries as $country)
-                                    <option value="{{ $country->id }}" @selected((string) old('citizenship_country_id', $user->citizenship_country_id) === (string) $country->id)>
-                                        {{ $country->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
+                            <div class="form-control">
+                                <label for="citizenship_country_id" class="label">
+                                    <span class="label-text font-medium">{{ __('Paese di cittadinanza') }}</span>
+                                </label>
+                                <select id="citizenship_country_id" name="citizenship_country_id" class="select select-bordered w-full @error('citizenship_country_id') select-error @enderror">
+                                    <option value="">{{ __('Seleziona un paese') }}</option>
+                                    @foreach ($availableCountries as $country)
+                                        <option value="{{ $country->id }}" @selected((string) old('citizenship_country_id', $user->citizenship_country_id) === (string) $country->id)>
+                                            {{ $country->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
 
                         <button type="submit" class="btn btn-primary mt-2">
                             {{ __('Attiva Account') }}

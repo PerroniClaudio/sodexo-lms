@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements MustVerifyEmail
@@ -287,6 +288,15 @@ class User extends Authenticatable implements MustVerifyEmail
     public function getFullNameAttribute(): string
     {
         return "{$this->name} {$this->surname}";
+    }
+
+    protected function fiscalCode(): Attribute
+    {
+        return Attribute::make(
+            set: static fn (mixed $value): ?string => filled($value)
+                ? Str::upper(trim((string) $value))
+                : null,
+        );
     }
 
     public function homeCountry(): BelongsTo

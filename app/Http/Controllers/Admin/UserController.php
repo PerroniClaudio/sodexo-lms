@@ -37,6 +37,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Spatie\Permission\Models\Role;
@@ -293,6 +294,13 @@ class UserController extends Controller
     public function updateUserSection(Request $request, User $user): RedirectResponse|JsonResponse
     {
         $beforeRiskSnapshot = $this->captureRiskSnapshot($user->fresh(['jobSector', 'jobTasks', 'roles']));
+
+        if ($request->filled('fiscal_code')) {
+            $request->merge([
+                'fiscal_code' => Str::upper(trim((string) $request->input('fiscal_code'))),
+            ]);
+        }
+
         $data = $request->validate($this->userSectionRules($request, $user));
         $accountType = $this->resolveAccountType($data['account_type'] ?? $user->getRoleNames()->first() ?? 'user');
         unset($data['account_type']);

@@ -101,6 +101,48 @@ it('completes onboarding from the signed verification link', function () {
     expect($user->fresh()->citizenship_country_id)->toBe($citizenshipCountry->getKey());
 });
 
+it('requires only the password for non user roles during onboarding', function () {
+    $user = User::factory()->pending()->create([
+        'email' => 'teacher-verify@example.test',
+        'email_verified_at' => null,
+        'profile_completed_at' => null,
+        'birth_date' => null,
+        'birth_place' => null,
+        'citizenship_country_id' => null,
+    ]);
+    $user->syncRoles(['teacher']);
+    $verificationUrl = null;
+
+    Notification::fake();
+
+    $user->sendEmailVerificationNotification();
+
+    Notification::assertSentTo($user, VerifyEmail::class, function (VerifyEmail $notification) use ($user, &$verificationUrl): bool {
+        $verificationUrl = $notification->toMail($user)->actionUrl;
+
+        return true;
+    });
+
+    $this->get($verificationUrl)
+        ->assertSuccessful()
+        ->assertDontSee('Data di nascita')
+        ->assertDontSee('Luogo di nascita')
+        ->assertDontSee('Paese di cittadinanza');
+
+    $response = $this->post($verificationUrl, [
+        'password' => 'Password123!',
+        'password_confirmation' => 'Password123!',
+    ]);
+
+    $response->assertRedirect(route('login'));
+
+    expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
+    expect($user->fresh()->account_state)->toBe(UserStatus::ACTIVE);
+    expect($user->fresh()->birth_date)->toBeNull();
+    expect($user->fresh()->birth_place)->toBeNull();
+    expect($user->fresh()->citizenship_country_id)->toBeNull();
+});
+
 it('offers password recovery for active accounts found by fiscal code', function () {
     $user = User::factory()->asUser()->create([
         'email' => 'active-user@example.test',

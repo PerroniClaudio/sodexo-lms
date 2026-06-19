@@ -73,7 +73,7 @@
             <label for="fiscal_code" class="label">
                 <span class="label-text font-semibold">Codice Fiscale <span class="text-error">*</span></span>
             </label>
-            <input type="text" name="fiscal_code" id="fiscal_code" value="{{ old('fiscal_code', $user->fiscal_code ?? '') }}" class="input input-bordered w-full" required>
+            <input type="text" name="fiscal_code" id="fiscal_code" value="{{ old('fiscal_code', $user->fiscal_code ?? '') }}" class="input input-bordered w-full uppercase" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()" required>
             @error('fiscal_code')<span class="text-error text-sm">{{ $message }}</span>@enderror
         </div>
 

@@ -20,6 +20,7 @@ class EmailVerificationController extends Controller
     public function show(Request $request, string $id, string $hash): View|RedirectResponse
     {
         $user = User::findOrFail($id);
+        $requiresProfileDetails = $user->hasRole('user');
 
         // Verifica che l'hash corrisponda
         if (! hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
@@ -39,7 +40,10 @@ class EmailVerificationController extends Controller
         return view('auth.verify-and-setup', [
             'user' => $user,
             'hash' => $hash,
-            'availableCountries' => WorldCountry::query()->orderBy('name')->get(['id', 'name']),
+            'requiresProfileDetails' => $requiresProfileDetails,
+            'availableCountries' => $requiresProfileDetails
+                ? WorldCountry::query()->orderBy('name')->get(['id', 'name'])
+                : collect(),
         ]);
     }
 
@@ -49,6 +53,7 @@ class EmailVerificationController extends Controller
     public function store(Request $request, string $id, string $hash): RedirectResponse
     {
         $user = User::findOrFail($id);
+        $requiresProfileDetails = $user->hasRole('user');
 
         // Verifica firma
         if (! hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
@@ -62,8 +67,8 @@ class EmailVerificationController extends Controller
         // Validazione password
         $validated = $request->validate([
             'password' => ['required', 'confirmed', Password::defaults()],
-            'birth_date' => ['required', 'date', 'before:today'],
-            'birth_place' => ['required', 'string', 'max:255'],
+            'birth_date' => [$requiresProfileDetails ? 'required' : 'nullable', 'date', 'before:today'],
+            'birth_place' => [$requiresProfileDetails ? 'required' : 'nullable', 'string', 'max:255'],
             'citizenship_country_id' => ['nullable', 'integer', 'exists:world_countries,id'],
         ]);
 
@@ -73,12 +78,17 @@ class EmailVerificationController extends Controller
             event(new Verified($user));
         }
 
-        $user->forceFill([
+        $attributes = [
             'password' => Hash::make($validated['password']),
-            'birth_date' => $validated['birth_date'],
-            'birth_place' => $validated['birth_place'],
-            'citizenship_country_id' => $validated['citizenship_country_id'] ?? null,
-        ])->save();
+        ];
+
+        if ($requiresProfileDetails) {
+            $attributes['birth_date'] = $validated['birth_date'];
+            $attributes['birth_place'] = $validated['birth_place'];
+            $attributes['citizenship_country_id'] = $validated['citizenship_country_id'] ?? null;
+        }
+
+        $user->forceFill($attributes)->save();
 
         $user->markProfileAsCompleted();
 

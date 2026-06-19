@@ -34,7 +34,9 @@
                                 name="fiscal_code"
                                 type="text"
                                 value="{{ old('fiscal_code') }}"
-                                class="input w-full @error('fiscal_code') input-error @enderror"
+                                class="input w-full uppercase @error('fiscal_code') input-error @enderror"
+                                style="text-transform: uppercase;"
+                                oninput="this.value = this.value.toUpperCase()"
                                 placeholder="{{ __('Inserisci il tuo codice fiscale') }}"
                                 maxlength="16"
                                 required
