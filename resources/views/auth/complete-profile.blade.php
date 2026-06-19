@@ -13,7 +13,7 @@
                                                                 {{ __('Completa il tuo profilo') }}
                                                             </h1>
                                                             <p class="text-sm text-base-content/70 mt-2">
-                                                                {{ __('Inserisci i tuoi dati personali. Tutti i campi sono facoltativi.') }}
+                                                                {{ __('Inserisci i dati richiesti per completare l\'attivazione del profilo.') }}
                                                             </p>
                                                         </div>
 
@@ -53,16 +53,31 @@
                                                                     <label for="birth_date" class="label">
                                                                         <span class="label-text font-semibold">{{ __('Data di nascita') }}</span>
                                                                     </label>
-                                                                    <input type="date" name="birth_date" id="birth_date" class="input input-bordered w-full" value="{{ old('birth_date', isset($user) && $user->birth_date ? $user->birth_date->format('Y-m-d') : '') }}">
+                                                                    <input type="date" name="birth_date" id="birth_date" class="input input-bordered w-full" value="{{ old('birth_date', isset($user) && $user->birth_date ? $user->birth_date->format('Y-m-d') : '') }}" required>
                                                                     @error('birth_date')<span class="text-error text-sm">{{ $message }}</span>@enderror
                                                                 </div>
                                                                 <div class="form-control">
                                                                     <label for="birth_place" class="label">
                                                                         <span class="label-text font-semibold">{{ __('Luogo di nascita') }}</span>
                                                                     </label>
-                                                                    <input type="text" name="birth_place" id="birth_place" class="input input-bordered w-full" value="{{ old('birth_place', $user->birth_place ?? '') }}">
+                                                                    <input type="text" name="birth_place" id="birth_place" class="input input-bordered w-full" value="{{ old('birth_place', $user->birth_place ?? '') }}" required>
                                                                     @error('birth_place')<span class="text-error text-sm">{{ $message }}</span>@enderror
                                                                 </div>
+                                                            </div>
+
+                                                            <div class="form-control">
+                                                                <label for="citizenship_country_id" class="label">
+                                                                    <span class="label-text font-semibold">{{ __('Paese di cittadinanza') }}</span>
+                                                                </label>
+                                                                <select name="citizenship_country_id" id="citizenship_country_id" class="select select-bordered w-full">
+                                                                    <option value="">{{ __('Seleziona un paese') }}</option>
+                                                                    @foreach ($availableCountries as $country)
+                                                                        <option value="{{ $country->id }}" @selected((string) old('citizenship_country_id', $user->citizenship_country_id ?? '') === (string) $country->id)>
+                                                                            {{ $country->name }}
+                                                                        </option>
+                                                                    @endforeach
+                                                                </select>
+                                                                @error('citizenship_country_id')<span class="text-error text-sm">{{ $message }}</span>@enderror
                                                             </div>
 
                                                             <div class="form-control">

@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\WorldCountry;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 class EmailVerificationController extends Controller
@@ -30,13 +32,14 @@ class EmailVerificationController extends Controller
         }
 
         // Se l'email è già verificata E la password è già impostata, redirect al login
-        if ($user->hasVerifiedEmail() && $user->password) {
+        if ($user->hasVerifiedEmail() && $user->hasCompletedProfile()) {
             return redirect()->route('login')->with('status', __('Email già verificata. Puoi effettuare il login.'));
         }
 
         return view('auth.verify-and-setup', [
             'user' => $user,
             'hash' => $hash,
+            'availableCountries' => WorldCountry::query()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -57,8 +60,11 @@ class EmailVerificationController extends Controller
         }
 
         // Validazione password
-        $request->validate([
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        $validated = $request->validate([
+            'password' => ['required', 'confirmed', Password::defaults()],
+            'birth_date' => ['required', 'date', 'before:today'],
+            'birth_place' => ['required', 'string', 'max:255'],
+            'citizenship_country_id' => ['nullable', 'integer', 'exists:world_countries,id'],
         ]);
 
         // Verifica email se non già verificata
@@ -67,12 +73,14 @@ class EmailVerificationController extends Controller
             event(new Verified($user));
         }
 
-        // Imposta password e passa a onboarding
-        $user->update([
-            'password' => Hash::make($request->password),
-        ]);
+        $user->forceFill([
+            'password' => Hash::make($validated['password']),
+            'birth_date' => $validated['birth_date'],
+            'birth_place' => $validated['birth_place'],
+            'citizenship_country_id' => $validated['citizenship_country_id'] ?? null,
+        ])->save();
 
-        $user->moveToOnboarding();
+        $user->markProfileAsCompleted();
 
         return redirect()->route('login')->with('status', __('Account attivato! Ora puoi effettuare il login.'));
     }
@@ -80,9 +88,9 @@ class EmailVerificationController extends Controller
     /**
      * Show resend verification email form
      */
-    public function resendForm(): View
+    public function resendForm(): RedirectResponse
     {
-        return view('auth.resend-verification');
+        return redirect()->route('onboarding.index');
     }
 
     /**
@@ -90,17 +98,6 @@ class EmailVerificationController extends Controller
      */
     public function resend(Request $request): RedirectResponse
     {
-        $request->validate([
-            'email' => ['required', 'email'],
-        ]);
-
-        $user = User::where('email', $request->email)->first();
-        if ($user && (! $user->hasVerifiedEmail() || ! $user->password)) {
-            // Invia solo se necessario
-            $user->sendEmailVerificationNotification();
-        }
-
-        // Risposta sempre uguale, per privacy
-        return back()->with('status', __('resend_verification_email_success'));
+        return redirect()->route('onboarding.index');
     }
 }

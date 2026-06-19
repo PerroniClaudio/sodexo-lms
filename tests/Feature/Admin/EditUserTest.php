@@ -166,6 +166,22 @@ it('uses default fallback for language verification when immigrant functions are
     expect($createdUser->needs_language_level_verification)->toBeTrue();
 });
 
+it('creates a worker user even when the email is not provided', function () {
+    actingAsRole('superadmin');
+
+    $payload = makeAdminUserStorePayload([
+        'email' => '',
+    ]);
+
+    $response = $this->post(route('admin.users.store'), $payload);
+
+    $response->assertRedirect(route('admin.users.index'));
+
+    $createdUser = User::query()->where('fiscal_code', $payload['fiscal_code'])->firstOrFail();
+
+    expect($createdUser->email)->toBeNull();
+});
+
 it('marks the job unit selector as required for worker users', function () {
     actingAsRole('superadmin');
 
@@ -176,7 +192,7 @@ it('marks the job unit selector as required for worker users', function () {
         'fiscal_code' => 'VRDLCU80A01H501Z',
     ]);
 
-    $response = $this->get(route('admin.users.edit', $user));
+    $response = $this->get(route('admin.users.edit', $user).'?section=work');
 
     $response->assertOk();
     $response->assertSee('data-required="true"', escape: false);

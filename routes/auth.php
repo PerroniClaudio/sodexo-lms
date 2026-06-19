@@ -12,29 +12,28 @@ Route::post('/login', [LoginController::class, 'store'])
     ]))
     ->name('login.store');
 
-// Email verification + password setup (combined)
-Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'show'])
-    ->middleware('guest')
-    ->name('verification.verify');
+Route::middleware('guest')->group(function () {
+    Route::get('/onboarding', [OnboardingController::class, 'index'])->name('onboarding.index');
+    Route::post('/onboarding/lookup', [OnboardingController::class, 'lookup'])->name('onboarding.lookup');
+    Route::get('/onboarding/email', [OnboardingController::class, 'showEmailForm'])->name('onboarding.email.show');
+    Route::post('/onboarding/email', [OnboardingController::class, 'storeEmail'])->name('onboarding.email.store');
+    Route::post('/onboarding/email/resend', [OnboardingController::class, 'resendVerification'])->name('onboarding.email.resend');
+    Route::post('/onboarding/password-reset', [OnboardingController::class, 'sendPasswordReset'])->name('onboarding.password-reset');
 
-Route::post('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'store'])
-    ->middleware('guest')
-    ->name('verification.setup');
+    Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'show'])
+        ->name('verification.verify');
+    Route::post('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'store'])
+        ->name('verification.setup');
+    Route::get('/email/resend', [EmailVerificationController::class, 'resendForm'])
+        ->name('verification.resend.form');
+    Route::post('/email/resend', [EmailVerificationController::class, 'resend'])
+        ->name('verification.resend');
+});
 
-// Resend verification email
-Route::get('/email/resend', [EmailVerificationController::class, 'resendForm'])
-    ->middleware('guest')
-    ->name('verification.resend.form');
-
-Route::post('/email/resend', [EmailVerificationController::class, 'resend'])
-    ->middleware('guest')
-    ->name('verification.resend');
-
-// Onboarding profile completion
 Route::middleware(['auth'])->group(function () {
     Route::get('/onboarding/complete-profile', [OnboardingController::class, 'show'])
-        ->name('onboarding.show');
+        ->name('onboarding.profile.show');
 
     Route::post('/onboarding/complete-profile', [OnboardingController::class, 'store'])
-        ->name('onboarding.store');
+        ->name('onboarding.profile.store');
 });

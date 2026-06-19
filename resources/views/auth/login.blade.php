@@ -99,9 +99,9 @@
             </div>
 
             <div class="text-center mt-6 text-sm text-base-content/60">
-                <p>{{ __('Non hai ricevuto l\'email di attivazione?') }}</p>
-                <a href="{{ route('verification.resend.form') }}" class="link link-hover">
-                    {{ __('Richiedi nuovo invio') }}
+                <p>{{ __('Devi attivare l\'account o recuperare l\'accesso?') }}</p>
+                <a href="{{ route('onboarding.index') }}" class="link link-hover">
+                    {{ __('Avvia onboarding con codice fiscale') }}
                 </a>
             </div>
         </div>

@@ -10,45 +10,39 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
-#[Signature('user:create {email?} {name?} {surname?} {fiscal_code?} {role=user} {--active : Crea utente già attivo (per test/setup)} {--password= : Password personalizzata (solo con --active)} {--job-unit= : ID Unità lavorativa} {--job-task= : ID Mansione} {--job-title= : Alias legacy di --job-task} {--job-role= : ID Ruolo} {--job-sector= : ID Settore}')]
-#[Description('Crea un nuovo utente e invia email di attivazione')]
+#[Signature('user:create {email?} {name?} {surname?} {fiscal_code?} {role=user} {--active : Crea utente gia attivo (per test/setup)} {--password= : Password personalizzata (solo con --active)} {--job-unit= : ID unita lavorativa} {--job-task= : ID mansione} {--job-title= : Alias legacy di --job-task} {--job-role= : ID ruolo} {--job-sector= : ID settore}')]
+#[Description('Crea un nuovo utente e avvia il suo onboarding')]
 class CreateUserCommand extends Command
 {
-    /**
-     * Password di default per utenti di test/setup (usata solo con --active)
-     */
     private const DEFAULT_ACTIVE_PASSWORD = 'Sodexo@Learning.26';
 
-    /**
-     * Execute the console command.
-     */
     public function handle(): int
     {
-        $email = $this->argument('email') ?? $this->ask('Email utente');
+        $email = $this->argument('email');
+
+        if ($email === null) {
+            $email = $this->ask('Email utente (opzionale)');
+        }
+
+        $email = is_string($email) && trim($email) !== '' ? strtolower(trim($email)) : null;
         $name = $this->argument('name') ?? $this->ask('Nome');
         $surname = $this->argument('surname') ?? $this->ask('Cognome');
         $fiscalCode = $this->argument('fiscal_code') ?? $this->ask('Codice fiscale');
-        $role = $this->argument('role') ?? $this->choice(
-            'Ruolo',
-            ['superadmin', 'admin', 'teacher', 'tutor', 'user'],
-            4
-        );
-
+        $role = $this->argument('role') ?? $this->choice('Ruolo', ['superadmin', 'admin', 'teacher', 'tutor', 'user'], 4);
         $isActive = $this->option('active');
 
-        // Gestione password
-        if ($isActive) {
-            // Utente attivo (test/setup): usa password specificata o quella di default
-            $password = $this->option('password') ?? self::DEFAULT_ACTIVE_PASSWORD;
-            $this->info('🔧 Modalità test/setup: utente sarà creato già attivo con password impostata.');
-        } else {
-            // Utente normale: password casuale temporanea (non verrà mai usata)
-            $password = Str::random(32);
-            $this->info('📧 Modalità normale: verrà inviata email di attivazione all\'utente.');
-        }
+        $password = $isActive
+            ? ($this->option('password') ?? self::DEFAULT_ACTIVE_PASSWORD)
+            : Str::random(32);
 
-        // Validazione
+        $this->info($isActive
+            ? 'Modalita test/setup: utente creato gia attivo con password impostata.'
+            : ($email !== null
+                ? 'Modalita normale: verra inviata email di attivazione.'
+                : 'Modalita onboarding: l\'utente usera il codice fiscale per iniziare il flusso.'));
+
         $validator = Validator::make([
             'email' => $email,
             'name' => $name,
@@ -57,7 +51,7 @@ class CreateUserCommand extends Command
             'role' => $role,
             'password' => $password,
         ], [
-            'email' => ['required', 'email', 'unique:users,email'],
+            'email' => ['nullable', 'email', Rule::unique('users', 'email')],
             'name' => ['required', 'string', 'max:255'],
             'surname' => ['required', 'string', 'max:255'],
             'fiscal_code' => ['required', 'string', 'size:16', 'unique:users,fiscal_code'],
@@ -68,7 +62,7 @@ class CreateUserCommand extends Command
         if ($validator->fails()) {
             $this->error('Errore di validazione:');
             foreach ($validator->errors()->all() as $error) {
-                $this->error("  • $error");
+                $this->error(" - $error");
             }
 
             return Command::FAILURE;
@@ -77,7 +71,6 @@ class CreateUserCommand extends Command
         try {
             DB::beginTransaction();
 
-            // Prepara dati utente
             $userData = [
                 'email' => $email,
                 'name' => $name,
@@ -89,7 +82,6 @@ class CreateUserCommand extends Command
                 'password' => bcrypt($password),
             ];
 
-            // Aggiungi campi job se specificati
             if ($jobUnitId = $this->option('job-unit')) {
                 $userData['job_unit_id'] = $jobUnitId;
             }
@@ -103,46 +95,39 @@ class CreateUserCommand extends Command
                 $userData['job_sector_id'] = $jobSectorId;
             }
 
-            // Crea utente
             $user = User::create($userData);
-
-            // Assegna ruolo
             $user->assignRole($role);
 
-            // Invia email di verifica/attivazione solo se utente non è già attivo
-            if (! $isActive) {
+            if (! $isActive && $user->email) {
                 $user->sendEmailVerificationNotification();
             }
 
             DB::commit();
 
-            $this->info('✓ Utente creato con successo!');
-            $this->line('');
-            $this->table(
-                ['Campo', 'Valore'],
-                [
-                    ['ID', $user->id],
-                    ['Email', $user->email],
-                    ['Nome Completo', $user->full_name],
-                    ['Codice Fiscale', $user->fiscal_code],
-                    ['Ruolo', $role],
-                    ['Stato', $user->account_state->label()],
-                ]
-            );
-            $this->line('');
+            $this->info('Utente creato con successo.');
+            $this->newLine();
+            $this->table(['Campo', 'Valore'], [
+                ['ID', $user->id],
+                ['Email', $user->email ?? 'Non impostata'],
+                ['Nome completo', $user->full_name],
+                ['Codice fiscale', $user->fiscal_code],
+                ['Ruolo', $role],
+                ['Stato', $user->account_state->label()],
+            ]);
+            $this->newLine();
 
             if ($isActive) {
-                $this->info('🔐 Password impostata: '.$password);
-                $this->warn('⚠ Questo utente è già attivo e può effettuare subito il login.');
+                $this->info('Password impostata: '.$password);
+            } elseif ($user->email) {
+                $this->info('Email di attivazione inviata a: '.$user->email);
             } else {
-                $this->info('✉ Email di attivazione inviata a: '.$user->email);
-                $this->line('L\'utente dovrà verificare l\'email e impostare la password per accedere.');
+                $this->info('Nessuna email impostata. L\'utente dovra usare il codice fiscale per avviare l\'onboarding.');
             }
 
             return Command::SUCCESS;
-        } catch (\Exception $e) {
+        } catch (\Throwable $throwable) {
             DB::rollBack();
-            $this->error('Errore durante la creazione dell\'utente: '.$e->getMessage());
+            $this->error('Errore durante la creazione dell\'utente: '.$throwable->getMessage());
 
             return Command::FAILURE;
         }

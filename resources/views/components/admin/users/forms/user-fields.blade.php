@@ -46,9 +46,10 @@
 
         <div class="form-control">
             <label for="email" class="label">
-                <span class="label-text font-semibold">Email <span class="text-error">*</span></span>
+                <span class="label-text font-semibold">Email</span>
             </label>
-            <input type="email" name="email" id="email" value="{{ old('email', $user->email ?? '') }}" class="input input-bordered w-full" required>
+            <input type="email" name="email" id="email" value="{{ old('email', $user->email ?? '') }}" class="input input-bordered w-full">
+            <span class="text-xs text-base-content/60">{{ __('Facoltativa in creazione. L\'utente potrà completare l\'onboarding tramite codice fiscale.') }}</span>
             @error('email')<span class="text-error text-sm">{{ $message }}</span>@enderror
         </div>
 

@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class UserRequest extends FormRequest
@@ -30,10 +31,20 @@ class UserRequest extends FormRequest
 
         $rules = [
             'account_type' => ['required', 'string', 'in:'.implode(',', $accountTypes)],
-            'email' => ['required', 'email', 'max:255'],
+            'email' => [
+                'nullable',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($routeUser?->getKey()),
+            ],
             'name' => ['required', 'string', 'max:255'],
             'surname' => ['required', 'string', 'max:255'],
-            'fiscal_code' => ['required', 'string', 'max:16'],
+            'fiscal_code' => [
+                'required',
+                'string',
+                'size:16',
+                Rule::unique('users', 'fiscal_code')->ignore($routeUser?->getKey()),
+            ],
             // Campi user-only, validazione condizionale
             'is_foreigner_or_immigrant' => ['required_if:account_type,user', 'boolean'],
             'declared_language_level_id' => ['nullable', 'integer', 'exists:language_levels,id'],
@@ -69,6 +80,18 @@ class UserRequest extends FormRequest
         ];
 
         return $rules;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $email = $this->filled('email')
+            ? strtolower(trim((string) $this->input('email')))
+            : null;
+
+        $this->merge([
+            'email' => $email,
+            'fiscal_code' => strtoupper(trim((string) $this->input('fiscal_code'))),
+        ]);
     }
 
     /**

@@ -37,6 +37,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Spatie\Permission\Models\Role;
 
@@ -757,10 +758,10 @@ class UserController extends Controller
 
         return [
             'account_type' => ['required', 'string', 'in:'.implode(',', $accountTypes)],
-            'email' => ['required', 'email', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($routeUser->getKey())],
             'name' => ['required', 'string', 'max:255'],
             'surname' => ['required', 'string', 'max:255'],
-            'fiscal_code' => ['required', 'string', 'max:16'],
+            'fiscal_code' => ['required', 'string', 'size:16', Rule::unique('users', 'fiscal_code')->ignore($routeUser->getKey())],
             'phone_prefix' => ['nullable', 'string', 'max:8'],
             'phone' => ['nullable', 'string', 'max:32'],
             'birth_date' => ['nullable', 'date'],

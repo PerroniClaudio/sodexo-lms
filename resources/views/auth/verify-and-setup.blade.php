@@ -21,9 +21,23 @@
                         <x-lucide-info class="h-5 w-5 shrink-0" />
                         <div class="text-sm">
                             <p><strong>{{ __('Email:') }}</strong> {{ $user->email }}</p>
-                            <p class="mt-1">{{ __('Crea una password sicura per accedere alla piattaforma.') }}</p>
+                            <p class="mt-1">{{ __('Completa gli ultimi dati richiesti per attivare il tuo account.') }}</p>
                         </div>
                     </div>
+
+                    @if ($errors->any())
+                        <div class="alert alert-error">
+                            <x-lucide-circle-alert class="h-5 w-5 shrink-0" />
+                            <div class="text-sm">
+                                <p class="font-medium">{{ __('Controlla i dati inseriti.') }}</p>
+                                <ul class="mt-2 list-disc pl-4">
+                                    @foreach ($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        </div>
+                    @endif
 
                     <form method="POST" action="{{ URL::signedRoute('verification.setup', ['id' => $user->id, 'hash' => $hash]) }}" class="flex flex-col gap-4">
                         @csrf
@@ -71,6 +85,48 @@
                                     <span class="label-text-alt text-error">{{ $message }}</span>
                                 </label>
                             @enderror
+                        </div>
+
+                        <div class="form-control">
+                            <label for="birth_date" class="label">
+                                <span class="label-text font-medium">{{ __('Data di nascita') }}</span>
+                            </label>
+                            <input
+                                id="birth_date"
+                                name="birth_date"
+                                type="date"
+                                value="{{ old('birth_date', $user->birth_date?->format('Y-m-d')) }}"
+                                class="input input-bordered @error('birth_date') input-error @enderror"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-control">
+                            <label for="birth_place" class="label">
+                                <span class="label-text font-medium">{{ __('Luogo di nascita') }}</span>
+                            </label>
+                            <input
+                                id="birth_place"
+                                name="birth_place"
+                                type="text"
+                                value="{{ old('birth_place', $user->birth_place) }}"
+                                class="input input-bordered @error('birth_place') input-error @enderror"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-control">
+                            <label for="citizenship_country_id" class="label">
+                                <span class="label-text font-medium">{{ __('Paese di cittadinanza') }}</span>
+                            </label>
+                            <select id="citizenship_country_id" name="citizenship_country_id" class="select select-bordered @error('citizenship_country_id') select-error @enderror">
+                                <option value="">{{ __('Seleziona un paese') }}</option>
+                                @foreach ($availableCountries as $country)
+                                    <option value="{{ $country->id }}" @selected((string) old('citizenship_country_id', $user->citizenship_country_id) === (string) $country->id)>
+                                        {{ $country->name }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
 
                         <button type="submit" class="btn btn-primary mt-2">

@@ -30,7 +30,7 @@ class UserObserver
 
     public function created(User $user): void
     {
-        if (! $user->hasVerifiedEmail()) {
+        if ($user->email && ! $user->hasVerifiedEmail()) {
             $user->sendEmailVerificationNotification();
         }
     }

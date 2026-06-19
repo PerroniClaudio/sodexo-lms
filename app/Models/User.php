@@ -43,6 +43,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'employment_start_date',
         'employment_end_date',
         'birth_place',
+        'citizenship_country_id',
         'gender',
         'phone_prefix',
         'phone',
@@ -84,6 +85,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'birth_date' => 'date',
             'employment_start_date' => 'date',
             'employment_end_date' => 'date',
+            'citizenship_country_id' => 'integer',
             'is_foreigner_or_immigrant' => 'boolean',
             'declared_language_level_id' => 'integer',
             'verified_language_level_id' => 'integer',
@@ -290,6 +292,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function homeCountry(): BelongsTo
     {
         return $this->belongsTo(WorldCountry::class, 'home_country_id');
+    }
+
+    public function citizenshipCountry(): BelongsTo
+    {
+        return $this->belongsTo(WorldCountry::class, 'citizenship_country_id');
     }
 
     public function homeRegion(): BelongsTo
@@ -785,5 +792,18 @@ class User extends Authenticatable implements MustVerifyEmail
 
         return $this->verifiedLanguageLevel !== null
             && $this->verifiedLanguageLevel->sort_order >= $requiredLanguageLevel->sort_order;
+    }
+
+    public function maskedEmail(): ?string
+    {
+        if (! is_string($this->email) || trim($this->email) === '' || ! str_contains($this->email, '@')) {
+            return null;
+        }
+
+        [$localPart, $domain] = explode('@', $this->email, 2);
+        $visiblePrefix = mb_substr($localPart, 0, 1);
+        $maskedLocalPart = $visiblePrefix.str_repeat('*', max(2, mb_strlen($localPart) - 1));
+
+        return $maskedLocalPart.'@'.$domain;
     }
 }
