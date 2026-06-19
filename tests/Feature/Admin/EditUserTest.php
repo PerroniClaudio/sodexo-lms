@@ -65,6 +65,40 @@ function makeWorkerUser(array $attributes = []): User
     return $user->fresh('jobTasks');
 }
 
+/**
+ * @return array<string, mixed>
+ */
+function makeAdminUserStorePayload(array $overrides = []): array
+{
+    $jobUnit = JobUnit::query()->create([
+        'name' => 'Sede creazione',
+        'unit_code' => 'UC'.fake()->unique()->numerify('###'),
+    ]);
+    $jobRole = JobRole::factory()->create();
+    $jobSector = JobSector::factory()->create();
+    $jobTask = JobTask::factory()->create();
+
+    return array_merge([
+        'account_type' => 'user',
+        'email' => fake()->unique()->safeEmail(),
+        'name' => fake()->firstName(),
+        'surname' => fake()->lastName(),
+        'fiscal_code' => fake()->unique()->regexify('[A-Z0-9]{16}'),
+        'is_foreigner_or_immigrant' => '0',
+        'employment_start_date' => '2026-01-01',
+        'job_role_id' => $jobRole->getKey(),
+        'job_sector_id' => $jobSector->getKey(),
+        'job_unit_id' => $jobUnit->getKey(),
+        'job_tasks' => [
+            [
+                'job_task_id' => $jobTask->getKey(),
+                'starts_at' => '2026-01-01',
+                'ends_at' => null,
+            ],
+        ],
+    ], $overrides);
+}
+
 it('shows the current spatie role in the account type field', function () {
     actingAsRole('superadmin');
 
@@ -81,6 +115,55 @@ it('shows the current spatie role in the account type field', function () {
     $response->assertOk();
     $response->assertSee('option value="teacher" selected', escape: false);
     $response->assertDontSee('option value="user" selected', escape: false);
+});
+
+it('does not show an editable language verification field on admin user creation form', function () {
+    actingAsRole('superadmin');
+
+    $response = $this->get(route('admin.users.create'));
+
+    $response->assertOk();
+    $response->assertDontSee('name="needs_language_level_verification"', escape: false);
+});
+
+it('sets language verification automatically from immigrant field when immigrant functions are enabled', function () {
+    config()->set('app.use_immigrant_functions', true);
+    config()->set('app.default_check_language_knowledge', false);
+
+    actingAsRole('superadmin');
+
+    $payload = makeAdminUserStorePayload([
+        'is_foreigner_or_immigrant' => '1',
+        'needs_language_level_verification' => '0',
+    ]);
+
+    $response = $this->post(route('admin.users.store'), $payload);
+
+    $response->assertRedirect(route('admin.users.index'));
+
+    $createdUser = User::query()->where('email', $payload['email'])->firstOrFail();
+
+    expect($createdUser->needs_language_level_verification)->toBeTrue();
+});
+
+it('uses default fallback for language verification when immigrant functions are disabled', function () {
+    config()->set('app.use_immigrant_functions', false);
+    config()->set('app.default_check_language_knowledge', true);
+
+    actingAsRole('superadmin');
+
+    $payload = makeAdminUserStorePayload([
+        'is_foreigner_or_immigrant' => '0',
+        'needs_language_level_verification' => '0',
+    ]);
+
+    $response = $this->post(route('admin.users.store'), $payload);
+
+    $response->assertRedirect(route('admin.users.index'));
+
+    $createdUser = User::query()->where('email', $payload['email'])->firstOrFail();
+
+    expect($createdUser->needs_language_level_verification)->toBeTrue();
 });
 
 it('marks the job unit selector as required for worker users', function () {

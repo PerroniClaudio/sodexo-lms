@@ -10,6 +10,7 @@ use App\Models\JobRole;
 use App\Models\JobSector;
 use App\Models\JobTask;
 use App\Models\JobUnit;
+use App\Models\LanguageLevel;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -87,6 +88,9 @@ class UserFactory extends Factory
             'phone_prefix' => fake()->randomElement(['+39', '+1', '+44', '+33', '+49']),
             'phone' => fake()->optional()->numerify('##########'),
             'notes' => fake()->optional()->paragraph(),
+            'declared_language_level_id' => null,
+            'verified_language_level_id' => null,
+            'needs_language_level_verification' => false,
             ...$roleSpecificAttributes,
         ];
     }
@@ -117,6 +121,7 @@ class UserFactory extends Factory
             'job_role_id' => $jobRole->id,
             'job_sector_id' => $jobSector->id,
             'is_foreigner_or_immigrant' => fake()->boolean(20),
+            'declared_language_level_id' => LanguageLevel::query()->ordered()->value('id'),
         ];
     }
 
@@ -142,7 +147,7 @@ class UserFactory extends Factory
             'job_task_id' => null,
             'job_role_id' => null,
             'job_sector_id' => null,
-            'is_foreigner_or_immigrant' => null,
+            'is_foreigner_or_immigrant' => false,
         ];
     }
 

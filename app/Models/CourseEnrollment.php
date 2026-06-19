@@ -32,6 +32,7 @@ class CourseEnrollment extends Model
     protected $fillable = [
         'user_id',
         'course_id',
+        'origin_course_id',
         'current_module_id',
         'status',
         'assigned_at',
@@ -152,6 +153,11 @@ class CourseEnrollment extends Model
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
+    }
+
+    public function originCourse(): BelongsTo
+    {
+        return $this->belongsTo(Course::class, 'origin_course_id');
     }
 
     public function currentModule(): BelongsTo

@@ -1,5 +1,6 @@
 @props([
     'user' => null,
+    'languageLevels' => collect(),
 ])
 
 @php
@@ -129,6 +130,45 @@
                 </select>
                 @error('is_foreigner_or_immigrant')<span class="text-error text-sm">{{ $message }}</span>@enderror
             </div>
+
+            <div class="form-control">
+                <label for="declared_language_level_id" class="label">
+                    <span class="label-text font-semibold">{{ __('Livello lingua dichiarato') }}</span>
+                </label>
+                <select name="declared_language_level_id" id="declared_language_level_id" class="select select-bordered w-full">
+                    <option value="">{{ __('Non dichiarato') }}</option>
+                    @foreach ($languageLevels as $languageLevel)
+                        <option value="{{ $languageLevel->id }}" @selected((string) old('declared_language_level_id', $user?->declared_language_level_id) === (string) $languageLevel->id)>
+                            {{ strtoupper($languageLevel->name) }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('declared_language_level_id')<span class="text-error text-sm">{{ $message }}</span>@enderror
+            </div>
+
+            <div class="form-control">
+                <label for="verified_language_level_id" class="label">
+                    <span class="label-text font-semibold">{{ __('Livello lingua verificato') }}</span>
+                </label>
+                <select name="verified_language_level_id" id="verified_language_level_id" class="select select-bordered w-full">
+                    <option value="">{{ __('Non verificato') }}</option>
+                    @foreach ($languageLevels as $languageLevel)
+                        <option value="{{ $languageLevel->id }}" @selected((string) old('verified_language_level_id', $user?->verified_language_level_id) === (string) $languageLevel->id)>
+                            {{ strtoupper($languageLevel->name) }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('verified_language_level_id')<span class="text-error text-sm">{{ $message }}</span>@enderror
+            </div>
+
+            @if (isset($user))
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">{{ __('Richiede verifica lingua') }}</span>
+                    </label>
+                    <input type="text" class="input input-bordered w-full" value="{{ $user->needs_language_level_verification ? __('Si') : __('No') }}" readonly>
+                </div>
+            @endif
         </div>
     </div>
 </div>

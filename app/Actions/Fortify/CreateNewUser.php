@@ -2,7 +2,9 @@
 
 namespace App\Actions\Fortify;
 
+use App\Models\LanguageLevel;
 use App\Models\User;
+use App\Support\NeedsLanguageLevelVerificationResolver;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -12,6 +14,10 @@ use Laravel\Fortify\Contracts\CreatesNewUsers;
 class CreateNewUser implements CreatesNewUsers
 {
     use PasswordValidationRules;
+
+    public function __construct(
+        private readonly NeedsLanguageLevelVerificationResolver $needsLanguageLevelVerificationResolver,
+    ) {}
 
     /**
      * Validate and create a newly registered user.
@@ -38,6 +44,9 @@ class CreateNewUser implements CreatesNewUsers
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => Hash::make($input['password']),
+            'declared_language_level_id' => LanguageLevel::defaultOrFirst()?->getKey(),
+            'needs_language_level_verification' => $this->needsLanguageLevelVerificationResolver
+                ->resolve($input['is_foreigner_or_immigrant'] ?? false),
         ]);
     }
 }

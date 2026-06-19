@@ -3,12 +3,20 @@
 namespace Database\Factories;
 
 use App\Models\Course;
+use App\Models\LanguageLevel;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class CourseFactory extends Factory
 {
     public function definition(): array
     {
+        $requiredLanguageLevelId = LanguageLevel::query()->ordered()->value('id')
+            ?? LanguageLevel::factory()->create([
+                'name' => 'a1',
+                'sort_order' => 1,
+                'is_default' => true,
+            ])->getKey();
+
         return [
             'title' => fake()->sentence(4),
             'code' => 'CRS-'.fake()->unique()->numerify('########'),
@@ -35,6 +43,9 @@ class CourseFactory extends Factory
             'year' => now()->year,
             'expiry_date' => now()->copy()->endOfYear(),
             'status' => 'draft',
+            'required_language_level_id' => $requiredLanguageLevelId,
+            'is_language_verification_course' => false,
+            'grants_language_level_id' => null,
             'is_financed' => false,
             'funding_entity_id' => null,
             'edition' => 1,

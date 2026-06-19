@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\JobRoleController;
 use App\Http\Controllers\Admin\JobSectorController;
 use App\Http\Controllers\Admin\JobTaskController;
 use App\Http\Controllers\Admin\JobUnitController;
+use App\Http\Controllers\Admin\LanguageLevelController;
 use App\Http\Controllers\Admin\LiveStreamLogController;
 use App\Http\Controllers\Admin\ModuleQuizController;
 use App\Http\Controllers\Admin\ModuleQuizDocumentUploadController;
@@ -194,6 +195,9 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         // Job Management Routes (require 'manage job data' permission)
         Route::middleware('permission:manage job data')->group(function () {
             Route::resource('job-categories', JobCategoryController::class)->except(['show']);
+            Route::patch('language-levels/reorder', [LanguageLevelController::class, 'reorder'])->name('language-levels.reorder');
+            Route::resource('language-levels', LanguageLevelController::class)->except(['show']);
+            Route::post('language-levels/default', [LanguageLevelController::class, 'updateDefault'])->name('language-levels.default.update');
             Route::resource('job-levels', JobLevelController::class)->except(['show']);
             Route::resource('job-tasks', JobTaskController::class)->except(['show']);
             Route::resource('job-roles', JobRoleController::class)->except(['show']);

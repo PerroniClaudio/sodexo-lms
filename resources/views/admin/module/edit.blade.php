@@ -17,7 +17,7 @@
     >
         <x-page-header :title="__('Edit module')">
             <x-slot:actions>
-                <a href="{{ route('admin.courses.edit', $course) }}" class="btn btn-ghost">
+                <a href="{{ route('admin.courses.edit', $course) }}?section=modules" class="btn btn-ghost">
                         <x-lucide-arrow-left class="h-4 w-4" />
                         <span>{{ __('Back to course') }}</span>
                 </a>

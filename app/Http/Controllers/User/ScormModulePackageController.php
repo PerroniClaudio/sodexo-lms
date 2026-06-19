@@ -8,6 +8,7 @@ use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Services\ScormService;
+use App\Support\LanguageVerificationGate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -50,6 +51,7 @@ class ScormModulePackageController extends Controller
             ->where('user_id', $request->user()->getKey())
             ->whereNull('deleted_at')
             ->firstOrFail();
+        abort_if(app(LanguageVerificationGate::class)->resolveBlockedEnrollment($enrollment) !== null, Response::HTTP_FORBIDDEN);
 
         $moduleProgress = $enrollment->moduleProgresses()
             ->where('module_id', $module->getKey())

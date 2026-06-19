@@ -22,6 +22,7 @@ class CourseEnrollmentFactory extends Factory
         return [
             'user_id' => User::factory(),
             'course_id' => Course::factory(),
+            'origin_course_id' => null,
             'current_module_id' => null,
             'status' => CourseEnrollment::STATUS_ASSIGNED,
             'assigned_at' => now(),

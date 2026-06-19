@@ -82,6 +82,9 @@ class Course extends Model
         'year',
         'expiry_date',
         'status',
+        'required_language_level_id',
+        'is_language_verification_course',
+        'grants_language_level_id',
         'is_financed',
         'funding_entity_id',
         'job_unit_id',
@@ -111,6 +114,9 @@ class Course extends Model
             'venue_id' => 'integer',
             'edition' => 'integer',
             'original_course_id' => 'integer',
+            'required_language_level_id' => 'integer',
+            'is_language_verification_course' => 'boolean',
+            'grants_language_level_id' => 'integer',
             'course_start_date' => 'date',
             'course_end_date' => 'date',
             'access_closure_date' => 'date',
@@ -307,6 +313,16 @@ class Course extends Model
     public function venue(): BelongsTo
     {
         return $this->belongsTo(Venue::class);
+    }
+
+    public function requiredLanguageLevel(): BelongsTo
+    {
+        return $this->belongsTo(LanguageLevel::class, 'required_language_level_id');
+    }
+
+    public function grantsLanguageLevel(): BelongsTo
+    {
+        return $this->belongsTo(LanguageLevel::class, 'grants_language_level_id');
     }
 
     public function categories(): BelongsToMany
@@ -578,5 +594,10 @@ class Course extends Model
         return $this->modules->values()->filter(
             fn (Module $module): bool => $this->shouldCountModuleForCompletion($module)
         )->values();
+    }
+
+    public function isLanguageVerificationCourse(): bool
+    {
+        return (bool) $this->is_language_verification_course;
     }
 }

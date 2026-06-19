@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\CourseEnrollment;
 use App\Services\Certificates\CourseCertificateGenerator;
 use App\Services\CourseRiskRequirementService;
+use App\Support\LanguageVerificationGate;
 use Illuminate\Support\Facades\DB;
 
 class CourseEnrollmentObserver
@@ -38,6 +39,7 @@ class CourseEnrollmentObserver
                 return;
             }
 
+            app(LanguageVerificationGate::class)->syncVerifiedLanguageLevelFromEnrollment($enrollment);
             app(CourseCertificateGenerator::class)->generateForEnrollment($enrollment);
             app(CourseRiskRequirementService::class)->syncCertificatesForEnrollment($enrollment);
         });

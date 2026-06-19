@@ -484,7 +484,8 @@ class CourseModuleController extends Controller
             }
 
             return redirect()
-                ->route('admin.courses.edit', $course)
+                // ->route('admin.courses.edit', $course)
+                ->route('admin.courses.modules.edit', [$course, $module])
                 ->with('status', __('Module updated successfully.'));
         } catch (RuntimeException $e) {
             return redirect()

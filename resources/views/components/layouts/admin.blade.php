@@ -17,6 +17,70 @@
         <div class="drawer-side">
             <label for="my-drawer-3" aria-label="{{ __('layout.close_sidebar') }}" class="drawer-overlay"></label>
             <div class="flex min-h-full w-80 flex-col bg-base-300 p-4">
+                @php
+                    $matchesRoutePatterns = static function (array $include, array $exclude = []): bool {
+                        foreach ($exclude as $pattern) {
+                            if (request()->routeIs($pattern)) {
+                                return false;
+                            }
+                        }
+
+                        foreach ($include as $pattern) {
+                            if (request()->routeIs($pattern)) {
+                                return true;
+                            }
+                        }
+
+                        return false;
+                    };
+
+                    $formationMenuPatterns = [
+                        'admin.courses.*',
+                        'admin.course-categories.*',
+                        'admin.regia.*',
+                        'admin.certificates.*',
+                        'admin.videos.*',
+                        'admin.video-reports.*',
+                    ];
+
+                    $registryMenuPatterns = [
+                        'admin.users.*',
+                        'admin.funding-entities.*',
+                        'admin.partners.*',
+                        'admin.job-units.*',
+                    ];
+
+                    $portalMenuPatterns = ['admin.homepage.*'];
+
+                    $jobConfigurationMenuPatterns = [
+                        'admin.job-sectors.*',
+                        'admin.job-categories.*',
+                        'admin.job-levels.*',
+                        'admin.job-roles.*',
+                        'admin.job-tasks.*',
+                        'admin.nace-ateco.*',
+                        'admin.risk-based-requirements.*',
+                        'admin.document-types.*',
+                    ];
+
+                    $configurationMenuPatterns = [
+                        'admin.language-levels.*',
+                        'admin.satisfaction-survey.*',
+                        ...$jobConfigurationMenuPatterns,
+                    ];
+
+                    $toolsMenuPatterns = [
+                        'admin.document-conversion-jobs.*',
+                        'admin.live-stream-logs.*',
+                    ];
+
+                    $formationMenuOpen = $matchesRoutePatterns($formationMenuPatterns);
+                    $registryMenuOpen = $matchesRoutePatterns($registryMenuPatterns);
+                    $portalMenuOpen = $matchesRoutePatterns($portalMenuPatterns);
+                    $jobConfigurationMenuOpen = $matchesRoutePatterns($jobConfigurationMenuPatterns);
+                    $configurationMenuOpen = $matchesRoutePatterns($configurationMenuPatterns);
+                    $toolsMenuOpen = $matchesRoutePatterns($toolsMenuPatterns);
+                @endphp
 
                 <ul class="menu w-full gap-1">
                     @role(['admin', 'superadmin'])
@@ -25,7 +89,7 @@
                                 href="{{ route('admin.dashboard') }}"
                                 @class([
                                     'w-full',
-                                    'menu-active' => request()->routeIs('admin.dashboard*'),
+                                    'menu-active' => $matchesRoutePatterns(['admin.dashboard*']),
                                 ])
                             >
                                 <x-lucide-layout-dashboard class="mr-2 inline-block h-5 w-5" />
@@ -34,8 +98,8 @@
                         </li>
 
                         <li>
-                            <details @if(request()->routeIs('admin.courses.*') or request()->routeIs('admin.course-categories.*') or request()->routeIs('admin.regia.*') or request()->routeIs('admin.certificates.*') or request()->routeIs('admin.videos.*') or request()->routeIs('admin.video-reports.*')) open @endif>
-                                <summary>
+                            <details @if($formationMenuOpen) open @endif>
+                                <summary @class(['menu-active' => $formationMenuOpen])>
                                     <x-lucide-graduation-cap class="mr-2 inline-block h-5 w-5" />
                                     {{ __('Formazione') }}
                                 </summary>
@@ -43,7 +107,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.courses.index') }}"
-                                            @class(['menu-active' => request()->routeIs('admin.courses.*')])
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.courses.*'])])
                                         >
                                             <x-lucide-graduation-cap class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Corsi') }}
@@ -52,7 +116,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.course-categories.index') }}"
-                                            @class(['menu-active' => request()->routeIs('admin.course-categories.*')])
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.course-categories.*'])])
                                         >
                                             <x-lucide-tags class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Categorie corsi') }}
@@ -61,7 +125,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.regia.index') }}"
-                                            @class(['menu-active' => request()->routeIs('admin.regia.*')])
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.regia.*'])])
                                         >
                                             <x-lucide-settings class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Regia') }}
@@ -70,7 +134,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.certificates.index') }}"
-                                            @class(['menu-active' => request()->routeIs('admin.certificates.*')])
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.certificates.*'])])
                                         >
                                             <x-lucide-file-text class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Attestati') }}
@@ -79,7 +143,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.videos.index') }}"
-                                            @class(['menu-active' => request()->routeIs('admin.videos.*')])
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.videos.*'])])
                                         >
                                             <x-lucide-video class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Libreria Video') }}
@@ -88,7 +152,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.video-reports.index') }}"
-                                            @class(['menu-active' => request()->routeIs('admin.video-reports.*')])
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.video-reports.*'])])
                                         >
                                             <x-lucide-chart-column class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Audit trail') }}
@@ -99,8 +163,8 @@
                         </li>
 
                         <li>
-                            <details @if(request()->routeIs('admin.users.*') or request()->routeIs('admin.funding-entities.*') or request()->routeIs('admin.partners.*') or request()->routeIs('admin.job-*') or request()->routeIs('admin.nace-ateco.index') or request()->routeIs('admin.risk-based-requirements.*') or request()->routeIs('admin.document-types.*')) open @endif>
-                                <summary>
+                            <details @if($registryMenuOpen) open @endif>
+                                <summary @class(['menu-active' => $registryMenuOpen])>
                                     <x-lucide-users class="mr-2 inline-block h-5 w-5" />
                                     {{ __('Anagrafiche') }}
                                 </summary>
@@ -108,7 +172,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.users.index') }}"
-                                            @class(['menu-active' => request()->routeIs('admin.users.*')])
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.users.*'])])
                                         >
                                             <x-lucide-user-round class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Utenti') }}
@@ -117,7 +181,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.funding-entities.index') }}"
-                                            @class(['menu-active' => request()->routeIs('admin.funding-entities.*')])
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.funding-entities.*'])])
                                         >
                                             <x-lucide-building-2 class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Enti finanziatori') }}
@@ -126,112 +190,28 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.partners.index') }}"
-                                            @class(['menu-active' => request()->routeIs('admin.partners.*')])
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.partners.*'])])
                                         >
                                             <x-lucide-handshake class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Partner') }}
                                         </a>
                                     </li>
-                                    @role('superadmin')
-                                        <li>
-                                            <details @if(request()->routeIs('admin.job-*') or request()->routeIs('admin.nace-ateco.index') or request()->routeIs('admin.risk-based-requirements.*') or request()->routeIs('admin.document-types.*')) open @endif>
-                                                <summary @class(['menu-active' => request()->routeIs('admin.job-*')])>
-                                                    <x-lucide-briefcase class="mr-2 inline-block h-5 w-5" />
-                                                    {{ __('Configurazione Lavori') }}
-                                                </summary>
-                                                <ul>
-                                                    <li>
-                                                        <a
-                                                            href="{{ route('admin.job-sectors.index') }}"
-                                                            @class(['menu-active' => request()->routeIs('admin.job-sectors.*')])
-                                                        >
-                                                            <x-lucide-briefcase class="mr-2 inline-block h-4 w-4" />
-                                                            {{ __('Settori') }}
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a
-                                                            href="{{ route('admin.job-categories.index') }}"
-                                                            @class(['menu-active' => request()->routeIs('admin.job-categories.*')])
-                                                        >
-                                                            <x-lucide-layers class="mr-2 inline-block h-4 w-4" />
-                                                            {{ __('Categorie') }}
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a
-                                                            href="{{ route('admin.job-levels.index') }}"
-                                                            @class(['menu-active' => request()->routeIs('admin.job-levels.*')])
-                                                        >
-                                                            <x-lucide-chart-column class="mr-2 inline-block h-4 w-4" />
-                                                            {{ __('Livelli') }}
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a
-                                                            href="{{ route('admin.job-roles.index') }}"
-                                                            @class(['menu-active' => request()->routeIs('admin.job-roles.*')])
-                                                        >
-                                                            <x-lucide-user-round class="mr-2 inline-block h-4 w-4" />
-                                                            {{ __('Ruoli') }}
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a
-                                                            href="{{ route('admin.job-tasks.index') }}"
-                                                            @class(['menu-active' => request()->routeIs('admin.job-tasks.*')])
-                                                        >
-                                                            <x-lucide-clipboard-check class="mr-2 inline-block h-4 w-4" />
-                                                            {{ __('Mansioni') }}
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a
-                                                            href="{{ route('admin.job-units.index') }}"
-                                                            @class(['menu-active' => request()->routeIs('admin.job-units.*')])
-                                                        >
-                                                            <x-lucide-map-pin class="mr-2 inline-block h-4 w-4" />
-                                                            {{ __('Unità Lavorative') }}
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a
-                                                            href="{{ route('admin.nace-ateco.index') }}"
-                                                            @class(['menu-active' => request()->routeIs('admin.nace-ateco.*')])
-                                                        >
-                                                            <x-lucide-search class="mr-2 inline-block h-4 w-4" />
-                                                            {{ __('ATECO') }}
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a
-                                                            href="{{ route('admin.risk-based-requirements.index') }}"
-                                                            @class(['menu-active' => request()->routeIs('admin.risk-based-requirements.*')])
-                                                        >
-                                                            <x-lucide-shield-alert class="mr-2 inline-block h-4 w-4" />
-                                                            {{ __('Requisiti (Rischio)') }}
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a
-                                                            href="{{ route('admin.document-types.index') }}"
-                                                            @class(['menu-active' => request()->routeIs('admin.document-types.*')])
-                                                        >
-                                                            <x-lucide-file-text class="mr-2 inline-block h-4 w-4" />
-                                                            {{ __('Tipologie documento') }}
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </details>
-                                        </li>
-                                    @endrole
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.job-units.index') }}"
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.job-units.*'])])
+                                        >
+                                            <x-lucide-map-pin class="mr-2 inline-block h-4 w-4" />
+                                            {{ __('Unità Lavorative') }}
+                                        </a>
+                                    </li>
                                 </ul>
                             </details>
                         </li>
 
                         <li>
-                            <details @if(request()->routeIs('admin.homepage.*')) open @endif>
-                                <summary>
+                            <details @if($portalMenuOpen) open @endif>
+                                <summary @class(['menu-active' => $portalMenuOpen])>
                                     <x-lucide-panel-top class="mr-2 inline-block h-5 w-5" />
                                     {{ __('Portale') }}
                                 </summary>
@@ -239,7 +219,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.homepage.index') }}"
-                                            @class(['menu-active' => request()->routeIs('admin.homepage.*')])
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.homepage.*'])])
                                         >
                                             <x-lucide-home class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Home page') }}
@@ -252,28 +232,119 @@
 
                     @role('superadmin')
                         <li>
-                            <details @if(request()->routeIs('admin.satisfaction-survey.*')) open @endif>
-                                <summary>
+                            <details @if($configurationMenuOpen) open @endif>
+                                <summary @class(['menu-active' => $configurationMenuOpen])>
                                     <x-lucide-sliders-horizontal class="mr-2 inline-block h-5 w-5" />
                                     {{ __('Configurazioni') }}
                                 </summary>
                                 <ul>
                                     <li>
                                         <a
+                                            href="{{ route('admin.language-levels.index') }}"
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.language-levels.*'])])
+                                        >
+                                            <x-lucide-languages class="mr-2 inline-block h-4 w-4" />
+                                            {{ __('Livelli lingua') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
                                             href="{{ route('admin.satisfaction-survey.edit') }}"
-                                            @class(['menu-active' => request()->routeIs('admin.satisfaction-survey.*')])
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.satisfaction-survey.*'])])
                                         >
                                             <x-lucide-clipboard-check class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Configurazione gradimento') }}
                                         </a>
+                                    </li>
+                                    <li>
+                                        <details @if($jobConfigurationMenuOpen) open @endif>
+                                            <summary @class(['menu-active' => $jobConfigurationMenuOpen])>
+                                                <x-lucide-briefcase class="mr-2 inline-block h-5 w-5" />
+                                                {{ __('Configurazione Lavori') }}
+                                            </summary>
+                                            <ul>
+                                                <li>
+                                                    <a
+                                                        href="{{ route('admin.job-sectors.index') }}"
+                                                        @class(['menu-active' => $matchesRoutePatterns(['admin.job-sectors.*'])])
+                                                    >
+                                                        <x-lucide-briefcase class="mr-2 inline-block h-4 w-4" />
+                                                        {{ __('Settori') }}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a
+                                                        href="{{ route('admin.job-categories.index') }}"
+                                                        @class(['menu-active' => $matchesRoutePatterns(['admin.job-categories.*'])])
+                                                    >
+                                                        <x-lucide-layers class="mr-2 inline-block h-4 w-4" />
+                                                        {{ __('Categorie') }}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a
+                                                        href="{{ route('admin.job-levels.index') }}"
+                                                        @class(['menu-active' => $matchesRoutePatterns(['admin.job-levels.*'])])
+                                                    >
+                                                        <x-lucide-chart-column class="mr-2 inline-block h-4 w-4" />
+                                                        {{ __('Livelli') }}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a
+                                                        href="{{ route('admin.job-roles.index') }}"
+                                                        @class(['menu-active' => $matchesRoutePatterns(['admin.job-roles.*'])])
+                                                    >
+                                                        <x-lucide-user-round class="mr-2 inline-block h-4 w-4" />
+                                                        {{ __('Ruoli') }}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a
+                                                        href="{{ route('admin.job-tasks.index') }}"
+                                                        @class(['menu-active' => $matchesRoutePatterns(['admin.job-tasks.*'])])
+                                                    >
+                                                        <x-lucide-clipboard-check class="mr-2 inline-block h-4 w-4" />
+                                                        {{ __('Mansioni') }}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a
+                                                        href="{{ route('admin.nace-ateco.index') }}"
+                                                        @class(['menu-active' => $matchesRoutePatterns(['admin.nace-ateco.*'])])
+                                                    >
+                                                        <x-lucide-search class="mr-2 inline-block h-4 w-4" />
+                                                        {{ __('ATECO') }}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a
+                                                        href="{{ route('admin.risk-based-requirements.index') }}"
+                                                        @class(['menu-active' => $matchesRoutePatterns(['admin.risk-based-requirements.*'])])
+                                                    >
+                                                        <x-lucide-shield-alert class="mr-2 inline-block h-4 w-4" />
+                                                        {{ __('Requisiti (Rischio)') }}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a
+                                                        href="{{ route('admin.document-types.index') }}"
+                                                        @class(['menu-active' => $matchesRoutePatterns(['admin.document-types.*'])])
+                                                    >
+                                                        <x-lucide-file-text class="mr-2 inline-block h-4 w-4" />
+                                                        {{ __('Tipologie documento') }}
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </details>
                                     </li>
                                 </ul>
                             </details>
                         </li>
 
                         <li>
-                            <details @if(request()->routeIs('admin.document-conversion-jobs.*') or request()->routeIs('admin.live-stream-logs.*')) open @endif>
-                                <summary>
+                            <details @if($toolsMenuOpen) open @endif>
+                                <summary @class(['menu-active' => $toolsMenuOpen])>
                                     <x-lucide-wrench class="mr-2 inline-block h-5 w-5" />
                                     {{ __('Strumenti') }}
                                 </summary>
@@ -281,7 +352,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.document-conversion-jobs.index') }}"
-                                            @class(['menu-active' => request()->routeIs('admin.document-conversion-jobs.*')])
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.document-conversion-jobs.*'])])
                                         >
                                             <x-lucide-settings class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Debug conversioni documenti') }}
@@ -290,7 +361,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.live-stream-logs.index') }}"
-                                            @class(['menu-active' => request()->routeIs('admin.live-stream-logs.*')])
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.live-stream-logs.*'])])
                                         >
                                             <x-lucide-activity class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Log live stream') }}

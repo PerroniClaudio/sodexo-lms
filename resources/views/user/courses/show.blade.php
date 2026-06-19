@@ -2,6 +2,7 @@
     @php
         $completedModules = $modules->filter(fn ($module) => $module->pivot->status === 'completed')->count();
         $totalModules = $modules->count();
+        $hasLanguageVerificationBlock = isset($languageVerificationBlock) && is_array($languageVerificationBlock);
         $firstResidentialStartAt = $modules
             ->first(fn ($module) => $module->type === 'res' && $module->effective_starts_at !== null)
             ?->effective_starts_at;
@@ -67,6 +68,18 @@
 
         <div class="card border border-base-300 bg-base-100 shadow-sm">
             <div class="card-body gap-4">
+                @if ($hasLanguageVerificationBlock)
+                    <div class="rounded-box border border-warning/40 bg-warning/10 p-5">
+                        <h2 class="text-xl font-semibold text-base-content">{{ __('Verifica conoscenza della lingua') }}</h2>
+                        <p class="mt-2 text-sm text-base-content/75">{{ __('Prima di poter proseguire col corso e necessario superare la verifica di conoscenza della lingua.') }}</p>
+                        <div class="mt-4">
+                            <a href="{{ route('user.courses.show', $languageVerificationBlock['verification_course']) }}" class="btn btn-primary">
+                                {{ __('Vai al corso di verifica') }}
+                            </a>
+                        </div>
+                    </div>
+                @endif
+
                 @if ($course->cover_image_path)
                     <div class="overflow-hidden rounded-box border border-base-300">
                         <img
@@ -141,7 +154,8 @@
                         $isRetryableQuiz = $status === 'failed'
                             && $module->type === 'learning_quiz'
                             && $module->pivot->quiz_attempts < $module->max_attempts;
-                        $isAccessible = in_array($status, ['completed', 'available', 'in_progress'], true) || $isRetryableQuiz;
+                        $isAccessible = ! $hasLanguageVerificationBlock
+                            && (in_array($status, ['completed', 'available', 'in_progress'], true) || $isRetryableQuiz);
                         $isLocked = ! $isAccessible;
                         $canReviewCompletedVideo = $isCompleted && $module->type === 'video';
                         $meta = $moduleTypeMeta[$module->type] ?? [

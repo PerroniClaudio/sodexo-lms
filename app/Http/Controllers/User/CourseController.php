@@ -14,6 +14,7 @@ use App\Services\Certificates\UserCourseCertificateLocator;
 use App\Services\CourseClassScheduleResolver;
 use App\Services\QuizAccessDelayService;
 use App\Services\SyncCourseModuleProgresses;
+use App\Support\LanguageVerificationGate;
 use BaconQrCode\Renderer\Color\Rgb;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
@@ -42,6 +43,7 @@ class CourseController extends Controller
         private readonly AbandonLearningQuizAttempt $abandonLearningQuizAttempt,
         private readonly SyncCourseModuleProgresses $syncCourseModuleProgresses,
         private readonly QuizAccessDelayService $quizAccessDelayService,
+        private readonly LanguageVerificationGate $languageVerificationGate,
     ) {}
 
     public function index(): View
@@ -55,7 +57,7 @@ class CourseController extends Controller
         };
     }
 
-    public function show(Course $course): View
+    public function show(Course $course): View|RedirectResponse
     {
         $user = $this->authUser();
 
@@ -119,6 +121,12 @@ class CourseController extends Controller
 
         $enrollment = $user->courseEnrollments()->where('course_id', $course->id)->first();
         abort_unless($enrollment !== null, 403);
+
+        if ($this->languageVerificationGate->resolveBlockedEnrollment($enrollment) !== null) {
+            return redirect()
+                ->route('user.courses.show', $course)
+                ->with('error', __('Devi prima completare la verifica della lingua richiesta.'));
+        }
 
         $module->loadMissing('video', 'teachingMaterials');
 
@@ -377,12 +385,23 @@ class CourseController extends Controller
         ]);
     }
 
-    private function userShow(User $user, Course $course): View
+    private function userShow(User $user, Course $course): View|RedirectResponse
     {
         $course->loadMissing('categories', 'venue');
 
         $enrollment = $user->courseEnrollments()->where('course_id', $course->id)->first();
         abort_unless($enrollment !== null, 403);
+
+        $enrollment->loadMissing('course');
+
+        if ($course->isLanguageVerificationCourse()
+            && $enrollment->status === CourseEnrollment::STATUS_COMPLETED
+            && $enrollment->origin_course_id !== null
+            && (int) $enrollment->origin_course_id !== (int) $course->getKey()) {
+            return redirect()->route('user.courses.show', $enrollment->origin_course_id);
+        }
+
+        $languageVerificationBlock = $this->languageVerificationGate->resolveBlockedEnrollment($enrollment);
 
         $modules = $this->loadCourseModulesForEnrollment($course, $enrollment, $user);
         $residentialAttendanceQrCode = $course->type === Module::TYPE_RESIDENTIAL
@@ -392,6 +411,7 @@ class CourseController extends Controller
         return view('user.courses.show', [
             'course' => $course,
             'enrollment' => $enrollment,
+            'languageVerificationBlock' => $languageVerificationBlock,
             'modules' => $modules,
             'residentialAttendanceQrCodeContent' => $residentialAttendanceQrCode['content'] ?? null,
             'residentialAttendanceQrCodeDataUri' => $residentialAttendanceQrCode['data_uri'] ?? null,

@@ -16,6 +16,7 @@ use App\Models\VideoExerciseSubmission;
 use App\Models\VideoTrackingEvent;
 use App\Services\MuxService;
 use App\Services\VideoTrackingService;
+use App\Support\LanguageVerificationGate;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -39,6 +40,7 @@ class VideoModuleController extends Controller
 
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
+        $this->abortIfLanguageVerificationBlocked($enrollment);
         $video = $module->video;
 
         abort_if($video === null || $video->mux_playback_id === null || $video->mux_video_status !== 'ready', 404);
@@ -75,6 +77,7 @@ class VideoModuleController extends Controller
 
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
+        $this->abortIfLanguageVerificationBlocked($enrollment);
         $progress = $this->resolveProgress($enrollment, $module);
         abort_unless($progress !== null, 404);
 
@@ -92,6 +95,7 @@ class VideoModuleController extends Controller
 
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
+        $this->abortIfLanguageVerificationBlocked($enrollment);
         $progress = $this->resolveProgress($enrollment, $module);
         abort_unless($progress !== null, 404);
 
@@ -117,6 +121,7 @@ class VideoModuleController extends Controller
 
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
+        $this->abortIfLanguageVerificationBlocked($enrollment);
         $progress = $this->resolveProgress($enrollment, $module);
         abort_unless($progress !== null, 404);
 
@@ -153,6 +158,7 @@ class VideoModuleController extends Controller
 
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
+        $this->abortIfLanguageVerificationBlocked($enrollment);
         $progress = $this->resolveProgress($enrollment, $module);
         abort_unless($progress !== null, 404);
 
@@ -410,6 +416,11 @@ class VideoModuleController extends Controller
             ->where('course_user_id', $enrollment->getKey())
             ->where('module_id', $module->getKey())
             ->first();
+    }
+
+    private function abortIfLanguageVerificationBlocked(CourseEnrollment $enrollment): void
+    {
+        abort_if(app(LanguageVerificationGate::class)->resolveBlockedEnrollment($enrollment) !== null, Response::HTTP_FORBIDDEN);
     }
 
     private function ensureExerciseForUser(Course $course, Module $module, VideoExercise $videoExercise): void

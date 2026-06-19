@@ -111,7 +111,7 @@
 
                                     <div>
                                         @if ($activeUserEditSection === 'user')
-                                            <x-admin.users.forms.user-fields :user="$user" />
+                                            <x-admin.users.forms.user-fields :user="$user" :language-levels="$languageLevels" />
                                         @endif
 
                                         @if ($activeUserEditSection === 'residence')

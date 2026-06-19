@@ -15,6 +15,7 @@ use App\Models\JobRole;
 use App\Models\JobSector;
 use App\Models\JobTask;
 use App\Models\JobUnit;
+use App\Models\LanguageLevel;
 use App\Models\Province;
 use App\Models\RiskBasedRequirement;
 use App\Models\User;
@@ -25,6 +26,7 @@ use App\Models\WorldDivision;
 use App\Services\CourseRiskRequirementService;
 use App\Services\RiskCalculationService;
 use App\Services\UserJobAssignmentService;
+use App\Support\NeedsLanguageLevelVerificationResolver;
 use App\Support\UserGeographyMapper;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -48,6 +50,7 @@ class UserController extends Controller
         private readonly UserGeographyMapper $userGeographyMapper,
         private readonly UserJobAssignmentService $userJobAssignmentService,
         private readonly CourseRiskRequirementService $courseRiskRequirementService,
+        private readonly NeedsLanguageLevelVerificationResolver $needsLanguageLevelVerificationResolver,
     ) {}
 
     public function index(Request $request): View
@@ -131,8 +134,9 @@ class UserController extends Controller
         $jobRoles = JobRole::all();
         $jobSectors = JobSector::all();
         $jobUnits = JobUnit::all();
+        $languageLevels = LanguageLevel::query()->ordered()->get();
 
-        return view('admin.users.create', compact('jobCategories', 'jobLevels', 'jobTasks', 'jobRoles', 'jobSectors', 'jobUnits'));
+        return view('admin.users.create', compact('jobCategories', 'jobLevels', 'jobTasks', 'jobRoles', 'jobSectors', 'jobUnits', 'languageLevels'));
     }
 
     public function store(UserRequest $request): RedirectResponse
@@ -142,6 +146,10 @@ class UserController extends Controller
         $jobTaskAssignments = $data['job_tasks'] ?? [];
         unset($data['account_type']);
         unset($data['job_tasks']);
+        $data['declared_language_level_id'] = $data['declared_language_level_id']
+            ?? LanguageLevel::defaultOrFirst()?->getKey();
+        $data['needs_language_level_verification'] = $this->needsLanguageLevelVerificationResolver
+            ->resolve($data['is_foreigner_or_immigrant'] ?? false);
 
         // Normalizza i campi opzionali a null se stringa vuota
         foreach (['job_category_id', 'job_level_id'] as $field) {
@@ -183,6 +191,7 @@ class UserController extends Controller
         $jobRoles = JobRole::all();
         $jobSectors = JobSector::all();
         $jobUnits = JobUnit::all();
+        $languageLevels = LanguageLevel::query()->ordered()->get();
         $allRiskBasedRequirements = RiskBasedRequirement::query()->orderBy('name')->get(['id', 'name']);
         $documentTypes = DocumentType::query()->orderBy('name')->get(['id', 'name']);
         $availableCourses = $user->courseEnrollments()
@@ -210,6 +219,7 @@ class UserController extends Controller
             'jobRoles',
             'jobSectors',
             'jobUnits',
+            'languageLevels',
             'allRiskBasedRequirements',
             'documentTypes',
             'availableCourses',
@@ -225,6 +235,8 @@ class UserController extends Controller
         $jobTaskAssignments = $data['job_tasks'] ?? [];
         unset($data['account_type']);
         unset($data['job_tasks']);
+        $data['needs_language_level_verification'] = $this->needsLanguageLevelVerificationResolver
+            ->resolve($data['is_foreigner_or_immigrant'] ?? $user->is_foreigner_or_immigrant);
 
         // Normalizza i campi opzionali a null se stringa vuota
         foreach (['job_category_id', 'job_level_id'] as $field) {
@@ -283,6 +295,8 @@ class UserController extends Controller
         $data = $request->validate($this->userSectionRules($request, $user));
         $accountType = $this->resolveAccountType($data['account_type'] ?? $user->getRoleNames()->first() ?? 'user');
         unset($data['account_type']);
+        $data['needs_language_level_verification'] = $this->needsLanguageLevelVerificationResolver
+            ->resolve($data['is_foreigner_or_immigrant'] ?? $user->is_foreigner_or_immigrant);
 
         DB::transaction(function () use ($accountType, $data, $user): void {
             $user->update($data);
@@ -753,6 +767,8 @@ class UserController extends Controller
             'birth_place' => ['nullable', 'string', 'max:255'],
             'gender' => ['nullable', 'string', 'max:1'],
             'is_foreigner_or_immigrant' => ['required_if:account_type,user', 'boolean'],
+            'declared_language_level_id' => ['nullable', 'integer', 'exists:language_levels,id'],
+            'verified_language_level_id' => ['nullable', 'integer', 'exists:language_levels,id'],
         ];
     }
 

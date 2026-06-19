@@ -40,6 +40,8 @@ return [
     */
 
     'debug' => (bool) env('APP_DEBUG', false),
+    'use_immigrant_functions' => (bool) env('USE_IMMIGRANT_FUNCTIONS', false),
+    'default_check_language_knowledge' => (bool) env('DEFAULT_CHECK_LANGUAGE_KNOWLEDGE', false),
 
     /*
     |--------------------------------------------------------------------------

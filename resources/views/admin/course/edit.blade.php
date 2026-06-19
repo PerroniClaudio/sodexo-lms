@@ -102,6 +102,9 @@
             'year' => old('year', $course->year),
             'expiry_date' => old('expiry_date', $course->expiry_date?->format('Y-m-d')),
             'status' => old('status', $course->status),
+            'required_language_level_id' => old('required_language_level_id', $course->required_language_level_id),
+            'is_language_verification_course' => (bool) old('is_language_verification_course', $course->is_language_verification_course),
+            'grants_language_level_id' => old('grants_language_level_id', $course->grants_language_level_id),
             'is_financed' => (bool) old('is_financed', $course->is_financed),
             'funding_entity_id' => old('funding_entity_id', $course->funding_entity_id),
             'job_unit_id' => old('job_unit_id', $course->job_unit_id),
@@ -250,6 +253,7 @@
                                 :course-status-labels="$courseStatusLabels"
                                 :course-validator="$courseValidator"
                                 :funding-entities="$fundingEntities"
+                                :language-levels="$languageLevels"
                                 :update-url="$courseDetailsUpdateUrl"
                             />
                         @elseif ($activeCourseEditSection === 'duration')

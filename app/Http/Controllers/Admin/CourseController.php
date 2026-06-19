@@ -29,6 +29,7 @@ use App\Models\FundingEntity;
 use App\Models\JobRole;
 use App\Models\JobTask;
 use App\Models\JobUnit;
+use App\Models\LanguageLevel;
 use App\Models\Module;
 use App\Models\Partner;
 use App\Models\Province;
@@ -121,6 +122,7 @@ class CourseController extends Controller
             'year' => now()->year,
             'expiry_date' => now()->endOfYear(),
             'status' => 'draft',
+            'required_language_level_id' => $validated['required_language_level_id'] ?? LanguageLevel::defaultOrFirst()?->getKey(),
             'has_satisfaction_survey' => (bool) ($validated['has_satisfaction_survey'] ?? false),
             'satisfaction_survey_required_for_certificate' => (bool) ($validated['satisfaction_survey_required_for_certificate'] ?? false),
             'hasMany' => '0',
@@ -179,6 +181,7 @@ class CourseController extends Controller
             'courseDocumentFileTypeLabels' => CourseDocument::fileTypeLabels(),
             'courseRiskRequirementValidityTypeLabels' => CourseRiskRequirementValidityType::labels(),
             'customCertificateTypeLabels' => CustomCertificate::availableTypeLabels(),
+            'languageLevels' => LanguageLevel::query()->ordered()->get(['id', 'name', 'sort_order', 'is_default']),
             'moduleTypeLabels' => collect(Module::availableTypeLabels()),
             'creatableModuleTypeLabels' => collect(Module::availableTypeLabels())
                 ->only(Module::creatableTypes())

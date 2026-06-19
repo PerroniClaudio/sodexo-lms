@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             WorldDataSeeder::class,
             NaceAtecoSeeder::class,
             JobDataSeeder::class,
+            LanguageLevelSeeder::class,
             DocumentTypeSeeder::class,
             RiskBasedRequirementSeeder::class,
             RoleAndPermissionSeeder::class,

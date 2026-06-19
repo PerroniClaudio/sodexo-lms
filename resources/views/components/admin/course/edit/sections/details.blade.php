@@ -6,8 +6,18 @@
     'courseStatusLabels',
     'courseValidator',
     'fundingEntities',
+    'languageLevels',
     'updateUrl',
 ])
+
+@php
+    $defaultRequiredLanguageLevelId = (string) ($languageLevels->firstWhere('is_default', true)?->getKey() ?? $languageLevels->first()?->getKey() ?? '');
+    $selectedRequiredLanguageLevelId = (string) ($courseBaseValues['required_language_level_id'] ?? '');
+
+    if ($selectedRequiredLanguageLevelId === '') {
+        $selectedRequiredLanguageLevelId = $defaultRequiredLanguageLevelId;
+    }
+@endphp
 
 <div class="flex min-w-0 flex-col gap-6">
     @include('admin.course.partials.course-edit-badge-bar')
@@ -130,6 +140,66 @@
                         max="2100"
                     >
                     @error('year')
+                        <p class="text-sm text-error">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="form-control flex flex-col gap-2 md:col-span-2">
+                    <label class="label cursor-pointer justify-start gap-3 p-0">
+                        <input
+                            id="is_language_verification_course"
+                            name="is_language_verification_course"
+                            type="checkbox"
+                            value="1"
+                            class="checkbox checkbox-primary"
+                            data-language-verification-toggle
+                            @checked($courseBaseValues['is_language_verification_course'])
+                        >
+                        <span class="label-text font-medium">{{ __('È un corso per la verifica della conoscenza della lingua?') }}</span>
+                    </label>
+                    @error('is_language_verification_course')
+                        <p class="text-sm text-error">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="form-control flex flex-col gap-2" data-required-language-level-wrapper>
+                    <label for="required_language_level_id" class="label p-0">
+                        <span class="label-text font-medium">{{ __('Livello lingua richiesto per accedere al corso') }}</span>
+                    </label>
+                    <select
+                        id="required_language_level_id"
+                        name="required_language_level_id"
+                        data-default-language-level-id="{{ $defaultRequiredLanguageLevelId }}"
+                        class="select select-bordered w-full @error('required_language_level_id') select-error @enderror"
+                    >
+                        @foreach ($languageLevels as $languageLevel)
+                            <option value="{{ $languageLevel->id }}" @selected($selectedRequiredLanguageLevelId === (string) $languageLevel->id)>
+                                {{ strtoupper($languageLevel->name) }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('required_language_level_id')
+                        <p class="text-sm text-error">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="form-control flex flex-col gap-2 md:col-span-2" data-granted-language-level-wrapper>
+                    <label for="grants_language_level_id" class="label p-0">
+                        <span class="label-text font-medium">{{ __('Livello verificato ottenibile al completamento') }}</span>
+                    </label>
+                    <select
+                        id="grants_language_level_id"
+                        name="grants_language_level_id"
+                        class="select select-bordered w-full @error('grants_language_level_id') select-error @enderror"
+                    >
+                        <option value="">{{ __('Seleziona livello') }}</option>
+                        @foreach ($languageLevels as $languageLevel)
+                            <option value="{{ $languageLevel->id }}" @selected((string) $courseBaseValues['grants_language_level_id'] === (string) $languageLevel->id)>
+                                {{ strtoupper($languageLevel->name) }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('grants_language_level_id')
                         <p class="text-sm text-error">{{ $message }}</p>
                     @enderror
                 </div>
@@ -268,6 +338,11 @@
             const fundingEntityWrapper = document.querySelector('[data-funding-entity-wrapper]');
             const fundingEntityInput = fundingEntityWrapper?.querySelector('[data-input]');
             const fundingEntityHidden = fundingEntityWrapper?.querySelector('[data-hidden]');
+            const verificationToggle = document.querySelector('[data-language-verification-toggle]');
+            const requiredLevelWrapper = document.querySelector('[data-required-language-level-wrapper]');
+            const requiredLevelSelect = document.querySelector('#required_language_level_id');
+            const grantedLevelWrapper = document.querySelector('[data-granted-language-level-wrapper]');
+            const grantedLevelSelect = document.querySelector('#grants_language_level_id');
 
             if (!financedToggle || !fundingEntityWrapper || !fundingEntityInput || !fundingEntityHidden) {
                 return;
@@ -288,6 +363,36 @@
 
             financedToggle.addEventListener('change', syncFundingEntityVisibility);
             syncFundingEntityVisibility();
+
+            if (!verificationToggle || !requiredLevelWrapper || !requiredLevelSelect || !grantedLevelWrapper || !grantedLevelSelect) {
+                return;
+            }
+
+            const defaultRequiredLanguageLevelId = requiredLevelSelect.dataset.defaultLanguageLevelId ?? '';
+            let lastRequiredLanguageLevelId = requiredLevelSelect.value || defaultRequiredLanguageLevelId;
+
+            const syncLanguageLevelVisibility = () => {
+                const isVerificationCourse = verificationToggle.checked;
+
+                requiredLevelWrapper.classList.toggle('hidden', isVerificationCourse);
+                grantedLevelWrapper.classList.toggle('hidden', !isVerificationCourse);
+                requiredLevelSelect.disabled = isVerificationCourse;
+
+                if (isVerificationCourse && requiredLevelSelect.value !== '') {
+                    lastRequiredLanguageLevelId = requiredLevelSelect.value;
+                }
+
+                if (!isVerificationCourse && requiredLevelSelect.value === '') {
+                    requiredLevelSelect.value = lastRequiredLanguageLevelId || defaultRequiredLanguageLevelId;
+                }
+
+                if (!isVerificationCourse) {
+                    grantedLevelSelect.value = '';
+                }
+            };
+
+            verificationToggle.addEventListener('change', syncLanguageLevelVisibility);
+            syncLanguageLevelVisibility();
         })();
     </script>
 @endpush

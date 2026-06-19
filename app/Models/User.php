@@ -59,6 +59,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'job_role_id',
         'job_sector_id',
         'is_foreigner_or_immigrant',
+        'declared_language_level_id',
+        'verified_language_level_id',
+        'needs_language_level_verification',
         'notes',
     ];
 
@@ -82,9 +85,22 @@ class User extends Authenticatable implements MustVerifyEmail
             'employment_start_date' => 'date',
             'employment_end_date' => 'date',
             'is_foreigner_or_immigrant' => 'boolean',
+            'declared_language_level_id' => 'integer',
+            'verified_language_level_id' => 'integer',
+            'needs_language_level_verification' => 'boolean',
             'account_state' => UserStatus::class,
             'onboarding_step' => OnboardingStep::class,
         ];
+    }
+
+    public function declaredLanguageLevel(): BelongsTo
+    {
+        return $this->belongsTo(LanguageLevel::class, 'declared_language_level_id');
+    }
+
+    public function verifiedLanguageLevel(): BelongsTo
+    {
+        return $this->belongsTo(LanguageLevel::class, 'verified_language_level_id');
     }
 
     /**
@@ -757,5 +773,17 @@ class User extends Authenticatable implements MustVerifyEmail
                 ];
             })
             ->values();
+    }
+
+    public function hasVerifiedLanguageLevelFor(?LanguageLevel $requiredLanguageLevel): bool
+    {
+        if ($requiredLanguageLevel === null) {
+            return true;
+        }
+
+        $this->loadMissing('verifiedLanguageLevel');
+
+        return $this->verifiedLanguageLevel !== null
+            && $this->verifiedLanguageLevel->sort_order >= $requiredLanguageLevel->sort_order;
     }
 }

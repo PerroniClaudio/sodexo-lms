@@ -27,7 +27,7 @@
                         </div>
                     </div>
 
-                    <x-admin.users.forms.user-fields />
+                    <x-admin.users.forms.user-fields :language-levels="$languageLevels" />
                     <x-admin.users.forms.residence-fields />
                     <x-admin.users.forms.work-fields
                         :job-categories="$jobCategories"

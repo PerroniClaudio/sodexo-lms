@@ -11,6 +11,7 @@ use App\Models\SatisfactionSurveyQuestion;
 use App\Models\SatisfactionSurveySubmission;
 use App\Models\SatisfactionSurveySubmissionAnswer;
 use App\Models\SatisfactionSurveyTemplate;
+use App\Support\LanguageVerificationGate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,6 +32,7 @@ class SatisfactionSurveyController extends Controller
 
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
+        abort_if(app(LanguageVerificationGate::class)->resolveBlockedEnrollment($enrollment) !== null, 403);
 
         $progress = $this->resolveProgress($enrollment, $module);
         abort_unless($progress !== null, 404);
@@ -88,6 +90,7 @@ class SatisfactionSurveyController extends Controller
 
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
+        abort_if(app(LanguageVerificationGate::class)->resolveBlockedEnrollment($enrollment) !== null, 403);
 
         $progress = $this->resolveProgress($enrollment, $module);
         abort_unless($progress !== null, 404);

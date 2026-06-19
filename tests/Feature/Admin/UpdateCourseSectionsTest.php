@@ -5,6 +5,7 @@ use App\Models\CourseCategory;
 use App\Models\CourseEnrollment;
 use App\Models\FundingEntity;
 use App\Models\JobUnit;
+use App\Models\LanguageLevel;
 use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\User;
@@ -101,6 +102,50 @@ it('requires funding entity when course is financed', function () {
 
     $response->assertRedirect(route('admin.courses.edit', $course))
         ->assertSessionHasErrors('funding_entity_id');
+});
+
+it('defaults the required language level for standard courses and forces the lowest level for verification courses', function () {
+    $lowestLanguageLevel = LanguageLevel::query()->ordered()->firstOrFail();
+    $defaultLanguageLevel = LanguageLevel::factory()->create([
+        'name' => 'z-default',
+        'sort_order' => $lowestLanguageLevel->sort_order + 10,
+        'is_default' => true,
+    ]);
+
+    $course = Course::factory()->create([
+        'type' => 'res',
+        'required_language_level_id' => $lowestLanguageLevel->getKey(),
+    ]);
+
+    expect((int) $defaultLanguageLevel->getKey())->not->toBe((int) $lowestLanguageLevel->getKey());
+
+    $standardResponse = $this->put(route('admin.courses.details.update', $course), [
+        'title' => $course->title,
+        'code' => $course->code,
+        'description' => $course->description,
+        'year' => $course->year,
+        'status' => $course->status,
+    ]);
+
+    $standardResponse->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'details']));
+
+    expect((int) $course->fresh()->required_language_level_id)->toBe((int) $defaultLanguageLevel->getKey());
+
+    $verificationResponse = $this->put(route('admin.courses.details.update', $course), [
+        'title' => $course->title,
+        'code' => $course->code,
+        'description' => $course->description,
+        'year' => $course->year,
+        'status' => $course->status,
+        'is_language_verification_course' => '1',
+        'grants_language_level_id' => $defaultLanguageLevel->getKey(),
+    ]);
+
+    $verificationResponse->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'details']));
+
+    expect($course->fresh()->is_language_verification_course)->toBeTrue()
+        ->and((int) $course->fresh()->required_language_level_id)->toBe((int) $lowestLanguageLevel->getKey())
+        ->and((int) $course->fresh()->grants_language_level_id)->toBe((int) $defaultLanguageLevel->getKey());
 });
 
 it('shows funding fields on course details page', function () {

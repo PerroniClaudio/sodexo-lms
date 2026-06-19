@@ -13,6 +13,7 @@ use App\Models\ModuleQuizQuestion;
 use App\Models\ModuleQuizSubmission;
 use App\Models\ModuleQuizSubmissionAnswer;
 use App\Services\QuizAccessDelayService;
+use App\Support\LanguageVerificationGate;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,6 +38,7 @@ class QuizModuleController extends Controller
 
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
+        $this->abortIfLanguageVerificationBlocked($enrollment);
 
         $progress = $this->resolveProgress($enrollment, $module);
         abort_unless($progress !== null, 404);
@@ -119,6 +121,7 @@ class QuizModuleController extends Controller
 
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
+        $this->abortIfLanguageVerificationBlocked($enrollment);
 
         if ($lockedResponse = $this->quizDelayLockedResponse($enrollment, $module)) {
             return $lockedResponse;
@@ -193,6 +196,7 @@ class QuizModuleController extends Controller
 
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
+        $this->abortIfLanguageVerificationBlocked($enrollment);
 
         if ($lockedResponse = $this->quizDelayLockedResponse($enrollment, $module)) {
             return $lockedResponse;
@@ -261,6 +265,7 @@ class QuizModuleController extends Controller
 
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
+        $this->abortIfLanguageVerificationBlocked($enrollment);
 
         if ($lockedResponse = $this->quizDelayLockedResponse($enrollment, $module)) {
             return $lockedResponse;
@@ -299,6 +304,7 @@ class QuizModuleController extends Controller
 
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
+        $this->abortIfLanguageVerificationBlocked($enrollment);
 
         if ($lockedResponse = $this->quizDelayLockedResponse($enrollment, $module)) {
             return $lockedResponse;
@@ -374,6 +380,7 @@ class QuizModuleController extends Controller
 
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
+        $this->abortIfLanguageVerificationBlocked($enrollment);
 
         if ($lockedResponse = $this->quizDelayLockedResponse($enrollment, $module)) {
             return $lockedResponse;
@@ -456,6 +463,7 @@ class QuizModuleController extends Controller
 
         $enrollment = $this->resolveEnrollment($course);
         abort_unless($enrollment !== null, 403);
+        $this->abortIfLanguageVerificationBlocked($enrollment);
 
         if ($lockedResponse = $this->quizDelayLockedResponse($enrollment, $module)) {
             return $lockedResponse;
@@ -588,6 +596,11 @@ class QuizModuleController extends Controller
             ->where('course_user_id', $enrollment->getKey())
             ->where('module_id', $module->getKey())
             ->first();
+    }
+
+    private function abortIfLanguageVerificationBlocked(CourseEnrollment $enrollment): void
+    {
+        abort_if(app(LanguageVerificationGate::class)->resolveBlockedEnrollment($enrollment) !== null, 403);
     }
 
     private function quizDelayLockedResponse(CourseEnrollment $enrollment, Module $module): ?JsonResponse

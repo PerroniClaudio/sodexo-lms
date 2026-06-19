@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Course;
+use App\Models\LanguageLevel;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -43,6 +44,14 @@ class UpdateCourseDetailsRequest extends FormRequest
             'regulatory_reference' => ['nullable', 'string'],
             'year' => ['required', 'integer', 'min:1900', 'max:2100'],
             'status' => ['required', 'string', Rule::in(Course::availableStatuses())],
+            'required_language_level_id' => ['required', 'integer', Rule::exists('language_levels', 'id')],
+            'is_language_verification_course' => ['nullable', 'boolean'],
+            'grants_language_level_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('language_levels', 'id'),
+                Rule::requiredIf($this->boolean('is_language_verification_course')),
+            ],
             'is_financed' => ['nullable', 'boolean'],
             'funding_entity_id' => [
                 'nullable',
@@ -121,11 +130,23 @@ class UpdateCourseDetailsRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $isFinanced = $this->boolean('is_financed');
+        $isLanguageVerificationCourse = $this->boolean('is_language_verification_course');
+        $defaultLanguageLevelId = LanguageLevel::defaultOrFirst()?->getKey();
+        $lowestLanguageLevelId = LanguageLevel::query()->ordered()->value('id');
 
         $this->merge([
             'is_financed' => $isFinanced,
             'funding_entity_id' => $isFinanced ? $this->input('funding_entity_id') : null,
             'venue_mode' => $this->input('venue_mode') ?: null,
+            'is_language_verification_course' => $isLanguageVerificationCourse,
+            'required_language_level_id' => $isLanguageVerificationCourse
+                ? $lowestLanguageLevelId
+                : ($this->filled('required_language_level_id')
+                    ? $this->input('required_language_level_id')
+                    : $defaultLanguageLevelId),
+            'grants_language_level_id' => $isLanguageVerificationCourse
+                ? $this->input('grants_language_level_id')
+                : null,
         ]);
     }
 
@@ -149,6 +170,9 @@ class UpdateCourseDetailsRequest extends FormRequest
             'regulatory_reference' => __('Riferimento normativo'),
             'year' => __('Anno del corso'),
             'status' => __('Stato'),
+            'required_language_level_id' => __('Livello lingua richiesto'),
+            'is_language_verification_course' => __('Corso di verifica lingua'),
+            'grants_language_level_id' => __('Livello verificato abilitato'),
             'is_financed' => __('Corso finanziato'),
             'funding_entity_id' => __('Ente finanziatore'),
             'venue_mode' => __('Tipo sede'),
