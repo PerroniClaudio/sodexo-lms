@@ -8,7 +8,7 @@ use App\Actions\DuplicateCourseStructure;
 use App\Enums\CourseRiskRequirementValidityType;
 use App\Enums\RiskLevel;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\ConfirmResAttendanceRequest;
+use App\Http\Requests\ConfirmCourseAttendanceRequest;
 use App\Http\Requests\DuplicateCourseStructureRequest;
 use App\Http\Requests\StoreCourseRequest;
 use App\Http\Requests\UpdateCourseAttachmentsRequest;
@@ -38,6 +38,7 @@ use App\Models\Venue;
 use App\Models\WorldCity;
 use App\Models\WorldCountry;
 use App\Models\WorldDivision;
+use App\Services\AsyncLiveAuditAttendanceService;
 use App\Services\Certificates\CustomCertificateResolver;
 use App\Services\CourseValidation\CourseValidatorService;
 use App\Services\ResCourseAttendanceService;
@@ -211,31 +212,46 @@ class CourseController extends Controller
             'resAttendanceModules' => request('section') === 'attendees'
                 ? $modules->where('type', Module::TYPE_RESIDENTIAL)->sortBy('order')->values()
                 : collect(),
+            'asyncAttendanceModules' => request('section') === 'attendees'
+                ? $modules->where('type', Module::TYPE_LIVE)->sortBy('order')->values()
+                : collect(),
         ]);
     }
 
     public function confirmAttendance(
-        ConfirmResAttendanceRequest $request,
+        ConfirmCourseAttendanceRequest $request,
         Course $course,
         ResCourseAttendanceService $resCourseAttendanceService,
+        AsyncLiveAuditAttendanceService $asyncLiveAuditAttendanceService,
     ): RedirectResponse {
-        abort_unless(in_array($course->type, ['res', 'blended'], true), 404);
+        abort_unless(in_array($course->type, ['res', 'blended', 'async'], true), 404);
 
         $module = $course->modules()
             ->whereKey($request->moduleId())
-            ->where('type', Module::TYPE_RESIDENTIAL)
+            ->where('type', $course->type === 'async' ? Module::TYPE_LIVE : Module::TYPE_RESIDENTIAL)
             ->firstOrFail();
 
-        $stats = $resCourseAttendanceService->confirmAttendance(
-            $module,
-            $request->minimumAttendancePercentage(),
-        );
+        $stats = $course->type === 'async'
+            ? $asyncLiveAuditAttendanceService->confirmAttendance(
+                $module,
+                $request->effectiveStartAt(),
+                $request->effectiveEndAt(),
+                $request->minimumAttendancePercentage(),
+            )
+            : $resCourseAttendanceService->confirmAttendance(
+                $module,
+                $request->minimumAttendancePercentage(),
+            );
 
         return $this->redirectToSection($course, 'attendees', $this->attendanceConfirmationStatusMessage($stats));
     }
 
     private function attendanceRows(Course $course): Collection
     {
+        if ($course->type === 'async') {
+            return $this->asyncAttendanceRows($course);
+        }
+
         if (! in_array($course->type, ['res', 'blended'], true)) {
             return collect();
         }
@@ -296,6 +312,75 @@ class CourseController extends Controller
                     'records_count' => $records->count(),
                     'attendance_seconds' => (int) max(0, $totalSeconds),
                     'completed' => $completedResidentialUserIds->has($firstRecord->user_id),
+                ];
+            })
+            ->values();
+    }
+
+    private function asyncAttendanceRows(Course $course): Collection
+    {
+        $completedLiveUserIds = DB::table('module_user')
+            ->join('course_user', 'course_user.id', '=', 'module_user.course_user_id')
+            ->join('modules', 'modules.id', '=', 'module_user.module_id')
+            ->where('course_user.course_id', $course->getKey())
+            ->whereNull('course_user.deleted_at')
+            ->where('modules.type', Module::TYPE_LIVE)
+            ->where('module_user.status', 'completed')
+            ->pluck('course_user.user_id')
+            ->flip();
+
+        return DB::table('live_stream_audit_events')
+            ->join('modules', 'modules.id', '=', 'live_stream_audit_events.module_id')
+            ->join('course_user', function ($join): void {
+                $join
+                    ->on('course_user.user_id', '=', 'live_stream_audit_events.user_id')
+                    ->on('course_user.course_id', '=', 'modules.belongsTo')
+                    ->whereNull('course_user.deleted_at');
+            })
+            ->join('users', 'users.id', '=', 'live_stream_audit_events.user_id')
+            ->where('modules.belongsTo', (string) $course->getKey())
+            ->where('modules.type', Module::TYPE_LIVE)
+            ->whereIn('live_stream_audit_events.event_type', [
+                'participant_joined',
+                'participant_disconnected',
+            ])
+            ->select([
+                'users.id as user_id',
+                'users.name',
+                'users.surname',
+                'users.email',
+                'live_stream_audit_events.event_type',
+                'live_stream_audit_events.occurred_at',
+            ])
+            ->orderBy('users.surname')
+            ->orderBy('users.name')
+            ->orderBy('live_stream_audit_events.occurred_at')
+            ->get()
+            ->groupBy('user_id')
+            ->map(function (Collection $events) use ($completedLiveUserIds): array {
+                $firstEvent = $events->first();
+                $joinedAt = null;
+                $totalSeconds = 0;
+
+                foreach ($events as $event) {
+                    if ($event->event_type === 'participant_joined') {
+                        $joinedAt = Carbon::parse($event->occurred_at);
+
+                        continue;
+                    }
+
+                    if ($event->event_type === 'participant_disconnected' && $joinedAt !== null) {
+                        $totalSeconds += $joinedAt->diffInSeconds(Carbon::parse($event->occurred_at), false);
+                        $joinedAt = null;
+                    }
+                }
+
+                return [
+                    'user' => trim($firstEvent->surname.' '.$firstEvent->name),
+                    'email' => $firstEvent->email,
+                    'records_count' => $events->count(),
+                    'attendance_seconds' => (int) max(0, $totalSeconds),
+                    'completed' => $completedLiveUserIds->has($firstEvent->user_id),
                 ];
             })
             ->values();

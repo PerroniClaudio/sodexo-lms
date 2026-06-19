@@ -1,13 +1,19 @@
 @props([
     'attendanceRows',
+    'asyncAttendanceModules',
     'course',
     'courseValidator',
     'resAttendanceModules',
 ])
 
 @php
+    $isAsyncAttendance = $course->type === 'async';
+    $attendanceModules = $isAsyncAttendance ? $asyncAttendanceModules : $resAttendanceModules;
     $defaultMinimumAttendancePercentage = old('minimum_attendance_percentage', 90);
-    $selectedAttendanceModuleId = old('module_id', $resAttendanceModules->count() === 1 ? $resAttendanceModules->first()?->getKey() : null);
+    $selectedAttendanceModuleId = old('module_id', $attendanceModules->count() === 1 ? $attendanceModules->first()?->getKey() : null);
+    $defaultModule = $attendanceModules->firstWhere('id', (int) $selectedAttendanceModuleId) ?? $attendanceModules->first();
+    $defaultEffectiveStartTime = old('effective_start_time', $defaultModule?->appointment_start_time?->format('H:i'));
+    $defaultEffectiveEndTime = old('effective_end_time', $defaultModule?->appointment_end_time?->format('H:i'));
 @endphp
 
 <div class="flex flex-col gap-6">
@@ -27,7 +33,7 @@
                     type="button"
                     class="btn btn-primary"
                     data-open-res-attendance-confirmation-modal
-                    @disabled($attendanceRows->isEmpty() || $resAttendanceModules->isEmpty())
+                    @disabled($attendanceRows->isEmpty() || $attendanceModules->isEmpty())
                 >
                     <x-lucide-check class="h-4 w-4" />
                     <span>{{ __('Conferma presenti') }}</span>
@@ -78,23 +84,25 @@
                     <div class="space-y-2">
                         <h3 class="text-lg font-semibold">{{ __('Conferma presenti') }}</h3>
                         <p class="text-sm text-base-content/70">
-                            {{ __('Imposta la soglia minima di permanenza per completare il modulo RES selezionato.') }}
+                            {{ $isAsyncAttendance
+                                ? __('Imposta la finestra effettiva della diretta e la soglia minima per completare il modulo live selezionato.')
+                                : __('Imposta la soglia minima di permanenza per completare il modulo RES selezionato.') }}
                         </p>
                     </div>
 
                     <form method="POST" action="{{ route('admin.courses.attendance.confirm', $course) }}" class="mt-6 grid gap-4">
                         @csrf
 
-                        @if ($resAttendanceModules->count() === 1)
-                            <input type="hidden" name="module_id" value="{{ $resAttendanceModules->first()->getKey() }}">
+                        @if ($attendanceModules->count() === 1)
+                            <input type="hidden" name="module_id" value="{{ $attendanceModules->first()->getKey() }}">
                         @else
                             <label class="form-control gap-2">
-                                <span class="label-text font-medium">{{ __('Modulo RES') }}</span>
+                                <span class="label-text font-medium">{{ $isAsyncAttendance ? __('Modulo live') : __('Modulo RES') }}</span>
                                 <select name="module_id" class="select select-bordered w-full @error('module_id') select-error @enderror" required>
                                     <option value="">{{ __('Seleziona modulo') }}</option>
-                                    @foreach ($resAttendanceModules as $resAttendanceModule)
-                                        <option value="{{ $resAttendanceModule->getKey() }}" @selected((string) $selectedAttendanceModuleId === (string) $resAttendanceModule->getKey())>
-                                            {{ $resAttendanceModule->title }}
+                                    @foreach ($attendanceModules as $attendanceModule)
+                                        <option value="{{ $attendanceModule->getKey() }}" @selected((string) $selectedAttendanceModuleId === (string) $attendanceModule->getKey())>
+                                            {{ $attendanceModule->title }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -102,6 +110,38 @@
                                     <span class="text-sm text-error">{{ $message }}</span>
                                 @enderror
                             </label>
+                        @endif
+
+                        @if ($isAsyncAttendance)
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <label class="form-control gap-2">
+                                    <span class="label-text font-medium">{{ __('Ora di inizio effettiva') }}</span>
+                                    <input
+                                        type="time"
+                                        name="effective_start_time"
+                                        value="{{ $defaultEffectiveStartTime }}"
+                                        class="input input-bordered w-full @error('effective_start_time') input-error @enderror"
+                                        required
+                                    >
+                                    @error('effective_start_time')
+                                        <span class="text-sm text-error">{{ $message }}</span>
+                                    @enderror
+                                </label>
+
+                                <label class="form-control gap-2">
+                                    <span class="label-text font-medium">{{ __('Ora di fine effettiva') }}</span>
+                                    <input
+                                        type="time"
+                                        name="effective_end_time"
+                                        value="{{ $defaultEffectiveEndTime }}"
+                                        class="input input-bordered w-full @error('effective_end_time') input-error @enderror"
+                                        required
+                                    >
+                                    @error('effective_end_time')
+                                        <span class="text-sm text-error">{{ $message }}</span>
+                                    @enderror
+                                </label>
+                            </div>
                         @endif
 
                         <label class="form-control gap-2">

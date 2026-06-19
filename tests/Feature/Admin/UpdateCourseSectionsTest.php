@@ -167,7 +167,7 @@ it('shows venue section for res and blended courses only', function (string $typ
     'fad' => ['fad', false],
 ]);
 
-it('shows attendees section for res and blended courses only', function (string $type, bool $shouldSeeSection) {
+it('shows attendees section for classroom and async courses only', function (string $type, bool $shouldSeeSection) {
     $course = Course::factory()->create([
         'type' => $type,
     ]);
@@ -184,6 +184,7 @@ it('shows attendees section for res and blended courses only', function (string 
 })->with([
     'res' => ['res', true],
     'blended' => ['blended', true],
+    'async' => ['async', true],
     'fad' => ['fad', false],
 ]);
 

@@ -28,7 +28,7 @@
             ['key' => 'tutors', 'label' => __('Tutor'), 'icon' => 'lucide-users-round', 'group' => 'delivery'],
             ['key' => 'faculty', 'label' => __('Faculty'), 'icon' => 'lucide-id-card', 'group' => 'delivery'],
             ['key' => 'enrollments', 'label' => __('Iscritti'), 'icon' => 'lucide-user-plus', 'group' => 'delivery'],
-            ...in_array($course->type, ['res', 'blended'], true)
+            ...in_array($course->type, ['res', 'blended', 'async'], true)
                 ? [['key' => 'attendees', 'label' => __('Presenti'), 'icon' => 'lucide-clipboard-check', 'group' => 'delivery']]
                 : [],
             ['key' => 'operations', 'label' => __('Operazioni corso'), 'icon' => 'lucide-wrench', 'group' => 'operations'],
@@ -397,9 +397,10 @@
                             />
                         @endif
 
-                        @if ($activeCourseEditSection === 'attendees' && in_array($course->type, ['res', 'blended'], true))
+                        @if ($activeCourseEditSection === 'attendees' && in_array($course->type, ['res', 'blended', 'async'], true))
                             <x-admin.course.edit.sections.attendees
                                 :attendance-rows="$attendanceRows"
+                                :async-attendance-modules="$asyncAttendanceModules"
                                 :course="$course"
                                 :course-validator="$courseValidator"
                                 :res-attendance-modules="$resAttendanceModules"
