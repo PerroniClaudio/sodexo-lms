@@ -50,6 +50,20 @@
     <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:gap-8 sm:p-6 lg:p-8">
         <x-page-header :title="$course->title" />
 
+        @if ($hasLanguageVerificationBlock)
+            <div class="card border border-warning/40 bg-warning/10 shadow-sm">
+                <div class="card-body gap-4">
+                    <h2 class="text-xl font-semibold text-base-content">{{ __('Verifica conoscenza della lingua') }}</h2>
+                    <p class="text-sm text-base-content/75">{{ __('Prima di poter proseguire col corso e necessario superare la verifica di conoscenza della lingua.') }}</p>
+                    <div>
+                        <a href="{{ route('user.courses.show', $languageVerificationBlock['verification_course']) }}" class="btn btn-primary">
+                            {{ __('Vai al corso di verifica') }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <div class="card border border-base-300 bg-base-100 shadow-sm">
             <div class="card-body gap-6 lg:flex-row lg:items-center lg:justify-between">
                 <div class="space-y-2">
@@ -68,18 +82,6 @@
 
         <div class="card border border-base-300 bg-base-100 shadow-sm">
             <div class="card-body gap-4">
-                @if ($hasLanguageVerificationBlock)
-                    <div class="rounded-box border border-warning/40 bg-warning/10 p-5">
-                        <h2 class="text-xl font-semibold text-base-content">{{ __('Verifica conoscenza della lingua') }}</h2>
-                        <p class="mt-2 text-sm text-base-content/75">{{ __('Prima di poter proseguire col corso e necessario superare la verifica di conoscenza della lingua.') }}</p>
-                        <div class="mt-4">
-                            <a href="{{ route('user.courses.show', $languageVerificationBlock['verification_course']) }}" class="btn btn-primary">
-                                {{ __('Vai al corso di verifica') }}
-                            </a>
-                        </div>
-                    </div>
-                @endif
-
                 @if ($course->cover_image_path)
                     <div class="overflow-hidden rounded-box border border-base-300">
                         <img
@@ -150,12 +152,13 @@
                     @php
                         $status = $module->pivot->status;
                         $isCompleted = $status === 'completed';
-                        $isCurrent = (int) $enrollment->current_module_id === (int) $module->id;
+                        $isCurrentModule = (int) $enrollment->current_module_id === (int) $module->id;
                         $isRetryableQuiz = $status === 'failed'
                             && $module->type === 'learning_quiz'
                             && $module->pivot->quiz_attempts < $module->max_attempts;
                         $isAccessible = ! $hasLanguageVerificationBlock
                             && (in_array($status, ['completed', 'available', 'in_progress'], true) || $isRetryableQuiz);
+                        $isCurrent = $isCurrentModule && $isAccessible;
                         $isLocked = ! $isAccessible;
                         $canReviewCompletedVideo = $isCompleted && $module->type === 'video';
                         $meta = $moduleTypeMeta[$module->type] ?? [
