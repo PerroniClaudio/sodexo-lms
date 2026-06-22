@@ -34,6 +34,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -199,12 +200,13 @@ class UserController extends Controller
         $availableCourses = $user->courseEnrollments()
             ->where('status', CourseEnrollment::STATUS_COMPLETED)
             ->whereNotNull('completed_at')
-            ->with(['course:id,title'])
+            ->with(['course:id,title,code'])
             ->orderByDesc('completed_at')
             ->get()
             ->filter(fn (CourseEnrollment $enrollment): bool => $enrollment->course !== null)
             ->map(fn (CourseEnrollment $enrollment): array => [
                 'id' => (int) $enrollment->course->getKey(),
+                'code' => $enrollment->course->code,
                 'title' => $enrollment->course->title,
                 'completed_at_label' => $enrollment->completed_at?->format('d/m/Y'),
             ])
@@ -433,9 +435,7 @@ class UserController extends Controller
             })
             ->all();
 
-        $requirementNeeds = collect($riskSummary['risk_based_requirements'])
-            ->filter(fn (array $requirement): bool => in_array($requirement['status'], ['missing', 'expired'], true))
-            ->keyBy('risk_based_requirement_id');
+        $requirementNeeds = $this->collectRequirementNeeds($riskSummary);
         $courses = Course::query()
             ->where('status', 'published')
             ->whereHas('riskBasedRequirements', function ($query) use ($requirementNeeds): void {
@@ -449,6 +449,9 @@ class UserController extends Controller
                     ->first(fn (RiskBasedRequirement $requirement): bool => $requirementNeeds->has($requirement->getKey()));
                 $requiredNeed = $matchingRequirement !== null
                     ? $requirementNeeds->get($matchingRequirement->getKey())
+                    : null;
+                $referenceDate = is_array($requiredNeed) && ! empty($requiredNeed['effective_on'])
+                    ? Carbon::parse((string) $requiredNeed['effective_on'])
                     : null;
 
                 return [
@@ -467,6 +470,7 @@ class UserController extends Controller
                             $user,
                             $matchingRequirement,
                             $course->courseValidityTypesForRequirement($matchingRequirement)->all(),
+                            $referenceDate,
                         ),
                     'eligible_to_enroll' => $this->courseRiskRequirementService->userCanEnrollInCourse($user, $course),
                 ];
@@ -532,9 +536,7 @@ class UserController extends Controller
         $user->loadMissing(['jobSector', 'jobTasks', 'roles']);
 
         $riskSummary = $this->buildRiskSummary($user);
-        $requirementNeeds = collect($riskSummary['risk_based_requirements'])
-            ->filter(fn (array $requirement): bool => in_array($requirement['status'], ['missing', 'expired'], true))
-            ->keyBy('risk_based_requirement_id');
+        $requirementNeeds = $this->collectRequirementNeeds($riskSummary);
         $enrolledCourseIds = $this->enrolledCourseIds($user);
 
         if ($requirementNeeds->isEmpty()) {
@@ -586,10 +588,14 @@ class UserController extends Controller
             $requiredNeed = $requirementNeeds->get($matchingRequirement->getKey());
             $courseValidityTypes = $course->courseValidityTypesForRequirement($matchingRequirement);
             $integrativeStartRiskLevels = $course->integrativeStartRiskLevelsForRequirement($matchingRequirement);
+            $referenceDate = is_array($requiredNeed) && ! empty($requiredNeed['effective_on'])
+                ? Carbon::parse((string) $requiredNeed['effective_on'])
+                : null;
             $matchesRequiredNeed = $this->courseRiskRequirementService->courseRequirementMatchesUserNeed(
                 $user,
                 $matchingRequirement,
                 $courseValidityTypes->all(),
+                $referenceDate,
             );
 
             if (! $matchesRequiredNeed) {
@@ -620,6 +626,7 @@ class UserController extends Controller
 
             return [
                 'course_id' => $course->getKey(),
+                'code' => $course->code,
                 'title' => $course->title,
                 'description' => $course->description,
                 'course_type' => $course->course_type,
@@ -685,6 +692,49 @@ class UserController extends Controller
                 'direction' => $direction,
             ],
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $riskSummary
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function collectRequirementNeeds(array $riskSummary)
+    {
+        $currentNeeds = collect($riskSummary['risk_based_requirements'] ?? [])
+            ->filter(fn (array $requirement): bool => in_array($requirement['status'] ?? null, ['missing', 'expired'], true))
+            ->mapWithKeys(fn (array $requirement): array => [
+                (int) ($requirement['risk_based_requirement_id'] ?? 0) => [
+                    ...$requirement,
+                    'effective_on' => null,
+                    'effective_on_label' => null,
+                ],
+            ])
+            ->filter(fn (array $requirement, int $requirementId): bool => $requirementId > 0);
+
+        $futureNeeds = collect($riskSummary['future_risk_transitions'] ?? [])
+            ->flatMap(function (array $transition) {
+                $effectiveOn = $transition['effective_on'] ?? null;
+                $effectiveOnLabel = $transition['effective_on_label'] ?? null;
+
+                return collect($transition['risk_based_requirements'] ?? [])
+                    ->filter(fn (array $requirement): bool => in_array($requirement['status'] ?? null, ['missing', 'expired'], true))
+                    ->map(function (array $requirement) use ($effectiveOn, $effectiveOnLabel): array {
+                        return [
+                            ...$requirement,
+                            'effective_on' => $effectiveOn,
+                            'effective_on_label' => $effectiveOnLabel,
+                        ];
+                    });
+            })
+            ->filter(fn (array $requirement): bool => (int) ($requirement['risk_based_requirement_id'] ?? 0) > 0)
+            ->groupBy(fn (array $requirement): int => (int) $requirement['risk_based_requirement_id'])
+            ->map(function ($requirements) {
+                return collect($requirements)
+                    ->sortBy(fn (array $requirement): string => (string) ($requirement['effective_on'] ?? '9999-12-31'))
+                    ->first();
+            });
+
+        return $currentNeeds->union($futureNeeds);
     }
 
     public function destroy(User $user): RedirectResponse

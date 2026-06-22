@@ -305,7 +305,7 @@
                             </div>
 
                             <dialog class="modal" data-certificate-modal>
-                                <div class="modal-box max-w-3xl">
+                                <div class="modal-box max-w-5xl">
                                     <div class="flex items-start justify-between gap-4">
                                         <div>
                                             <h3 class="text-lg font-semibold">{{ __('Aggiungi certificato') }}</h3>
@@ -366,18 +366,33 @@
                                                 <label class="label p-0" for="certificate_internal_course_id">
                                                     <span class="label-text font-medium">{{ __('Corso interno') }}</span>
                                                 </label>
-                                                <select id="certificate_internal_course_id" name="internal_course_id" class="select select-bordered w-full" @disabled($availableCourses->isEmpty())>
-                                                    @if ($availableCourses->isEmpty())
-                                                        <option value="">{{ __('Nessun corso completato') }}</option>
-                                                    @else
-                                                        <option value="">{{ __('Nessuno') }}</option>
-                                                        @foreach ($availableCourses as $course)
-                                                            <option value="{{ $course['id'] }}">
-                                                                {{ $course['title'] }}{{ $course['completed_at_label'] ? ' - completato il '.$course['completed_at_label'] : '' }}
-                                                            </option>
-                                                        @endforeach
-                                                    @endif
-                                                </select>
+                                                <div
+                                                    class="tooltip tooltip-top w-full"
+                                                    data-certificate-internal-course-tooltip
+                                                    data-tip="{{ $availableCourses->isEmpty() ? __('Nessun corso completato') : __('Nessuno') }}"
+                                                >
+                                                    <select
+                                                        id="certificate_internal_course_id"
+                                                        name="internal_course_id"
+                                                        class="select select-bordered w-full max-w-full"
+                                                        title="{{ $availableCourses->isEmpty() ? __('Nessun corso completato') : __('Nessuno') }}"
+                                                        @disabled($availableCourses->isEmpty())
+                                                    >
+                                                        @if ($availableCourses->isEmpty())
+                                                            <option value="" data-full-label="{{ __('Nessun corso completato') }}" title="{{ __('Nessun corso completato') }}">{{ __('Nessun corso completato') }}</option>
+                                                        @else
+                                                            <option value="" data-full-label="{{ __('Nessuno') }}" title="{{ __('Nessuno') }}">{{ __('Nessuno') }}</option>
+                                                            @foreach ($availableCourses as $course)
+                                                                @php
+                                                                    $courseFullLabel = ($course['code'] ? $course['code'] . ' - ' : '') . $course['title'] . ($course['completed_at_label'] ? ' - completato il ' . $course['completed_at_label'] : '');
+                                                                @endphp
+                                                                <option value="{{ $course['id'] }}" data-full-label="{{ $courseFullLabel }}" title="{{ $courseFullLabel }}">
+                                                                    {{ \Illuminate\Support\Str::limit($courseFullLabel, 60) }}
+                                                                </option>
+                                                            @endforeach
+                                                        @endif
+                                                    </select>
+                                                </div>
                                             </div>
 
                                             <div class="form-control flex flex-col gap-2 md:col-span-2">
@@ -565,6 +580,8 @@
                     document.addEventListener('DOMContentLoaded', function () {
                         const typeSelect = document.getElementById('account_type');
                         const userOnlyBlocks = document.querySelectorAll('[data-user-only]');
+                        const internalCourseSelect = document.getElementById('certificate_internal_course_id');
+                        const internalCourseTooltip = document.querySelector('[data-certificate-internal-course-tooltip]');
 
                         function toggleUserOnlyFields() {
                             if (!typeSelect) {
@@ -604,6 +621,41 @@
                         if (typeSelect) {
                             toggleUserOnlyFields();
                             typeSelect.addEventListener('change', toggleUserOnlyFields);
+                        }
+
+                        function syncInternalCourseTooltip() {
+                            if (!internalCourseSelect || !internalCourseTooltip) {
+                                return;
+                            }
+
+                            const selectedOption = internalCourseSelect.options[internalCourseSelect.selectedIndex];
+                            const fullLabel = selectedOption?.dataset.fullLabel?.trim() || selectedOption?.textContent?.trim() || '';
+
+                            internalCourseTooltip.setAttribute('data-tip', fullLabel);
+                            internalCourseSelect.setAttribute('title', fullLabel);
+                        }
+
+                        if (internalCourseSelect) {
+                            syncInternalCourseTooltip();
+                            internalCourseSelect.addEventListener('change', syncInternalCourseTooltip);
+                            internalCourseSelect.addEventListener('input', syncInternalCourseTooltip);
+                            internalCourseSelect.addEventListener('focus', syncInternalCourseTooltip);
+                            internalCourseSelect.addEventListener('mouseenter', syncInternalCourseTooltip);
+                            internalCourseSelect.addEventListener('click', syncInternalCourseTooltip);
+                            internalCourseSelect.addEventListener('keyup', syncInternalCourseTooltip);
+
+                            // Keep tooltip/title aligned also when value is set programmatically.
+                            let previousInternalCourseValue = internalCourseSelect.value;
+                            setInterval(() => {
+                                if (!internalCourseSelect) {
+                                    return;
+                                }
+
+                                if (internalCourseSelect.value !== previousInternalCourseValue) {
+                                    previousInternalCourseValue = internalCourseSelect.value;
+                                    syncInternalCourseTooltip();
+                                }
+                            }, 250);
                         }
                     });
                 </script>

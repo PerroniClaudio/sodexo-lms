@@ -184,7 +184,7 @@
             <div class="card-body gap-6">
                 <div>
                     <h2 class="card-title">{{ __('Corsi consigliati per assegnazione') }}</h2>
-                    <p class="text-sm text-base-content/70">{{ __('Sono mostrati i corsi pubblicati che corrispondono ai requisiti mancanti o scaduti per il rischio corrente dell\'utente.') }}</p>
+                    <p class="text-sm text-base-content/70">{{ __('Sono mostrati i corsi pubblicati che corrispondono ai requisiti mancanti o scaduti del rischio corrente e delle variazioni di rischio future dell\'utente.') }}</p>
                 </div>
 
                 {{-- Barra di ricerca --}}
@@ -251,7 +251,7 @@
 
                     {{-- Empty state --}}
                     <div class="hidden rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-sm text-base-content/70" data-courses-empty>
-                        {{ __('Nessun corso compatibile trovato per i requisiti correnti.') }}
+                        {{ __('Nessun corso compatibile trovato per i requisiti correnti o futuri.') }}
                     </div>
 
                     {{-- Paginazione --}}

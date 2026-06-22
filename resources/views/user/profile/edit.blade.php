@@ -50,8 +50,21 @@
                                 <input type="text" class="input input-bordered w-full" value="{{ $user->fiscal_code }}" readonly>
                             </div>
                             <div class="form-control flex flex-col w-full">
+                                <label class="label"><span class="label-text font-semibold">Genere</span></label>
+                                <select name="gender" class="select select-bordered w-full @error('gender') input-error @enderror">
+                                    <option value="">{{ __('profile.options.unspecified') }}</option>
+                                    <option value="M" @selected(old('gender', $user->gender ?? '') == 'M')>{{ __('Maschio') }}</option>
+                                    <option value="F" @selected(old('gender', $user->gender ?? '') == 'F')>{{ __('Femmina') }}</option>
+                                </select>
+                                @error('gender')<span class="text-error text-sm">{{ $message }}</span>@enderror
+                            </div>
+                            <div class="form-control flex flex-col w-full">
                                 <label class="label"><span class="label-text font-semibold">Straniero/Immigrato</span></label>
                                 <input type="text" class="input input-bordered w-full" value="{{ $user->is_foreigner_or_immigrant ? __('profile.options.yes') : __('profile.options.no') }}" readonly>
+                            </div>
+                            <div class="form-control flex flex-col w-full">
+                                <label class="label"><span class="label-text font-semibold">{{ __('Paese di cittadinanza') }}</span></label>
+                                <input type="text" class="input input-bordered w-full" value="{{ $user->citizenshipCountry?->name ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
@@ -64,15 +77,6 @@
                                 <label class="label"><span class="label-text font-semibold">Luogo di nascita</span></label>
                                 <input type="text" name="birth_place" class="input input-bordered w-full @error('birth_place') input-error @enderror" value="{{ old('birth_place', $user->birth_place) }}">
                                 @error('birth_place')<span class="text-error text-sm">{{ $message }}</span>@enderror
-                            </div>
-                            <div class="form-control flex flex-col w-full">
-                                <label class="label"><span class="label-text font-semibold">Genere</span></label>
-                                <select name="gender" class="select select-bordered w-full @error('gender') input-error @enderror">
-                                    <option value="">{{ __('profile.options.unspecified') }}</option>
-                                    <option value="M" @selected(old('gender', $user->gender ?? '') == 'M')>{{ __('Maschio') }}</option>
-                                    <option value="F" @selected(old('gender', $user->gender ?? '') == 'F')>{{ __('Femmina') }}</option>
-                                </select>
-                                @error('gender')<span class="text-error text-sm">{{ $message }}</span>@enderror
                             </div>
                             <div class="form-control flex flex-col w-full">
                                 <label class="label"><span class="label-text font-semibold">Telefono</span></label>
