@@ -141,6 +141,22 @@ it('does not allow downloading another users certificate', function () {
         ->assertNotFound();
 });
 
+it('switches from teacher active role to user completed courses without showing role selection', function () {
+    $user = completedCoursesTestUser('multiuser@example.com', 'MLTUSR80A01H501F');
+    $user->syncRoles(['user', 'teacher']);
+
+    $this->withSession(['active_role' => 'teacher'])
+        ->actingAs($user)
+        ->get(route('teacher.dashboard'))
+        ->assertSee(route('role.switch', ['role' => 'user', 'redirect_route' => 'user.completed-courses.index']), false);
+
+    $this->withSession(['active_role' => 'teacher'])
+        ->actingAs($user)
+        ->get(route('role.switch', ['role' => 'user', 'redirect_route' => 'user.completed-courses.index']))
+        ->assertRedirect(route('user.completed-courses.index'))
+        ->assertSessionHas('active_role', 'user');
+});
+
 function completedCoursesTestUser(string $email = 'user@example.com', string $fiscalCode = 'RSSMRA80A01H501Z'): User
 {
     return User::forceCreate([

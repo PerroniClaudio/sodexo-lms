@@ -22,6 +22,9 @@
                 $coursesRoute = \Illuminate\Support\Facades\Route::has($navigationRoutePrefix . '.courses.index')
                     ? $navigationRoutePrefix . '.courses.index'
                     : 'user.courses.index';
+                $completedCoursesRoute = $navigationRoutePrefix === 'user' || ! auth()->user()?->hasRole('user')
+                    ? route('user.completed-courses.index')
+                    : route('role.switch', ['role' => 'user', 'redirect_route' => 'user.completed-courses.index']);
                 $profileRoute = \Illuminate\Support\Facades\Route::has($navigationRoutePrefix . '.profile.edit')
                     ? $navigationRoutePrefix . '.profile.edit'
                     : 'user.profile.edit';
@@ -48,7 +51,7 @@
                         </a>
                     </li>
                     <li class="w-full">
-                        <a href="{{ route('user.completed-courses.index') }}" @class([
+                        <a href="{{ $completedCoursesRoute }}" @class([
                             'w-full',
                             'menu-active' => request()->routeIs('user.completed-courses.*'),
                         ])>

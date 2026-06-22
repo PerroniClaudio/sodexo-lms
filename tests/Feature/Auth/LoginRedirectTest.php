@@ -30,7 +30,7 @@ test('admin users are redirected to dashboard after login', function () {
         'password' => 'password',
     ]);
 
-    $response->assertRedirect(route('dashboard'));
+    $response->assertRedirect(route('admin.dashboard'));
     $this->assertAuthenticatedAs($user);
 });
 
@@ -53,7 +53,7 @@ test('users are redirected to courses area after login', function () {
         'password' => 'password',
     ]);
 
-    $response->assertRedirect(route('user.courses.index'));
+    $response->assertRedirect(route('user.dashboard'));
     $this->assertAuthenticatedAs($user);
 });
 
@@ -79,7 +79,7 @@ test('successful login stores access log entry', function () {
             'password' => 'password',
         ]);
 
-    $response->assertRedirect(route('user.courses.index'));
+    $response->assertRedirect(route('user.dashboard'));
 
     $this->assertDatabaseHas('users_access_log', [
         'user_id' => $user->id,
@@ -124,4 +124,30 @@ test('authenticated non admin users visiting login are redirected to reserved ar
     $response = $this->actingAs($user)->get('/login');
 
     $response->assertRedirect(route('reserved-area'));
+});
+
+test('multi role users choose active role before dashboard', function () {
+    $user = User::query()->create([
+        'email' => 'multi@example.com',
+        'password' => Hash::make('password'),
+        'email_verified_at' => now(),
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+        'name' => 'Multi',
+        'surname' => 'Role',
+        'fiscal_code' => 'MLTRLE80A01H501Z',
+        'is_foreigner_or_immigrant' => false,
+    ]);
+    $user->assignRole(['user', 'teacher']);
+
+    $this->post('/login', [
+        'email' => 'multi@example.com',
+        'password' => 'password',
+    ])->assertRedirect(route('role.select'));
+
+    $this->post(route('role.select.update'), [
+        'role' => 'teacher',
+    ])->assertRedirect(route('teacher.courses.index'));
+
+    expect(session('active_role'))->toBe('teacher');
 });

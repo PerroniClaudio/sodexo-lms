@@ -44,7 +44,7 @@ use App\Models\Module;
 use App\Services\ModuleValidation\ModuleValidatorService;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
+Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
     Route::group(['prefix' => 'admin', 'as' => 'admin.'], function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/dashboard/calendar-events', [DashboardController::class, 'calendarEvents'])->name('dashboard.calendar-events');
@@ -169,13 +169,14 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::get('/video-reports/{videoReportRequest}/download', [VideoReportController::class, 'download'])->name('video-reports.download');
         Route::resource('users', UserController::class)->except(['show']);
         Route::put('users/{user}/user-section', [UserController::class, 'updateUserSection'])->name('users.user-section.update');
+        Route::put('users/{user}/permissions-section', [UserController::class, 'updatePermissionsSection'])->name('users.permissions-section.update');
         Route::put('users/{user}/residence-section', [UserController::class, 'updateResidenceSection'])->name('users.residence-section.update');
         Route::put('users/{user}/work-section', [UserController::class, 'updateWorkSection'])->name('users.work-section.update');
         Route::post('users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
         Route::get('users/{user}/risk-course-selection', [UserController::class, 'riskCourseSelection'])->name('users.risk-course-selection');
         Route::post('users/{user}/risk-course-selection/enroll', [UserController::class, 'enrollRiskCourse'])->name('users.risk-course-selection.enroll');
 
-        Route::middleware('role:superadmin')->group(function () {
+        Route::middleware('active.role:superadmin')->group(function () {
             Route::get('/document-conversion-jobs', [DocumentConversionJobDebugController::class, 'index'])
                 ->name('document-conversion-jobs.index');
             Route::post('/document-conversion-jobs/{documentConversionJob}/retry', [DocumentConversionJobDebugController::class, 'retry'])
@@ -331,19 +332,19 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::delete('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}', [ModuleQuizController::class, 'deleteAnswerApi'])->name('courses.modules.quiz.answers.delete');
             Route::post('/courses/{course}/modules/{module}/quiz/questions/{question}/answers/{answer}/set-correct', [ModuleQuizController::class, 'setCorrectAnswerApi'])->name('courses.modules.quiz.answers.set-correct');
             Route::get('/satisfaction-survey/questions', [SatisfactionSurveyController::class, 'indexApi'])
-                ->middleware('role:superadmin')
+                ->middleware('active.role:superadmin')
                 ->name('satisfaction-survey.questions.index');
             Route::post('/satisfaction-survey/questions', [SatisfactionSurveyController::class, 'storeApi'])
-                ->middleware('role:superadmin')
+                ->middleware('active.role:superadmin')
                 ->name('satisfaction-survey.questions.store');
             Route::put('/satisfaction-survey/questions/{question}', [SatisfactionSurveyController::class, 'updateApi'])
-                ->middleware('role:superadmin')
+                ->middleware('active.role:superadmin')
                 ->name('satisfaction-survey.questions.update');
             Route::delete('/satisfaction-survey/questions/{question}', [SatisfactionSurveyController::class, 'destroyApi'])
-                ->middleware('role:superadmin')
+                ->middleware('active.role:superadmin')
                 ->name('satisfaction-survey.questions.destroy');
             Route::patch('/satisfaction-survey/questions/reorder', [SatisfactionSurveyController::class, 'reorderApi'])
-                ->middleware('role:superadmin')
+                ->middleware('active.role:superadmin')
                 ->name('satisfaction-survey.questions.reorder');
             Route::get('/courses/{course}/modules/{module}/max-score', function (Course $course, Module $module) {
                 abort_unless($module->belongsTo === (string) $course->getKey(), 404);

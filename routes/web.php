@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\RoleSelectionController;
 use App\Models\CourseClassSchedule;
 use App\Models\CourseClassTeacher;
 use App\Models\Module;
@@ -12,9 +13,15 @@ Route::get('/', function () {
     return view('homepage.index');
 });
 
-Route::middleware(['auth', 'role:admin|superadmin'])->get('/dashboard', function () {
+Route::middleware(['auth', 'active.role:admin|superadmin'])->get('/dashboard', function () {
     return redirect()->route('admin.dashboard');
 })->name('dashboard');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/seleziona-ruolo', [RoleSelectionController::class, 'edit'])->name('role.select');
+    Route::post('/seleziona-ruolo', [RoleSelectionController::class, 'update'])->name('role.select.update');
+    Route::get('/seleziona-ruolo/{role}', [RoleSelectionController::class, 'switch'])->name('role.switch');
+});
 
 Route::middleware('auth')->get('/area-riservata', function (CourseClassScheduleResolver $scheduleResolver) {
     $user = request()->user();

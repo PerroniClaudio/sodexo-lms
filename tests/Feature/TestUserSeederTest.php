@@ -2,9 +2,11 @@
 
 use App\Enums\UserStatus;
 use App\Models\User;
+use Database\Seeders\MultiRoleUserSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Database\Seeders\TestUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 
 uses(RefreshDatabase::class);
 
@@ -25,4 +27,18 @@ test('it creates one test user for each configured role', function () {
         expect($user->hasRole($role))->toBeTrue();
         expect($user->account_state)->toBe(UserStatus::ACTIVE);
     }
+});
+
+test('it creates the multi role test user', function () {
+    $this->seed([
+        RoleAndPermissionSeeder::class,
+        MultiRoleUserSeeder::class,
+    ]);
+
+    $user = User::query()->where('email', 'multiuser@test.com')->first();
+
+    expect($user)->not->toBeNull();
+    expect($user->hasRole('user'))->toBeTrue();
+    expect($user->hasRole('teacher'))->toBeTrue();
+    expect(Hash::check('Multiuser@2026', $user->password))->toBeTrue();
 });

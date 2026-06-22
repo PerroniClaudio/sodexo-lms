@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\StartPendingDocumentConversionJobs;
+use App\Http\Middleware\EnsureActiveRole;
 use App\Http\Middleware\EnsureCourseVisibleToUser;
 use App\Http\Middleware\EnsureUserOnboarded;
 use App\Http\Middleware\IncreaseVideoUploadLimitMiddleware;
@@ -34,7 +35,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo(function (Request $request): string {
             $user = $request->user();
 
-            if ($user?->hasAnyRole(['admin', 'superadmin'])) {
+            if (($user?->getRoleNames()->count() ?? 0) > 1 && ! $request->session()->has('active_role')) {
+                return route('role.select');
+            }
+
+            $activeRole = $request->session()->get('active_role') ?? $user?->getRoleNames()->first();
+
+            if (in_array($activeRole, ['admin', 'superadmin'], true)) {
                 return route('dashboard');
             }
 
@@ -44,6 +51,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Registra middleware alias di Spatie Permission e custom
         $middleware->alias([
             'role' => RoleMiddleware::class,
+            'active.role' => EnsureActiveRole::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             'uploadlimit' => IncreaseVideoUploadLimitMiddleware::class,
@@ -68,7 +76,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
             $user = $request->user();
 
-            $redirectTo = $user?->hasAnyRole(['admin', 'superadmin'])
+            $activeRole = $request->session()->get('active_role') ?? $user?->getRoleNames()->first();
+
+            $redirectTo = in_array($activeRole, ['admin', 'superadmin'], true)
                 ? route('dashboard')
                 : route('reserved-area');
 

@@ -79,7 +79,7 @@ function makeAdminUserStorePayload(array $overrides = []): array
     $jobTask = JobTask::factory()->create();
 
     return array_merge([
-        'account_type' => 'user',
+        'roles' => ['user'],
         'email' => fake()->unique()->safeEmail(),
         'name' => fake()->firstName(),
         'surname' => fake()->lastName(),
@@ -99,7 +99,7 @@ function makeAdminUserStorePayload(array $overrides = []): array
     ], $overrides);
 }
 
-it('shows the current spatie role in the account type field', function () {
+it('shows current spatie roles in the permissions section', function () {
     actingAsRole('superadmin');
 
     $user = makeStaffUser([
@@ -110,11 +110,11 @@ it('shows the current spatie role in the account type field', function () {
     ]);
     $user->assignRole('teacher');
 
-    $response = $this->get(route('admin.users.edit', $user));
+    $response = $this->get(route('admin.users.edit', $user).'?section=permissions');
 
     $response->assertOk();
-    $response->assertSee('option value="teacher" selected', escape: false);
-    $response->assertDontSee('option value="user" selected', escape: false);
+    $response->assertSee('name="roles[]"', escape: false);
+    $response->assertSee('value="teacher"', escape: false);
 });
 
 it('does not show an editable language verification field on admin user creation form', function () {
@@ -201,7 +201,7 @@ it('marks the job unit selector as required for worker users', function () {
     $response->assertSee('name="job_tasks[1][job_task_id]"', escape: false);
 });
 
-it('keeps the current role when updating other fields without changing account type', function () {
+it('keeps the current role when updating other fields without changing roles', function () {
     actingAsRole('admin');
 
     $user = makeStaffUser([
@@ -213,7 +213,7 @@ it('keeps the current role when updating other fields without changing account t
     $user->assignRole('teacher');
 
     $response = $this->put(route('admin.users.update', $user), [
-        'account_type' => 'teacher',
+        'roles' => ['teacher'],
         'email' => 'teacher.updated@example.test',
         'name' => 'Mario Updated',
         'surname' => 'Rossi',
@@ -230,7 +230,7 @@ it('keeps the current role when updating other fields without changing account t
     expect($user->getRoleNames()->all())->toBe(['teacher']);
 });
 
-it('allows a superadmin to change the role from the edit page', function () {
+it('allows a superadmin to change roles from the permissions section', function () {
     actingAsRole('superadmin');
 
     $user = makeStaffUser([
@@ -241,20 +241,16 @@ it('allows a superadmin to change the role from the edit page', function () {
     ]);
     $user->assignRole('teacher');
 
-    $response = $this->put(route('admin.users.update', $user), [
-        'account_type' => 'tutor',
-        'email' => 'teacher@example.test',
-        'name' => 'Mario',
-        'surname' => 'Rossi',
-        'fiscal_code' => 'RSSMRA80A01H501Z',
+    $response = $this->put(route('admin.users.permissions-section.update', $user), [
+        'roles' => ['tutor'],
     ]);
 
-    $response->assertRedirect(route('admin.users.index'));
+    $response->assertRedirect(route('admin.users.edit', ['user' => $user, 'section' => 'permissions']));
 
     expect($user->fresh()->getRoleNames()->all())->toBe(['tutor']);
 });
 
-it('does not show an editable account type selector to admin users', function () {
+it('does not show editable role checkboxes to admin users', function () {
     actingAsRole('admin');
 
     $user = makeStaffUser([
@@ -265,11 +261,11 @@ it('does not show an editable account type selector to admin users', function ()
     ]);
     $user->assignRole('teacher');
 
-    $response = $this->get(route('admin.users.edit', $user));
+    $response = $this->get(route('admin.users.edit', $user).'?section=permissions');
 
     $response->assertOk();
-    $response->assertDontSee('select name="account_type"', escape: false);
-    $response->assertSee('type="hidden" name="account_type" value="teacher"', escape: false);
+    $response->assertSee('name="roles[]" value="teacher"', escape: false);
+    $response->assertSee('disabled', escape: false);
 });
 
 it('prevents an admin from changing the role via a crafted request', function () {
@@ -283,16 +279,12 @@ it('prevents an admin from changing the role via a crafted request', function ()
     ]);
     $user->assignRole('teacher');
 
-    $response = $this->from(route('admin.users.edit', $user))->put(route('admin.users.update', $user), [
-        'account_type' => 'tutor',
-        'email' => 'teacher@example.test',
-        'name' => 'Mario',
-        'surname' => 'Rossi',
-        'fiscal_code' => 'RSSMRA80A01H501Z',
+    $response = $this->from(route('admin.users.edit', ['user' => $user, 'section' => 'permissions']))->put(route('admin.users.permissions-section.update', $user), [
+        'roles' => ['tutor'],
     ]);
 
-    $response->assertRedirect(route('admin.users.edit', $user));
-    $response->assertSessionHasErrors('account_type');
+    $response->assertRedirect(route('admin.users.edit', ['user' => $user, 'section' => 'permissions']));
+    $response->assertSessionHasErrors('roles.0');
 
     expect($user->fresh()->getRoleNames()->all())->toBe(['teacher']);
 });
@@ -312,7 +304,7 @@ it('maps teacher selection to docente when the database only has the legacy role
     $user->assignRole('user');
 
     $response = $this->put(route('admin.users.update', $user), [
-        'account_type' => 'teacher',
+        'roles' => ['teacher'],
         'email' => 'docente@example.test',
         'name' => 'Giulia',
         'surname' => 'Bianchi',
@@ -337,7 +329,7 @@ it('rejects worker updates without active job task coverage', function () {
     $jobTaskId = $user->jobTasks->first()->getKey();
 
     $response = $this->from(route('admin.users.edit', $user))->put(route('admin.users.update', $user), [
-        'account_type' => 'user',
+        'roles' => ['user'],
         'email' => 'worker.validation@example.test',
         'name' => 'Paolo',
         'surname' => 'Neri',
@@ -385,7 +377,7 @@ it('warns when a worker update changes the current and future calculated risk', 
     ]);
 
     $response = $this->put(route('admin.users.update', $user), [
-        'account_type' => 'user',
+        'roles' => ['user'],
         'email' => 'worker.risk-change@example.test',
         'name' => 'Marta',
         'surname' => 'Blu',

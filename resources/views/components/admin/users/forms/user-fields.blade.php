@@ -3,47 +3,8 @@
     'languageLevels' => collect(),
 ])
 
-@php
-    $availableTeacherAccountType = \Spatie\Permission\Models\Role::query()->where('name', 'teacher')->exists()
-        ? 'teacher'
-        : 'docente';
-    $selectedAccountType = old('account_type', $user?->getRoleNames()->first() ?? 'user');
-    $canManageAccountType = auth()->user()?->hasRole('superadmin') ?? false;
-    $accountTypeLabels = collect([
-        'user' => __('profile.options.account.user'),
-        'admin' => __('profile.options.account.admin'),
-        $availableTeacherAccountType => __('profile.options.account.teacher'),
-        'tutor' => __('profile.options.account.tutor'),
-    ]);
-
-    if ($selectedAccountType === 'docente' && ! $accountTypeLabels->has('docente')) {
-        $accountTypeLabels->put('docente', __('profile.options.account.teacher'));
-    }
-
-    if ($selectedAccountType === 'superadmin') {
-        $accountTypeLabels->put('superadmin', __('Superadmin'));
-    }
-@endphp
-
 <div class="flex flex-col gap-6">
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div class="form-control">
-            <label for="account_type" class="label">
-                <span class="label-text font-semibold">{{ __('profile.fields.account_type') }} <span class="text-error">*</span></span>
-            </label>
-            @if (! $user || $canManageAccountType)
-                <select name="account_type" id="account_type" class="select select-bordered w-full" required>
-                    @foreach ($accountTypeLabels as $accountTypeValue => $accountTypeLabel)
-                        <option value="{{ $accountTypeValue }}" @selected($selectedAccountType === $accountTypeValue)>{{ $accountTypeLabel }}</option>
-                    @endforeach
-                </select>
-            @else
-                <input type="hidden" name="account_type" value="{{ $selectedAccountType }}">
-                <input type="text" value="{{ $accountTypeLabels->get($selectedAccountType, ucfirst($selectedAccountType)) }}" class="input input-bordered w-full" readonly>
-            @endif
-            @error('account_type')<span class="text-error text-sm">{{ $message }}</span>@enderror
-        </div>
-
         <div class="form-control">
             <label for="email" class="label">
                 <span class="label-text font-semibold">Email</span>

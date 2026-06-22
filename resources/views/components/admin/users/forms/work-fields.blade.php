@@ -9,7 +9,7 @@
 ])
 
 @php
-    $selectedAccountType = old('account_type', $user?->getRoleNames()->first() ?? 'user');
+    $isWorkerAccount = $user?->hasRole('user') ?? collect(old('roles', ['user']))->contains('user');
     $jobTaskAssignments = collect(old('job_tasks', isset($user)
         ? $user->jobTasks
             ->sortBy(fn ($task) => (string) ($task->pivot->starts_at ?? ''))
@@ -209,7 +209,7 @@
         :units="$jobUnits"
         :selectedId="old('job_unit_id', $user->job_unit_id ?? null)"
         :label="__('Unita Produttiva')"
-        :required="$selectedAccountType === 'user'"
+        :required="$isWorkerAccount"
     />
 </div>
 

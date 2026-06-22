@@ -6,7 +6,7 @@ use App\Http\Controllers\User\CourseEnrollmentController;
 use App\Http\Controllers\User\UserController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'role:tutor|superadmin'])->group(function () {
+Route::middleware(['auth', 'active.role:tutor|superadmin'])->group(function () {
     Route::group(['prefix' => 'tutor', 'as' => 'tutor.'], function () {
         Route::get('dashboard', [UserController::class, 'tutorDashboard'])->name('dashboard');
         Route::get('dashboard/calendar-events', [UserController::class, 'tutorCalendarEvents'])->name('dashboard.calendar-events');
