@@ -81,10 +81,13 @@
                     $jobConfigurationMenuOpen = $matchesRoutePatterns($jobConfigurationMenuPatterns);
                     $configurationMenuOpen = $matchesRoutePatterns($configurationMenuPatterns);
                     $toolsMenuOpen = $matchesRoutePatterns($toolsMenuPatterns);
+                    $activeRole = session('active_role') ?? auth()->user()?->getRoleNames()->first();
+                    $canAccessAdminMenu = in_array($activeRole, ['admin', 'superadmin'], true);
+                    $canAccessSuperadminMenu = $activeRole === 'superadmin';
                 @endphp
 
                 <ul class="menu w-full gap-1">
-                    @role(['admin', 'superadmin'])
+                    @if($canAccessAdminMenu)
                         <li class="w-full">
                             <a
                                 href="{{ route('admin.dashboard') }}"
@@ -238,9 +241,9 @@
                                 </ul>
                             </details>
                         </li>
-                    @endrole
+                    @endif
 
-                    @role('superadmin')
+                    @if($canAccessSuperadminMenu)
                         <li>
                             <details @if($configurationMenuOpen) open @endif>
                                 <summary @class(['menu-active' => $configurationMenuOpen])>
@@ -380,7 +383,7 @@
                                 </ul>
                             </details>
                         </li>
-                    @endrole
+                    @endif
                 </ul>
 
                 @auth
