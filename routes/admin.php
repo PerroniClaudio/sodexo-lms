@@ -33,6 +33,9 @@ use App\Http\Controllers\Admin\RegiaController;
 use App\Http\Controllers\Admin\RiskBasedRequirementController;
 use App\Http\Controllers\Admin\SatisfactionSurveyController;
 use App\Http\Controllers\Admin\ScormPackageController;
+use App\Http\Controllers\Admin\TrainingPathController;
+use App\Http\Controllers\Admin\TrainingPathDocumentController;
+use App\Http\Controllers\Admin\TrainingPathEnrollmentController;
 use App\Http\Controllers\Admin\UserCertificateController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VideoController;
@@ -97,6 +100,17 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
         Route::get('/live-stream/{module}/player', [LiveStreamController::class, 'adminPlayer'])->name('live-stream.player');
         Route::get('/courses/create', [CourseController::class, 'create'])->name('courses.create');
         Route::post('/courses', [CourseController::class, 'store'])->name('courses.store');
+        Route::get('/training-paths', [TrainingPathController::class, 'index'])->name('training-paths.index');
+        Route::get('/training-paths/create', [TrainingPathController::class, 'create'])->name('training-paths.create');
+        Route::post('/training-paths', [TrainingPathController::class, 'store'])->name('training-paths.store');
+        Route::get('/training-paths/{trainingPath}/edit', [TrainingPathController::class, 'edit'])->name('training-paths.edit');
+        Route::put('/training-paths/{trainingPath}/details', [TrainingPathController::class, 'updateDetails'])->name('training-paths.details.update');
+        Route::put('/training-paths/{trainingPath}/courses', [TrainingPathController::class, 'updateCourses'])->name('training-paths.courses.update');
+        Route::put('/training-paths/{trainingPath}/recipients', [TrainingPathController::class, 'updateRecipients'])->name('training-paths.recipients.update');
+        Route::post('/training-paths/{trainingPath}/documents', [TrainingPathDocumentController::class, 'store'])->name('training-paths.documents.store');
+        Route::get('/training-paths/{trainingPath}/documents/{document}', [TrainingPathDocumentController::class, 'download'])->name('training-paths.documents.download');
+        Route::delete('/training-paths/{trainingPath}/documents/{document}', [TrainingPathDocumentController::class, 'destroy'])->name('training-paths.documents.destroy');
+        Route::delete('/training-paths/{trainingPath}', [TrainingPathController::class, 'destroy'])->name('training-paths.destroy');
         Route::post('/courses/{course}/duplicate', [CourseController::class, 'duplicate'])
             ->middleware('permission:duplicate courses')
             ->name('courses.duplicate');
@@ -285,6 +299,12 @@ Route::middleware(['auth', 'role:admin|superadmin'])->group(function () {
             Route::post('/courses/{course}/enrollments', [CourseEnrollmentController::class, 'storeApi'])->name('courses.enrollments.store');
             Route::post('/courses/{course}/enrollments/{enrollment}/restore', [CourseEnrollmentController::class, 'restoreApi'])->name('courses.enrollments.restore');
             Route::delete('/courses/{course}/enrollments/{enrollment}', [CourseEnrollmentController::class, 'destroyApi'])->name('courses.enrollments.destroy');
+            Route::get('/training-paths/{trainingPath}/enrollments', [TrainingPathEnrollmentController::class, 'indexApi'])->name('training-paths.enrollments.index');
+            Route::get('/training-paths/{trainingPath}/available-courses', [TrainingPathController::class, 'availableCoursesApi'])->name('training-paths.available-courses.index');
+            Route::get('/training-paths/{trainingPath}/enrollments/search-users', [TrainingPathEnrollmentController::class, 'searchUsersApi'])->name('training-paths.enrollments.search-users');
+            Route::post('/training-paths/{trainingPath}/enrollments', [TrainingPathEnrollmentController::class, 'storeApi'])->name('training-paths.enrollments.store');
+            Route::post('/training-paths/{trainingPath}/enrollments/{enrollment}/restore', [TrainingPathEnrollmentController::class, 'restoreApi'])->name('training-paths.enrollments.restore');
+            Route::delete('/training-paths/{trainingPath}/enrollments/{enrollment}', [TrainingPathEnrollmentController::class, 'destroyApi'])->name('training-paths.enrollments.destroy');
             Route::get('/courses/{course}/teacher-enrollments', [CourseTeacherEnrollmentController::class, 'indexApi'])->name('courses.teacher-enrollments.index');
             Route::get('/courses/{course}/teacher-enrollments/search-users', [CourseTeacherEnrollmentController::class, 'searchUsersApi'])->name('courses.teacher-enrollments.search-users');
             Route::post('/courses/{course}/teacher-enrollments', [CourseTeacherEnrollmentController::class, 'storeApi'])->name('courses.teacher-enrollments.store');
