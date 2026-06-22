@@ -69,6 +69,17 @@
                                             {{ __('Richiesto: :type', ['type' => \Illuminate\Support\Str::lower($riskBasedRequirement['required_course_validity_type_label'])]) }}
                                         </p>
                                     @endif
+                                    @if ($riskBasedRequirement['status'] === 'missing')
+                                        @if (($riskBasedRequirement['has_associated_course'] ?? false) && ! empty($riskBasedRequirement['associated_course_titles'] ?? []))
+                                            <p class="text-sm text-info">
+                                                {{ __('Corso già associato: :courses', ['courses' => implode(', ', $riskBasedRequirement['associated_course_titles'])]) }}
+                                            </p>
+                                        @else
+                                            <p class="text-sm text-base-content/70">
+                                                {{ __('Corso associato: nessuno') }}
+                                            </p>
+                                        @endif
+                                    @endif
                                 </div>
                             </div>
                         </div>

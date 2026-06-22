@@ -4,6 +4,7 @@ use App\Enums\HierarchyLevel;
 use App\Enums\InclusionType;
 use App\Enums\RiskLevel;
 use App\Models\Course;
+use App\Models\CourseEnrollment;
 use App\Models\DocumentType;
 use App\Models\JobRole;
 use App\Models\JobSector;
@@ -485,4 +486,69 @@ it('shows future risk transitions on the manual course selection page', function
         ->assertSeeText('Variazioni di rischio future')
         ->assertSeeText($transitionStartDate->format('d/m/Y'))
         ->assertSeeText(RiskLevel::MEDIUM->label());
+});
+
+it('shows whether a missing requirement already has an associated enrolled course', function () {
+    $user = makeCertificateWorkerUser();
+    prepareRiskContextForUser($user);
+
+    $missingRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::HIGH)
+        ->create([
+            'name' => 'Formazione obbligatoria mancante',
+        ]);
+
+    $course = Course::factory()->create([
+        'title' => 'Corso sicurezza associato',
+        'status' => 'published',
+    ]);
+
+    $course->riskBasedRequirements()->attach($missingRequirement->getKey(), [
+        'course_validity_types' => json_encode(['first_achievement']),
+    ]);
+
+    CourseEnrollment::query()->create([
+        'user_id' => $user->getKey(),
+        'course_id' => $course->getKey(),
+        'status' => CourseEnrollment::STATUS_ASSIGNED,
+        'assigned_at' => now(),
+    ]);
+
+    $response = $this->get(route('admin.users.risk-course-selection', $user));
+
+    $response->assertOk()
+        ->assertSeeText('Corso già associato: Corso sicurezza associato');
+});
+
+it('marks recommended courses as already enrolled in the api response', function () {
+    $user = makeCertificateWorkerUser();
+    prepareRiskContextForUser($user);
+
+    $missingRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::HIGH)
+        ->create([
+            'name' => 'Corso da assegnare',
+        ]);
+
+    $course = Course::factory()->create([
+        'title' => 'Corso con iscrizione attiva',
+        'status' => 'published',
+    ]);
+
+    $course->riskBasedRequirements()->attach($missingRequirement->getKey(), [
+        'course_validity_types' => json_encode(['first_achievement']),
+    ]);
+
+    CourseEnrollment::query()->create([
+        'user_id' => $user->getKey(),
+        'course_id' => $course->getKey(),
+        'status' => CourseEnrollment::STATUS_ASSIGNED,
+        'assigned_at' => now(),
+    ]);
+
+    $response = $this->getJson(route('admin.api.users.recommended-courses', $user));
+
+    $response->assertOk()
+        ->assertJsonPath('data.0.title', 'Corso con iscrizione attiva')
+        ->assertJsonPath('data.0.is_enrolled', true);
 });

@@ -95,18 +95,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 .map(req => `<span class="badge badge-sm badge-outline h-fit">${escapeHtml(req.name)}</span>`)
                 .join(' ');
 
-            const enrollButton = course.eligible_to_enroll
-                ? `<button 
+            const enrollmentBadge = course.is_enrolled
+                ? `<span class="badge badge-sm badge-info badge-soft h-fit mt-2">${'Utente già iscritto'}</span>`
+                : '';
+
+            let enrollButton = '';
+
+            if (course.is_enrolled) {
+                enrollButton = `<button type="button" class="btn btn-disabled btn-sm" disabled>
+                    ${'Già iscritto'}
+                </button>`;
+            } else if (course.eligible_to_enroll) {
+                enrollButton = `<button 
                     type="button" 
                     class="btn btn-primary btn-sm" 
                     data-enroll-course-id="${course.course_id}"
                     data-enroll-course-title="${escapeHtml(course.title)}"
                 >
                     ${'Assegna corso'}
-                </button>`
-                : `<button type="button" class="btn btn-disabled btn-sm" disabled title="${escapeHtml(course.ineligible_reason || '')}">
+                </button>`;
+            } else {
+                enrollButton = `<button type="button" class="btn btn-disabled btn-sm" disabled title="${escapeHtml(course.ineligible_reason || '')}">
                     ${'Non idoneo'}
                 </button>`;
+            }
 
             const warningMessage = !course.eligible_to_enroll && course.ineligible_reason
                 ? `<div class="text-xs text-warning mt-1">${escapeHtml(course.ineligible_reason)}</div>`
@@ -116,6 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <tr class="hover:bg-base-200">
                     <td>
                         <div class="font-semibold">${escapeHtml(course.title)}</div>
+                        ${enrollmentBadge}
                         ${course.description ? `<div class="text-sm text-base-content/70 mt-1">${escapeHtml(course.description)}</div>` : ''}
                     </td>
                     <td>

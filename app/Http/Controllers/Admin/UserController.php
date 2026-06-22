@@ -418,6 +418,21 @@ class UserController extends Controller
         $user->loadMissing(['jobSector', 'jobTasks', 'roles']);
 
         $riskSummary = $this->buildRiskSummary($user);
+        $enrolledCoursesByRequirement = $this->enrolledCourseTitlesByRequirement($user);
+        $riskSummary['risk_based_requirements'] = collect($riskSummary['risk_based_requirements'])
+            ->map(function (array $requirement) use ($enrolledCoursesByRequirement): array {
+                $isMissingRequirement = ($requirement['status'] ?? null) === 'missing';
+                $associatedCourseTitles = $isMissingRequirement
+                    ? ($enrolledCoursesByRequirement[(int) ($requirement['risk_based_requirement_id'] ?? 0)] ?? [])
+                    : [];
+
+                $requirement['has_associated_course'] = $associatedCourseTitles !== [];
+                $requirement['associated_course_titles'] = $associatedCourseTitles;
+
+                return $requirement;
+            })
+            ->all();
+
         $requirementNeeds = collect($riskSummary['risk_based_requirements'])
             ->filter(fn (array $requirement): bool => in_array($requirement['status'], ['missing', 'expired'], true))
             ->keyBy('risk_based_requirement_id');
@@ -520,6 +535,7 @@ class UserController extends Controller
         $requirementNeeds = collect($riskSummary['risk_based_requirements'])
             ->filter(fn (array $requirement): bool => in_array($requirement['status'], ['missing', 'expired'], true))
             ->keyBy('risk_based_requirement_id');
+        $enrolledCourseIds = $this->enrolledCourseIds($user);
 
         if ($requirementNeeds->isEmpty()) {
             return response()->json([
@@ -559,7 +575,7 @@ class UserController extends Controller
         }
 
         // Calcola i dati per ogni corso prima dell'ordinamento
-        $coursesData = $query->get()->map(function (Course $course) use ($requirementNeeds, $user): ?array {
+        $coursesData = $query->get()->map(function (Course $course) use ($enrolledCourseIds, $requirementNeeds, $user): ?array {
             $matchingRequirement = $course->riskBasedRequirements
                 ->first(fn (RiskBasedRequirement $requirement): bool => $requirementNeeds->has($requirement->getKey()));
 
@@ -581,6 +597,7 @@ class UserController extends Controller
             }
 
             $eligibleToEnroll = $this->courseRiskRequirementService->userCanEnrollInCourse($user, $course);
+            $isEnrolled = in_array((int) $course->getKey(), $enrolledCourseIds, true);
 
             // Ottieni tutti i requisiti coperti dal corso
             $coveredRequirements = $course->riskBasedRequirements
@@ -622,6 +639,7 @@ class UserController extends Controller
                 'prerequisites_label' => empty($prerequisites)
                     ? '—'
                     : __('Livelli iniziali ammessi: :levels', ['levels' => implode(', ', $prerequisites)]),
+                'is_enrolled' => $isEnrolled,
                 'eligible_to_enroll' => $eligibleToEnroll,
                 'ineligible_reason' => $eligibleToEnroll
                     ? null
@@ -1071,5 +1089,56 @@ class UserController extends Controller
     private function riskLabelFromValue(?string $riskLevel): ?string
     {
         return RiskLevel::tryFrom((string) $riskLevel)?->label();
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function enrolledCourseIds(User $user): array
+    {
+        return $user->courseEnrollments()
+            ->whereNotIn('status', [
+                CourseEnrollment::STATUS_CANCELLED,
+                CourseEnrollment::STATUS_EXPIRED,
+            ])
+            ->pluck('course_id')
+            ->map(fn (mixed $courseId): int => (int) $courseId)
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<int, string>>
+     */
+    private function enrolledCourseTitlesByRequirement(User $user): array
+    {
+        $courseTitlesByRequirement = $user->courseEnrollments()
+            ->whereNotIn('status', [
+                CourseEnrollment::STATUS_CANCELLED,
+                CourseEnrollment::STATUS_EXPIRED,
+            ])
+            ->with([
+                'course:id,title',
+                'course.riskBasedRequirements:id,name',
+            ])
+            ->get()
+            ->reduce(function (array $carry, CourseEnrollment $courseEnrollment): array {
+                $course = $courseEnrollment->course;
+
+                if ($course === null) {
+                    return $carry;
+                }
+
+                foreach ($course->riskBasedRequirements as $riskBasedRequirement) {
+                    $requirementId = (int) $riskBasedRequirement->getKey();
+                    $carry[$requirementId] ??= [];
+                    $carry[$requirementId][$course->getKey()] = $course->title;
+                }
+
+                return $carry;
+            }, []);
+
+        return collect($courseTitlesByRequirement)
+            ->map(fn (array $titles): array => array_values($titles))
+            ->all();
     }
 }
