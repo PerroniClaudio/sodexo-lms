@@ -145,9 +145,10 @@ class UserController extends Controller
     public function store(UserRequest $request): RedirectResponse
     {
         $data = $this->userGeographyMapper->toHomeIds($request->validated());
-        $accountType = $this->resolveAccountType($data['account_type'] ?? 'user');
+        $roles = $this->resolveRoles($data['roles'] ?? ['user']);
+        $isWorkerAccount = in_array('user', $roles, true);
         $jobTaskAssignments = $data['job_tasks'] ?? [];
-        unset($data['account_type']);
+        unset($data['roles']);
         unset($data['job_tasks']);
         $data['declared_language_level_id'] = $data['declared_language_level_id']
             ?? LanguageLevel::defaultOrFirst()?->getKey();
@@ -174,10 +175,10 @@ class UserController extends Controller
                 ->withErrors(['geography' => 'Attenzione: città, provincia, regione e nazione non sono coerenti tra loro.']);
         }
 
-        $user = DB::transaction(function () use ($accountType, $data, $jobTaskAssignments): User {
+        $user = DB::transaction(function () use ($data, $isWorkerAccount, $jobTaskAssignments, $roles): User {
             $user = User::create($data);
-            $user->assignRole($accountType);
-            $this->userJobAssignmentService->syncAssignments($user, $jobTaskAssignments, $accountType === 'user');
+            $user->syncRoles($roles);
+            $this->userJobAssignmentService->syncAssignments($user, $jobTaskAssignments, $isWorkerAccount);
 
             return $user;
         });
@@ -235,9 +236,10 @@ class UserController extends Controller
     {
         $beforeRiskSnapshot = $this->captureRiskSnapshot($user->fresh(['jobSector', 'jobTasks', 'roles']));
         $data = $this->userGeographyMapper->toHomeIds($request->validated());
-        $accountType = $this->resolveAccountType($data['account_type'] ?? $user->getRoleNames()->first() ?? 'user');
+        $roles = $this->resolveRoles($data['roles'] ?? $user->getRoleNames()->all());
+        $isWorkerAccount = in_array('user', $roles, true);
         $jobTaskAssignments = $data['job_tasks'] ?? [];
-        unset($data['account_type']);
+        unset($data['roles']);
         unset($data['job_tasks']);
         $data['needs_language_level_verification'] = $this->needsLanguageLevelVerificationResolver
             ->resolve($data['is_foreigner_or_immigrant'] ?? $user->is_foreigner_or_immigrant);
@@ -267,10 +269,10 @@ class UserController extends Controller
         } else {
             unset($data['password']);
         }
-        DB::transaction(function () use ($accountType, $data, $jobTaskAssignments, $user): void {
+        DB::transaction(function () use ($data, $isWorkerAccount, $jobTaskAssignments, $roles, $user): void {
             $user->update($data);
-            $user->syncRoles([$accountType]);
-            $this->userJobAssignmentService->syncAssignments($user, $jobTaskAssignments, $accountType === 'user');
+            $user->syncRoles($roles);
+            $this->userJobAssignmentService->syncAssignments($user, $jobTaskAssignments, $isWorkerAccount);
         });
 
         $afterRiskSnapshot = $this->captureRiskSnapshot($user->fresh(['jobSector', 'jobTasks', 'roles']));
@@ -304,24 +306,44 @@ class UserController extends Controller
         }
 
         $data = $request->validate($this->userSectionRules($request, $user));
-        $accountType = $this->resolveAccountType($data['account_type'] ?? $user->getRoleNames()->first() ?? 'user');
-        unset($data['account_type']);
         $data['needs_language_level_verification'] = $this->needsLanguageLevelVerificationResolver
             ->resolve($data['is_foreigner_or_immigrant'] ?? $user->is_foreigner_or_immigrant);
 
-        DB::transaction(function () use ($accountType, $data, $user): void {
+        DB::transaction(function () use ($data, $user): void {
             $user->update($data);
-            $user->syncRoles([$accountType]);
-
-            if ($accountType !== 'user') {
-                $this->userJobAssignmentService->syncAssignments($user, [], false);
-            }
         });
 
         $afterRiskSnapshot = $this->captureRiskSnapshot($user->fresh(['jobSector', 'jobTasks', 'roles']));
         $riskWarnings = $this->buildRiskChangeWarnings($beforeRiskSnapshot, $afterRiskSnapshot, $user);
 
         return $this->userSectionResponse($request, $user, 'user', 'Dati utente aggiornati con successo', $riskWarnings);
+    }
+
+    public function updatePermissionsSection(Request $request, User $user): RedirectResponse|JsonResponse
+    {
+        $roles = $this->resolveRoles($request->validate([
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => ['required', 'string', 'in:'.implode(',', $this->allowedAssignableRoles($request, $user))],
+        ])['roles']);
+
+        DB::transaction(function () use ($roles, $user): void {
+            $user->syncRoles($roles);
+
+            if (! in_array('user', $roles, true)) {
+                $this->userJobAssignmentService->syncAssignments($user, [], false);
+            }
+        });
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Permessi utente aggiornati con successo',
+            ]);
+        }
+
+        return redirect()
+            ->route('admin.users.edit', ['user' => $user, 'section' => 'permissions'])
+            ->with('success', 'Permessi utente aggiornati con successo');
     }
 
     public function updateResidenceSection(Request $request, User $user): RedirectResponse|JsonResponse
@@ -817,23 +839,44 @@ class UserController extends Controller
     }
 
     /**
+     * @param  array<int, string>  $roles
+     * @return array<int, string>
+     */
+    private function resolveRoles(array $roles): array
+    {
+        return collect($roles)
+            ->map(fn (string $role): string => $this->resolveAccountType($role))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function allowedAssignableRoles(Request $request, User $routeUser): array
+    {
+        if (! $request->user()?->hasRole('superadmin')) {
+            return $routeUser->getRoleNames()->all() ?: ['user'];
+        }
+
+        $roles = ['user', 'admin', 'teacher', 'docente', 'tutor'];
+
+        if ($routeUser->hasRole('superadmin')) {
+            $roles[] = 'superadmin';
+        }
+
+        return array_values(array_unique($roles));
+    }
+
+    /**
      * @return array<string, array<int, string>>
      */
     private function userSectionRules(Request $request, User $routeUser): array
     {
-        $authenticatedUser = $request->user();
-        $accountTypes = ['user', 'admin', 'teacher', 'docente', 'tutor'];
-
-        if (! $authenticatedUser?->hasRole('superadmin')) {
-            $accountTypes = [$routeUser->getRoleNames()->first() ?? 'user'];
-        }
-
-        if ($authenticatedUser?->hasRole('superadmin') && $routeUser->hasRole('superadmin')) {
-            $accountTypes[] = 'superadmin';
-        }
+        $isWorkerAccount = $routeUser->hasRole('user');
 
         return [
-            'account_type' => ['required', 'string', 'in:'.implode(',', $accountTypes)],
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($routeUser->getKey())],
             'name' => ['required', 'string', 'max:255'],
             'surname' => ['required', 'string', 'max:255'],
@@ -843,7 +886,7 @@ class UserController extends Controller
             'birth_date' => ['nullable', 'date'],
             'birth_place' => ['nullable', 'string', 'max:255'],
             'gender' => ['nullable', 'string', 'max:1'],
-            'is_foreigner_or_immigrant' => ['required_if:account_type,user', 'boolean'],
+            'is_foreigner_or_immigrant' => [$isWorkerAccount ? 'required' : 'nullable', 'boolean'],
             'declared_language_level_id' => ['nullable', 'integer', 'exists:language_levels,id'],
             'verified_language_level_id' => ['nullable', 'integer', 'exists:language_levels,id'],
         ];

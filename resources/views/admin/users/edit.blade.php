@@ -4,8 +4,15 @@
             'key' => 'user',
             'label' => __('Utente'),
             'title' => __('Dati utente'),
-            'description' => __('Account, email e anagrafica principale.'),
+            'description' => __('Email e anagrafica principale.'),
             'icon' => 'lucide-user-round',
+        ],
+        [
+            'key' => 'permissions',
+            'label' => __('Permessi utente'),
+            'title' => __('Permessi utente'),
+            'description' => __('Ruoli applicativi assegnati.'),
+            'icon' => 'lucide-shield-check',
         ],
         [
             'key' => 'residence',
@@ -81,10 +88,11 @@
                         </x-slot:actions>
                     </x-page-header>
 
-                    @if (in_array($activeUserEditSection, ['user', 'residence', 'work'], true))
+                    @if (in_array($activeUserEditSection, ['user', 'permissions', 'residence', 'work'], true))
                         @php
                             $sectionUpdateRoute = match ($activeUserEditSection) {
                                 'user' => route('admin.users.user-section.update', $user),
+                                'permissions' => route('admin.users.permissions-section.update', $user),
                                 'residence' => route('admin.users.residence-section.update', $user),
                                 'work' => route('admin.users.work-section.update', $user),
                             };
@@ -112,6 +120,10 @@
                                     <div>
                                         @if ($activeUserEditSection === 'user')
                                             <x-admin.users.forms.user-fields :user="$user" :language-levels="$languageLevels" />
+                                        @endif
+
+                                        @if ($activeUserEditSection === 'permissions')
+                                            <x-admin.users.forms.permission-fields :user="$user" />
                                         @endif
 
                                         @if ($activeUserEditSection === 'residence')
@@ -578,50 +590,8 @@
 
                 <script>
                     document.addEventListener('DOMContentLoaded', function () {
-                        const typeSelect = document.getElementById('account_type');
-                        const userOnlyBlocks = document.querySelectorAll('[data-user-only]');
                         const internalCourseSelect = document.getElementById('certificate_internal_course_id');
                         const internalCourseTooltip = document.querySelector('[data-certificate-internal-course-tooltip]');
-
-                        function toggleUserOnlyFields() {
-                            if (!typeSelect) {
-                                return;
-                            }
-
-                            if (typeSelect.value === 'user') {
-                                userOnlyBlocks.forEach((block) => {
-                                    block.style.display = '';
-                                    block.querySelectorAll('input,select,textarea').forEach((element) => {
-                                        if (element.dataset.originalName) {
-                                            element.name = element.dataset.originalName;
-                                        }
-
-                                        element.disabled = false;
-                                        if (element.dataset.required === 'true') {
-                                            element.required = true;
-                                        }
-                                    });
-                                });
-                            } else {
-                                userOnlyBlocks.forEach((block) => {
-                                    block.style.display = 'none';
-                                    block.querySelectorAll('input,select,textarea').forEach((element) => {
-                                        if (!element.dataset.originalName) {
-                                            element.dataset.originalName = element.name;
-                                        }
-
-                                        element.required = false;
-                                        element.removeAttribute('name');
-                                        element.disabled = true;
-                                    });
-                                });
-                            }
-                        }
-
-                        if (typeSelect) {
-                            toggleUserOnlyFields();
-                            typeSelect.addEventListener('change', toggleUserOnlyFields);
-                        }
 
                         function syncInternalCourseTooltip() {
                             if (!internalCourseSelect || !internalCourseTooltip) {

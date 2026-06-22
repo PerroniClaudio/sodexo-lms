@@ -27,6 +27,14 @@
                         </div>
                     </div>
 
+                    <section class="flex flex-col gap-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-base-content">{{ __('Permessi utente') }}</h3>
+                            <p class="mt-1 text-sm text-base-content/65">{{ __('Seleziona uno o più ruoli per l’utente.') }}</p>
+                        </div>
+                        <x-admin.users.forms.permission-fields />
+                    </section>
+
                     <x-admin.users.forms.user-fields :language-levels="$languageLevels" />
                     <x-admin.users.forms.residence-fields />
                     <x-admin.users.forms.work-fields
@@ -48,11 +56,12 @@
                     </div>
                     <script>
                         document.addEventListener('DOMContentLoaded', function () {
-                            const typeSelect = document.getElementById('account_type');
+                            const roleCheckboxes = document.querySelectorAll('[data-role-checkbox]');
                             const userOnlyBlocks = document.querySelectorAll('[data-user-only-block]');
                             function toggleUserOnlyFields() {
-                                if (!typeSelect) return;
-                                if (typeSelect.value === 'user') {
+                                const hasUserRole = Array.from(roleCheckboxes).some((checkbox) => checkbox.value === 'user' && checkbox.checked);
+
+                                if (hasUserRole) {
                                     userOnlyBlocks.forEach(block => {
                                         block.style.display = '';
                                         block.querySelectorAll('input,select,textarea').forEach(el => {
@@ -79,10 +88,9 @@
                                     });
                                 }
                             }
-                            if (typeSelect) {
-                                toggleUserOnlyFields();
-                                typeSelect.addEventListener('change', toggleUserOnlyFields);
-                            }
+
+                            toggleUserOnlyFields();
+                            roleCheckboxes.forEach((checkbox) => checkbox.addEventListener('change', toggleUserOnlyFields));
                         });
                     </script>
                 </form>

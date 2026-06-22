@@ -11,7 +11,7 @@ use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\User\VideoModuleController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'role:user|superadmin'])->group(function () {
+Route::middleware(['auth', 'active.role:user|superadmin'])->group(function () {
     Route::group(['prefix' => 'user', 'as' => 'user.'], function () {
         Route::get('dashboard', [UserController::class, 'dashboard'])->name('dashboard');
         Route::get('dashboard/courses-stats', [UserController::class, 'coursesStats'])->name('dashboard.courses-stats');

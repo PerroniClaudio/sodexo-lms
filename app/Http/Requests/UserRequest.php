@@ -17,20 +17,17 @@ class UserRequest extends FormRequest
 
     public function rules(): array
     {
-        $authenticatedUser = $this->user();
-        $accountTypes = ['user', 'admin', 'teacher', 'docente', 'tutor'];
         $routeUser = $this->route('user');
-
-        if ($routeUser instanceof User && ! $authenticatedUser?->hasRole('superadmin')) {
-            $accountTypes = [$routeUser->getRoleNames()->first() ?? 'user'];
-        }
-
-        if ($authenticatedUser?->hasRole('superadmin') && $routeUser instanceof User && $routeUser->hasRole('superadmin')) {
-            $accountTypes[] = 'superadmin';
-        }
+        $allowedRoles = $this->allowedRoles($routeUser instanceof User ? $routeUser : null);
+        $isWorker = in_array('user', $this->input('roles', []), true);
 
         $rules = [
-            'account_type' => ['required', 'string', 'in:'.implode(',', $accountTypes)],
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => [
+                'required',
+                'string',
+                Rule::in($allowedRoles),
+            ],
             'email' => [
                 'nullable',
                 'email',
@@ -46,15 +43,15 @@ class UserRequest extends FormRequest
                 Rule::unique('users', 'fiscal_code')->ignore($routeUser?->getKey()),
             ],
             // Campi user-only, validazione condizionale
-            'is_foreigner_or_immigrant' => ['required_if:account_type,user', 'boolean'],
+            'is_foreigner_or_immigrant' => [$isWorker ? 'required' : 'nullable', 'boolean'],
             'declared_language_level_id' => ['nullable', 'integer', 'exists:language_levels,id'],
             'verified_language_level_id' => ['nullable', 'integer', 'exists:language_levels,id'],
-            'employment_start_date' => ['required_if:account_type,user', 'date'],
+            'employment_start_date' => [$isWorker ? 'required' : 'nullable', 'date'],
             'employment_end_date' => ['nullable', 'date', 'after_or_equal:employment_start_date'],
-            'job_role_id' => ['required_if:account_type,user', 'exists:job_roles,id'],
-            'job_sector_id' => ['required_if:account_type,user', 'exists:job_sectors,id'],
-            'job_unit_id' => ['required_if:account_type,user', 'exists:job_units,id'],
-            'job_tasks' => ['required_if:account_type,user', 'array', 'min:1'],
+            'job_role_id' => [$isWorker ? 'required' : 'nullable', 'exists:job_roles,id'],
+            'job_sector_id' => [$isWorker ? 'required' : 'nullable', 'exists:job_sectors,id'],
+            'job_unit_id' => [$isWorker ? 'required' : 'nullable', 'exists:job_units,id'],
+            'job_tasks' => [$isWorker ? 'required' : 'nullable', 'array', 'min:1'],
             'job_tasks.*.job_task_id' => ['required_with:job_tasks', 'exists:job_tasks,id'],
             'job_tasks.*.starts_at' => ['required_with:job_tasks', 'date'],
             'job_tasks.*.ends_at' => ['nullable', 'date'],
@@ -91,6 +88,7 @@ class UserRequest extends FormRequest
         $this->merge([
             'email' => $email,
             'fiscal_code' => strtoupper(trim((string) $this->input('fiscal_code'))),
+            'roles' => array_values(array_unique((array) $this->input('roles', []))),
         ]);
     }
 
@@ -101,7 +99,7 @@ class UserRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
-                if ($validator->errors()->isNotEmpty() || $this->input('account_type') !== 'user') {
+                if ($validator->errors()->isNotEmpty() || ! in_array('user', $this->input('roles', []), true)) {
                     return;
                 }
 
@@ -126,5 +124,25 @@ class UserRequest extends FormRequest
                 }
             },
         ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function allowedRoles(?User $routeUser): array
+    {
+        $authenticatedUser = $this->user();
+
+        if (! $authenticatedUser?->hasRole('superadmin')) {
+            return $routeUser?->getRoleNames()->all() ?: ['user'];
+        }
+
+        $roles = ['user', 'admin', 'teacher', 'docente', 'tutor'];
+
+        if ($routeUser?->hasRole('superadmin')) {
+            $roles[] = 'superadmin';
+        }
+
+        return array_values(array_unique($roles));
     }
 }

@@ -15,10 +15,6 @@
                             @php
                                 $userRole = $user->getRoleNames()->first() ?? ($user->account_type ?? null);
                             @endphp
-                            @if($userRole)
-                                {{-- <span class="text-base font-normal text-base-content/60">({{ ucfirst($userRole) }})</span> --}}
-                                <span class="text-base font-normal text-base-content/60">({{ __("profile.options.account." . $userRole) }})</span>
-                            @endif
                         </h1>
                         <p class="text-sm text-base-content/70 mt-2">
                             {{ __('Visualizza e aggiorna i tuoi dati personali.') }}
