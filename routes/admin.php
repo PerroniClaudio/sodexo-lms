@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\JobRoleController;
 use App\Http\Controllers\Admin\JobSectorController;
 use App\Http\Controllers\Admin\JobTaskController;
 use App\Http\Controllers\Admin\JobUnitController;
+use App\Http\Controllers\Admin\JobUnitImportController;
 use App\Http\Controllers\Admin\LanguageLevelController;
 use App\Http\Controllers\Admin\LiveStreamLogController;
 use App\Http\Controllers\Admin\ModuleQuizController;
@@ -58,10 +59,10 @@ Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
         Route::get('/imports/users/template', [UserImportController::class, 'downloadTemplate'])->name('imports.users.template');
         Route::get('/imports/users/status-card', [UserImportController::class, 'statusCard'])->name('imports.users.status-card');
         Route::post('/imports/users', [UserImportController::class, 'store'])->name('imports.users.store');
-        Route::view('/imports/job-units', 'admin.imports.placeholder', [
-            'title' => __('Import unità lavorative'),
-            'description' => __('Area riservata al futuro import delle unità lavorative.'),
-        ])->name('imports.job-units');
+        Route::get('/imports/job-units', [JobUnitImportController::class, 'index'])->name('imports.job-units');
+        Route::get('/imports/job-units/template', [JobUnitImportController::class, 'downloadTemplate'])->name('imports.job-units.template');
+        Route::get('/imports/job-units/status-card', [JobUnitImportController::class, 'statusCard'])->name('imports.job-units.status-card');
+        Route::post('/imports/job-units', [JobUnitImportController::class, 'store'])->name('imports.job-units.store');
         Route::view('/imports/job-tasks', 'admin.imports.placeholder', [
             'title' => __('Import mansioni'),
             'description' => __('Area riservata al futuro import delle mansioni.'),
