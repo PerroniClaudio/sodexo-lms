@@ -13,6 +13,26 @@
 }
 
 @layer components {
+    .admin-sidenav > li > a.menu-active,
+    .admin-sidenav > li > details > summary.menu-active,
+    .admin-sidenav > li > details > ul > li > details > summary.menu-active {
+        @apply text-white;
+        background-color: color-mix(in oklab, var(--color-primary) 38%, var(--color-base-300) 62%);
+        box-shadow: none;
+    }
+
+    .admin-sidenav > li > a.menu-active svg,
+    .admin-sidenav > li > details > summary.menu-active svg,
+    .admin-sidenav > li > details > ul > li > details > summary.menu-active svg {
+        color: inherit;
+    }
+
+    .admin-sidenav a.sidenav-submenu-active {
+        @apply text-white;
+        background-color: var(--color-primary);
+        box-shadow: none;
+    }
+
     .user-event-calendar {
         --fc-today-bg-color: color-mix(in oklab, var(--color-primary) 14%, white 86%);
         --calendar-course-type-fad: var(--color-info);

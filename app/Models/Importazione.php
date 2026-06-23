@@ -1,0 +1,93 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class Importazione extends Model
+{
+    public const TYPE_USERS = 'utenti';
+
+    public const TYPE_JOB_UNITS = 'unita_lavorative';
+
+    public const TYPE_JOB_TASKS = 'mansioni';
+
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_PROGRESS = 'progress';
+
+    public const STATUS_FINISHED = 'finished';
+
+    public const STATUS_FAILED = 'failed';
+
+    public const STORAGE_DISK = 's3';
+
+    protected $table = 'importazioni';
+
+    protected $fillable = [
+        'import_type',
+        'created_by',
+        'started_at',
+        'finished_at',
+        'status',
+        'error_message',
+        'file_path',
+        'original_file_name',
+    ];
+
+    protected $attributes = [
+        'status' => self::STATUS_PENDING,
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'created_by' => 'integer',
+            'started_at' => 'datetime',
+            'finished_at' => 'datetime',
+        ];
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function typeLabel(): string
+    {
+        return match ($this->import_type) {
+            self::TYPE_USERS => __('Utenti'),
+            self::TYPE_JOB_UNITS => __('Unità lavorative'),
+            self::TYPE_JOB_TASKS => __('Mansioni'),
+            default => (string) $this->import_type,
+        };
+    }
+
+    public function statusLabel(): string
+    {
+        return match ($this->status) {
+            self::STATUS_PENDING => __('In coda'),
+            self::STATUS_PROGRESS => __('In lavorazione'),
+            self::STATUS_FINISHED => __('Completata'),
+            self::STATUS_FAILED => __('Fallita'),
+            default => (string) $this->status,
+        };
+    }
+
+    public function statusBadgeClass(): string
+    {
+        return match ($this->status) {
+            self::STATUS_PENDING => 'badge-warning',
+            self::STATUS_PROGRESS => 'badge-info',
+            self::STATUS_FINISHED => 'badge-success',
+            self::STATUS_FAILED => 'badge-error',
+            default => 'badge-ghost',
+        };
+    }
+
+    public function fileName(): string
+    {
+        return $this->original_file_name ?: basename((string) $this->file_path);
+    }
+}
