@@ -6,6 +6,7 @@
             ['key' => 'type', 'label' => __('Tipologia'), 'sortable' => false],
             ['key' => 'status', 'label' => __('Stato'), 'sortable' => true],
             ['key' => 'year', 'label' => __('Anno del corso'), 'sortable' => true],
+            ['key' => 'actions', 'label' => __('Azioni'), 'sortable' => false],
         ];
     @endphp
 
@@ -25,20 +26,63 @@
             :search-placeholder="__('Cerca nei corsi')"
             :empty-message="__('Nessun corso disponibile.')"
         >
+            <x-slot:filters>
+                <form method="GET" action="{{ route('admin.courses.index') }}" class="flex items-center justify-end">
+                    @foreach (request()->query() as $key => $value)
+                        @continue(in_array($key, ['show_trashed', 'page'], true))
+                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                    @endforeach
+
+                    <label class="label cursor-pointer justify-start gap-3 p-0">
+                        <input
+                            type="checkbox"
+                            name="show_trashed"
+                            value="1"
+                            class="checkbox"
+                            @checked($showTrashed)
+                            onchange="this.form.submit()"
+                        >
+                        <span class="label-text">{{ __('Mostra eliminati') }}</span>
+                    </label>
+                </form>
+            </x-slot:filters>
+
             @foreach ($courses as $course)
                 <tr
-                    class="cursor-pointer hover"
-                    onclick="window.location='{{ route('admin.courses.edit', [$course, 'section' => 'details']) }}'"
+                    @class([
+                        'hover',
+                        'cursor-pointer' => ! $course->trashed(),
+                        'opacity-70' => $course->trashed(),
+                    ])
+                    @if (! $course->trashed())
+                        onclick="window.location='{{ route('admin.courses.edit', [$course, 'section' => 'details']) }}'"
+                    @endif
                 >
                     <td>{{ $course->id }}</td>
                     <td>{{ $course->title }}</td>
                     <td>{{ $course->type }}</td>
                     <td>
-                        <span class="badge badge-ghost h-fit">
-                            {{ $course->status }}
-                        </span>
+                        @if ($course->trashed())
+                            <span class="badge badge-error badge-soft h-fit">{{ __('Eliminato') }}</span>
+                        @else
+                            <span class="badge badge-ghost h-fit">{{ $course->status }}</span>
+                        @endif
                     </td>
                     <td>{{ $course->year }}</td>
+                    <td>
+                        @if ($course->trashed())
+                            <form method="POST" action="{{ route('admin.courses.restore', $course->id) }}" onclick="event.stopPropagation();">
+                                @csrf
+                                <button type="submit" class="btn btn-success btn-sm">
+                                    {{ __('Ripristina') }}
+                                </button>
+                            </form>
+                        @else
+                            <a href="{{ route('admin.courses.edit', [$course, 'section' => 'details']) }}" class="btn btn-primary btn-sm" onclick="event.stopPropagation();">
+                                {{ __('Modifica') }}
+                            </a>
+                        @endif
+                    </td>
                 </tr>
             @endforeach
         </x-data-table>

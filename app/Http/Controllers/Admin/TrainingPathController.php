@@ -13,13 +13,20 @@ use App\Models\JobTask;
 use App\Models\JobUnit;
 use App\Models\TrainingPath;
 use App\Models\TrainingPathDocument;
+use App\Services\TrainingPathEnrollmentSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class TrainingPathController extends Controller
 {
+    public function __construct(
+        private readonly TrainingPathEnrollmentSyncService $trainingPathEnrollmentSyncService,
+    ) {}
+
     public function index(Request $request): View
     {
         $allowedSorts = ['id', 'title', 'status', 'code'];
@@ -73,6 +80,7 @@ class TrainingPathController extends Controller
             'description' => null,
             'status' => 'draft',
             'visible_to_all' => true,
+            'enforce_course_order' => true,
         ]);
 
         if (blank($validated['code'] ?? null)) {
@@ -96,6 +104,14 @@ class TrainingPathController extends Controller
             'jobUnits',
         ]);
 
+        $courseIds = $trainingPath->courses
+            ->pluck('id')
+            ->map(fn (mixed $courseId): int => (int) $courseId)
+            ->values();
+
+        $courseEnrollmentCleanupCounts = $this->trainingPathEnrollmentSyncService
+            ->activeCourseEnrollmentCountsForPathUsers($trainingPath, $courseIds);
+
         return view('admin.training-path.edit', [
             'trainingPath' => $trainingPath,
             'courseStatusLabels' => Course::availableStatusLabels(),
@@ -113,6 +129,7 @@ class TrainingPathController extends Controller
                 ->with('city:id,name')
                 ->orderBy('name')
                 ->get(['id', 'name', 'unit_code', 'address', 'postal_code', 'city_id']),
+            'courseEnrollmentCleanupCounts' => $courseEnrollmentCleanupCounts,
         ]);
     }
 
@@ -137,6 +154,7 @@ class TrainingPathController extends Controller
 
         $courses = Course::query()
             ->select(['id', 'title', 'code', 'type', 'status', 'year'])
+            ->where('status', 'published')
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($query) use ($search): void {
                     $query
@@ -186,7 +204,25 @@ class TrainingPathController extends Controller
 
     public function updateDetails(UpdateTrainingPathDetailsRequest $request, TrainingPath $trainingPath): RedirectResponse
     {
-        $trainingPath->update($request->validated());
+        $validated = $request->validated();
+        $targetStatus = (string) ($validated['status'] ?? $trainingPath->status);
+        $isChangingStatus = $targetStatus !== $trainingPath->status;
+
+        if ($trainingPath->status === 'published' && $isChangingStatus) {
+            $hasActiveEnrollments = $trainingPath->enrollments()
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if ($hasActiveEnrollments) {
+                return back()
+                    ->withInput()
+                    ->with('error', __('Non è possibile cambiare lo stato di un percorso pubblicato con iscrizioni attive.'));
+            }
+        }
+
+        $trainingPath->update($validated);
+
+        $this->trainingPathEnrollmentSyncService->syncAllEnrollmentsForPath($trainingPath->fresh());
 
         return $this->redirectToSection($trainingPath, 'details', __('Percorso formativo aggiornato con successo.'));
     }
@@ -197,6 +233,33 @@ class TrainingPathController extends Controller
             ->map(fn (mixed $courseId): int => (int) $courseId)
             ->unique()
             ->values();
+
+        $existingCourseIds = $trainingPath->courses()
+            ->pluck('courses.id')
+            ->map(fn (mixed $courseId): int => (int) $courseId)
+            ->values();
+
+        $removedCourseIds = $this->removedCourseIds($existingCourseIds, $courseIds);
+        $removedCourseEnrollmentsCount = $this->trainingPathEnrollmentSyncService
+            ->countActiveCourseEnrollmentsForPathUsers($trainingPath, $removedCourseIds);
+
+        if ($removedCourseEnrollmentsCount > 0 && ! $request->boolean('confirm_course_enrollment_cleanup')) {
+            return $this->redirectToSection($trainingPath, 'courses', __('Per rimuovere i corsi selezionati devi confermare anche la rimozione delle iscrizioni collegate al percorso.'))
+                ->withInput()
+                ->with('error', __('Conferma la rimozione delle iscrizioni ai corsi rimossi per gli iscritti al percorso.'));
+        }
+
+        $unpublishedCourseIds = Course::query()
+            ->whereIn('id', $courseIds->all())
+            ->where('status', '!=', 'published')
+            ->pluck('id');
+
+        if ($unpublishedCourseIds->isNotEmpty()) {
+            return back()
+                ->withInput()
+                ->with('error', __('Puoi associare al percorso solo corsi pubblicati.'));
+        }
+
         $courseOrders = collect($request->validated('course_orders', []));
 
         $syncPayload = $courseIds
@@ -207,9 +270,24 @@ class TrainingPathController extends Controller
             ])
             ->all();
 
-        $trainingPath->courses()->sync($syncPayload);
+        $deletedEnrollmentsCount = DB::transaction(function () use ($removedCourseIds, $syncPayload, $trainingPath): int {
+            $trainingPath->courses()->sync($syncPayload);
 
-        return $this->redirectToSection($trainingPath, 'courses', __('Corsi associati aggiornati con successo.'));
+            return $this->trainingPathEnrollmentSyncService
+                ->unsetPathwayOriginAndDeleteIfNeededForPathUsers($trainingPath, $removedCourseIds);
+        });
+
+        $this->trainingPathEnrollmentSyncService->syncAllEnrollmentsForPath($trainingPath->fresh());
+
+        $message = __('Corsi associati aggiornati con successo.');
+
+        if ($deletedEnrollmentsCount > 0) {
+            $message = __('Corsi associati aggiornati con successo. Sono state eliminate :count iscrizioni ai corsi rimossi per utenti iscritti al percorso.', [
+                'count' => $deletedEnrollmentsCount,
+            ]);
+        }
+
+        return $this->redirectToSection($trainingPath, 'courses', $message);
     }
 
     public function updateRecipients(UpdateTrainingPathRecipientsRequest $request, TrainingPath $trainingPath): RedirectResponse
@@ -229,6 +307,20 @@ class TrainingPathController extends Controller
 
     public function destroy(TrainingPath $trainingPath): RedirectResponse
     {
+        $courseIds = $trainingPath->courses()
+            ->pluck('courses.id')
+            ->map(fn (mixed $courseId): int => (int) $courseId)
+            ->values();
+
+        $this->trainingPathEnrollmentSyncService
+            ->unsetPathwayOriginAndDeleteIfNeededForPathUsers($trainingPath, $courseIds);
+
+        $trainingPath->enrollments()
+            ->whereNull('deleted_at')
+            ->get()
+            ->each
+            ->delete();
+
         $trainingPath->delete();
 
         return redirect()
@@ -257,5 +349,19 @@ class TrainingPathController extends Controller
             ->unique()
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  Collection<int, int>  $existingCourseIds
+     * @param  Collection<int, int>  $selectedCourseIds
+     * @return Collection<int, int>
+     */
+    private function removedCourseIds(Collection $existingCourseIds, Collection $selectedCourseIds): Collection
+    {
+        return $existingCourseIds
+            ->diff($selectedCourseIds)
+            ->map(fn (mixed $courseId): int => (int) $courseId)
+            ->unique()
+            ->values();
     }
 }

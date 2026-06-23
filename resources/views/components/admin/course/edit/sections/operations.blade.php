@@ -1,6 +1,7 @@
 @props([
     'course',
     'courseValidator',
+    'activeEnrollmentCount' => 0,
 ])
 
 <div class="flex flex-col gap-6">
@@ -48,22 +49,29 @@
                 </p>
             </div>
 
-            <div class="modal-action mt-6">
-                <form method="dialog">
-                    <button type="submit" class="btn btn-ghost" data-close-delete-course-modal>
+            <form method="POST" action="{{ route('admin.courses.destroy', $course) }}" class="mt-6">
+                @csrf
+                @method('DELETE')
+
+                @if ($activeEnrollmentCount > 0)
+                    <label class="mb-3 flex cursor-pointer items-start gap-2 rounded-box border border-warning/40 bg-warning/10 p-3 text-sm">
+                        <input type="checkbox" name="cascade_delete_enrollments" value="1" class="checkbox checkbox-warning mt-0.5" required>
+                        <span>
+                            {{ __('Questo corso ha :count iscrizioni attive. Conferma per eliminare automaticamente anche le iscrizioni (soft delete).', ['count' => $activeEnrollmentCount]) }}
+                        </span>
+                    </label>
+                @endif
+
+                <div class="modal-action mt-4">
+                    <button type="button" class="btn btn-ghost" data-close-delete-course-modal onclick="this.closest('dialog').close()">
                         {{ __('Cancel') }}
                     </button>
-                </form>
-                <form method="POST" action="{{ route('admin.courses.destroy', $course) }}">
-                    @csrf
-                    @method('DELETE')
-
                     <button type="submit" class="btn btn-accent" data-modal-submit-loading data-loading-text="{{ __('Eliminazione...') }}">
                         <span>{{ __('Confirm deletion') }}</span>
                         <x-lucide-trash-2 class="h-4 w-4" />
                     </button>
-                </form>
-            </div>
+                </div>
+            </form>
         </div>
 
         <form method="dialog" class="modal-backdrop">

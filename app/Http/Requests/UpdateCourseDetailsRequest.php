@@ -44,6 +44,7 @@ class UpdateCourseDetailsRequest extends FormRequest
             'regulatory_reference' => ['nullable', 'string'],
             'year' => ['required', 'integer', 'min:1900', 'max:2100'],
             'status' => ['required', 'string', Rule::in(Course::availableStatuses())],
+            'detach_from_unpublished_training_paths' => ['nullable', 'boolean'],
             'required_language_level_id' => ['required', 'integer', Rule::exists('language_levels', 'id')],
             'is_language_verification_course' => ['nullable', 'boolean'],
             'grants_language_level_id' => [
@@ -147,6 +148,7 @@ class UpdateCourseDetailsRequest extends FormRequest
             'grants_language_level_id' => $isLanguageVerificationCourse
                 ? $this->input('grants_language_level_id')
                 : null,
+            'detach_from_unpublished_training_paths' => $this->boolean('detach_from_unpublished_training_paths'),
         ]);
     }
 
@@ -170,6 +172,7 @@ class UpdateCourseDetailsRequest extends FormRequest
             'regulatory_reference' => __('Riferimento normativo'),
             'year' => __('Anno del corso'),
             'status' => __('Stato'),
+            'detach_from_unpublished_training_paths' => __('Conferma rimozione dai percorsi non pubblicati'),
             'required_language_level_id' => __('Livello lingua richiesto'),
             'is_language_verification_course' => __('Corso di verifica lingua'),
             'grants_language_level_id' => __('Livello verificato abilitato'),

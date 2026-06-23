@@ -35,6 +35,7 @@ use App\Models\Partner;
 use App\Models\Province;
 use App\Models\RiskBasedRequirement;
 use App\Models\SatisfactionSurveyTemplate;
+use App\Models\TrainingPath;
 use App\Models\Venue;
 use App\Models\WorldCity;
 use App\Models\WorldCountry;
@@ -44,6 +45,7 @@ use App\Services\Certificates\CustomCertificateResolver;
 use App\Services\CourseValidation\CourseValidatorService;
 use App\Services\ResCourseAttendanceService;
 use App\Services\SyncCourseSatisfactionSurvey;
+use App\Services\TrainingPathEnrollmentSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -61,7 +63,8 @@ class CourseController extends Controller
     private const ATTACHMENTS_DISK = 's3';
 
     public function __construct(
-        private readonly CourseValidatorService $courseValidator
+        private readonly CourseValidatorService $courseValidator,
+        private readonly TrainingPathEnrollmentSyncService $trainingPathEnrollmentSyncService,
     ) {}
 
     public function create(): View
@@ -83,10 +86,14 @@ class CourseController extends Controller
             ? ($request->string('direction')->toString() === 'asc' ? 'asc' : 'desc')
             : 'desc';
         $search = trim($request->string('search')->toString());
+        $showTrashed = $request->boolean('show_trashed');
 
         return view('admin.course.index', [
             'courses' => Course::query()
-                ->select(['id', 'title', 'type', 'status', 'year'])
+                ->select(['id', 'title', 'type', 'status', 'year', 'deleted_at'])
+                ->when($showTrashed, function ($query) {
+                    $query->withTrashed();
+                })
                 ->when($search !== '', function ($query) use ($search) {
                     $query->where(function ($query) use ($search) {
                         $query
@@ -108,8 +115,19 @@ class CourseController extends Controller
                 ->withQueryString(),
             'tableSort' => $sort,
             'tableDirection' => $direction,
+            'showTrashed' => $showTrashed,
             'tableSearch' => $search,
         ]);
+    }
+
+    public function restore(int $id): RedirectResponse
+    {
+        $course = Course::withTrashed()->findOrFail($id);
+        $course->restore();
+
+        return redirect()
+            ->route('admin.courses.index')
+            ->with('status', __('Corso ripristinato con successo.'));
     }
 
     public function store(StoreCourseRequest $request): RedirectResponse
@@ -172,6 +190,9 @@ class CourseController extends Controller
 
         return view('admin.course.edit', [
             'course' => $course,
+            'publishedTrainingPathCount' => $course->trainingPaths()->where('status', 'published')->count(),
+            'unpublishedTrainingPathCount' => $course->trainingPaths()->where('status', '!=', 'published')->count(),
+            'activeEnrollmentCount' => $course->enrollments()->count(),
             'courseCertificateTemplates' => $courseCertificateTemplates,
             'courseTypeLabels' => Course::availableTypeLabels(),
             'courseStatusLabels' => Course::availableStatusLabels(),
@@ -403,6 +424,39 @@ class CourseController extends Controller
             ];
 
             if ($this->isPublishedCourseDetailsStatusOnlyUpdate($course, $attributes)) {
+                $targetStatus = (string) ($validated['status'] ?? $course->status);
+
+                if ($course->status === 'published' && $targetStatus !== 'published') {
+                    $publishedTrainingPathCount = $course->trainingPaths()
+                        ->where('status', 'published')
+                        ->count();
+
+                    if ($publishedTrainingPathCount > 0) {
+                        throw new RuntimeException(__('Non puoi cambiare stato a un corso pubblicato associato a percorsi formativi pubblicati.'));
+                    }
+
+                    $unpublishedPathIds = $course->trainingPaths()
+                        ->where('status', '!=', 'published')
+                        ->pluck('training_paths.id');
+
+                    if ($unpublishedPathIds->isNotEmpty()) {
+                        $shouldDetach = (bool) ($validated['detach_from_unpublished_training_paths'] ?? false);
+
+                        if (! $shouldDetach) {
+                            throw new RuntimeException(__('Per cambiare stato devi prima confermare la rimozione del corso dai percorsi non pubblicati che lo contengono.'));
+                        }
+
+                        $course->trainingPaths()->detach($unpublishedPathIds->all());
+
+                        TrainingPath::query()
+                            ->whereIn('id', $unpublishedPathIds->all())
+                            ->get()
+                            ->each(function (TrainingPath $trainingPath): void {
+                                $this->trainingPathEnrollmentSyncService->syncAllEnrollmentsForPath($trainingPath);
+                            });
+                    }
+                }
+
                 $attributes = [
                     'status' => $validated['status'],
                 ];
@@ -856,6 +910,21 @@ class CourseController extends Controller
 
     public function destroy(Course $course): RedirectResponse
     {
+        $hasActiveEnrollments = $course->enrollments()->whereNull('deleted_at')->exists();
+        $shouldCascadeDeleteEnrollments = request()->boolean('cascade_delete_enrollments');
+
+        if ($hasActiveEnrollments && ! $shouldCascadeDeleteEnrollments) {
+            return back()->with('error', __('Il corso ha iscrizioni attive. Conferma l\'eliminazione anche delle iscrizioni associate per procedere.'));
+        }
+
+        if ($hasActiveEnrollments && $shouldCascadeDeleteEnrollments) {
+            $course->enrollments()
+                ->whereNull('deleted_at')
+                ->get()
+                ->each
+                ->delete();
+        }
+
         $course->delete();
 
         return redirect()

@@ -7,6 +7,7 @@ use App\Models\CourseEnrollment;
 use App\Models\TrainingPath;
 use App\Models\TrainingPathEnrollment;
 use App\Models\User;
+use App\Services\TrainingPathEnrollmentSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -14,6 +15,10 @@ use Illuminate\Support\Facades\DB;
 
 class TrainingPathEnrollmentController extends Controller
 {
+    public function __construct(
+        private readonly TrainingPathEnrollmentSyncService $trainingPathEnrollmentSyncService,
+    ) {}
+
     public function indexApi(Request $request, TrainingPath $trainingPath): JsonResponse
     {
         $validated = $request->validate([
@@ -188,6 +193,13 @@ class TrainingPathEnrollmentController extends Controller
 
     public function storeApi(Request $request, TrainingPath $trainingPath): JsonResponse
     {
+        if ($trainingPath->status !== 'published') {
+            return response()->json([
+                'success' => false,
+                'message' => __('Non puoi iscrivere utenti a un percorso non pubblicato.'),
+            ], 422);
+        }
+
         $validated = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'],
         ]);
@@ -201,10 +213,12 @@ class TrainingPathEnrollmentController extends Controller
             ->first();
 
         if ($existingEnrollment !== null && ! $existingEnrollment->trashed()) {
+            $this->trainingPathEnrollmentSyncService->syncEnrollment($existingEnrollment);
+
             return response()->json([
-                'success' => false,
-                'message' => __('L\'utente è già iscritto a questo percorso formativo.'),
-            ], 422);
+                'success' => true,
+                'message' => __('L\'utente era già iscritto al percorso: origine percorso aggiornata sui corsi collegati.'),
+            ]);
         }
 
         if ($existingEnrollment !== null && $existingEnrollment->trashed()) {
@@ -216,7 +230,8 @@ class TrainingPathEnrollmentController extends Controller
             ], 409);
         }
 
-        TrainingPathEnrollment::enroll($user, $trainingPath);
+        $enrollment = TrainingPathEnrollment::enroll($user, $trainingPath);
+        $this->trainingPathEnrollmentSyncService->syncEnrollment($enrollment);
 
         return response()->json([
             'success' => true,
@@ -226,6 +241,13 @@ class TrainingPathEnrollmentController extends Controller
 
     public function restoreApi(TrainingPath $trainingPath, int $enrollment): JsonResponse
     {
+        if ($trainingPath->status !== 'published') {
+            return response()->json([
+                'success' => false,
+                'message' => __('Non puoi ripristinare iscrizioni su un percorso non pubblicato.'),
+            ], 422);
+        }
+
         $existingEnrollment = TrainingPathEnrollment::withTrashed()
             ->whereBelongsTo($trainingPath, 'trainingPath')
             ->whereKey($enrollment)
@@ -252,6 +274,8 @@ class TrainingPathEnrollmentController extends Controller
         }
 
         $existingEnrollment->restore();
+        $existingEnrollment->refresh();
+        $this->trainingPathEnrollmentSyncService->syncEnrollment($existingEnrollment);
 
         return response()->json([
             'success' => true,
@@ -269,6 +293,14 @@ class TrainingPathEnrollmentController extends Controller
                 'message' => __('L\'iscrizione risulta già eliminata.'),
             ], 422);
         }
+
+        $courseIds = $trainingPath->courses()
+            ->pluck('courses.id')
+            ->map(fn (mixed $courseId): int => (int) $courseId)
+            ->values();
+
+        $this->trainingPathEnrollmentSyncService
+            ->unsetPathwayOriginAndDeleteIfNeededForUser($trainingPath, (int) $enrollment->user_id, $courseIds);
 
         $enrollment->delete();
 

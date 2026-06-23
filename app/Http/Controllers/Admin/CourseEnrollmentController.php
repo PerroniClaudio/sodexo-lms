@@ -7,6 +7,7 @@ use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\User;
 use App\Services\CourseRiskRequirementService;
+use App\Services\SyncCourseModuleProgresses;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -14,6 +15,7 @@ class CourseEnrollmentController extends Controller
 {
     public function __construct(
         private readonly CourseRiskRequirementService $courseRiskRequirementService,
+        private readonly SyncCourseModuleProgresses $syncCourseModuleProgresses,
     ) {}
 
     /**
@@ -204,6 +206,13 @@ class CourseEnrollmentController extends Controller
      */
     public function storeApi(Request $request, Course $course): JsonResponse
     {
+        if ($course->status !== 'published') {
+            return response()->json([
+                'success' => false,
+                'message' => __('Non puoi iscrivere utenti a un corso non pubblicato.'),
+            ], 422);
+        }
+
         $validated = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'],
         ]);
@@ -217,10 +226,12 @@ class CourseEnrollmentController extends Controller
             ->first();
 
         if ($existingEnrollment !== null && ! $existingEnrollment->trashed()) {
+            $existingEnrollment->mergeOrigins(true, (bool) $existingEnrollment->pathway_origin);
+
             return response()->json([
-                'success' => false,
-                'message' => __('L\'utente è già iscritto a questo corso.'),
-            ], 422);
+                'success' => true,
+                'message' => __('L\'utente era già iscritto: origine diretta aggiornata.'),
+            ]);
         }
 
         if ($existingEnrollment !== null && $existingEnrollment->trashed()) {
@@ -239,7 +250,7 @@ class CourseEnrollmentController extends Controller
             ], 422);
         }
 
-        CourseEnrollment::enroll($user, $course);
+        CourseEnrollment::enroll($user, $course, directOrigin: true, pathwayOrigin: false);
 
         return response()->json([
             'success' => true,
@@ -252,6 +263,13 @@ class CourseEnrollmentController extends Controller
      */
     public function restoreApi(Course $course, int $enrollment): JsonResponse
     {
+        if ($course->status !== 'published') {
+            return response()->json([
+                'success' => false,
+                'message' => __('Non puoi ripristinare iscrizioni su un corso non pubblicato.'),
+            ], 422);
+        }
+
         $existingEnrollment = CourseEnrollment::withTrashed()
             ->whereBelongsTo($course, 'course')
             ->whereKey($enrollment)
@@ -278,6 +296,8 @@ class CourseEnrollmentController extends Controller
         }
 
         $existingEnrollment->restore();
+        $existingEnrollment->mergeOrigins(true, (bool) $existingEnrollment->pathway_origin);
+        $this->syncCourseModuleProgresses->handle($course);
 
         return response()->json([
             'success' => true,
@@ -299,7 +319,13 @@ class CourseEnrollmentController extends Controller
             ], 422);
         }
 
-        $enrollment->delete();
+        if (! $enrollment->pathway_origin) {
+            $enrollment->delete();
+        } else {
+            $enrollment->forceFill([
+                'direct_origin' => false,
+            ])->save();
+        }
 
         return response()->json([
             'success' => true,

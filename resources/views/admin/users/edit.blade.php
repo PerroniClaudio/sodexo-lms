@@ -29,6 +29,13 @@
             'icon' => 'lucide-briefcase-business',
         ],
         [
+            'key' => 'enrollments',
+            'label' => __('Iscrizioni'),
+            'title' => __('Iscrizioni'),
+            'description' => __('Panoramica iscrizioni a percorsi formativi e corsi.'),
+            'icon' => 'lucide-user-plus',
+        ],
+        [
             'key' => 'risk',
             'label' => __('Rischio attuale'),
             'title' => __('Rischio attuale'),
@@ -50,6 +57,16 @@
 
     $activeUserEditSectionMeta = $userEditSections
         ->firstWhere('key', $activeUserEditSection);
+
+    $courseEnrollmentStatusLabels = [
+        'assigned' => __('Assegnato'),
+        'in_progress' => __('In corso'),
+        'completed' => __('Completato'),
+        'expired' => __('Scaduto'),
+        'cancelled' => __('Annullato'),
+    ];
+    $courseStatusLabels = \App\Models\Course::availableStatusLabels();
+    $trainingPathStatusLabels = \App\Models\TrainingPath::availableStatusLabels();
 
     $userDisplayName = $user->full_name ?: $user->email;
 @endphp
@@ -152,6 +169,175 @@
                                 </div>
                             </div>
                         </form>
+                    @endif
+
+                    @if ($activeUserEditSection === 'enrollments')
+                        <section class="card border border-base-300 bg-base-100 shadow-sm">
+                            <div class="card-body gap-6" data-user-enrollments-section>
+                                <div class="flex flex-col gap-4 border-b border-base-300 pb-6 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                        <h2 class="text-2xl font-semibold text-base-content">{{ __('Iscrizioni') }}</h2>
+                                        <p class="mt-2 text-sm text-base-content/65">
+                                            {{ __('Qui vedi le iscrizioni dell\'utente a percorsi formativi e corsi, con evidenza dei corsi collegati a un percorso.') }}
+                                        </p>
+                                    </div>
+
+                                    <label class="label cursor-pointer justify-start gap-3 p-0">
+                                        <input type="checkbox" class="checkbox" data-user-enrollments-show-deleted>
+                                        <span class="label-text">{{ __('Mostra eliminati') }}</span>
+                                    </label>
+                                </div>
+
+                                <div class="grid gap-6">
+                                    <div class="rounded-2xl border border-base-300 bg-base-100 p-4">
+                                        <div class="flex items-center justify-between gap-3">
+                                            <h3 class="text-lg font-semibold text-base-content">{{ __('Percorsi formativi') }}</h3>
+                                            <span class="badge badge-outline h-fit">{{ $trainingPathEnrollments->count() }}</span>
+                                        </div>
+
+                                        <div class="mt-4 overflow-x-auto rounded-box border border-base-300">
+                                            <table class="table table-zebra">
+                                                <thead>
+                                                    <tr>
+                                                        <th>{{ __('Percorso') }}</th>
+                                                        <th>{{ __('Stato percorso') }}</th>
+                                                        <th>{{ __('Stato iscrizione') }}</th>
+                                                        <th>{{ __('Corso corrente') }}</th>
+                                                        <th>{{ __('Assegnato il') }}</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @forelse ($trainingPathEnrollments as $trainingPathEnrollment)
+                                                        @php
+                                                            $trainingPath = $trainingPathEnrollment->trainingPath;
+                                                            $pathLabel = $trainingPath !== null
+                                                                ? (($trainingPath->code ? $trainingPath->code . ' - ' : '') . $trainingPath->title)
+                                                                : __('Percorso non disponibile');
+                                                            $pathStatusLabel = $trainingPath !== null
+                                                                ? ($trainingPathStatusLabels[$trainingPath->status] ?? $trainingPath->status)
+                                                                : __('Non disponibile');
+                                                        @endphp
+                                                        <tr @class(['hidden' => $trainingPathEnrollment->trashed()]) data-enrollment-row @if ($trainingPathEnrollment->trashed()) data-enrollment-deleted="1" @endif>
+                                                            <td>
+                                                                <div class="font-medium text-base-content">{{ $pathLabel }}</div>
+                                                                @if ($trainingPath !== null)
+                                                                    <div class="mt-1 text-xs text-base-content/60">
+                                                                        {{ __('Corsi nel percorso: :count', ['count' => $trainingPath->courses->count()]) }}
+                                                                    </div>
+                                                                @endif
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge badge-outline h-fit">{{ $pathStatusLabel }}</span>
+                                                            </td>
+                                                            <td>
+                                                                @if ($trainingPathEnrollment->trashed())
+                                                                    <span class="badge badge-error badge-soft h-fit">{{ __('Eliminata') }}</span>
+                                                                @else
+                                                                    <span class="badge badge-success badge-soft h-fit">{{ __('Attiva') }}</span>
+                                                                @endif
+                                                            </td>
+                                                            <td>
+                                                                @if ($trainingPathEnrollment->currentCourse !== null)
+                                                                    {{ ($trainingPathEnrollment->currentCourse->code ? $trainingPathEnrollment->currentCourse->code . ' - ' : '') . $trainingPathEnrollment->currentCourse->title }}
+                                                                @else
+                                                                    <span class="text-base-content/60">{{ __('Non impostato') }}</span>
+                                                                @endif
+                                                            </td>
+                                                            <td>{{ $trainingPathEnrollment->assigned_at?->format('d/m/Y H:i') ?? '-' }}</td>
+                                                        </tr>
+                                                    @empty
+                                                        <tr>
+                                                            <td colspan="5" class="py-8 text-center text-sm text-base-content/70">
+                                                                {{ __('Nessuna iscrizione a percorsi formativi.') }}
+                                                            </td>
+                                                        </tr>
+                                                    @endforelse
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-2xl border border-base-300 bg-base-100 p-4">
+                                        <div class="flex items-center justify-between gap-3">
+                                            <h3 class="text-lg font-semibold text-base-content">{{ __('Corsi') }}</h3>
+                                            <span class="badge badge-outline h-fit">{{ $courseEnrollments->count() }}</span>
+                                        </div>
+
+                                        <div class="mt-4 overflow-x-auto rounded-box border border-base-300">
+                                            <table class="table table-zebra">
+                                                <thead>
+                                                    <tr>
+                                                        <th>{{ __('Corso') }}</th>
+                                                        <th>{{ __('Stato corso') }}</th>
+                                                        <th>{{ __('Stato iscrizione') }}</th>
+                                                        <th>{{ __('Completamento') }}</th>
+                                                        <th>{{ __('Appartenenza percorso') }}</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @forelse ($courseEnrollments as $courseEnrollment)
+                                                        @php
+                                                            $course = $courseEnrollment->course;
+                                                            $courseLabel = $course !== null
+                                                                ? (($course->code ? $course->code . ' - ' : '') . $course->title)
+                                                                : __('Corso non disponibile');
+                                                            $courseStatusLabel = $course !== null
+                                                                ? ($courseStatusLabels[$course->status] ?? $course->status)
+                                                                : __('Non disponibile');
+                                                            $linkedPaths = collect($courseEnrollmentPathMembership[$courseEnrollment->getKey()] ?? []);
+                                                            $courseEnrollmentStatusLabel = $courseEnrollmentStatusLabels[$courseEnrollment->status] ?? $courseEnrollment->status;
+                                                        @endphp
+                                                        <tr @class(['hidden' => $courseEnrollment->trashed()]) data-enrollment-row @if ($courseEnrollment->trashed()) data-enrollment-deleted="1" @endif>
+                                                            <td>
+                                                                <div class="font-medium text-base-content">{{ $courseLabel }}</div>
+                                                                <div class="mt-1 text-xs text-base-content/60">
+                                                                    {{ __('Assegnato il: :date', ['date' => $courseEnrollment->assigned_at?->format('d/m/Y H:i') ?? '-']) }}
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge badge-outline h-fit">{{ $courseStatusLabel }}</span>
+                                                            </td>
+                                                            <td>
+                                                                <div class="flex flex-wrap gap-2">
+                                                                    <span class="badge badge-outline h-fit">{{ $courseEnrollmentStatusLabel }}</span>
+                                                                    @if ($courseEnrollment->trashed())
+                                                                        <span class="badge badge-error badge-soft h-fit">{{ __('Eliminata') }}</span>
+                                                                    @endif
+                                                                </div>
+                                                            </td>
+                                                            <td>{{ (int) $courseEnrollment->completion_percentage }}%</td>
+                                                            <td>
+                                                                @if ($linkedPaths->isEmpty())
+                                                                    <span class="badge badge-ghost h-fit">{{ __('Corso standalone') }}</span>
+                                                                @else
+                                                                    <div class="flex flex-wrap gap-2">
+                                                                        @foreach ($linkedPaths as $linkedPath)
+                                                                            <span @class([
+                                                                                'badge badge-outline h-fit',
+                                                                                'badge-primary' => ! ($linkedPath['is_deleted'] ?? false),
+                                                                                'badge-error' => ($linkedPath['is_deleted'] ?? false),
+                                                                            ])>
+                                                                                {{ ($linkedPath['code'] ? $linkedPath['code'] . ' - ' : '') . $linkedPath['title'] }}
+                                                                            </span>
+                                                                        @endforeach
+                                                                    </div>
+                                                                @endif
+                                                            </td>
+                                                        </tr>
+                                                    @empty
+                                                        <tr>
+                                                            <td colspan="5" class="py-8 text-center text-sm text-base-content/70">
+                                                                {{ __('Nessuna iscrizione a corsi.') }}
+                                                            </td>
+                                                        </tr>
+                                                    @endforelse
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
                     @endif
 
                     @if ($activeUserEditSection === 'risk')

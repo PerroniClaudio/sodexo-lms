@@ -19,6 +19,7 @@ class TrainingPathEnrollment extends Model
     protected $fillable = [
         'user_id',
         'training_path_id',
+        'current_course_id',
         'assigned_at',
     ];
 
@@ -26,6 +27,7 @@ class TrainingPathEnrollment extends Model
     {
         return [
             'assigned_at' => 'datetime',
+            'current_course_id' => 'integer',
         ];
     }
 
@@ -66,6 +68,7 @@ class TrainingPathEnrollment extends Model
         return static::query()->create([
             'user_id' => $user->getKey(),
             'training_path_id' => $trainingPath->getKey(),
+            'current_course_id' => null,
             'assigned_at' => now(),
         ]);
     }
@@ -78,5 +81,10 @@ class TrainingPathEnrollment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function currentCourse(): BelongsTo
+    {
+        return $this->belongsTo(Course::class, 'current_course_id');
     }
 }

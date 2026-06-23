@@ -135,6 +135,7 @@ Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
         Route::put('/courses/{course}/certificates', [CourseController::class, 'updateCertificates'])->name('courses.certificates.update');
         Route::post('/courses/{course}/attendance/confirm', [CourseController::class, 'confirmAttendance'])->name('courses.attendance.confirm');
         Route::delete('/courses/{course}', [CourseController::class, 'destroy'])->name('courses.destroy');
+        Route::post('/courses/{id}/restore', [CourseController::class, 'restore'])->name('courses.restore');
         Route::get('/courses/{course}/classes', [CourseClassController::class, 'index'])->name('courses.classes.index');
         Route::post('/courses/{course}/classes', [CourseClassController::class, 'store'])->name('courses.classes.store');
         Route::get('/courses/{course}/classes/{courseClass}/edit', [CourseClassController::class, 'edit'])->name('courses.classes.edit');

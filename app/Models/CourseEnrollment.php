@@ -33,6 +33,8 @@ class CourseEnrollment extends Model
         'user_id',
         'course_id',
         'origin_course_id',
+        'direct_origin',
+        'pathway_origin',
         'current_module_id',
         'status',
         'assigned_at',
@@ -56,6 +58,8 @@ class CourseEnrollment extends Model
             'last_accessed_at' => 'datetime',
             'completion_percentage' => 'integer',
             'is_integrative_enrollment' => 'boolean',
+            'direct_origin' => 'boolean',
+            'pathway_origin' => 'boolean',
         ];
     }
 
@@ -98,8 +102,10 @@ class CourseEnrollment extends Model
         Course $course,
         ?string $courseValidityType = null,
         bool $isIntegrativeEnrollment = false,
+        bool $directOrigin = true,
+        bool $pathwayOrigin = false,
     ): self {
-        return DB::transaction(function () use ($user, $course, $courseValidityType, $isIntegrativeEnrollment): self {
+        return DB::transaction(function () use ($user, $course, $courseValidityType, $isIntegrativeEnrollment, $directOrigin, $pathwayOrigin): self {
             $existingEnrollment = static::withTrashed()
                 ->where('user_id', $user->getKey())
                 ->where('course_id', $course->getKey())
@@ -123,6 +129,8 @@ class CourseEnrollment extends Model
             $enrollment = static::query()->create([
                 'user_id' => $user->getKey(),
                 'course_id' => $course->getKey(),
+                'direct_origin' => $directOrigin,
+                'pathway_origin' => $pathwayOrigin,
                 'current_module_id' => $firstModule?->getKey(),
                 'status' => $firstModule === null ? self::STATUS_COMPLETED : self::STATUS_ASSIGNED,
                 'assigned_at' => $assignedAt,
@@ -143,6 +151,14 @@ class CourseEnrollment extends Model
 
             return $enrollment->fresh(['currentModule', 'moduleProgresses']);
         });
+    }
+
+    public function mergeOrigins(bool $directOrigin, bool $pathwayOrigin): void
+    {
+        $this->forceFill([
+            'direct_origin' => (bool) $this->direct_origin || $directOrigin,
+            'pathway_origin' => (bool) $this->pathway_origin || $pathwayOrigin,
+        ])->save();
     }
 
     public function user(): BelongsTo

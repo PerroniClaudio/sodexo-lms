@@ -14,6 +14,7 @@ use App\Services\Certificates\UserCourseCertificateLocator;
 use App\Services\CourseClassScheduleResolver;
 use App\Services\QuizAccessDelayService;
 use App\Services\SyncCourseModuleProgresses;
+use App\Services\TrainingPathCourseOrderService;
 use App\Support\LanguageVerificationGate;
 use BaconQrCode\Renderer\Color\Rgb;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
@@ -44,6 +45,7 @@ class CourseController extends Controller
         private readonly SyncCourseModuleProgresses $syncCourseModuleProgresses,
         private readonly QuizAccessDelayService $quizAccessDelayService,
         private readonly LanguageVerificationGate $languageVerificationGate,
+        private readonly TrainingPathCourseOrderService $trainingPathCourseOrderService,
     ) {}
 
     public function index(): View
@@ -113,9 +115,17 @@ class CourseController extends Controller
         return $certificate['disk']->download($certificate['path'], $certificate['download_name']);
     }
 
-    public function showModule(Course $course, Module $module): View
+    public function showModule(Course $course, Module $module): View|RedirectResponse
     {
         $user = $this->authUser();
+
+        $courseOrderLock = $this->trainingPathCourseOrderService->lockForCourse($user, $course);
+
+        if ($courseOrderLock !== null && ! empty($courseOrderLock['current_course_id'])) {
+            return redirect()
+                ->route('user.courses.show', (int) $courseOrderLock['current_course_id'])
+                ->with('error', $courseOrderLock['message']);
+        }
 
         abort_unless((string) $module->belongsTo === (string) $course->getKey(), 404);
 
@@ -244,7 +254,9 @@ class CourseController extends Controller
             ->whereHas('course', fn ($query) => $query->visibleToUser($user))
             ->get();
 
-        return view('user.courses.index', compact('enrollments'));
+        $courseOrderLocks = $this->trainingPathCourseOrderService->locksByCourseId($user);
+
+        return view('user.courses.index', compact('enrollments', 'courseOrderLocks'));
     }
 
     private function teacherIndex(User $user): View
@@ -387,6 +399,14 @@ class CourseController extends Controller
 
     private function userShow(User $user, Course $course): View|RedirectResponse
     {
+        $courseOrderLock = $this->trainingPathCourseOrderService->lockForCourse($user, $course);
+
+        if ($courseOrderLock !== null && ! empty($courseOrderLock['current_course_id'])) {
+            return redirect()
+                ->route('user.courses.show', (int) $courseOrderLock['current_course_id'])
+                ->with('error', $courseOrderLock['message']);
+        }
+
         $course->loadMissing('categories', 'venue');
 
         $enrollment = $user->courseEnrollments()->where('course_id', $course->id)->first();
@@ -413,6 +433,7 @@ class CourseController extends Controller
             'enrollment' => $enrollment,
             'languageVerificationBlock' => $languageVerificationBlock,
             'modules' => $modules,
+            'courseOrderLock' => $courseOrderLock,
             'residentialAttendanceQrCodeContent' => $residentialAttendanceQrCode['content'] ?? null,
             'residentialAttendanceQrCodeDataUri' => $residentialAttendanceQrCode['data_uri'] ?? null,
         ]);

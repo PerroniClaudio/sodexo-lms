@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\CourseEnrollment;
 use App\Services\Certificates\CourseCertificateGenerator;
 use App\Services\CourseRiskRequirementService;
+use App\Services\TrainingPathEnrollmentSyncService;
 use App\Support\LanguageVerificationGate;
 use Illuminate\Support\Facades\DB;
 
@@ -12,16 +13,29 @@ class CourseEnrollmentObserver
 {
     public function created(CourseEnrollment $courseEnrollment): void
     {
+        $this->dispatchTrainingPathSync($courseEnrollment);
         $this->dispatchCertificateGenerationIfCompleted($courseEnrollment);
     }
 
     public function updated(CourseEnrollment $courseEnrollment): void
     {
+        $this->dispatchTrainingPathSync($courseEnrollment);
+
         if (! $this->wasCompletedNow($courseEnrollment)) {
             return;
         }
 
         $this->dispatchCertificateGenerationIfCompleted($courseEnrollment);
+    }
+
+    public function deleted(CourseEnrollment $courseEnrollment): void
+    {
+        $this->dispatchTrainingPathSync($courseEnrollment);
+    }
+
+    public function restored(CourseEnrollment $courseEnrollment): void
+    {
+        $this->dispatchTrainingPathSync($courseEnrollment);
     }
 
     private function dispatchCertificateGenerationIfCompleted(CourseEnrollment $courseEnrollment): void
@@ -61,5 +75,14 @@ class CourseEnrollmentObserver
     {
         return $courseEnrollment->status === CourseEnrollment::STATUS_COMPLETED
             || $courseEnrollment->completed_at !== null;
+    }
+
+    private function dispatchTrainingPathSync(CourseEnrollment $courseEnrollment): void
+    {
+        $userId = (int) $courseEnrollment->user_id;
+
+        DB::afterCommit(function () use ($userId): void {
+            app(TrainingPathEnrollmentSyncService::class)->syncAllEnrollmentsForUser($userId);
+        });
     }
 }

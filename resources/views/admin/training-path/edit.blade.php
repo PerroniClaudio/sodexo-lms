@@ -19,6 +19,12 @@
         $selectedCourseOrderMap = $trainingPath->courses->mapWithKeys(fn ($course) => [
             (string) $course->getKey() => (int) $course->pivot->sort_order,
         ]);
+        $initialCourseIds = $trainingPath->courses
+            ->pluck('id')
+            ->map(fn ($courseId) => (int) $courseId)
+            ->values();
+        $courseEnrollmentCleanupCounts = collect($courseEnrollmentCleanupCounts ?? [])
+            ->mapWithKeys(fn ($count, $courseId) => [(string) $courseId => (int) $count]);
         $selectedCoursePayload = collect(old('course_ids', $trainingPath->courses->pluck('id')->all()))
             ->map(fn ($courseId) => (int) $courseId)
             ->unique()
@@ -52,6 +58,9 @@
         $selectedJobRoleIds = $trainingPath->jobRoles->pluck('id')->map(fn ($id) => (string) $id);
         $selectedJobTaskIds = $trainingPath->jobTasks->pluck('id')->map(fn ($id) => (string) $id);
         $selectedJobUnitIds = $trainingPath->jobUnits->pluck('id')->map(fn ($id) => (string) $id);
+        $cannotAddTrainingPathEnrollmentMessage = $trainingPath->status !== 'published'
+            ? __('Non puoi aggiungere iscritti a un percorso formativo non pubblicato')
+            : null;
     @endphp
 
     <div
@@ -183,6 +192,23 @@
                                                 <p class="text-sm text-error">{{ $message }}</p>
                                             @enderror
                                         </div>
+
+                                        <label class="form-control flex cursor-pointer flex-row items-start gap-3 md:col-span-2">
+                                            <input
+                                                type="checkbox"
+                                                name="enforce_course_order"
+                                                value="1"
+                                                class="checkbox checkbox-primary mt-1"
+                                                @checked(old('enforce_course_order', $trainingPath->enforce_course_order ?? true))
+                                            >
+                                            <span>
+                                                <span class="block font-medium">{{ __('Ordine obbligato') }}</span>
+                                                <span class="block text-sm text-base-content/70">{{ __('Se attivo, gli iscritti possono seguire i corsi solo nell\'ordine stabilito.') }}</span>
+                                            </span>
+                                        </label>
+                                        @error('enforce_course_order')
+                                            <p class="text-sm text-error md:col-span-2">{{ $message }}</p>
+                                        @enderror
                                     </div>
 
                                     <div class="flex justify-end">
@@ -390,7 +416,7 @@
                                         <div class="modal-box max-w-6xl">
                                             <div class="space-y-2">
                                                 <h3 class="text-lg font-semibold">{{ __('Aggiungi corsi al percorso') }}</h3>
-                                                <p class="text-sm text-base-content/70">{{ __('Seleziona i corsi dal catalogo, riordinali nel riquadro in alto e conferma per associare il tutto al percorso.') }}</p>
+                                                <p class="text-sm text-base-content/70">{{ __('Seleziona i corsi dal catalogo e conferma per associarli al percorso.') }}</p>
                                             </div>
 
                                             <div class="mt-6 rounded-box border border-base-300 bg-base-200/30 p-4">
@@ -400,7 +426,6 @@
                                                 </div>
 
                                                 <div class="mt-4 flex flex-wrap gap-2" data-training-path-selected-course-chips></div>
-                                                <div class="mt-4 hidden grid gap-3" data-training-path-modal-selected-courses-sortable></div>
                                                 <div class="mt-4 rounded-box border border-dashed border-base-300 bg-base-100/70 p-4 text-sm text-base-content/70" data-training-path-modal-selected-courses-empty>
                                                     {{ __('Nessun corso selezionato.') }}
                                                 </div>
@@ -501,12 +526,20 @@
                                                 {!! json_encode($selectedCoursePayload->values()->all(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}
                                             </script>
 
+                                            <script type="application/json" data-training-path-initial-course-ids>
+                                                {!! json_encode($initialCourseIds->all(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}
+                                            </script>
+
+                                            <script type="application/json" data-training-path-course-enrollment-cleanup-counts>
+                                                {!! json_encode($courseEnrollmentCleanupCounts->all(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}
+                                            </script>
+
                                             <div class="modal-action mt-6">
                                                 <button type="button" class="btn btn-ghost" data-close-training-path-courses-modal>
                                                     {{ __('Annulla') }}
                                                 </button>
                                                 <button type="button" class="btn btn-primary" data-confirm-training-path-courses>
-                                                    <span>{{ __('Conferma e associa corsi') }}</span>
+                                                    <span>{{ __('Conferma selezione') }}</span>
                                                     <x-lucide-check class="h-4 w-4" />
                                                 </button>
                                             </div>
@@ -606,10 +639,25 @@
                                         <p class="text-sm text-base-content/70">{{ __('Gestisci gli iscritti al percorso. L’avanzamento usa i corsi del percorso completati rispetto al totale.') }}</p>
                                     </div>
 
-                                    <button type="button" class="btn btn-primary" data-open-training-path-enrollment-modal>
-                                        <span>{{ __('Nuovo iscritto') }}</span>
-                                        <x-lucide-plus class="h-4 w-4" />
-                                    </button>
+                                    <span
+                                        @class([
+                                            'inline-flex',
+                                            'tooltip tooltip-left' => $cannotAddTrainingPathEnrollmentMessage !== null,
+                                        ])
+                                        @if ($cannotAddTrainingPathEnrollmentMessage !== null)
+                                            data-tip="{{ $cannotAddTrainingPathEnrollmentMessage }}"
+                                        @endif
+                                    >
+                                        <button
+                                            type="button"
+                                            class="btn btn-primary"
+                                            data-open-training-path-enrollment-modal
+                                            @disabled($cannotAddTrainingPathEnrollmentMessage !== null)
+                                        >
+                                            <span>{{ __('Nuovo iscritto') }}</span>
+                                            <x-lucide-plus class="h-4 w-4" />
+                                        </button>
+                                    </span>
                                 </div>
 
                                 <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

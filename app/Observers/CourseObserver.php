@@ -20,6 +20,11 @@ class CourseObserver
      */
     public function saving(Course $course): void
     {
+        // During soft-delete restore, allow transition deleted_at: not blocked by published guard.
+        if ($this->isRestoring($course)) {
+            return;
+        }
+
         // Permetti la modifica dei dati solo se il corso NON era già pubblicato
         // Blocca solo se il corso esisteva già, era pubblicato PRIMA della richiesta e ci sono modifiche ai dati (escluso lo status)
         if (
@@ -94,9 +99,18 @@ class CourseObserver
 
         // Remove status and timestamps from dirty attributes
         unset($dirty['status']);
+        unset($dirty['deleted_at']);
         unset($dirty['updated_at']);
 
         return ! empty($dirty);
+    }
+
+    private function isRestoring(Course $course): bool
+    {
+        return $course->exists
+            && $course->isDirty('deleted_at')
+            && $course->getOriginal('deleted_at') !== null
+            && $course->deleted_at === null;
     }
 
     /**

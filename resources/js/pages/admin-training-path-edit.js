@@ -31,7 +31,6 @@ function initializeCourseSelection(scope) {
     const hiddenInputs = scope.querySelector('[data-training-path-course-hidden-inputs]');
     const modalSelectedCount = scope.querySelector('[data-training-path-modal-selected-courses-count]');
     const selectedChips = scope.querySelector('[data-training-path-selected-course-chips]');
-    const modalSelectedSortable = scope.querySelector('[data-training-path-modal-selected-courses-sortable]');
     const modalSelectedEmpty = scope.querySelector('[data-training-path-modal-selected-courses-empty]');
     const searchInput = scope.querySelector('[data-training-path-courses-search]');
     const searchButton = scope.querySelector('[data-training-path-courses-search-button]');
@@ -46,8 +45,10 @@ function initializeCourseSelection(scope) {
     const chipTemplate = scope.querySelector('[data-training-path-selected-course-chip-template]');
     const itemTemplate = scope.querySelector('[data-training-path-selected-course-item-template]');
     const selectedCoursesScript = scope.querySelector('[data-training-path-selected-courses]');
+    const initialCourseIdsScript = scope.querySelector('[data-training-path-initial-course-ids]');
+    const cleanupCountsScript = scope.querySelector('[data-training-path-course-enrollment-cleanup-counts]');
 
-    if (!apiUrl || !openModalButton || !(modal instanceof HTMLDialogElement) || !closeModalButton || !confirmButton || !selectedWrapper || !selectedEmpty || !selectedCount || !selectedSortable || !hiddenInputs || !modalSelectedCount || !selectedChips || !modalSelectedSortable || !modalSelectedEmpty || !searchInput || !searchButton || !tableContainer || !tableLoader || !tbody || !emptyState || !summaryElement || !paginationContainer || !(rowTemplate instanceof HTMLTemplateElement) || !(chipTemplate instanceof HTMLTemplateElement) || !(itemTemplate instanceof HTMLTemplateElement) || !selectedCoursesScript) {
+    if (!apiUrl || !openModalButton || !(modal instanceof HTMLDialogElement) || !closeModalButton || !confirmButton || !selectedWrapper || !selectedEmpty || !selectedCount || !selectedSortable || !hiddenInputs || !modalSelectedCount || !selectedChips || !modalSelectedEmpty || !searchInput || !searchButton || !tableContainer || !tableLoader || !tbody || !emptyState || !summaryElement || !paginationContainer || !(rowTemplate instanceof HTMLTemplateElement) || !(chipTemplate instanceof HTMLTemplateElement) || !(itemTemplate instanceof HTMLTemplateElement) || !selectedCoursesScript || !initialCourseIdsScript || !cleanupCountsScript) {
         return;
     }
 
@@ -69,9 +70,30 @@ function initializeCourseSelection(scope) {
         direction: 'desc',
         loading: false,
         selectedCourses: normalizeCourses(cloneCourses(JSON.parse(selectedCoursesScript.textContent || '[]'))),
+        initialCourseIds: JSON.parse(initialCourseIdsScript.textContent || '[]').map((courseId) => Number(courseId)),
+        cleanupCountsByCourseId: JSON.parse(cleanupCountsScript.textContent || '{}'),
         draftCourses: [],
         draggedCourseId: null,
         submitting: false,
+    };
+
+    const setCleanupConfirmation = (enabled) => {
+        let input = hiddenInputs.querySelector('input[name="confirm_course_enrollment_cleanup"]');
+
+        if (!enabled) {
+            input?.remove();
+
+            return;
+        }
+
+        if (!input) {
+            input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'confirm_course_enrollment_cleanup';
+            hiddenInputs.appendChild(input);
+        }
+
+        input.value = '1';
     };
 
     const setLoadingState = (loading) => {
@@ -128,7 +150,7 @@ function initializeCourseSelection(scope) {
         modalSelectedCount.textContent = draftCountLabel;
     };
 
-    const renderSelectedCourseItem = (course, container, { interactive = false } = {}) => {
+    const renderSelectedCourseItem = (course, container, { interactive = false, onRemove = null, onReorder = null } = {}) => {
         const fragment = itemTemplate.content.cloneNode(true);
         const item = fragment.querySelector('[data-training-path-selected-course-item]');
         const removeButton = fragment.querySelector('[data-action="remove-selected-course"]');
@@ -151,11 +173,9 @@ function initializeCourseSelection(scope) {
 
         if (interactive) {
             removeButton.addEventListener('click', () => {
-                state.draftCourses = normalizeCourses(
-                    state.draftCourses.filter((selectedCourse) => Number(selectedCourse.id) !== Number(course.id)),
-                );
-                renderDraftCourses();
-                void loadCourses();
+                if (typeof onRemove === 'function') {
+                    onRemove(Number(course.id));
+                }
             });
 
             item.addEventListener('dragstart', () => {
@@ -165,13 +185,15 @@ function initializeCourseSelection(scope) {
 
             item.addEventListener('dragend', () => {
                 item.classList.remove('opacity-50', 'shadow-lg', 'ring-2', 'ring-primary/30');
-                state.draftCourses = normalizeCourses(
-                    Array.from(item.parentElement.querySelectorAll('[data-training-path-selected-course-item]'))
-                        .map((selectedItem) => state.draftCourses.find((selectedCourse) => Number(selectedCourse.id) === Number(selectedItem.dataset.courseId)))
-                        .filter(Boolean),
-                );
+
+                const orderedCourseIds = Array.from(item.parentElement.querySelectorAll('[data-training-path-selected-course-item]'))
+                    .map((selectedItem) => Number(selectedItem.dataset.courseId));
+
+                if (typeof onReorder === 'function') {
+                    onReorder(orderedCourseIds);
+                }
+
                 state.draggedCourseId = null;
-                renderDraftCourses();
             });
         }
 
@@ -187,7 +209,25 @@ function initializeCourseSelection(scope) {
         selectedEmpty.classList.toggle('hidden', hasSelectedCourses);
 
         state.selectedCourses.forEach((course) => {
-            renderSelectedCourseItem(course, selectedSortable);
+            renderSelectedCourseItem(course, selectedSortable, {
+                interactive: true,
+                onRemove: (courseId) => {
+                    state.selectedCourses = normalizeCourses(
+                        state.selectedCourses.filter((selectedCourse) => Number(selectedCourse.id) !== Number(courseId)),
+                    );
+
+                    renderCommittedCourses();
+                },
+                onReorder: (orderedCourseIds) => {
+                    state.selectedCourses = normalizeCourses(
+                        orderedCourseIds
+                            .map((courseId) => state.selectedCourses.find((selectedCourse) => Number(selectedCourse.id) === Number(courseId)))
+                            .filter(Boolean),
+                    );
+
+                    renderCommittedCourses();
+                },
+            });
         });
 
         syncHiddenInputs();
@@ -195,16 +235,13 @@ function initializeCourseSelection(scope) {
     };
 
     const renderDraftCourses = () => {
-        modalSelectedSortable.innerHTML = '';
         selectedChips.innerHTML = '';
 
         const hasSelectedCourses = state.draftCourses.length > 0;
 
-        modalSelectedSortable.classList.toggle('hidden', !hasSelectedCourses);
         modalSelectedEmpty.classList.toggle('hidden', hasSelectedCourses);
 
         state.draftCourses.forEach((course) => {
-            renderSelectedCourseItem(course, modalSelectedSortable, { interactive: true });
 
             const chip = chipTemplate.content.cloneNode(true);
             const button = chip.querySelector('[data-action="remove-chip"]');
@@ -244,14 +281,14 @@ function initializeCourseSelection(scope) {
         }
     };
 
-    modalSelectedSortable.addEventListener('dragover', (event) => {
+    selectedSortable.addEventListener('dragover', (event) => {
         if (state.draggedCourseId === null) {
             return;
         }
 
         event.preventDefault();
         const targetItem = event.target.closest('[data-training-path-selected-course-item]');
-        moveDraggedItem(modalSelectedSortable, targetItem, event);
+        moveDraggedItem(selectedSortable, targetItem, event);
     });
 
     const renderPagination = (meta) => {
@@ -415,9 +452,31 @@ function initializeCourseSelection(scope) {
     });
 
     confirmButton.addEventListener('click', () => {
+        const selectedCourseIds = new Set(state.draftCourses.map((course) => Number(course.id)));
+        const removedCourseIds = state.initialCourseIds.filter((courseId) => !selectedCourseIds.has(Number(courseId)));
+        const impactedRemovedCourses = removedCourseIds
+            .map((courseId) => ({
+                id: Number(courseId),
+                count: Number(state.cleanupCountsByCourseId[String(courseId)] ?? 0),
+            }))
+            .filter((entry) => entry.count > 0);
+
+        let shouldConfirmCleanup = false;
+
+        if (impactedRemovedCourses.length > 0) {
+            const totalImpactedEnrollments = impactedRemovedCourses.reduce((total, entry) => total + entry.count, 0);
+            const confirmMessage = `Stai rimuovendo ${impactedRemovedCourses.length} ${impactedRemovedCourses.length === 1 ? 'corso' : 'corsi'} dal percorso. Questo eliminerà (soft delete) ${totalImpactedEnrollments} ${totalImpactedEnrollments === 1 ? 'iscrizione collegata' : 'iscrizioni collegate'} ai corsi rimossi per utenti iscritti al percorso. Vuoi continuare?`;
+
+            if (!window.confirm(confirmMessage)) {
+                return;
+            }
+
+            shouldConfirmCleanup = true;
+        }
+
         state.selectedCourses = normalizeCourses(cloneCourses(state.draftCourses));
-        syncHiddenInputs();
         renderCommittedCourses();
+        setCleanupConfirmation(shouldConfirmCleanup);
         state.submitting = true;
         form.requestSubmit();
     });
@@ -864,6 +923,10 @@ function initializeEnrollments(scope) {
     };
 
     openCreateModalButton.addEventListener('click', () => {
+        if (openCreateModalButton.hasAttribute('disabled')) {
+            return;
+        }
+
         userSearchInput.value = '';
         userResultsBody.innerHTML = '';
         userResultsEmptyState.classList.add('hidden');

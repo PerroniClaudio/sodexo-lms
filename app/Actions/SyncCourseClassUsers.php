@@ -43,13 +43,16 @@ class SyncCourseClassUsers
             ->first();
 
         if ($existingEnrollment === null) {
-            CourseEnrollment::enroll($user, $course);
+            CourseEnrollment::enroll($user, $course, directOrigin: true, pathwayOrigin: false);
 
             return;
         }
 
         if ($existingEnrollment->trashed()) {
             $existingEnrollment->restore();
+            $existingEnrollment->mergeOrigins(true, (bool) $existingEnrollment->pathway_origin);
+        } else {
+            $existingEnrollment->mergeOrigins(true, (bool) $existingEnrollment->pathway_origin);
         }
     }
 

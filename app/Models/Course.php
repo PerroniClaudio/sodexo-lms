@@ -339,6 +339,13 @@ class Course extends Model
             ->withTimestamps();
     }
 
+    public function trainingPaths(): BelongsToMany
+    {
+        return $this->belongsToMany(TrainingPath::class, 'training_path_course')
+            ->withPivot('sort_order')
+            ->withTimestamps();
+    }
+
     public function jobRoles(): BelongsToMany
     {
         return $this->belongsToMany(JobRole::class, 'course_job_role')

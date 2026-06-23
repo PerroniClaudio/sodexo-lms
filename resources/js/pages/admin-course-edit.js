@@ -32,7 +32,56 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeCourseProgram(courseEditPage);
     initializeCourseClassAttendance(courseEditPage);
     initializeResAttendanceDialog(courseEditPage);
+    initializeCourseStatusChangeGuards(courseEditPage);
 });
+
+function initializeCourseStatusChangeGuards(scope) {
+    const isPublishedCourse = scope.dataset.courseIsPublished === 'true';
+
+    if (!isPublishedCourse) {
+        return;
+    }
+
+    const detailsForm = scope.querySelector('[data-course-details-form]');
+    const statusSelect = detailsForm?.querySelector('select[name="status"]');
+    const detachInput = detailsForm?.querySelector('[data-detach-from-unpublished-training-paths]');
+
+    if (!detailsForm || !(statusSelect instanceof HTMLSelectElement) || !(detachInput instanceof HTMLInputElement)) {
+        return;
+    }
+
+    const publishedPathCount = Number(scope.dataset.coursePublishedTrainingPathCount || 0);
+    const unpublishedPathCount = Number(scope.dataset.courseUnpublishedTrainingPathCount || 0);
+
+    detailsForm.addEventListener('submit', (event) => {
+        detachInput.value = '0';
+
+        if (statusSelect.value === 'published') {
+            return;
+        }
+
+        if (publishedPathCount > 0) {
+            event.preventDefault();
+            window.alert('Non puoi cambiare stato a un corso pubblicato associato a percorsi formativi pubblicati.');
+
+            return;
+        }
+
+        if (unpublishedPathCount > 0) {
+            const shouldDetach = window.confirm(
+                'Questo corso è presente in percorsi formativi non pubblicati. Confermi la rimozione automatica da quei percorsi per poter cambiare stato?'
+            );
+
+            if (!shouldDetach) {
+                event.preventDefault();
+
+                return;
+            }
+
+            detachInput.value = '1';
+        }
+    });
+}
 
 function initializeResAttendanceDialog(scope) {
     const modal = scope.querySelector('#confirm-res-attendance-modal');
@@ -1855,6 +1904,10 @@ function initializeEnrollmentsTable(courseEditPage) {
     };
 
     openCreateEnrollmentModalButton.addEventListener('click', () => {
+        if (openCreateEnrollmentModalButton.hasAttribute('disabled')) {
+            return;
+        }
+
         userSearchInput.value = '';
         userResultsBody.innerHTML = '';
         userResultsEmptyState.classList.add('hidden');

@@ -79,6 +79,7 @@
             ])
             ->count();
         $averageProgress = (int) round($enrollments->avg('completion_percentage') ?? 0);
+        $courseOrderLocks = collect($courseOrderLocks ?? []);
     @endphp
 
     <section class="flex min-h-full w-full flex-col gap-5 p-4 sm:p-6 lg:p-8">
@@ -153,6 +154,8 @@
                             ? ($courseTypeLabels[$course->type] ?? strtoupper((string) $course->type))
                             : null;
                         $theme = $themeByType[$course?->type] ?? $themeByType['unknown'];
+                        $courseLock = $course !== null ? $courseOrderLocks->get((int) $course->getKey()) : null;
+                        $isCourseLockedByPathOrder = is_array($courseLock);
                     @endphp
 
                     <article
@@ -202,15 +205,31 @@
                             </div>
 
                             @if($course !== null)
-                                <a
-                                    href="{{ route('user.courses.show', $course) }}"
-                                    class="btn btn-circle btn-sm btn-outline shrink-0 {{ $theme['button'] }}"
-                                    aria-label="{{ __('Apri corso :title', ['title' => $course->title]) }}"
-                                >
-                                    <x-lucide-play class="h-3.5 w-3.5" />
-                                </a>
+                                @if($isCourseLockedByPathOrder)
+                                    <span class="badge badge-warning badge-outline h-fit">{{ __('Bloccato da ordine percorso') }}</span>
+                                @else
+                                    <a
+                                        href="{{ route('user.courses.show', $course) }}"
+                                        class="btn btn-circle btn-sm btn-outline shrink-0 {{ $theme['button'] }}"
+                                        aria-label="{{ __('Apri corso :title', ['title' => $course->title]) }}"
+                                    >
+                                        <x-lucide-play class="h-3.5 w-3.5" />
+                                    </a>
+                                @endif
                             @endif
                         </div>
+
+                        @if($isCourseLockedByPathOrder)
+                            <div class="mt-3 rounded-box border border-warning/40 bg-warning/10 p-3 text-sm text-base-content/80">
+                                <p>{{ $courseLock['message'] ?? __('Per questo percorso devi seguire l\'ordine dei corsi.') }}</p>
+
+                                @if(!empty($courseLock['current_course_id']))
+                                    <a href="{{ route('user.courses.show', (int) $courseLock['current_course_id']) }}" class="btn btn-warning btn-sm mt-2">
+                                        {{ __('Vai al corso corrente') }}
+                                    </a>
+                                @endif
+                            </div>
+                        @endif
 
                         <div class="mt-3 flex items-center justify-between gap-3 text-xs text-base-content/60">
                             <span>{{ __('Avanzamento') }}</span>

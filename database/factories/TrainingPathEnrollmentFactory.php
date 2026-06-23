@@ -24,6 +24,7 @@ class TrainingPathEnrollmentFactory extends Factory
         return [
             'user_id' => User::factory(),
             'training_path_id' => TrainingPath::factory(),
+            'current_course_id' => null,
             'assigned_at' => now(),
         ];
     }

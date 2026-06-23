@@ -167,6 +167,8 @@
         data-course-edit-page
         data-has-create-module-errors="{{ $errors->has('type') || $errors->has('title') ? 'true' : 'false' }}"
         data-course-is-published="{{ $course->status === 'published' ? 'true' : 'false' }}"
+        data-course-published-training-path-count="{{ (int) ($publishedTrainingPathCount ?? 0) }}"
+        data-course-unpublished-training-path-count="{{ (int) ($unpublishedTrainingPathCount ?? 0) }}"
     >
         <div class="grid min-h-screen w-full min-w-0 grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)]">
             <aside class="min-w-0 border-b border-base-300 bg-base-200 p-4 lg:min-h-screen lg:border-b-0 lg:border-r">
@@ -412,7 +414,11 @@
                         @endif
 
                         @if ($activeCourseEditSection === 'operations')
-                            <x-admin.course.edit.sections.operations :course="$course" :course-validator="$courseValidator" />
+                            <x-admin.course.edit.sections.operations
+                                :course="$course"
+                                :course-validator="$courseValidator"
+                                :active-enrollment-count="(int) ($activeEnrollmentCount ?? 0)"
+                            />
                         @endif
 
                     </div>

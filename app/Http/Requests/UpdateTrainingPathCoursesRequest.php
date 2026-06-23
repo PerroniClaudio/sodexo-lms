@@ -28,6 +28,7 @@ class UpdateTrainingPathCoursesRequest extends FormRequest
             'course_ids.*' => ['integer', Rule::exists('courses', 'id')],
             'course_orders' => ['nullable', 'array'],
             'course_orders.*' => ['nullable', 'integer', 'min:1'],
+            'confirm_course_enrollment_cleanup' => ['nullable', 'boolean'],
         ];
     }
 }

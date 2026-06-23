@@ -21,6 +21,7 @@ class TrainingPath extends Model
         'description',
         'status',
         'visible_to_all',
+        'enforce_course_order',
     ];
 
     protected function casts(): array
@@ -28,6 +29,7 @@ class TrainingPath extends Model
         return [
             'id' => 'integer',
             'visible_to_all' => 'boolean',
+            'enforce_course_order' => 'boolean',
         ];
     }
 
@@ -59,6 +61,15 @@ class TrainingPath extends Model
             ->withTimestamps()
             ->orderByPivot('sort_order')
             ->orderBy('courses.title');
+    }
+
+    public function orderedCourseIds(): array
+    {
+        return $this->courses()
+            ->pluck('courses.id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->values()
+            ->all();
     }
 
     public function enrollments(): HasMany

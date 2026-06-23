@@ -18,6 +18,7 @@ use App\Models\JobUnit;
 use App\Models\LanguageLevel;
 use App\Models\Province;
 use App\Models\RiskBasedRequirement;
+use App\Models\TrainingPathEnrollment;
 use App\Models\User;
 use App\Models\UserCertificate;
 use App\Models\WorldCity;
@@ -216,6 +217,61 @@ class UserController extends Controller
 
         $riskSummary = $this->buildRiskSummary($user);
 
+        $trainingPathEnrollments = TrainingPathEnrollment::withTrashed()
+            ->where('user_id', $user->getKey())
+            ->with([
+                'trainingPath' => fn ($query) => $query
+                    ->withTrashed()
+                    ->select(['training_paths.id', 'training_paths.title', 'training_paths.code', 'training_paths.status', 'training_paths.deleted_at']),
+                'trainingPath.courses' => fn ($query) => $query->select([
+                    'courses.id',
+                    'courses.title',
+                    'courses.code',
+                ]),
+                'currentCourse:id,title,code',
+            ])
+            ->orderByDesc('assigned_at')
+            ->get();
+
+        $courseMembershipByPath = $trainingPathEnrollments
+            ->filter(fn (TrainingPathEnrollment $enrollment): bool => $enrollment->trainingPath !== null)
+            ->flatMap(function (TrainingPathEnrollment $enrollment): Collection {
+                if ($enrollment->trainingPath === null) {
+                    return collect();
+                }
+
+                return $enrollment->trainingPath->courses->map(fn (Course $course): array => [
+                    'course_id' => (int) $course->getKey(),
+                    'path' => [
+                        'id' => (int) $enrollment->trainingPath->getKey(),
+                        'title' => $enrollment->trainingPath->title,
+                        'code' => $enrollment->trainingPath->code,
+                        'is_deleted' => $enrollment->trashed(),
+                    ],
+                ]);
+            })
+            ->groupBy('course_id')
+            ->map(fn (Collection $items): array => $items
+                ->pluck('path')
+                ->unique('id')
+                ->values()
+                ->all());
+
+        $courseEnrollments = CourseEnrollment::withTrashed()
+            ->where('user_id', $user->getKey())
+            ->with([
+                'course' => fn ($query) => $query
+                    ->withTrashed()
+                    ->select(['courses.id', 'courses.title', 'courses.code', 'courses.status', 'courses.deleted_at']),
+            ])
+            ->orderByDesc('assigned_at')
+            ->get();
+
+        $courseEnrollmentPathMembership = $courseEnrollments
+            ->mapWithKeys(fn (CourseEnrollment $enrollment): array => [
+                (int) $enrollment->getKey() => $courseMembershipByPath->get((int) $enrollment->course_id, []),
+            ]);
+
         return view('admin.users.edit', compact(
             'user',
             'jobCategories',
@@ -229,6 +285,9 @@ class UserController extends Controller
             'documentTypes',
             'availableCourses',
             'riskSummary',
+            'trainingPathEnrollments',
+            'courseEnrollments',
+            'courseEnrollmentPathMembership',
         ));
     }
 
@@ -530,6 +589,8 @@ class UserController extends Controller
                 $course,
                 $validated['course_validity_type'] ?? null,
                 (bool) ($validated['is_integrative_enrollment'] ?? false),
+                directOrigin: true,
+                pathwayOrigin: false,
             );
         } catch (\DomainException $exception) {
             return redirect()

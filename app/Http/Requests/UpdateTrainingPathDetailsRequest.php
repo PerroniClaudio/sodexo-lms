@@ -29,7 +29,15 @@ class UpdateTrainingPathDetailsRequest extends FormRequest
             'code' => ['nullable', 'string', 'max:255', Rule::unique('training_paths', 'code')->ignore($this->route('trainingPath'))],
             'description' => ['nullable', 'string'],
             'status' => ['required', 'string', Rule::in(TrainingPath::availableStatuses())],
+            'enforce_course_order' => ['nullable', 'boolean'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'enforce_course_order' => $this->boolean('enforce_course_order'),
+        ]);
     }
 
     /**
@@ -42,6 +50,7 @@ class UpdateTrainingPathDetailsRequest extends FormRequest
             'code' => __('Codice percorso formativo'),
             'description' => __('Descrizione'),
             'status' => __('Stato'),
+            'enforce_course_order' => __('Segui ordine corsi'),
         ];
     }
 }

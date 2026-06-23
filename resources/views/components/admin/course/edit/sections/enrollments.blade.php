@@ -4,6 +4,12 @@
 ])
 
 <div class="flex flex-col gap-6">
+    @php
+        $cannotAddEnrollmentMessage = $course->status !== 'published'
+            ? __('Non puoi aggiungere iscritti a un corso non pubblicato')
+            : null;
+    @endphp
+
     @include('admin.course.partials.course-edit-badge-bar')
 
     <div class="card border border-base-300 bg-base-100 shadow-sm">
@@ -28,14 +34,25 @@
                     @endif
                 </div>
 
-                <button
-                    type="button"
-                    class="btn btn-primary"
-                    data-open-iscritto-modal
+                <span
+                    @class([
+                        'inline-flex',
+                        'tooltip tooltip-left' => $cannotAddEnrollmentMessage !== null,
+                    ])
+                    @if ($cannotAddEnrollmentMessage !== null)
+                        data-tip="{{ $cannotAddEnrollmentMessage }}"
+                    @endif
                 >
-                    <span>{{ __('Nuovo iscritto') }}</span>
-                    <x-lucide-plus class="h-4 w-4" />
-                </button>
+                    <button
+                        type="button"
+                        class="btn btn-primary"
+                        data-open-iscritto-modal
+                        @disabled($cannotAddEnrollmentMessage !== null)
+                    >
+                        <span>{{ __('Nuovo iscritto') }}</span>
+                        <x-lucide-plus class="h-4 w-4" />
+                    </button>
+                </span>
             </div>
 
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

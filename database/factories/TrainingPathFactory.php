@@ -25,6 +25,7 @@ class TrainingPathFactory extends Factory
             'description' => fake()->paragraph(),
             'status' => fake()->randomElement(TrainingPath::availableStatuses()),
             'visible_to_all' => true,
+            'enforce_course_order' => true,
         ];
     }
 }

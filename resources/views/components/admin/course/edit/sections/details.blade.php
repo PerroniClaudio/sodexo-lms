@@ -33,9 +33,10 @@
                 </div>
             </div>
 
-            <form method="POST" action="{{ $updateUrl }}" class="flex min-w-0 flex-col gap-6">
+            <form method="POST" action="{{ $updateUrl }}" class="flex min-w-0 flex-col gap-6" data-course-details-form>
             @csrf
             @method('PUT')
+            <input type="hidden" name="detach_from_unpublished_training_paths" value="0" data-detach-from-unpublished-training-paths>
 
             <div class="grid gap-6 md:grid-cols-2">
                 <div class="form-control flex flex-col gap-2 md:col-span-2">

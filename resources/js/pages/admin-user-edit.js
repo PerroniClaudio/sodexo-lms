@@ -6,10 +6,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initializeSectionNavigation(page);
+    initializeEnrollmentsVisibility(page);
     initializeRiskSummary(page);
     initializeUserEditForm(page);
     initializeCertificatesTable(page);
 });
+
+function initializeEnrollmentsVisibility(page) {
+    const section = page.querySelector('[data-user-enrollments-section]');
+
+    if (!section) {
+        return;
+    }
+
+    const checkbox = section.querySelector('[data-user-enrollments-show-deleted]');
+    const rows = Array.from(section.querySelectorAll('[data-enrollment-row]'));
+
+    if (!(checkbox instanceof HTMLInputElement) || rows.length === 0) {
+        return;
+    }
+
+    const syncRowsVisibility = () => {
+        rows.forEach((row) => {
+            const isDeleted = row.dataset.enrollmentDeleted === '1';
+            row.classList.toggle('hidden', isDeleted && !checkbox.checked);
+        });
+    };
+
+    checkbox.addEventListener('change', syncRowsVisibility);
+    syncRowsVisibility();
+}
 
 function cloneTemplateElement(root, selector) {
     const template = root.querySelector(selector);
