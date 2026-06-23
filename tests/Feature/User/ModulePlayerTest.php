@@ -251,6 +251,49 @@ test('video tracking event updates progress and time spent', function () {
     )->toBe(30);
 });
 
+test('video tracking completes the module when ended arrives after a pause event', function () {
+    [, $course, $module, $enrollment, $video] = enrollUserInCourseWithModule('video');
+
+    $video?->update(['duration_seconds' => 30]);
+
+    $sessionUuid = (string) Str::uuid();
+
+    $this->postJson(route('user.courses.modules.video.events', [$course, $module]), [
+        'session_uuid' => $sessionUuid,
+        'event_uuid' => (string) Str::uuid(),
+        'event_type' => VideoTrackingEvent::TYPE_PAUSE,
+        'occurred_at' => now()->toIso8601String(),
+        'position_second' => 30,
+        'max_second_client' => 30,
+        'delta_watched_seconds' => 30,
+        'player_ended' => false,
+    ])->assertOk()
+        ->assertJson([
+            'is_completed' => false,
+        ]);
+
+    $this->postJson(route('user.courses.modules.video.events', [$course, $module]), [
+        'session_uuid' => $sessionUuid,
+        'event_uuid' => (string) Str::uuid(),
+        'event_type' => VideoTrackingEvent::TYPE_ENDED,
+        'occurred_at' => now()->toIso8601String(),
+        'position_second' => 30,
+        'max_second_client' => 30,
+        'delta_watched_seconds' => 0,
+        'player_ended' => true,
+    ])->assertOk()
+        ->assertJson([
+            'is_completed' => true,
+        ]);
+
+    expect($enrollment->fresh()->status)->toBe(CourseEnrollment::STATUS_COMPLETED);
+    expect(
+        $enrollment->moduleProgresses()
+            ->where('module_id', $module->getKey())
+            ->value('status')
+    )->toBe(ModuleProgress::STATUS_COMPLETED);
+});
+
 test('video tracking blocks seek beyond unlocked point', function () {
     [, $course, $module, $enrollment] = enrollUserInCourseWithModule('video');
 

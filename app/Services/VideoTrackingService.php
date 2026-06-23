@@ -7,6 +7,8 @@ use App\Models\Video;
 use App\Models\VideoExerciseSubmission;
 use App\Models\VideoTrackingEvent;
 use DomainException;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class VideoTrackingService
@@ -18,6 +20,10 @@ class VideoTrackingService
     public const MAX_DELTA_WATCHED_SECONDS = 75;
 
     public const TRANSACTION_ATTEMPTS = 5;
+
+    public const EVENT_LOCK_SECONDS = 10;
+
+    public const EVENT_LOCK_WAIT_SECONDS = 5;
 
     public function state(ModuleProgress $progress): array
     {
@@ -103,68 +109,85 @@ class VideoTrackingService
 
         $duplicate = false;
 
-        DB::transaction(function () use (
-            $progress,
-            $video,
-            $payload,
-            $currentSecond,
-            $maxAllowedSecond,
-            $deltaWatchedSeconds,
-            $wasBlocked,
-            &$duplicate
-        ): void {
-            $lockedProgress = ModuleProgress::query()
-                ->with(['module', 'courseEnrollment'])
-                ->lockForUpdate()
-                ->findOrFail($progress->getKey());
+        try {
+            Cache::store('file')
+                ->lock($this->eventLockKey($progress), self::EVENT_LOCK_SECONDS)
+                ->block(self::EVENT_LOCK_WAIT_SECONDS, function () use (
+                    $progress,
+                    $video,
+                    $payload,
+                    $currentSecond,
+                    $maxAllowedSecond,
+                    $deltaWatchedSeconds,
+                    $wasBlocked,
+                    &$duplicate
+                ): void {
+                    DB::transaction(function () use (
+                        $progress,
+                        $video,
+                        $payload,
+                        $currentSecond,
+                        $maxAllowedSecond,
+                        $deltaWatchedSeconds,
+                        $wasBlocked,
+                        &$duplicate
+                    ): void {
+                        $lockedProgress = ModuleProgress::query()
+                            ->with(['module', 'courseEnrollment'])
+                            ->lockForUpdate()
+                            ->findOrFail($progress->getKey());
 
-            $existingEvent = VideoTrackingEvent::query()
-                ->where('event_uuid', $payload['event_uuid'])
-                ->first();
+                        $existingEvent = VideoTrackingEvent::query()
+                            ->where('event_uuid', $payload['event_uuid'])
+                            ->first();
 
-            if ($existingEvent !== null) {
-                $duplicate = true;
-                $progress->setRawAttributes($lockedProgress->getAttributes(), true);
+                        if ($existingEvent !== null) {
+                            $duplicate = true;
+                            $progress->setRawAttributes($lockedProgress->getAttributes(), true);
 
-                return;
-            }
+                            return;
+                        }
 
-            $lockedProgress->syncVideoTrackingState($currentSecond, $maxAllowedSecond, $deltaWatchedSeconds);
+                        $lockedProgress->syncVideoTrackingState($currentSecond, $maxAllowedSecond, $deltaWatchedSeconds);
 
-            $lockedProgress->refresh();
+                        $lockedProgress->refresh();
 
-            if (
-                $lockedProgress->status !== ModuleProgress::STATUS_COMPLETED
-                && ! $wasBlocked
-                && $this->shouldMarkCompleted($lockedProgress, $video, $payload)
-            ) {
-                $lockedProgress->markCompleted();
-                $lockedProgress->refresh();
-            }
+                        if (
+                            $lockedProgress->status !== ModuleProgress::STATUS_COMPLETED
+                            && ! $wasBlocked
+                            && $this->shouldMarkCompleted($lockedProgress, $video, $payload)
+                        ) {
+                            $lockedProgress->markCompleted();
+                            $lockedProgress->refresh();
+                        }
 
-            VideoTrackingEvent::query()->create([
-                'module_progress_id' => $lockedProgress->getKey(),
-                'course_user_id' => $lockedProgress->course_user_id,
-                'module_id' => $lockedProgress->module_id,
-                'video_id' => $video->getKey(),
-                'user_id' => $lockedProgress->courseEnrollment->user_id,
-                'session_uuid' => $payload['session_uuid'],
-                'event_uuid' => $payload['event_uuid'],
-                'event_type' => $payload['event_type'],
-                'position_second' => $payload['position_second'] ?? null,
-                'max_second_client' => $payload['max_second_client'] ?? null,
-                'delta_watched_seconds' => $deltaWatchedSeconds,
-                'from_second' => $payload['from_second'] ?? null,
-                'to_second' => $payload['to_second'] ?? null,
-                'player_ended' => (bool) ($payload['player_ended'] ?? false),
-                'was_blocked' => $wasBlocked,
-                'occurred_at' => $payload['occurred_at'],
-                'client_payload' => $payload['client_payload'] ?? null,
-            ]);
+                        VideoTrackingEvent::query()->create([
+                            'module_progress_id' => $lockedProgress->getKey(),
+                            'course_user_id' => $lockedProgress->course_user_id,
+                            'module_id' => $lockedProgress->module_id,
+                            'video_id' => $video->getKey(),
+                            'user_id' => $lockedProgress->courseEnrollment->user_id,
+                            'session_uuid' => $payload['session_uuid'],
+                            'event_uuid' => $payload['event_uuid'],
+                            'event_type' => $payload['event_type'],
+                            'position_second' => $payload['position_second'] ?? null,
+                            'max_second_client' => $payload['max_second_client'] ?? null,
+                            'delta_watched_seconds' => $deltaWatchedSeconds,
+                            'from_second' => $payload['from_second'] ?? null,
+                            'to_second' => $payload['to_second'] ?? null,
+                            'player_ended' => (bool) ($payload['player_ended'] ?? false),
+                            'was_blocked' => $wasBlocked,
+                            'occurred_at' => $payload['occurred_at'],
+                            'client_payload' => $payload['client_payload'] ?? null,
+                        ]);
 
-            $progress->setRawAttributes($lockedProgress->getAttributes(), true);
-            $progress->setRelations($lockedProgress->getRelations());
-        }, self::TRANSACTION_ATTEMPTS);
+                        $progress->setRawAttributes($lockedProgress->getAttributes(), true);
+                        $progress->setRelations($lockedProgress->getRelations());
+                    }, self::TRANSACTION_ATTEMPTS);
+                });
+        } catch (LockTimeoutException) {
+            throw new DomainException('Video tracking busy, retry shortly.');
+        }
 
         $progress->refresh();
         $state = $this->state($progress);
@@ -233,5 +256,10 @@ class VideoTrackingService
         }
 
         return min($second, $durationSeconds);
+    }
+
+    private function eventLockKey(ModuleProgress $progress): string
+    {
+        return 'video-tracking-progress-'.$progress->getKey();
     }
 }

@@ -3,7 +3,7 @@
  * Gestisce resume, anti-skip e completamento moduli video Mux.
  */
 
-import { escapeHtml, fetchJSON, getModuleData, getModuleRoot, showError } from './module-base.js';
+import { escapeHtml, fetchJSON, getModuleData, getModuleRoot, refreshModulePlayerState, showError } from './module-base.js';
 
 const HEARTBEAT_INTERVAL_MS = 60_000;
 const SEEK_GRACE_SECONDS = 3;
@@ -28,10 +28,9 @@ export function initVideoModule() {
     const loadingEl = wrapper.querySelector('#video-loading');
     const playerWrapper = wrapper.querySelector('#video-player-wrapper');
     const errorEl = wrapper.querySelector('#video-error');
-    const completedMsg = wrapper.querySelector('#video-completed-msg');
     const playerContainer = wrapper.querySelector('[data-mux-player-container]');
 
-    if (!loadingEl || !playerWrapper || !errorEl || !completedMsg || !playerContainer) {
+    if (!loadingEl || !playerWrapper || !errorEl || !playerContainer) {
         return;
     }
 
@@ -39,7 +38,6 @@ export function initVideoModule() {
         loadingEl,
         playerWrapper,
         errorEl,
-        completedMsg,
         playerContainer,
     });
 }
@@ -71,7 +69,6 @@ function createMuxPlayer({
     moduleData,
     loadingEl,
     playerWrapper,
-    completedMsg,
     playerContainer,
 }) {
     const initialState = {
@@ -106,13 +103,14 @@ function createMuxPlayer({
     loadingEl.classList.add('hidden');
     playerWrapper.classList.remove('hidden');
 
-    setupProgressTracking(muxPlayer, initialState, moduleData, completedMsg);
+    setupProgressTracking(muxPlayer, initialState, moduleData);
 }
 
-function setupProgressTracking(muxPlayer, state, moduleData, completedMsg) {
+function setupProgressTracking(muxPlayer, state, moduleData) {
     let heartbeatTimerId = null;
     let lastKnownSecond = state.lastHeartbeatSecond;
     let lastSeekFromSecond = state.lastHeartbeatSecond;
+    let trackingQueue = Promise.resolve();
 
     const syncBlockedPlayback = (targetSecond) => {
         state.suppressSeekEvent = true;
@@ -172,6 +170,14 @@ function setupProgressTracking(muxPlayer, state, moduleData, completedMsg) {
         return data;
     };
 
+    const queueTrackingEvent = (eventType, overrides = {}, options = {}) => {
+        trackingQueue = trackingQueue
+            .catch(() => null)
+            .then(() => sendTrackingEvent(eventType, overrides, options));
+
+        return trackingQueue;
+    };
+
     const sendHeartbeat = async () => {
         const currentSecond = Math.floor(muxPlayer.currentTime ?? 0);
         const deltaWatchedSeconds = Math.max(0, currentSecond - lastKnownSecond);
@@ -179,7 +185,7 @@ function setupProgressTracking(muxPlayer, state, moduleData, completedMsg) {
         lastKnownSecond = currentSecond;
         state.lastHeartbeatSecond = currentSecond;
 
-        await sendTrackingEvent('heartbeat', {
+        await queueTrackingEvent('heartbeat', {
             position_second: currentSecond,
             max_second_client: state.maxAllowedSecond,
             delta_watched_seconds: deltaWatchedSeconds,
@@ -208,7 +214,7 @@ function setupProgressTracking(muxPlayer, state, moduleData, completedMsg) {
     muxPlayer.addEventListener('play', () => {
         lastKnownSecond = Math.floor(muxPlayer.currentTime ?? 0);
         startHeartbeat();
-        sendTrackingEvent('play').catch((error) => {
+        queueTrackingEvent('play').catch((error) => {
             console.warn('[video] play tracking failed', error);
         });
     });
@@ -216,7 +222,11 @@ function setupProgressTracking(muxPlayer, state, moduleData, completedMsg) {
     muxPlayer.addEventListener('pause', () => {
         stopHeartbeat();
 
-        sendTrackingEvent('pause', {
+        if (muxPlayer.ended || state.endedAcked) {
+            return;
+        }
+
+        queueTrackingEvent('pause', {
             delta_watched_seconds: Math.max(0, Math.floor(muxPlayer.currentTime ?? 0) - lastKnownSecond),
         }).catch((error) => {
             console.warn('[video] pause tracking failed', error);
@@ -244,7 +254,7 @@ function setupProgressTracking(muxPlayer, state, moduleData, completedMsg) {
 
         const toSecond = Math.floor(muxPlayer.currentTime ?? 0);
 
-        sendTrackingEvent('seek', {
+        queueTrackingEvent('seek', {
             from_second: lastSeekFromSecond,
             to_second: toSecond,
             position_second: toSecond,
@@ -268,22 +278,30 @@ function setupProgressTracking(muxPlayer, state, moduleData, completedMsg) {
 
     muxPlayer.addEventListener('ended', () => {
         stopHeartbeat();
+        state.endedAcked = true;
 
-        sendTrackingEvent('ended', {
+        queueTrackingEvent('ended', {
             position_second: Math.floor(muxPlayer.currentTime ?? 0),
             delta_watched_seconds: Math.max(0, Math.floor(muxPlayer.currentTime ?? 0) - lastKnownSecond),
             player_ended: true,
         }).then((data) => {
-            if (data.is_completed && completedMsg) {
-                completedMsg.classList.remove('hidden');
-                appendNextModuleButton(moduleData, completedMsg);
+            if (data.is_completed) {
+                window.showFlash?.('success', 'Modulo completato!');
+                appendNextModuleButton(moduleData);
+                refreshModulePlayerState().catch((error) => {
+                    console.warn('[video] state refresh failed', error);
+                });
             }
         }).catch((error) => {
             console.error('[video] ended tracking failed', error);
         });
     });
 
-    const flushBeforeUnload = () => {
+        const flushBeforeUnload = () => {
+        if (muxPlayer.ended || state.endedAcked) {
+            return;
+        }
+
         sendTrackingEvent('pause', {
             position_second: Math.floor(muxPlayer.currentTime ?? 0),
             delta_watched_seconds: Math.max(0, Math.floor(muxPlayer.currentTime ?? 0) - lastKnownSecond),
@@ -649,12 +667,14 @@ function formatSeconds(totalSeconds) {
     return `${minutes}:${seconds}`;
 }
 
-function appendNextModuleButton(moduleData, completedMsgEl) {
+function appendNextModuleButton(moduleData) {
     if (!moduleData.nextModuleUrl) {
         return;
     }
 
-    const existingButton = completedMsgEl.parentElement?.querySelector('[data-next-module-button]');
+    const modulePlayer = document.getElementById('module-player');
+    const playerCardBody = modulePlayer?.querySelector('.card .card-body');
+    const existingButton = playerCardBody?.querySelector('[data-next-module-button]');
 
     if (existingButton) {
         return;
@@ -669,5 +689,5 @@ function appendNextModuleButton(moduleData, completedMsgEl) {
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
         </a>
     `;
-    completedMsgEl.parentElement?.appendChild(nextModuleBtn);
+    playerCardBody?.appendChild(nextModuleBtn);
 }

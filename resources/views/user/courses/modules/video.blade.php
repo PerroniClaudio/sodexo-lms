@@ -11,12 +11,6 @@
             <div id="video-error" class="hidden text-error text-sm">
                 {{ __('Impossibile caricare il video. Riprova più tardi.') }}
             </div>
-            <div id="video-completed-msg" class="hidden">
-                <div class="alert alert-success">
-                    <x-lucide-check-circle class="h-5 w-5" />
-                    <span>{{ __('Modulo completato!') }}</span>
-                </div>
-            </div>
         </div>
     </div>
 </template>

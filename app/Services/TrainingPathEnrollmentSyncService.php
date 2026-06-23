@@ -253,28 +253,30 @@ class TrainingPathEnrollmentSyncService
                     $origin === self::ORIGIN_DIRECT,
                     $origin === self::ORIGIN_PATHWAY,
                 );
-            } else {
-                $trashedEnrollment = CourseEnrollment::withTrashed()
-                    ->where('user_id', $userId)
-                    ->where('course_id', $course->getKey())
-                    ->whereNotNull('deleted_at')
-                    ->orderByDesc('id')
-                    ->first();
 
-                if ($trashedEnrollment !== null) {
-                    $trashedEnrollment->restore();
-                    $trashedEnrollment->mergeOrigins(
-                        $origin === self::ORIGIN_DIRECT,
-                        $origin === self::ORIGIN_PATHWAY,
-                    );
-                } else {
-                    CourseEnrollment::enroll(
-                        User::query()->findOrFail($userId),
-                        $course,
-                        directOrigin: $origin === self::ORIGIN_DIRECT,
-                        pathwayOrigin: $origin === self::ORIGIN_PATHWAY,
-                    );
-                }
+                return;
+            }
+
+            $trashedEnrollment = CourseEnrollment::withTrashed()
+                ->where('user_id', $userId)
+                ->where('course_id', $course->getKey())
+                ->whereNotNull('deleted_at')
+                ->orderByDesc('id')
+                ->first();
+
+            if ($trashedEnrollment !== null) {
+                $trashedEnrollment->restore();
+                $trashedEnrollment->mergeOrigins(
+                    $origin === self::ORIGIN_DIRECT,
+                    $origin === self::ORIGIN_PATHWAY,
+                );
+            } else {
+                CourseEnrollment::enroll(
+                    User::query()->findOrFail($userId),
+                    $course,
+                    directOrigin: $origin === self::ORIGIN_DIRECT,
+                    pathwayOrigin: $origin === self::ORIGIN_PATHWAY,
+                );
             }
 
             $this->syncCourseModuleProgresses->handle($course);

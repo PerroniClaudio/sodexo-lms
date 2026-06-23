@@ -3,7 +3,7 @@
  * Gestisce i quiz di gradimento.
  */
 
-import { getModuleRoot, getModuleData, escapeHtml, showError } from './module-base.js';
+import { getModuleRoot, getModuleData, escapeHtml, refreshModulePlayerState, showError } from './module-base.js';
 
 /**
  * Inizializza il modulo quiz di gradimento
@@ -199,6 +199,9 @@ async function submitQuiz(
         }
 
         renderQuizResult(data, quizResult);
+        refreshModulePlayerState().catch((error) => {
+            console.warn(`[${quizType}] state refresh failed`, error);
+        });
     } catch (error) {
         console.error(`[${quizType}] Errore submit:`, error);
         quizResult.innerHTML = '<div class="alert alert-error"><span>Errore nell\'invio delle risposte.</span></div>';

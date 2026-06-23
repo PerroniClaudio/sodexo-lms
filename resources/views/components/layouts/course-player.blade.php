@@ -52,7 +52,7 @@
                                 <div class="card-body gap-6">
                                     <div class="flex flex-wrap items-start justify-between gap-4">
                                         <div class="space-y-3">
-                                            <div class="flex flex-wrap items-center gap-2">
+                                            <div class="flex flex-wrap items-center gap-2" data-course-player-summary>
                                                 <span class="badge {{ $currentModuleMeta['badge'] }} badge-outline gap-1.5 h-fit">
                                                     <x-dynamic-component :component="$currentModuleMeta['icon']" class="h-3.5 w-3.5" />
                                                     {{ $currentModuleMeta['label'] }}
@@ -92,7 +92,7 @@
                                     <h2 class="text-lg font-semibold text-base-content">{{ $course->title }}</h2>
                                 </div>
 
-                                <div class="rounded-box bg-base-200/70 p-3">
+                                <div class="rounded-box bg-base-200/70 p-3" data-course-player-progress-card>
                                     <div class="flex items-center justify-between gap-3">
                                         <div>
                                             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">{{ __('Avanzamento') }}</p>
@@ -104,7 +104,7 @@
                                 </div>
 
                                 <div class="mt-4 rounded-box bg-base-100 p-3 shadow-sm">
-                                    <ul class="list bg-transparent">
+                                    <ul class="list bg-transparent" data-course-player-module-list>
                                         <li class="px-1 pb-2 text-xs font-semibold uppercase tracking-[0.2em] text-base-content/45">
                                             {{ __('Moduli del corso') }}
                                         </li>

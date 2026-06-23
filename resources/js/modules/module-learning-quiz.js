@@ -3,7 +3,7 @@
  * Gestisce i quiz di apprendimento con flow step-by-step.
  */
 
-import { getModuleRoot, getModuleData } from './module-base.js';
+import { getModuleRoot, getModuleData, refreshModulePlayerState } from './module-base.js';
 
 function cloneTemplateElement(root, selector) {
     const template = root.querySelector(selector);
@@ -477,6 +477,12 @@ function showQuizResult(data) {
     }
 
     resultContainer.classList.remove('hidden');
+
+    if (data.passed) {
+        refreshModulePlayerState().catch((error) => {
+            console.warn('[learning-quiz] state refresh failed', error);
+        });
+    }
 }
 
 /**

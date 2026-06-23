@@ -111,3 +111,47 @@ export async function fetchJSON(url, options = {}) {
     
     return response.json();
 }
+
+export async function refreshModulePlayerState() {
+    const currentRoot = getModuleRoot();
+
+    if (!currentRoot) {
+        return;
+    }
+
+    const response = await fetch(window.location.href, {
+        headers: {
+            Accept: 'text/html',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const html = await response.text();
+    const parser = new DOMParser();
+    const nextDocument = parser.parseFromString(html, 'text/html');
+    const nextRoot = nextDocument.querySelector('[data-module-id]');
+
+    if (!nextRoot) {
+        throw new Error('Updated module root not found.');
+    }
+
+    [
+        '[data-course-player-summary]',
+        '[data-course-player-progress-card]',
+        '[data-course-player-module-list]',
+    ].forEach((selector) => {
+        const currentElement = document.querySelector(selector);
+        const nextElement = nextDocument.querySelector(selector);
+
+        if (currentElement && nextElement) {
+            currentElement.replaceWith(nextElement);
+        }
+    });
+
+    currentRoot.dataset.nextModuleUrl = nextRoot.dataset.nextModuleUrl ?? '';
+    currentRoot.dataset.nextModuleTitle = nextRoot.dataset.nextModuleTitle ?? '';
+}

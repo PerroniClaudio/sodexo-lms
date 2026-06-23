@@ -19,7 +19,9 @@ class CourseEnrollmentObserver
 
     public function updated(CourseEnrollment $courseEnrollment): void
     {
-        $this->dispatchTrainingPathSync($courseEnrollment);
+        if ($this->shouldSyncTrainingPaths($courseEnrollment)) {
+            $this->dispatchTrainingPathSync($courseEnrollment);
+        }
 
         if (! $this->wasCompletedNow($courseEnrollment)) {
             return;
@@ -84,5 +86,12 @@ class CourseEnrollmentObserver
         DB::afterCommit(function () use ($userId): void {
             app(TrainingPathEnrollmentSyncService::class)->syncAllEnrollmentsForUser($userId);
         });
+    }
+
+    private function shouldSyncTrainingPaths(CourseEnrollment $courseEnrollment): bool
+    {
+        return $this->wasCompletedNow($courseEnrollment)
+            || $courseEnrollment->wasChanged('direct_origin')
+            || $courseEnrollment->wasChanged('pathway_origin');
     }
 }
