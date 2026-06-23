@@ -94,7 +94,7 @@
                     $canAccessSuperadminMenu = $activeRole === 'superadmin';
                 @endphp
 
-                <ul class="menu w-full gap-1">
+                <ul class="admin-sidenav menu w-full gap-1">
                     @if($canAccessAdminMenu)
                         <li class="w-full">
                             <a
@@ -111,7 +111,7 @@
 
                         <li>
                             <details @if($formationMenuOpen) open @endif>
-                                <summary @class(['menu-active' => $formationMenuOpen])>
+                                <summary>
                                     <x-lucide-graduation-cap class="mr-2 inline-block h-5 w-5" />
                                     {{ __('Formazione') }}
                                 </summary>
@@ -119,7 +119,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.courses.index') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.courses.*'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.courses.*'])])
                                         >
                                             <x-lucide-graduation-cap class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Corsi') }}
@@ -128,7 +128,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.training-paths.index') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.training-paths.*'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.training-paths.*'])])
                                         >
                                             <x-lucide-route class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Percorsi formativi') }}
@@ -137,7 +137,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.course-categories.index') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.course-categories.*'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.course-categories.*'])])
                                         >
                                             <x-lucide-tags class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Categorie corsi') }}
@@ -146,7 +146,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.regia.index') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.regia.*'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.regia.*'])])
                                         >
                                             <x-lucide-settings class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Regia') }}
@@ -155,7 +155,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.certificates.index') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.certificates.*'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.certificates.*'])])
                                         >
                                             <x-lucide-file-text class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Attestati') }}
@@ -164,7 +164,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.videos.index') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.videos.*'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.videos.*'])])
                                         >
                                             <x-lucide-video class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Libreria Video') }}
@@ -173,7 +173,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.video-reports.index') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.video-reports.*'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.video-reports.*'])])
                                         >
                                             <x-lucide-chart-column class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Audit trail') }}
@@ -185,7 +185,7 @@
 
                         <li>
                             <details @if($registryMenuOpen) open @endif>
-                                <summary @class(['menu-active' => $registryMenuOpen])>
+                                <summary>
                                     <x-lucide-users class="mr-2 inline-block h-5 w-5" />
                                     {{ __('Anagrafiche') }}
                                 </summary>
@@ -193,7 +193,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.users.index') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.users.*'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.users.*'])])
                                         >
                                             <x-lucide-user-round class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Utenti') }}
@@ -202,7 +202,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.funding-entities.index') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.funding-entities.*'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.funding-entities.*'])])
                                         >
                                             <x-lucide-building-2 class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Enti finanziatori') }}
@@ -211,7 +211,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.partners.index') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.partners.*'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.partners.*'])])
                                         >
                                             <x-lucide-handshake class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Partner') }}
@@ -220,7 +220,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.job-units.index') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.job-units.*'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.job-units.*'])])
                                         >
                                             <x-lucide-map-pin class="mr-2 inline-block h-4 w-4" />
                                             {{ __('Unità Lavorative') }}
@@ -232,7 +232,7 @@
 
                         <li>
                             <details @if($importsMenuOpen) open @endif>
-                                <summary @class(['menu-active' => $importsMenuOpen])>
+                                <summary>
                                     <x-lucide-file-up class="mr-2 inline-block h-5 w-5" />
                                     {{ __('Importazioni') }}
                                 </summary>
@@ -240,7 +240,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.imports.users') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.imports.users'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.users'])])
                                         >
                                             <x-lucide-user-round class="mr-2 inline-block h-4 w-4" />
                                             {{ __('Import utenti') }}
@@ -249,7 +249,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.imports.job-units') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.imports.job-units'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.job-units'])])
                                         >
                                             <x-lucide-map-pin class="mr-2 inline-block h-4 w-4" />
                                             {{ __('Import unità lavorative') }}
@@ -258,7 +258,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.imports.job-tasks') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.imports.job-tasks'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.job-tasks'])])
                                         >
                                             <x-lucide-clipboard-check class="mr-2 inline-block h-4 w-4" />
                                             {{ __('Import mansioni') }}
@@ -270,7 +270,7 @@
 
                         <li>
                             <details @if($portalMenuOpen) open @endif>
-                                <summary @class(['menu-active' => $portalMenuOpen])>
+                                <summary>
                                     <x-lucide-panel-top class="mr-2 inline-block h-5 w-5" />
                                     {{ __('Portale') }}
                                 </summary>
@@ -278,7 +278,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.homepage.index') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.homepage.*'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.homepage.*'])])
                                         >
                                             <x-lucide-home class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Home page') }}
@@ -292,7 +292,7 @@
                     @if($canAccessSuperadminMenu)
                         <li>
                             <details @if($configurationMenuOpen) open @endif>
-                                <summary @class(['menu-active' => $configurationMenuOpen])>
+                                <summary>
                                     <x-lucide-sliders-horizontal class="mr-2 inline-block h-5 w-5" />
                                     {{ __('Configurazioni') }}
                                 </summary>
@@ -300,7 +300,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.language-levels.index') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.language-levels.*'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.language-levels.*'])])
                                         >
                                             <x-lucide-languages class="mr-2 inline-block h-4 w-4" />
                                             {{ __('Livelli lingua') }}
@@ -309,7 +309,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.satisfaction-survey.edit') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.satisfaction-survey.*'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.satisfaction-survey.*'])])
                                         >
                                             <x-lucide-clipboard-check class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Configurazione gradimento') }}
@@ -317,7 +317,7 @@
                                     </li>
                                     <li>
                                         <details @if($jobConfigurationMenuOpen) open @endif>
-                                            <summary @class(['menu-active' => $jobConfigurationMenuOpen])>
+                                            <summary>
                                                 <x-lucide-briefcase class="mr-2 inline-block h-5 w-5" />
                                                 {{ __('Configurazione Lavori') }}
                                             </summary>
@@ -325,7 +325,7 @@
                                                 <li>
                                                     <a
                                                         href="{{ route('admin.job-sectors.index') }}"
-                                                        @class(['menu-active' => $matchesRoutePatterns(['admin.job-sectors.*'])])
+                                                        @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.job-sectors.*'])])
                                                     >
                                                         <x-lucide-briefcase class="mr-2 inline-block h-4 w-4" />
                                                         {{ __('Settori') }}
@@ -334,7 +334,7 @@
                                                 <li>
                                                     <a
                                                         href="{{ route('admin.job-categories.index') }}"
-                                                        @class(['menu-active' => $matchesRoutePatterns(['admin.job-categories.*'])])
+                                                        @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.job-categories.*'])])
                                                     >
                                                         <x-lucide-layers class="mr-2 inline-block h-4 w-4" />
                                                         {{ __('Categorie') }}
@@ -343,7 +343,7 @@
                                                 <li>
                                                     <a
                                                         href="{{ route('admin.job-levels.index') }}"
-                                                        @class(['menu-active' => $matchesRoutePatterns(['admin.job-levels.*'])])
+                                                        @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.job-levels.*'])])
                                                     >
                                                         <x-lucide-chart-column class="mr-2 inline-block h-4 w-4" />
                                                         {{ __('Livelli') }}
@@ -352,7 +352,7 @@
                                                 <li>
                                                     <a
                                                         href="{{ route('admin.job-roles.index') }}"
-                                                        @class(['menu-active' => $matchesRoutePatterns(['admin.job-roles.*'])])
+                                                        @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.job-roles.*'])])
                                                     >
                                                         <x-lucide-user-round class="mr-2 inline-block h-4 w-4" />
                                                         {{ __('Ruoli') }}
@@ -361,7 +361,7 @@
                                                 <li>
                                                     <a
                                                         href="{{ route('admin.job-tasks.index') }}"
-                                                        @class(['menu-active' => $matchesRoutePatterns(['admin.job-tasks.*'])])
+                                                        @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.job-tasks.*'])])
                                                     >
                                                         <x-lucide-clipboard-check class="mr-2 inline-block h-4 w-4" />
                                                         {{ __('Mansioni') }}
@@ -370,7 +370,7 @@
                                                 <li>
                                                     <a
                                                         href="{{ route('admin.nace-ateco.index') }}"
-                                                        @class(['menu-active' => $matchesRoutePatterns(['admin.nace-ateco.*'])])
+                                                        @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.nace-ateco.*'])])
                                                     >
                                                         <x-lucide-search class="mr-2 inline-block h-4 w-4" />
                                                         {{ __('ATECO') }}
@@ -379,7 +379,7 @@
                                                 <li>
                                                     <a
                                                         href="{{ route('admin.risk-based-requirements.index') }}"
-                                                        @class(['menu-active' => $matchesRoutePatterns(['admin.risk-based-requirements.*'])])
+                                                        @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.risk-based-requirements.*'])])
                                                     >
                                                         <x-lucide-shield-alert class="mr-2 inline-block h-4 w-4" />
                                                         {{ __('Requisiti (Rischio)') }}
@@ -388,7 +388,7 @@
                                                 <li>
                                                     <a
                                                         href="{{ route('admin.document-types.index') }}"
-                                                        @class(['menu-active' => $matchesRoutePatterns(['admin.document-types.*'])])
+                                                        @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.document-types.*'])])
                                                     >
                                                         <x-lucide-file-text class="mr-2 inline-block h-4 w-4" />
                                                         {{ __('Tipologie documento') }}
@@ -403,7 +403,7 @@
 
                         <li>
                             <details @if($toolsMenuOpen) open @endif>
-                                <summary @class(['menu-active' => $toolsMenuOpen])>
+                                <summary>
                                     <x-lucide-wrench class="mr-2 inline-block h-5 w-5" />
                                     {{ __('Strumenti') }}
                                 </summary>
@@ -411,7 +411,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.document-conversion-jobs.index') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.document-conversion-jobs.*'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.document-conversion-jobs.*'])])
                                         >
                                             <x-lucide-settings class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Debug conversioni documenti') }}
@@ -420,7 +420,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.importazioni-monitor.index') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.importazioni-monitor.*'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.importazioni-monitor.*'])])
                                         >
                                             <x-lucide-file-search class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Monitor importazioni') }}
@@ -429,7 +429,7 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.live-stream-logs.index') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.live-stream-logs.*'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.live-stream-logs.*'])])
                                         >
                                             <x-lucide-activity class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Log live stream') }}

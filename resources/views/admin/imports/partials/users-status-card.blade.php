@@ -29,6 +29,7 @@
                             </td>
                             <td class="max-w-sm">
                                 <div class="truncate font-medium">{{ $importazione->fileName() }}</div>
+                                <div class="truncate text-xs text-base-content/60">{{ $importazione->file_path }}</div>
                             </td>
                             <td class="max-w-md text-sm">
                                 @if ($importazione->error_message)

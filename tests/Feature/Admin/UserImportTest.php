@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -45,7 +46,8 @@ it('queues a user import from excel upload', function () {
 
     expect($importazione->import_type)->toBe(Importazione::TYPE_USERS)
         ->and($importazione->status)->toBe(Importazione::STATUS_PENDING)
-        ->and($importazione->created_by)->toBe(auth()->id());
+        ->and($importazione->created_by)->toBe(auth()->id())
+        ->and($importazione->original_file_name)->toBe('utenti.xlsx');
 
     Storage::disk('s3')->assertExists($importazione->file_path);
 
@@ -55,11 +57,38 @@ it('queues a user import from excel upload', function () {
 it('downloads user import template', function () {
     actingAsRole('admin');
 
+    JobCategory::factory()->create(['name' => 'Impiegati']);
+    JobLevel::factory()->create(['name' => 'Quadro']);
+    JobRole::factory()->create(['name' => 'Operatore']);
+    JobTask::factory()->create(['code' => 'TASK-001']);
+    JobUnit::factory()->create(['unit_code' => 'UNIT-001']);
+
     $response = $this->get(route('admin.imports.users.template'));
 
     $response->assertOk();
     $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     $response->assertHeader('content-disposition', 'attachment; filename=template-import-utenti.xlsx');
+
+    $temporaryFile = tempnam(sys_get_temp_dir(), 'template-import-test-');
+    file_put_contents($temporaryFile, $response->streamedContent());
+
+    $spreadsheet = IOFactory::load($temporaryFile);
+    $importSheet = $spreadsheet->getSheetByName('Import utenti');
+    $lookupSheet = $spreadsheet->getSheetByName('Valori disponibili');
+
+    expect($importSheet?->getCell('Q2')->getValue())->toBe('Impiegati')
+        ->and($importSheet?->getCell('R2')->getValue())->toBe('Quadro')
+        ->and($importSheet?->getCell('S2')->getValue())->toBe('Operatore')
+        ->and($importSheet?->getCell('T2')->getValue())->toBe('TASK-001')
+        ->and($importSheet?->getCell('U2')->getValue())->toBe('UNIT-001')
+        ->and($lookupSheet?->getCell('A2')->getValue())->toBe('Impiegati')
+        ->and($lookupSheet?->getCell('B2')->getValue())->toBe('Quadro')
+        ->and($lookupSheet?->getCell('C2')->getValue())->toBe('Operatore')
+        ->and($lookupSheet?->getCell('D2')->getValue())->toBe('TASK-001')
+        ->and($lookupSheet?->getCell('E2')->getValue())->toBe('UNIT-001');
+
+    $spreadsheet->disconnectWorksheets();
+    @unlink($temporaryFile);
 });
 
 it('returns user import status card payload', function () {
@@ -70,13 +99,14 @@ it('returns user import status card payload', function () {
         'created_by' => auth()->id(),
         'status' => Importazione::STATUS_PROGRESS,
         'file_path' => 'imports/users/progress.xlsx',
+        'original_file_name' => 'progress-originale.xlsx',
     ]);
 
     $this->get(route('admin.imports.users.status-card'))
         ->assertOk()
         ->assertSeeText('Import utenti recenti')
         ->assertSeeText('In lavorazione')
-        ->assertSeeText('progress.xlsx');
+        ->assertSeeText('progress-originale.xlsx');
 });
 
 it('imports workers and staff from excel', function () {
@@ -169,6 +199,7 @@ it('imports workers and staff from excel', function () {
     $importazione = Importazione::query()->create([
         'import_type' => Importazione::TYPE_USERS,
         'file_path' => 'imports/users/users.xlsx',
+        'original_file_name' => 'utenti-reali.xlsx',
     ]);
 
     app(ImportUsersJob::class, ['importazioneId' => $importazione->getKey()])->handle(app(UserImportService::class));
@@ -222,6 +253,7 @@ it('fails import when worker required data is missing', function () {
     $importazione = Importazione::query()->create([
         'import_type' => Importazione::TYPE_USERS,
         'file_path' => 'imports/users/invalid-users.xlsx',
+        'original_file_name' => 'utenti-invalidi.xlsx',
     ]);
 
     app(ImportUsersJob::class, ['importazioneId' => $importazione->getKey()])->handle(app(UserImportService::class));

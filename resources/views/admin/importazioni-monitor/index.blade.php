@@ -101,6 +101,9 @@
                             </td>
                             <td class="max-w-md">
                                 <div class="truncate font-medium">{{ $importazione->fileName() }}</div>
+                                @if ($importazione->original_file_name)
+                                    <div class="truncate text-xs text-base-content/60">{{ __('Originale: :name', ['name' => $importazione->original_file_name]) }}</div>
+                                @endif
                                 <div class="break-all text-xs text-base-content/60">{{ $importazione->file_path }}</div>
                             </td>
                             <td class="max-w-md">

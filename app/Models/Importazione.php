@@ -33,6 +33,7 @@ class Importazione extends Model
         'status',
         'error_message',
         'file_path',
+        'original_file_name',
     ];
 
     protected $attributes = [
@@ -87,6 +88,6 @@ class Importazione extends Model
 
     public function fileName(): string
     {
-        return basename((string) $this->file_path);
+        return $this->original_file_name ?: basename((string) $this->file_path);
     }
 }
