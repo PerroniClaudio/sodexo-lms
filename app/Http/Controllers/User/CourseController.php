@@ -9,6 +9,8 @@ use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\ModuleQuizSubmission;
+use App\Models\TrainingPath;
+use App\Models\TrainingPathEnrollment;
 use App\Models\User;
 use App\Services\Certificates\UserCourseCertificateLocator;
 use App\Services\CourseClassScheduleResolver;
@@ -66,8 +68,17 @@ class CourseController extends Controller
         return match ($this->routeArea()) {
             'teacher' => $this->teacherShow($user, $course),
             'tutor' => $this->tutorShow($user, $course),
-            default => $this->userShow($user, $course),
+            default => $this->userShow($user, $course, null),
         };
+    }
+
+    public function showWithinTrainingPath(TrainingPathEnrollment $trainingPathEnrollment, Course $course): View|RedirectResponse
+    {
+        $user = $this->authUser();
+
+        abort_unless($this->routeArea() === 'user', 404);
+
+        return $this->userShow($user, $course, $trainingPathEnrollment);
     }
 
     public function completed(UserCourseCertificateLocator $userCourseCertificateLocator): View
@@ -119,9 +130,36 @@ class CourseController extends Controller
     {
         $user = $this->authUser();
 
+        return $this->showUserModule($user, $course, $module, null);
+    }
+
+    public function showModuleWithinTrainingPath(TrainingPathEnrollment $trainingPathEnrollment, Course $course, Module $module): View|RedirectResponse
+    {
+        $user = $this->authUser();
+
+        abort_unless($this->routeArea() === 'user', 404);
+
+        return $this->showUserModule($user, $course, $module, $trainingPathEnrollment);
+    }
+
+    private function showUserModule(User $user, Course $course, Module $module, ?TrainingPathEnrollment $trainingPathEnrollment): View|RedirectResponse
+    {
+        $courseShowRouteName = 'user.courses.show';
+
+        if ($trainingPathEnrollment !== null) {
+            $this->ensureUserTrainingPathContext($user, $trainingPathEnrollment, $course);
+            $courseShowRouteName = 'user.training-paths.courses.show';
+        }
+
         $courseOrderLock = $this->trainingPathCourseOrderService->lockForCourse($user, $course);
 
         if ($courseOrderLock !== null && ! empty($courseOrderLock['current_course_id'])) {
+            if ($trainingPathEnrollment !== null && $this->courseBelongsToTrainingPathEnrollment($trainingPathEnrollment, (int) $courseOrderLock['current_course_id'])) {
+                return redirect()
+                    ->route('user.training-paths.courses.show', [$trainingPathEnrollment, (int) $courseOrderLock['current_course_id']])
+                    ->with('error', $courseOrderLock['message']);
+            }
+
             return redirect()
                 ->route('user.courses.show', (int) $courseOrderLock['current_course_id'])
                 ->with('error', $courseOrderLock['message']);
@@ -187,7 +225,11 @@ class CourseController extends Controller
 
         $quizAccessGate = $this->quizAccessDelayService->resolve($enrollment, $module);
 
-        return view('user.courses.module', compact('course', 'module', 'enrollment', 'progress', 'nextModule', 'modules', 'quizAccessGate'));
+        $modulePlayerRouteName = $trainingPathEnrollment !== null
+            ? 'user.training-paths.courses.modules.player'
+            : 'user.courses.modules.player';
+
+        return view('user.courses.module', compact('course', 'module', 'enrollment', 'progress', 'nextModule', 'modules', 'quizAccessGate', 'trainingPathEnrollment', 'courseShowRouteName', 'modulePlayerRouteName'));
     }
 
     public function downloadPosterPdf(Course $course): StreamedResponse
@@ -246,11 +288,13 @@ class CourseController extends Controller
                 'completion_percentage',
                 'last_accessed_at',
                 'expires_at',
+                'direct_origin',
             ])
             ->with([
                 'course:id,title,type',
                 'course.categories:id,name',
             ])
+            ->where('direct_origin', true)
             ->whereHas('course', fn ($query) => $query->visibleToUser($user))
             ->get();
 
@@ -397,11 +441,29 @@ class CourseController extends Controller
         ]);
     }
 
-    private function userShow(User $user, Course $course): View|RedirectResponse
+    private function userShow(User $user, Course $course, ?TrainingPathEnrollment $trainingPathEnrollment): View|RedirectResponse
     {
+        $courseShowRouteName = 'user.courses.show';
+        $modulePlayerRouteName = 'user.courses.modules.player';
+        $trainingPathContext = null;
+
+        if ($trainingPathEnrollment !== null) {
+            $this->ensureUserTrainingPathContext($user, $trainingPathEnrollment, $course);
+
+            $courseShowRouteName = 'user.training-paths.courses.show';
+            $modulePlayerRouteName = 'user.training-paths.courses.modules.player';
+            $trainingPathContext = $this->trainingPathContextData($user, $trainingPathEnrollment, $course);
+        }
+
         $courseOrderLock = $this->trainingPathCourseOrderService->lockForCourse($user, $course);
 
         if ($courseOrderLock !== null && ! empty($courseOrderLock['current_course_id'])) {
+            if ($trainingPathEnrollment !== null && $this->courseBelongsToTrainingPathEnrollment($trainingPathEnrollment, (int) $courseOrderLock['current_course_id'])) {
+                return redirect()
+                    ->route('user.training-paths.courses.show', [$trainingPathEnrollment, (int) $courseOrderLock['current_course_id']])
+                    ->with('error', $courseOrderLock['message']);
+            }
+
             return redirect()
                 ->route('user.courses.show', (int) $courseOrderLock['current_course_id'])
                 ->with('error', $courseOrderLock['message']);
@@ -436,7 +498,79 @@ class CourseController extends Controller
             'courseOrderLock' => $courseOrderLock,
             'residentialAttendanceQrCodeContent' => $residentialAttendanceQrCode['content'] ?? null,
             'residentialAttendanceQrCodeDataUri' => $residentialAttendanceQrCode['data_uri'] ?? null,
+            'trainingPathEnrollment' => $trainingPathEnrollment,
+            'trainingPathContext' => $trainingPathContext,
+            'courseShowRouteName' => $courseShowRouteName,
+            'modulePlayerRouteName' => $modulePlayerRouteName,
         ]);
+    }
+
+    private function ensureUserTrainingPathContext(User $user, TrainingPathEnrollment $trainingPathEnrollment, Course $course): void
+    {
+        abort_unless((int) $trainingPathEnrollment->user_id === (int) $user->getKey(), 404);
+        abort_if($trainingPathEnrollment->trashed(), 404);
+
+        $belongsToPath = $trainingPathEnrollment->trainingPath()
+            ->whereHas('courses', fn ($query) => $query->whereKey($course->getKey()))
+            ->exists();
+
+        abort_unless($belongsToPath, 404);
+    }
+
+    private function courseBelongsToTrainingPathEnrollment(TrainingPathEnrollment $trainingPathEnrollment, int $courseId): bool
+    {
+        return $trainingPathEnrollment->trainingPath()
+            ->whereHas('courses', fn ($query) => $query->whereKey($courseId))
+            ->exists();
+    }
+
+    /**
+     * @return array{training_path: TrainingPath, completed_courses: int, total_courses: int, completion_percentage: int, current_course_id: int|null, next_course: Course|null}
+     */
+    private function trainingPathContextData(User $user, TrainingPathEnrollment $trainingPathEnrollment, Course $currentCourse): array
+    {
+        $trainingPathEnrollment->loadMissing([
+            'trainingPath:id,title,code,enforce_course_order,status',
+            'trainingPath.courses:id,title,status',
+        ]);
+
+        $trainingPath = $trainingPathEnrollment->trainingPath;
+        abort_unless($trainingPath !== null, 404);
+
+        $orderedCourses = $trainingPath->courses
+            ->where('status', 'published')
+            ->values();
+
+        $orderedCourseIds = $orderedCourses
+            ->pluck('id')
+            ->map(fn (mixed $courseId): int => (int) $courseId)
+            ->values();
+
+        $completedCourses = 0;
+        $totalCourses = $orderedCourseIds->count();
+
+        if ($totalCourses > 0) {
+            $completedCourses = CourseEnrollment::query()
+                ->where('user_id', $user->getKey())
+                ->whereIn('course_id', $orderedCourseIds->all())
+                ->whereNull('deleted_at')
+                ->where('status', CourseEnrollment::STATUS_COMPLETED)
+                ->count();
+        }
+
+        $currentIndex = $orderedCourses->search(fn (Course $course): bool => (int) $course->getKey() === (int) $currentCourse->getKey());
+        $nextCourse = $currentIndex === false ? null : $orderedCourses->slice(((int) $currentIndex) + 1)->first();
+
+        return [
+            'training_path' => $trainingPath,
+            'completed_courses' => (int) $completedCourses,
+            'total_courses' => $totalCourses,
+            'completion_percentage' => $totalCourses > 0
+                ? (int) round(($completedCourses / $totalCourses) * 100)
+                : 0,
+            'current_course_id' => $trainingPathEnrollment->current_course_id !== null ? (int) $trainingPathEnrollment->current_course_id : null,
+            'next_course' => $nextCourse instanceof Course ? $nextCourse : null,
+        ];
     }
 
     /**

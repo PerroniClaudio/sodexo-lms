@@ -1,5 +1,14 @@
 <x-layouts.user>
     @php
+        $trainingPathContext = $trainingPathContext ?? null;
+        $courseShowRouteName = $courseShowRouteName ?? 'user.courses.show';
+        $modulePlayerRouteName = $modulePlayerRouteName ?? 'user.courses.modules.player';
+        $trainingPathEnrollment = $trainingPathEnrollment ?? null;
+        $nextPathCourse = is_array($trainingPathContext) ? ($trainingPathContext['next_course'] ?? null) : null;
+        $canProceedWithTrainingPath = $trainingPathEnrollment !== null
+            && $enrollment->status === \App\Models\CourseEnrollment::STATUS_COMPLETED
+            && $nextPathCourse instanceof \App\Models\Course;
+
         $completedModules = $modules->filter(fn ($module) => $module->pivot->status === 'completed')->count();
         $totalModules = $modules->count();
         $hasLanguageVerificationBlock = isset($languageVerificationBlock) && is_array($languageVerificationBlock);
@@ -50,6 +59,34 @@
     <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:gap-8 sm:p-6 lg:p-8">
         <x-page-header :title="$course->title" />
 
+        @if(is_array($trainingPathContext))
+            <div class="card border border-primary/30 bg-primary/5 shadow-sm">
+                <div class="card-body gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-primary/80">{{ __('Percorso formativo') }}</p>
+                        <h2 class="text-xl font-semibold text-base-content">{{ $trainingPathContext['training_path']->title }}</h2>
+                        <p class="mt-1 text-sm text-base-content/70">
+                            {{ __('Completamento percorso: :percentage% (:done/:total corsi)', [
+                                'percentage' => $trainingPathContext['completion_percentage'],
+                                'done' => $trainingPathContext['completed_courses'],
+                                'total' => $trainingPathContext['total_courses'],
+                            ]) }}
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap justify-end gap-2">
+                        <a href="{{ route('user.training-paths.show', $trainingPathEnrollment) }}" class="btn btn-outline btn-primary btn-sm">
+                            {{ __('Apri percorso') }}
+                        </a>
+                        @if($canProceedWithTrainingPath)
+                            <a href="{{ route('user.training-paths.courses.show', [$trainingPathEnrollment, $nextPathCourse]) }}" class="btn btn-primary btn-sm">
+                                {{ __('Procedi col percorso formativo') }}
+                            </a>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endif
+
         @if ($hasLanguageVerificationBlock)
             <div class="card border border-warning/40 bg-warning/10 shadow-sm">
                 <div class="card-body gap-4">
@@ -87,7 +124,7 @@
                         <img
                             src="{{ route('user.courses.cover-image.show', $course) }}"
                             alt="{{ __('Copertina del corso :title', ['title' => $course->title]) }}"
-                            class="h-auto max-h-[28rem] w-full object-cover"
+                            class="h-auto max-h-112 w-full object-cover"
                             loading="lazy"
                         >
                     </div>
@@ -243,7 +280,7 @@
                                             <x-lucide-chevron-right class="h-4 w-4" />
                                         </button>
                                     @else
-                                        <a href="{{ route('user.courses.modules.player', [$course, $module]) }}" class="btn btn-primary gap-2">
+                                        <a href="{{ route($modulePlayerRouteName, $trainingPathEnrollment ? [$trainingPathEnrollment, $course, $module] : [$course, $module]) }}" class="btn btn-primary gap-2">
                                             {{ __('Inizia') }}
                                             <x-lucide-chevron-right class="h-4 w-4" />
                                         </a>
@@ -254,7 +291,7 @@
                                             {{ __('Apri') }}
                                         </button>
                                     @else
-                                        <a href="{{ route('user.courses.modules.player', [$course, $module]) }}" class="btn btn-outline btn-primary">
+                                        <a href="{{ route($modulePlayerRouteName, $trainingPathEnrollment ? [$trainingPathEnrollment, $course, $module] : [$course, $module]) }}" class="btn btn-outline btn-primary">
                                             {{ __('Apri') }}
                                         </a>
                                     @endif

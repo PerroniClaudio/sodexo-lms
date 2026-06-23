@@ -7,6 +7,7 @@ use App\Http\Controllers\User\CourseController;
 use App\Http\Controllers\User\QuizModuleController;
 use App\Http\Controllers\User\SatisfactionSurveyController;
 use App\Http\Controllers\User\ScormModulePackageController;
+use App\Http\Controllers\User\TrainingPathController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\User\VideoModuleController;
 use Illuminate\Support\Facades\Route;
@@ -96,6 +97,8 @@ Route::middleware(['auth', 'active.role:user|superadmin'])->group(function () {
 
         // Corsi utente
         Route::get('courses', [CourseController::class, 'index'])->name('courses.index');
+        Route::get('training-paths', [TrainingPathController::class, 'index'])->name('training-paths.index');
+        Route::get('training-paths/{trainingPathEnrollment}', [TrainingPathController::class, 'show'])->name('training-paths.show');
         Route::get('completed-courses', [CourseController::class, 'completed'])->name('completed-courses.index');
         Route::get('completed-courses/{courseEnrollment}/certificate', [CourseController::class, 'downloadCertificate'])
             ->name('completed-courses.certificate.download');
@@ -103,6 +106,8 @@ Route::middleware(['auth', 'active.role:user|superadmin'])->group(function () {
             Route::get('courses/{course}/cover-image', [CourseController::class, 'showCoverImage'])->name('courses.cover-image.show');
             Route::get('courses/{course}/poster-pdf', [CourseController::class, 'downloadPosterPdf'])->name('courses.poster-pdf.download');
             Route::get('courses/{course}', [CourseController::class, 'show'])->name('courses.show');
+            Route::get('training-paths/{trainingPathEnrollment}/courses/{course}', [CourseController::class, 'showWithinTrainingPath'])->name('training-paths.courses.show');
+            Route::get('training-paths/{trainingPathEnrollment}/courses/{course}/modules/{module}/player', [CourseController::class, 'showModuleWithinTrainingPath'])->name('training-paths.courses.modules.player');
         });
     });
 });

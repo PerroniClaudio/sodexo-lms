@@ -1,4 +1,8 @@
 @php
+    $trainingPathEnrollment = $trainingPathEnrollment ?? null;
+    $courseShowRouteName = $courseShowRouteName ?? 'user.courses.show';
+    $modulePlayerRouteName = $modulePlayerRouteName ?? 'user.courses.modules.player';
+
     $moduleTypeMeta = [
         'video' => [
             'label' => __('Video'),
@@ -47,7 +51,7 @@
     :module-type-meta="$moduleTypeMeta"
 >
     <x-slot:headerActions>
-        <a href="{{ route('user.courses.show', $course) }}" class="btn btn-outline">
+        <a href="{{ route($courseShowRouteName, $trainingPathEnrollment ? [$trainingPathEnrollment, $course] : [$course]) }}" class="btn btn-outline">
             <x-lucide-arrow-left class="h-4 w-4" />
             {{ __('Torna al corso') }}
         </a>
@@ -69,7 +73,7 @@
         data-scorm-packages-url="{{ route('user.courses.modules.scorm.packages.index', [$course, $module]) }}"
         data-quiz-url="{{ $module->isSatisfactionQuiz() ? route('user.courses.modules.satisfaction-survey.show', [$course, $module]) : route('user.courses.modules.quiz.show', [$course, $module]) }}"
         data-quiz-submit-url="{{ $module->isSatisfactionQuiz() ? route('user.courses.modules.satisfaction-survey.submit', [$course, $module]) : route('user.courses.modules.quiz.submit', [$course, $module]) }}"
-        data-next-module-url="{{ $nextModule ? route('user.courses.modules.player', [$course, $nextModule]) : '' }}"
+        data-next-module-url="{{ $nextModule ? route($modulePlayerRouteName, $trainingPathEnrollment ? [$trainingPathEnrollment, $course, $nextModule] : [$course, $nextModule]) : '' }}"
         data-next-module-title="{{ $nextModule->title ?? '' }}"
         data-quiz-access-gate-active="{{ ($quizAccessGate['active'] ?? false) ? 'true' : 'false' }}"
         data-quiz-access-gate-remaining-seconds="{{ $quizAccessGate['remaining_seconds'] ?? 0 }}"
