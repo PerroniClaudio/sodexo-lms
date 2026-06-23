@@ -3,6 +3,7 @@
 use App\Console\Commands\StartPendingDocumentConversionJobs;
 use App\Http\Middleware\EnsureActiveRole;
 use App\Http\Middleware\EnsureCourseVisibleToUser;
+use App\Http\Middleware\EnsureDevelopmentEnvironment;
 use App\Http\Middleware\EnsureUserOnboarded;
 use App\Http\Middleware\IncreaseVideoUploadLimitMiddleware;
 use Illuminate\Auth\AuthenticationException;
@@ -56,6 +57,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             'uploadlimit' => IncreaseVideoUploadLimitMiddleware::class,
             'course.visible' => EnsureCourseVisibleToUser::class,
+            'env.development' => EnsureDevelopmentEnvironment::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

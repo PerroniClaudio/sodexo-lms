@@ -81,9 +81,13 @@
                     $jobConfigurationMenuOpen = $matchesRoutePatterns($jobConfigurationMenuPatterns);
                     $configurationMenuOpen = $matchesRoutePatterns($configurationMenuPatterns);
                     $toolsMenuOpen = $matchesRoutePatterns($toolsMenuPatterns);
+                    $developmentToolsMenuOpen = $matchesRoutePatterns([
+                        'admin.development-tools.*',
+                    ]);
                     $activeRole = session('active_role') ?? auth()->user()?->getRoleNames()->first();
                     $canAccessAdminMenu = in_array($activeRole, ['admin', 'superadmin'], true);
                     $canAccessSuperadminMenu = $activeRole === 'superadmin';
+                    $isDevelopmentEnvironment = app()->environment(['local', 'development']);
                 @endphp
 
                 <ul class="menu w-full gap-1">
@@ -378,6 +382,28 @@
                                         >
                                             <x-lucide-activity class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Log live stream') }}
+                                        </a>
+                                    </li>
+                                </ul>
+                            </details>
+                        </li>
+                    @endif
+
+                    @if($canAccessSuperadminMenu && $isDevelopmentEnvironment)
+                        <li class="mt-2 border-t border-base-content/10 pt-2">
+                            <details @if($developmentToolsMenuOpen) open @endif>
+                                <summary @class(['menu-active' => $developmentToolsMenuOpen])>
+                                    <x-lucide-flask-conical class="mr-2 inline-block h-5 w-5" />
+                                    {{ __('Strumenti sviluppo') }}
+                                </summary>
+                                <ul>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.development-tools.reset-enrollments.index') }}"
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.development-tools.reset-enrollments.*'])])
+                                        >
+                                            <x-lucide-rotate-ccw class="mr-2 inline-block h-4 w-4" />
+                                            {{ __('Reset iscrizioni') }}
                                         </a>
                                     </li>
                                 </ul>

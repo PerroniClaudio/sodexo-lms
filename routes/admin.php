@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\CourseTeacherEnrollmentController;
 use App\Http\Controllers\Admin\CourseTutorEnrollmentController;
 use App\Http\Controllers\Admin\CustomCertificateController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DevelopmentToolController;
 use App\Http\Controllers\Admin\DocumentConversionJobDebugController;
 use App\Http\Controllers\Admin\DocumentTypeController;
 use App\Http\Controllers\Admin\FundingEntityController;
@@ -52,6 +53,11 @@ Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/dashboard/calendar-events', [DashboardController::class, 'calendarEvents'])->name('dashboard.calendar-events');
         Route::get('/dashboard/follow-up-users/export', [DashboardController::class, 'exportFollowUpUsers'])->name('dashboard.follow-up-users.export');
+
+        Route::middleware(['env.development', 'active.role:superadmin'])->group(function () {
+            Route::get('/development-tools/reset-enrollments', [DevelopmentToolController::class, 'resetEnrollments'])->name('development-tools.reset-enrollments.index');
+            Route::post('/development-tools/reset-enrollments', [DevelopmentToolController::class, 'performReset'])->name('development-tools.reset-enrollments.store');
+        });
 
         // Libreria video Mux
         Route::post('videos', [VideoController::class, 'store'])
