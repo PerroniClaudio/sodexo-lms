@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\DocumentConversionJobDebugController;
 use App\Http\Controllers\Admin\DocumentTypeController;
 use App\Http\Controllers\Admin\FundingEntityController;
 use App\Http\Controllers\Admin\HomepageCustomizationController;
+use App\Http\Controllers\Admin\ImportazioneMonitorController;
 use App\Http\Controllers\Admin\JobCategoryController;
 use App\Http\Controllers\Admin\JobLevelController;
 use App\Http\Controllers\Admin\JobRoleController;
@@ -38,6 +39,7 @@ use App\Http\Controllers\Admin\TrainingPathDocumentController;
 use App\Http\Controllers\Admin\TrainingPathEnrollmentController;
 use App\Http\Controllers\Admin\UserCertificateController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\UserImportController;
 use App\Http\Controllers\Admin\VideoController;
 use App\Http\Controllers\Admin\VideoExerciseController;
 use App\Http\Controllers\Admin\VideoReportController;
@@ -52,6 +54,18 @@ Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/dashboard/calendar-events', [DashboardController::class, 'calendarEvents'])->name('dashboard.calendar-events');
         Route::get('/dashboard/follow-up-users/export', [DashboardController::class, 'exportFollowUpUsers'])->name('dashboard.follow-up-users.export');
+        Route::get('/imports/users', [UserImportController::class, 'index'])->name('imports.users');
+        Route::get('/imports/users/template', [UserImportController::class, 'downloadTemplate'])->name('imports.users.template');
+        Route::get('/imports/users/status-card', [UserImportController::class, 'statusCard'])->name('imports.users.status-card');
+        Route::post('/imports/users', [UserImportController::class, 'store'])->name('imports.users.store');
+        Route::view('/imports/job-units', 'admin.imports.placeholder', [
+            'title' => __('Import unità lavorative'),
+            'description' => __('Area riservata al futuro import delle unità lavorative.'),
+        ])->name('imports.job-units');
+        Route::view('/imports/job-tasks', 'admin.imports.placeholder', [
+            'title' => __('Import mansioni'),
+            'description' => __('Area riservata al futuro import delle mansioni.'),
+        ])->name('imports.job-tasks');
 
         // Libreria video Mux
         Route::post('videos', [VideoController::class, 'store'])
@@ -204,6 +218,10 @@ Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
                 ->name('live-stream-logs.show');
             Route::get('/live-stream-logs/{liveStreamLog}/download', [LiveStreamLogController::class, 'download'])
                 ->name('live-stream-logs.download');
+            Route::get('/importazioni-monitor', [ImportazioneMonitorController::class, 'index'])
+                ->name('importazioni-monitor.index');
+            Route::get('/importazioni-monitor/{importazione}/download', [ImportazioneMonitorController::class, 'download'])
+                ->name('importazioni-monitor.download');
             Route::get('/satisfaction-survey', [SatisfactionSurveyController::class, 'edit'])
                 ->name('satisfaction-survey.edit');
         });

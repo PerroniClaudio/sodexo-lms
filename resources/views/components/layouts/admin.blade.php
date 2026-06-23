@@ -53,6 +53,12 @@
 
                     $portalMenuPatterns = ['admin.homepage.*'];
 
+                    $importsMenuPatterns = [
+                        'admin.imports.users',
+                        'admin.imports.job-units',
+                        'admin.imports.job-tasks',
+                    ];
+
                     $jobConfigurationMenuPatterns = [
                         'admin.job-sectors.*',
                         'admin.job-categories.*',
@@ -73,11 +79,13 @@
                     $toolsMenuPatterns = [
                         'admin.document-conversion-jobs.*',
                         'admin.live-stream-logs.*',
+                        'admin.importazioni-monitor.*',
                     ];
 
                     $formationMenuOpen = $matchesRoutePatterns($formationMenuPatterns);
                     $registryMenuOpen = $matchesRoutePatterns($registryMenuPatterns);
                     $portalMenuOpen = $matchesRoutePatterns($portalMenuPatterns);
+                    $importsMenuOpen = $matchesRoutePatterns($importsMenuPatterns);
                     $jobConfigurationMenuOpen = $matchesRoutePatterns($jobConfigurationMenuPatterns);
                     $configurationMenuOpen = $matchesRoutePatterns($configurationMenuPatterns);
                     $toolsMenuOpen = $matchesRoutePatterns($toolsMenuPatterns);
@@ -216,6 +224,44 @@
                                         >
                                             <x-lucide-map-pin class="mr-2 inline-block h-4 w-4" />
                                             {{ __('Unità Lavorative') }}
+                                        </a>
+                                    </li>
+                                </ul>
+                            </details>
+                        </li>
+
+                        <li>
+                            <details @if($importsMenuOpen) open @endif>
+                                <summary @class(['menu-active' => $importsMenuOpen])>
+                                    <x-lucide-file-up class="mr-2 inline-block h-5 w-5" />
+                                    {{ __('Importazioni') }}
+                                </summary>
+                                <ul>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.imports.users') }}"
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.imports.users'])])
+                                        >
+                                            <x-lucide-user-round class="mr-2 inline-block h-4 w-4" />
+                                            {{ __('Import utenti') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.imports.job-units') }}"
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.imports.job-units'])])
+                                        >
+                                            <x-lucide-map-pin class="mr-2 inline-block h-4 w-4" />
+                                            {{ __('Import unità lavorative') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.imports.job-tasks') }}"
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.imports.job-tasks'])])
+                                        >
+                                            <x-lucide-clipboard-check class="mr-2 inline-block h-4 w-4" />
+                                            {{ __('Import mansioni') }}
                                         </a>
                                     </li>
                                 </ul>
@@ -369,6 +415,15 @@
                                         >
                                             <x-lucide-settings class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Debug conversioni documenti') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.importazioni-monitor.index') }}"
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.importazioni-monitor.*'])])
+                                        >
+                                            <x-lucide-file-search class="mr-2 inline-block h-5 w-5" />
+                                            {{ __('Monitor importazioni') }}
                                         </a>
                                     </li>
                                     <li>

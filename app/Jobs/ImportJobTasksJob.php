@@ -1,0 +1,19 @@
+<?php
+
+namespace App\Jobs;
+
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
+
+class ImportJobTasksJob implements ShouldQueue
+{
+    use Queueable;
+
+    public int $tries = 1;
+
+    public int $timeout = 3600;
+
+    public function __construct(public int $importazioneId) {}
+
+    public function handle(): void {}
+}
