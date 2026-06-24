@@ -57,6 +57,7 @@
                         'admin.imports.users',
                         'admin.imports.job-units',
                         'admin.imports.job-tasks',
+                        'admin.imports.job-task-risk-associations',
                     ];
 
                     $jobConfigurationMenuPatterns = [
@@ -266,6 +267,15 @@
                                         >
                                             <x-lucide-clipboard-check class="mr-2 inline-block h-4 w-4" />
                                             {{ __('Import mansioni') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.imports.job-task-risk-associations') }}"
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.job-task-risk-associations'])])
+                                        >
+                                            <x-lucide-shield-alert class="mr-2 inline-block h-4 w-4" />
+                                            {{ __('Associazione mansioni rischio') }}
                                         </a>
                                     </li>
                                 </ul>

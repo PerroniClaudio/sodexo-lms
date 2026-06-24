@@ -13,6 +13,8 @@ class Importazione extends Model
 
     public const TYPE_JOB_TASKS = 'mansioni';
 
+    public const TYPE_JOB_TASK_RISK_ASSOCIATIONS = 'associazione_mansioni_rischio';
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_PROGRESS = 'progress';
@@ -60,6 +62,7 @@ class Importazione extends Model
             self::TYPE_USERS => __('Utenti'),
             self::TYPE_JOB_UNITS => __('Unità lavorative'),
             self::TYPE_JOB_TASKS => __('Mansioni'),
+            self::TYPE_JOB_TASK_RISK_ASSOCIATIONS => __('Associazione mansioni rischio'),
             default => (string) $this->import_type,
         };
     }
