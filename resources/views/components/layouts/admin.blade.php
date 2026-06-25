@@ -58,6 +58,7 @@
                         'admin.imports.job-units',
                         'admin.imports.job-tasks',
                         'admin.imports.user-job-tasks',
+                        'admin.imports.user-training-paths',
                         'admin.imports.job-task-risk-associations',
                     ];
 
@@ -277,6 +278,15 @@
                                         >
                                             <x-lucide-link class="mr-2 inline-block h-4 w-4" />
                                             {{ __('Utenti mansioni') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.imports.user-training-paths') }}"
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.user-training-paths'])])
+                                        >
+                                            <x-lucide-route class="mr-2 inline-block h-4 w-4" />
+                                            {{ __('Utenti percorsi') }}
                                         </a>
                                     </li>
                                     <li>

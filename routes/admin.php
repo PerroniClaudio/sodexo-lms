@@ -41,6 +41,7 @@ use App\Http\Controllers\Admin\ScormPackageController;
 use App\Http\Controllers\Admin\TrainingPathController;
 use App\Http\Controllers\Admin\TrainingPathDocumentController;
 use App\Http\Controllers\Admin\TrainingPathEnrollmentController;
+use App\Http\Controllers\Admin\TrainingPathImportController;
 use App\Http\Controllers\Admin\UserCertificateController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserImportController;
@@ -75,6 +76,10 @@ Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
         Route::get('/imports/user-job-tasks/template', [UserJobTaskImportController::class, 'downloadTemplate'])->name('imports.user-job-tasks.template');
         Route::get('/imports/user-job-tasks/status-card', [UserJobTaskImportController::class, 'statusCard'])->name('imports.user-job-tasks.status-card');
         Route::post('/imports/user-job-tasks', [UserJobTaskImportController::class, 'store'])->name('imports.user-job-tasks.store');
+        Route::get('/imports/user-training-paths', [TrainingPathImportController::class, 'index'])->name('imports.user-training-paths');
+        Route::get('/imports/user-training-paths/template', [TrainingPathImportController::class, 'downloadTemplate'])->name('imports.user-training-paths.template');
+        Route::get('/imports/user-training-paths/status-card', [TrainingPathImportController::class, 'statusCard'])->name('imports.user-training-paths.status-card');
+        Route::post('/imports/user-training-paths', [TrainingPathImportController::class, 'store'])->name('imports.user-training-paths.store');
         Route::get('/imports/job-task-risk-associations', [JobTaskRiskAssociationImportController::class, 'index'])->name('imports.job-task-risk-associations');
         Route::get('/imports/job-task-risk-associations/template', [JobTaskRiskAssociationImportController::class, 'downloadTemplate'])->name('imports.job-task-risk-associations.template');
         Route::get('/imports/job-task-risk-associations/status-card', [JobTaskRiskAssociationImportController::class, 'statusCard'])->name('imports.job-task-risk-associations.status-card');
