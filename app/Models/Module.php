@@ -264,12 +264,12 @@ class Module extends Model
     public static function availableTypeLabels(): array
     {
         return [
-            self::TYPE_VIDEO => __('Video'),
-            self::TYPE_RESIDENTIAL => __('Residential'),
-            self::TYPE_LIVE => __('Live'),
-            self::TYPE_SCORM => __('SCORM'),
-            self::TYPE_LEARNING_QUIZ => __('Learning quiz'),
-            self::TYPE_SATISFACTION_QUIZ => __('Satisfaction quiz'),
+            self::TYPE_VIDEO => __('modules.types.video'),
+            self::TYPE_RESIDENTIAL => __('modules.types.residential'),
+            self::TYPE_LIVE => __('modules.types.live'),
+            self::TYPE_SCORM => __('modules.types.scorm'),
+            self::TYPE_LEARNING_QUIZ => __('modules.types.learning_quiz'),
+            self::TYPE_SATISFACTION_QUIZ => __('modules.types.satisfaction_quiz'),
         ];
     }
 
@@ -291,9 +291,9 @@ class Module extends Model
     public static function availableStatusLabels(): array
     {
         return [
-            'draft' => __('Draft'),
-            'published' => __('Published'),
-            'archived' => __('Archived'),
+            'draft' => __('modules.statuses.draft'),
+            'published' => __('modules.statuses.published'),
+            'archived' => __('modules.statuses.archived'),
         ];
     }
 

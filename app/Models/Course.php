@@ -19,6 +19,29 @@ class Course extends Model
 {
     use HasFactory, SoftDeletes;
 
+    public const DISALLOWED_MODULE_TYPES_BY_COURSE_TYPE = [
+        'fad' => [
+            Module::TYPE_VIDEO,
+            Module::TYPE_RESIDENTIAL,
+            Module::TYPE_SCORM,
+        ],
+        'res' => [
+            Module::TYPE_VIDEO,
+            Module::TYPE_LIVE,
+            Module::TYPE_SCORM,
+        ],
+        'blended' => [],
+        'fsc' => [
+            Module::TYPE_VIDEO,
+            Module::TYPE_LIVE,
+            Module::TYPE_SCORM,
+        ],
+        'async' => [
+            Module::TYPE_LIVE,
+            Module::TYPE_RESIDENTIAL,
+        ],
+    ];
+
     public const AUDIT_TRAIL_TYPES = [
         'fad',
         'async',
@@ -153,6 +176,34 @@ class Course extends Model
             'fsc' => __('FSC'),
             'async' => __('FAD Asincrona'),
         ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function disallowedModuleTypes(): array
+    {
+        return self::DISALLOWED_MODULE_TYPES_BY_COURSE_TYPE[$this->type] ?? [];
+    }
+
+    public function allowsModuleType(string $moduleType): bool
+    {
+        return ! in_array($moduleType, $this->disallowedModuleTypes(), true);
+    }
+
+    public function moduleTypeRestrictionMessage(string $moduleType): ?string
+    {
+        if ($this->allowsModuleType($moduleType)) {
+            return null;
+        }
+
+        $courseTypeLabel = self::availableTypeLabels()[$this->type] ?? $this->type;
+        $moduleTypeLabel = Module::availableTypeLabels()[$moduleType] ?? $moduleType;
+
+        return __('modules.messages.restricted_type', [
+            'course_type' => $courseTypeLabel,
+            'module_type' => $moduleTypeLabel,
+        ]);
     }
 
     /**

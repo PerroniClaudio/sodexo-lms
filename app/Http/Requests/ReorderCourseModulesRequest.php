@@ -65,7 +65,7 @@ class ReorderCourseModulesRequest extends FormRequest
                     || $submittedModuleIds->diff($expectedModuleIds)->isNotEmpty()
                     || $expectedModuleIds->diff($submittedModuleIds)->isNotEmpty()
                 ) {
-                    $validator->errors()->add('modules', __('The module order is invalid.'));
+                    $validator->errors()->add('modules', __('modules.messages.invalid_order'));
                 }
 
             },

@@ -2,10 +2,12 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Course;
 use App\Models\Module;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreModuleRequest extends FormRequest
 {
@@ -36,6 +38,31 @@ class StoreModuleRequest extends FormRequest
     }
 
     /**
+     * @return array<int, \Closure(Validator): void>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                $course = $this->route('course');
+                $moduleType = (string) $this->input('type');
+
+                if (! $course instanceof Course || $moduleType === '' || ! in_array($moduleType, Module::creatableTypes(), true)) {
+                    return;
+                }
+
+                if (! $course->allowsModuleType($moduleType)) {
+                    $validator->errors()->add(
+                        'type',
+                        $course->moduleTypeRestrictionMessage($moduleType)
+                            ?? __('Il tipo di modulo selezionato non è disponibile per questo corso.')
+                    );
+                }
+            },
+        ];
+    }
+
+    /**
      * Get custom attributes for validator errors.
      *
      * @return array<string, string>
@@ -43,8 +70,8 @@ class StoreModuleRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'type' => __('Module type'),
-            'title' => __('Module title'),
+            'type' => __('modules.fields.type'),
+            'title' => __('modules.fields.title'),
         ];
     }
 }

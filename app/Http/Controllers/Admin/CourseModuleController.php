@@ -136,7 +136,7 @@ class CourseModuleController extends Controller
 
         return redirect()
             ->route('admin.courses.modules.edit', [$course, $module])
-            ->with('status', __('Module created successfully.'));
+            ->with('status', __('modules.messages.created'));
     }
 
     public function edit(Course $course, Module $module, LiveModuleAttendanceService $liveModuleAttendanceService): View
@@ -486,7 +486,7 @@ class CourseModuleController extends Controller
             return redirect()
                 // ->route('admin.courses.edit', $course)
                 ->route('admin.courses.modules.edit', [$course, $module])
-                ->with('status', __('Module updated successfully.'));
+                ->with('status', __('modules.messages.updated'));
         } catch (RuntimeException $e) {
             return redirect()
                 ->back()
@@ -524,7 +524,7 @@ class CourseModuleController extends Controller
 
         return redirect()
             ->route('admin.courses.edit', $course)
-            ->with('status', __('Module deleted successfully.'));
+            ->with('status', __('modules.messages.deleted'));
     }
 
     public function reorder(ReorderCourseModulesRequest $request, Course $course): JsonResponse
@@ -555,7 +555,7 @@ class CourseModuleController extends Controller
         $this->syncCourseModuleProgresses->handle($course);
 
         return response()->json([
-            'message' => __('Module order updated successfully.'),
+            'message' => __('modules.messages.order_updated'),
         ]);
     }
 

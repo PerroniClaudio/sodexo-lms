@@ -117,7 +117,7 @@ class UpdateModuleRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'title' => __('Module title'),
+            'title' => __('modules.fields.title'),
             'description' => __('Descrizione'),
             'status' => __('Stato'),
             'is_live_teacher' => __('Live con docente'),

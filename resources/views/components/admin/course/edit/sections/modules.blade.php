@@ -161,23 +161,47 @@
 
                         <fieldset class="space-y-3">
                             <legend class="text-sm font-medium text-base-content">
-                                {{ __('Module type') }}
+                                {{ __('modules.fields.type') }}
                             </legend>
 
                             <div class="grid gap-3 sm:grid-cols-2">
                                 @foreach ($creatableModuleTypeLabels as $moduleType => $moduleTypeLabel)
-                                    <label class="cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="type"
-                                            value="{{ $moduleType }}"
-                                            class="peer sr-only"
-                                            @checked(old('type') === $moduleType)
-                                        >
-                                        <span class="flex min-h-24 items-center rounded-box border border-base-300 bg-base-100 px-4 py-3 text-sm font-medium transition hover:border-primary/40 peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary">
-                                            {{ $moduleTypeLabel }}
-                                        </span>
-                                    </label>
+                                    @php
+                                        $moduleTypeRestrictionMessage = $course->moduleTypeRestrictionMessage($moduleType);
+                                        $moduleTypeIsRestricted = $moduleTypeRestrictionMessage !== null;
+                                    @endphp
+
+                                    <span
+                                        @class([
+                                            'block',
+                                            'tooltip tooltip-bottom' => $moduleTypeIsRestricted,
+                                        ])
+                                        @if ($moduleTypeIsRestricted)
+                                            data-tip="{{ $moduleTypeRestrictionMessage }}"
+                                        @endif
+                                    >
+                                        <label @class([
+                                            'block' => true,
+                                            'cursor-pointer' => ! $moduleTypeIsRestricted,
+                                            'cursor-not-allowed' => $moduleTypeIsRestricted,
+                                        ])>
+                                            <input
+                                                type="radio"
+                                                name="type"
+                                                value="{{ $moduleType }}"
+                                                class="peer sr-only"
+                                                @checked(old('type') === $moduleType && ! $moduleTypeIsRestricted)
+                                                @disabled($moduleTypeIsRestricted)
+                                            >
+                                            <span @class([
+                                                'flex min-h-24 items-center rounded-box border px-4 py-3 text-sm font-medium transition' => true,
+                                                'border-base-300 bg-base-100 hover:border-primary/40 peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary' => ! $moduleTypeIsRestricted,
+                                                'border-error/60 bg-error/10 text-error' => $moduleTypeIsRestricted,
+                                            ])>
+                                                {{ $moduleTypeLabel }}
+                                            </span>
+                                        </label>
+                                    </span>
                                 @endforeach
                             </div>
 
@@ -188,7 +212,7 @@
 
                         <div id="module-title-field" class="form-control flex flex-col gap-2">
                             <label for="module-title" class="label p-0">
-                                <span class="label-text font-medium">{{ __('Module title') }}</span>
+                                <span class="label-text font-medium">{{ __('modules.fields.title') }}</span>
                             </label>
                             <input
                                 id="module-title"

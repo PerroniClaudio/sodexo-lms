@@ -1,6 +1,6 @@
 <div class="form-control flex flex-col gap-2">
     <label class="label p-0">
-        <span class="label-text font-medium">{{ __('Module title') }}</span>
+        <span class="label-text font-medium">{{ __('modules.fields.title') }}</span>
     </label>
     <input
         type="text"

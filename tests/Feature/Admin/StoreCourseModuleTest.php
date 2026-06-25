@@ -8,10 +8,13 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     actingAsRole('admin');
+    $this->withoutVite();
 });
 
 it('creates a module for the selected course', function () {
-    $course = Course::factory()->create();
+    $course = Course::factory()->create([
+        'type' => 'blended',
+    ]);
 
     $response = $this->post(route('admin.courses.modules.store', $course), [
         'type' => 'live',
@@ -42,7 +45,9 @@ it('validates the selected module type', function () {
 });
 
 it('requires a title for non quiz modules', function () {
-    $course = Course::factory()->create();
+    $course = Course::factory()->create([
+        'type' => 'blended',
+    ]);
 
     $response = $this->from(route('admin.courses.edit', $course))->post(route('admin.courses.modules.store', $course), [
         'type' => 'video',
@@ -68,7 +73,9 @@ it('uses the default title for quiz modules', function () {
 });
 
 it('keeps the satisfaction survey at the end when a new module is created', function () {
-    $course = Course::factory()->create();
+    $course = Course::factory()->create([
+        'type' => 'blended',
+    ]);
     $firstModule = Module::factory()->create([
         'type' => Module::TYPE_VIDEO,
         'order' => 1,
@@ -99,7 +106,10 @@ it('keeps the satisfaction survey at the end when a new module is created', func
 });
 
 it('redirects back with an error flash when trying to create a module for a published course', function () {
-    $course = Course::factory()->create(['status' => 'published']);
+    $course = Course::factory()->create([
+        'type' => 'blended',
+        'status' => 'published',
+    ]);
 
     $response = $this
         ->from(route('admin.courses.edit', $course))
@@ -112,4 +122,50 @@ it('redirects back with an error flash when trying to create a module for a publ
     $response->assertSessionHas('error', 'Non è possibile modificare il modulo perché il corso associato è pubblicato.');
 
     expect(Module::query()->count())->toBe(0);
+});
+
+it('rejects module types that are not allowed for the course type', function () {
+    $course = Course::factory()->create([
+        'type' => 'fad',
+    ]);
+
+    $response = $this
+        ->from(route('admin.courses.edit', [$course, 'section' => 'modules']))
+        ->post(route('admin.courses.modules.store', $course), [
+            'type' => Module::TYPE_VIDEO,
+            'title' => 'Modulo video bloccato',
+        ]);
+
+    $response
+        ->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'modules']))
+        ->assertSessionHasErrors([
+            'type' => 'Il corso con tipologia FAD non può contenere un modulo Video.',
+        ]);
+
+    expect(Module::query()->count())->toBe(0);
+});
+
+it('shows restricted module types in the creation modal with an explanatory tooltip', function () {
+    $course = Course::factory()->create([
+        'type' => 'fad',
+    ]);
+
+    $response = $this->get(route('admin.courses.edit', [$course, 'section' => 'modules']));
+
+    $response->assertOk()
+        ->assertSee('data-tip="Il corso con tipologia FAD non può contenere un modulo Video."', false)
+        ->assertSee('tooltip tooltip-bottom', false)
+        ->assertSee('border-error/60 bg-error/10 text-error', false);
+});
+
+it('shows translated course type in the badge instead of raw database value', function () {
+    $course = Course::factory()->create([
+        'type' => 'async',
+    ]);
+
+    $response = $this->get(route('admin.courses.edit', [$course, 'section' => 'modules']));
+
+    $response->assertOk()
+        ->assertSeeText('Tipologia: FAD Asincrona')
+        ->assertDontSeeText('Tipologia: async');
 });
