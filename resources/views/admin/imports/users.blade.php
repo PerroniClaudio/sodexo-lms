@@ -57,7 +57,7 @@
                             <li>{{ __('Obbligatori se tra i ruoli c’è User: settore, ruolo, mansione, unità lavorativa, straniero, data assunzione, livello lingua.') }}</li>
                             <li>{{ __('Tipo di account multiplo separato da punto e virgola (;). Valori attesi: User, Docente, Tutor, Admin.') }}</li>
                             <li>{{ __('Categoria lavoro, settore, livello e ruolo devono esistere.') }}</li>
-                            <li>{{ __(' Mansione e unità lavorativa sono risolte per codice.') }}</li>
+                            <li>{{ __('Mansione accetta più codici o ID separati da ;. Unità lavorativa è risolta per codice.') }}</li>
                         </ul>
                     </div>
 
