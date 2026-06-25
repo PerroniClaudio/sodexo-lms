@@ -14,12 +14,7 @@
                                 <option value="">{{ __('Tutti') }}</option>
                                 @foreach ($types as $type)
                                     <option value="{{ $type }}" @selected($selectedType === $type)>
-                                        {{ match ($type) {
-                                            'utenti' => __('Utenti'),
-                                            'unita_lavorative' => __('Unità lavorative'),
-                                            'mansioni' => __('Mansioni'),
-                                            default => $type,
-                                        } }}
+                                        {{ \App\Models\Importazione::typeLabelFor($type) }}
                                     </option>
                                 @endforeach
                             </select>

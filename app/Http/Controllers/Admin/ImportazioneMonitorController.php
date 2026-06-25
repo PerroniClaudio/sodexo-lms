@@ -49,11 +49,7 @@ class ImportazioneMonitorController extends Controller
                 Importazione::STATUS_FINISHED,
                 Importazione::STATUS_FAILED,
             ],
-            'types' => [
-                Importazione::TYPE_USERS,
-                Importazione::TYPE_JOB_UNITS,
-                Importazione::TYPE_JOB_TASKS,
-            ],
+            'types' => Importazione::availableTypes(),
             'tableSearch' => $search,
         ]);
     }

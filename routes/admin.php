@@ -44,6 +44,7 @@ use App\Http\Controllers\Admin\TrainingPathEnrollmentController;
 use App\Http\Controllers\Admin\UserCertificateController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserImportController;
+use App\Http\Controllers\Admin\UserJobTaskImportController;
 use App\Http\Controllers\Admin\VideoController;
 use App\Http\Controllers\Admin\VideoExerciseController;
 use App\Http\Controllers\Admin\VideoReportController;
@@ -70,6 +71,10 @@ Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
         Route::get('/imports/job-tasks/template', [JobTaskImportController::class, 'downloadTemplate'])->name('imports.job-tasks.template');
         Route::get('/imports/job-tasks/status-card', [JobTaskImportController::class, 'statusCard'])->name('imports.job-tasks.status-card');
         Route::post('/imports/job-tasks', [JobTaskImportController::class, 'store'])->name('imports.job-tasks.store');
+        Route::get('/imports/user-job-tasks', [UserJobTaskImportController::class, 'index'])->name('imports.user-job-tasks');
+        Route::get('/imports/user-job-tasks/template', [UserJobTaskImportController::class, 'downloadTemplate'])->name('imports.user-job-tasks.template');
+        Route::get('/imports/user-job-tasks/status-card', [UserJobTaskImportController::class, 'statusCard'])->name('imports.user-job-tasks.status-card');
+        Route::post('/imports/user-job-tasks', [UserJobTaskImportController::class, 'store'])->name('imports.user-job-tasks.store');
         Route::get('/imports/job-task-risk-associations', [JobTaskRiskAssociationImportController::class, 'index'])->name('imports.job-task-risk-associations');
         Route::get('/imports/job-task-risk-associations/template', [JobTaskRiskAssociationImportController::class, 'downloadTemplate'])->name('imports.job-task-risk-associations.template');
         Route::get('/imports/job-task-risk-associations/status-card', [JobTaskRiskAssociationImportController::class, 'statusCard'])->name('imports.job-task-risk-associations.status-card');
