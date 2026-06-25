@@ -3,6 +3,7 @@
 use App\Console\Commands\StartPendingDocumentConversionJobs;
 use App\Http\Middleware\EnsureActiveRole;
 use App\Http\Middleware\EnsureCourseVisibleToUser;
+use App\Http\Middleware\EnsureDesktopVideoPlayerAccess;
 use App\Http\Middleware\EnsureDevelopmentEnvironment;
 use App\Http\Middleware\EnsureUserOnboarded;
 use App\Http\Middleware\IncreaseVideoUploadLimitMiddleware;
@@ -57,6 +58,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             'uploadlimit' => IncreaseVideoUploadLimitMiddleware::class,
             'course.visible' => EnsureCourseVisibleToUser::class,
+            'desktop.video.player' => EnsureDesktopVideoPlayerAccess::class,
             'env.development' => EnsureDevelopmentEnvironment::class,
         ]);
     })

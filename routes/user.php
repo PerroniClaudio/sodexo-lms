@@ -48,7 +48,9 @@ Route::middleware(['auth', 'active.role:user|superadmin'])->group(function () {
             Route::post('/courses/{course}/modules/{module}/scorm/{scormPackage}/runtime/get-diagnostic', [ScormRuntimeController::class, 'getDiagnostic'])->name('courses.modules.scorm.runtime.get-diagnostic');
 
             // Modulo corrente: player
-            Route::get('/courses/{course}/modules/{module}/player', [CourseController::class, 'showModule'])->name('courses.modules.player');
+            Route::get('/courses/{course}/modules/{module}/player', [CourseController::class, 'showModule'])
+                ->middleware('desktop.video.player')
+                ->name('courses.modules.player');
 
             // Modulo video: signed playback URL
             Route::get('/courses/{course}/modules/{module}/video/signed-playback', [VideoModuleController::class, 'signedPlayback'])->name('courses.modules.video.signed-playback');
@@ -107,7 +109,9 @@ Route::middleware(['auth', 'active.role:user|superadmin'])->group(function () {
             Route::get('courses/{course}/poster-pdf', [CourseController::class, 'downloadPosterPdf'])->name('courses.poster-pdf.download');
             Route::get('courses/{course}', [CourseController::class, 'show'])->name('courses.show');
             Route::get('training-paths/{trainingPathEnrollment}/courses/{course}', [CourseController::class, 'showWithinTrainingPath'])->name('training-paths.courses.show');
-            Route::get('training-paths/{trainingPathEnrollment}/courses/{course}/modules/{module}/player', [CourseController::class, 'showModuleWithinTrainingPath'])->name('training-paths.courses.modules.player');
+            Route::get('training-paths/{trainingPathEnrollment}/courses/{course}/modules/{module}/player', [CourseController::class, 'showModuleWithinTrainingPath'])
+                ->middleware('desktop.video.player')
+                ->name('training-paths.courses.modules.player');
         });
     });
 });

@@ -7,6 +7,8 @@ use App\Models\ModuleProgress;
 use App\Models\ModuleQuizAnswer;
 use App\Models\ModuleQuizQuestion;
 use App\Models\ModuleQuizSubmission;
+use App\Models\TrainingPath;
+use App\Models\TrainingPathEnrollment;
 use App\Models\User;
 use App\Models\Video;
 use App\Models\VideoTrackingEvent;
@@ -124,6 +126,43 @@ test('module player page requires authentication', function () {
 
     $this->get(route('user.courses.modules.player', [$course, $module]))
         ->assertRedirect(route('login'));
+});
+
+test('module player page redirects mobile users to course detail when mobile access is disabled', function () {
+    config()->set('app.show_courses_mobile', false);
+
+    [, $course, $module] = enrollUserInCourseWithModule('video');
+
+    $this->withHeader('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)')
+        ->get(route('user.courses.modules.player', [$course, $module]))
+        ->assertRedirect(route('user.courses.show', $course))
+        ->assertSessionHas('error', 'Questo contenuto è visualizzabile solo da PC.');
+});
+
+test('module player page allows mobile users when mobile access is enabled', function () {
+    config()->set('app.show_courses_mobile', true);
+
+    [, $course, $module] = enrollUserInCourseWithModule('video');
+
+    $this->withHeader('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)')
+        ->get(route('user.courses.modules.player', [$course, $module]))
+        ->assertOk();
+});
+
+test('training path module player redirects mobile users to training path course detail when mobile access is disabled', function () {
+    config()->set('app.show_courses_mobile', false);
+
+    [$user, $course, $module] = enrollUserInCourseWithModule('video');
+
+    $trainingPath = TrainingPath::factory()->create();
+    $trainingPath->courses()->attach($course, ['sort_order' => 1]);
+    $trainingPathEnrollment = TrainingPathEnrollment::enroll($user, $trainingPath);
+
+    $this->actingAs($user)
+        ->withHeader('User-Agent', 'Mozilla/5.0 (Android 14; Mobile)')
+        ->get(route('user.training-paths.courses.modules.player', [$trainingPathEnrollment, $course, $module]))
+        ->assertRedirect(route('user.training-paths.courses.show', [$trainingPathEnrollment, $course]))
+        ->assertSessionHas('error', 'Questo contenuto è visualizzabile solo da PC.');
 });
 
 test('module player sidebar shows review button for completed video modules', function () {
