@@ -55,7 +55,9 @@
                         'admin.job-units.*',
                     ];
 
-                    $portalMenuPatterns = ['admin.homepage.*'];
+                    $portalMenuPatterns = [
+                        'admin.homepage.*',
+                    ];
 
                     $importsMenuPatterns = [
                         'admin.imports.users',
@@ -337,10 +339,28 @@
                                     <li>
                                         <a
                                             href="{{ route('admin.homepage.index') }}"
-                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.homepage.*'])])
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.homepage.index'])])
                                         >
                                             <x-lucide-home class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Home page') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.homepage.privacy-policy.edit') }}"
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.homepage.privacy-policy.*'])])
+                                        >
+                                            <x-lucide-shield-check class="mr-2 inline-block h-5 w-5" />
+                                            {{ __('Privacy policy') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.homepage.cookie-policy.edit') }}"
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.homepage.cookie-policy.*'])])
+                                        >
+                                            <x-lucide-cookie class="mr-2 inline-block h-5 w-5" />
+                                            {{ __('Cookie policy') }}
                                         </a>
                                     </li>
                                 </ul>

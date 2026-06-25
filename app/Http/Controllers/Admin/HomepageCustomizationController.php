@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateHomepageAboutRequest;
 use App\Http\Requests\Admin\UpdateHomepageHeroRequest;
 use App\Http\Requests\Admin\UpdateHomepageNavigationRequest;
+use App\Http\Requests\Admin\UpdateHomepagePolicyRequest;
 use App\Http\Requests\Admin\UpdateHomepageServicesRequest;
 use App\Models\HomepageSetting;
 use Illuminate\Http\RedirectResponse;
@@ -47,6 +48,30 @@ class HomepageCustomizationController extends Controller
             'aboutButtonColor' => HomepageSetting::value('about_button_color', 'primary'),
             'aboutButtonText' => HomepageSetting::value('about_button_text', 'Esplora il nostro catalogo'),
             'aboutButtonUrl' => HomepageSetting::value('about_button_url', '#servizi'),
+        ]);
+    }
+
+    public function editPrivacyPolicy(): View
+    {
+        return view('admin.homepage.policy-edit', [
+            'title' => __('Privacy policy'),
+            'description' => __('Gestisci contenuto mostrato nella pagina pubblica /privacy-policy.'),
+            'fieldId' => 'privacy-policy-content',
+            'submitLabel' => __('Salva privacy policy'),
+            'formAction' => route('admin.homepage.privacy-policy.update'),
+            'contentHtml' => HomepageSetting::value('privacy_policy_content_html', $this->defaultPrivacyPolicyContent()),
+        ]);
+    }
+
+    public function editCookiePolicy(): View
+    {
+        return view('admin.homepage.policy-edit', [
+            'title' => __('Cookie policy'),
+            'description' => __('Gestisci contenuto mostrato nella pagina pubblica /cookie-policy.'),
+            'fieldId' => 'cookie-policy-content',
+            'submitLabel' => __('Salva cookie policy'),
+            'formAction' => route('admin.homepage.cookie-policy.update'),
+            'contentHtml' => HomepageSetting::value('cookie_policy_content_html', $this->defaultCookiePolicyContent()),
         ]);
     }
 
@@ -141,6 +166,24 @@ class HomepageCustomizationController extends Controller
             ->with('status', __('Sezione Chi siamo aggiornata.'));
     }
 
+    public function updatePrivacyPolicy(UpdateHomepagePolicyRequest $request): RedirectResponse
+    {
+        HomepageSetting::put('privacy_policy_content_html', $this->sanitizeRichContent($request->string('content_html')->toString()));
+
+        return redirect()
+            ->route('admin.homepage.index')
+            ->with('status', __('Privacy policy aggiornata.'));
+    }
+
+    public function updateCookiePolicy(UpdateHomepagePolicyRequest $request): RedirectResponse
+    {
+        HomepageSetting::put('cookie_policy_content_html', $this->sanitizeRichContent($request->string('content_html')->toString()));
+
+        return redirect()
+            ->route('admin.homepage.index')
+            ->with('status', __('Cookie policy aggiornata.'));
+    }
+
     private function defaultHeroContent(): string
     {
         return '<h1>La tua piattaforma di E-Learning</h1>';
@@ -154,6 +197,16 @@ class HomepageCustomizationController extends Controller
     private function defaultAboutContent(): string
     {
         return '<p>Chi siamo</p><h2>'.e(config('app.name', 'Laravel')).'<br>organizza <strong>Corsi e<br>Convegni</strong></h2><p>'.e(config('app.name', 'Laravel')).' è un partner qualificato nell\'organizzazione di corsi e convegni, nella formazione a distanza e nella consulenza in ambiti di specifico interesse per il settore sanitario.</p>';
+    }
+
+    private function defaultPrivacyPolicyContent(): string
+    {
+        return '<h1>Privacy policy</h1><p>Inserisci qui contenuto della privacy policy.</p>';
+    }
+
+    private function defaultCookiePolicyContent(): string
+    {
+        return '<h1>Cookie policy</h1><p>Inserisci qui contenuto della cookie policy.</p>';
     }
 
     private function sanitizeHeroContent(string $content): string

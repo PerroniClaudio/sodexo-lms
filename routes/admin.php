@@ -106,10 +106,14 @@ Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
         Route::get('videos/{video}/signed-playback-url', [VideoController::class, 'signedPlaybackApi']);
         Route::post('videos/sync-mux-status', [VideoController::class, 'syncMuxStatus'])->name('videos.sync-mux-status');
         Route::get('/homepage', [HomepageCustomizationController::class, 'index'])->name('homepage.index');
+        Route::get('/homepage/privacy-policy', [HomepageCustomizationController::class, 'editPrivacyPolicy'])->name('homepage.privacy-policy.edit');
+        Route::get('/homepage/cookie-policy', [HomepageCustomizationController::class, 'editCookiePolicy'])->name('homepage.cookie-policy.edit');
         Route::post('/homepage/navigation', [HomepageCustomizationController::class, 'updateNavigation'])->name('homepage.navigation.update');
         Route::post('/homepage/hero', [HomepageCustomizationController::class, 'updateHero'])->name('homepage.hero.update');
         Route::post('/homepage/services', [HomepageCustomizationController::class, 'updateServices'])->name('homepage.services.update');
         Route::post('/homepage/about', [HomepageCustomizationController::class, 'updateAbout'])->name('homepage.about.update');
+        Route::post('/homepage/privacy-policy', [HomepageCustomizationController::class, 'updatePrivacyPolicy'])->name('homepage.privacy-policy.update');
+        Route::post('/homepage/cookie-policy', [HomepageCustomizationController::class, 'updateCookiePolicy'])->name('homepage.cookie-policy.update');
         Route::get('/certificates', [CustomCertificateController::class, 'index'])->name('certificates.index');
         Route::get('/certificates/create', [CustomCertificateController::class, 'create'])->name('certificates.create');
         Route::post('/certificates', [CustomCertificateController::class, 'store'])->name('certificates.store');

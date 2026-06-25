@@ -395,3 +395,43 @@ it('renders homepage about fallback when no settings exist', function () {
         ->assertSee('aspect-video bg-secondary', escape: false)
         ->assertSee('bg-primary', escape: false);
 });
+
+it('allows admins to customize privacy policy', function () {
+    actingAsHomepageRole('admin');
+
+    $this->post(route('admin.homepage.privacy-policy.update'), [
+        'content_html' => '<h1>Privacy</h1><p>Dati <strong>personali</strong>.</p><script>alert(1)</script>',
+    ])
+        ->assertRedirect(route('admin.homepage.index'))
+        ->assertSessionHas('status', 'Privacy policy aggiornata.');
+
+    expect(HomepageSetting::value('privacy_policy_content_html'))
+        ->toContain('<h1>Privacy</h1>')
+        ->toContain('Dati <strong>personali</strong>.')
+        ->not->toContain('<script>');
+
+    $this->get(route('privacy-policy'))
+        ->assertOk()
+        ->assertSee('<h1>Privacy</h1>', escape: false)
+        ->assertSee('<p>Dati <strong>personali</strong>.</p>', escape: false);
+});
+
+it('allows admins to customize cookie policy', function () {
+    actingAsHomepageRole('admin');
+
+    $this->post(route('admin.homepage.cookie-policy.update'), [
+        'content_html' => '<h1>Cookie</h1><p>Uso <strong>cookie tecnici</strong>.</p><script>alert(1)</script>',
+    ])
+        ->assertRedirect(route('admin.homepage.index'))
+        ->assertSessionHas('status', 'Cookie policy aggiornata.');
+
+    expect(HomepageSetting::value('cookie_policy_content_html'))
+        ->toContain('<h1>Cookie</h1>')
+        ->toContain('Uso <strong>cookie tecnici</strong>.')
+        ->not->toContain('<script>');
+
+    $this->get(route('cookie-policy'))
+        ->assertOk()
+        ->assertSee('<h1>Cookie</h1>', escape: false)
+        ->assertSee('<p>Uso <strong>cookie tecnici</strong>.</p>', escape: false);
+});

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\RoleSelectionController;
 use App\Models\CourseClassSchedule;
 use App\Models\CourseClassTeacher;
+use App\Models\HomepageSetting;
 use App\Models\Module;
 use App\Models\User;
 use App\Services\CourseClassScheduleResolver;
@@ -12,6 +13,20 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('homepage.index');
 });
+
+Route::get('/privacy-policy', function () {
+    return view('homepage.policy', [
+        'title' => __('Privacy policy'),
+        'contentHtml' => HomepageSetting::value('privacy_policy_content_html', '<h1>Privacy policy</h1><p>Contenuto non ancora disponibile.</p>'),
+    ]);
+})->name('privacy-policy');
+
+Route::get('/cookie-policy', function () {
+    return view('homepage.policy', [
+        'title' => __('Cookie policy'),
+        'contentHtml' => HomepageSetting::value('cookie_policy_content_html', '<h1>Cookie policy</h1><p>Contenuto non ancora disponibile.</p>'),
+    ]);
+})->name('cookie-policy');
 
 Route::middleware(['auth', 'active.role:admin|superadmin'])->get('/dashboard', function () {
     return redirect()->route('admin.dashboard');
