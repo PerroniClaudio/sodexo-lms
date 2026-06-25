@@ -1,8 +1,8 @@
 <x-layouts.admin>
     <div class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
-        <x-page-header :title="__('Import utenti')">
+        <x-page-header :title="__('Associazione utenti percorsi formativi')">
             <x-slot:actions>
-                <a href="{{ route('admin.imports.users.template') }}" class="btn btn-outline">
+                <a href="{{ route('admin.imports.user-training-paths.template') }}" class="btn btn-outline">
                     <x-lucide-download class="h-4 w-4" />
                     <span>{{ __('Scarica template') }}</span>
                 </a>
@@ -25,10 +25,9 @@
             <div class="card-body gap-6">
                 <div>
                     <h2 class="card-title">{{ __('Carica file Excel') }}</h2>
-                   
                 </div>
 
-                <form method="POST" action="{{ route('admin.imports.users.store') }}" enctype="multipart/form-data" class="space-y-6">
+                <form method="POST" action="{{ route('admin.imports.user-training-paths.store') }}" enctype="multipart/form-data" class="space-y-6">
                     @csrf
 
                     <div>
@@ -53,11 +52,10 @@
                     <div class="rounded-box border border-base-300 bg-base-200/40 p-4 text-sm text-base-content/80">
                         <p class="font-medium">{{ __('Regole applicate') }}</p>
                         <ul class="mt-3 list-disc space-y-2 pl-5">
-                            <li>{{ __('Obbligatori sempre: tipo di account, nome, cognome, codice fiscale.') }}</li>
-                            <li>{{ __('Obbligatori se tra i ruoli c’è User: settore, ruolo, mansione, unità lavorativa, straniero, data assunzione, livello lingua.') }}</li>
-                            <li>{{ __('Tipo di account multiplo separato da punto e virgola (;). Valori attesi: User, Docente, Tutor, Admin.') }}</li>
-                            <li>{{ __('Categoria lavoro, settore, livello e ruolo devono esistere.') }}</li>
-                            <li>{{ __('Mansione accetta più codici o ID separati da ;. Unità lavorativa è risolta per codice.') }}</li>
+                            <li>{{ __('Prima colonna obbligatoria: codice fiscale utente esistente.') }}</li>
+                            <li>{{ __('Seconda colonna obbligatoria: codice percorso formativo esistente e pubblicato.') }}</li>
+                            <li>{{ __('Se iscrizione al percorso esiste già, import riallinea anche le iscrizioni ai corsi collegati.') }}</li>
+                            <li>{{ __('Se iscrizione al percorso era stata eliminata, import la ripristina.') }}</li>
                         </ul>
                     </div>
 
@@ -72,17 +70,17 @@
         </div>
 
         <div
-            data-user-import-status-card
-            data-status-url="{{ route('admin.imports.users.status-card') }}"
+            data-user-training-path-import-status-card
+            data-status-url="{{ route('admin.imports.user-training-paths.status-card') }}"
         >
-            @include('admin.imports.partials.users-status-card', ['recentImports' => $recentImports])
+            @include('admin.imports.partials.user-training-paths-status-card', ['recentImports' => $recentImports])
         </div>
     </div>
 
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function () {
-                const statusCard = document.querySelector('[data-user-import-status-card]');
+                const statusCard = document.querySelector('[data-user-training-path-import-status-card]');
 
                 if (! statusCard) {
                     return;

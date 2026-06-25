@@ -61,6 +61,7 @@ it('downloads user import template', function () {
     JobLevel::factory()->create(['name' => 'Quadro']);
     JobRole::factory()->create(['name' => 'Operatore']);
     JobTask::factory()->create(['code' => 'TASK-001']);
+    JobTask::factory()->create(['code' => 'TASK-002']);
     JobUnit::factory()->create(['unit_code' => 'UNIT-001']);
 
     $response = $this->get(route('admin.imports.users.template'));
@@ -79,7 +80,7 @@ it('downloads user import template', function () {
     expect($importSheet?->getCell('Q2')->getValue())->toBe('Impiegati')
         ->and($importSheet?->getCell('R2')->getValue())->toBe('Quadro')
         ->and($importSheet?->getCell('S2')->getValue())->toBe('Operatore')
-        ->and($importSheet?->getCell('T2')->getValue())->toBe('TASK-001')
+        ->and($importSheet?->getCell('T2')->getValue())->toBe('TASK-001;TASK-002')
         ->and($importSheet?->getCell('U2')->getValue())->toBe('UNIT-001')
         ->and($lookupSheet?->getCell('A2')->getValue())->toBe('Impiegati')
         ->and($lookupSheet?->getCell('B2')->getValue())->toBe('Quadro')
@@ -131,6 +132,7 @@ it('imports workers and staff from excel', function () {
     $jobRole = JobRole::factory()->create(['name' => 'Operatore']);
     $jobSector = JobSector::factory()->create(['name' => 'Scuole']);
     $jobTask = JobTask::factory()->create(['code' => 'TASK-001']);
+    $secondJobTask = JobTask::factory()->create(['code' => 'TASK-002']);
     $jobUnit = JobUnit::factory()->create(['unit_code' => 'UNIT-001']);
 
     $countryId = DB::table('world_countries')->where('code', 'it')->value('id');
@@ -159,7 +161,7 @@ it('imports workers and staff from excel', function () {
                 'Impiegati',
                 'Quadro',
                 'Operatore',
-                'TASK-001',
+                'TASK-001;TASK-002',
                 'UNIT-001',
                 'NO',
                 '01/01/2024',
@@ -222,7 +224,11 @@ it('imports workers and staff from excel', function () {
         ->and($worker->is_foreigner_or_immigrant)->toBeFalse()
         ->and($worker->hasRole('user'))->toBeTrue()
         ->and($worker->hasRole('teacher'))->toBeTrue()
-        ->and($worker->jobTasks()->count())->toBe(1)
+        ->and($worker->jobTasks()->count())->toBe(2)
+        ->and($worker->jobTasks()->pluck('job_tasks.id')->sort()->values()->all())->toBe([
+            $jobTask->getKey(),
+            $secondJobTask->getKey(),
+        ])
         ->and($admin->hasRole('admin'))->toBeTrue()
         ->and($admin->account_state->value)->toBe('active');
 });
@@ -287,7 +293,7 @@ function userImportFile(array $rows, ?array $headers = null): UploadedFile
         'Categoria di lavoro',
         'Livello di inquadramento',
         'Ruolo',
-        'Mansione (codice)',
+        'Mansione (codice o ID; separa con ;)',
         'Unità lavorativa (codice)',
         'Straniero',
         'Data di assunzione',

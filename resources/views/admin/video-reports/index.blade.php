@@ -175,7 +175,7 @@
                     </fieldset>
 
                     <div class="grid gap-6 md:grid-cols-2">
-                        <div data-video-report-course-fields>
+                        <div class="md:col-span-2" data-video-report-course-fields>
                             <label for="course_id" class="label p-0">
                                 <span class="label-text font-medium">{{ __('Corso') }}</span>
                             </label>

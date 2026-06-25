@@ -47,7 +47,7 @@ class UserImportService
         'job_category' => ['categoria_di_lavoro'],
         'job_level' => ['livello_di_inquadramento'],
         'job_role' => ['ruolo'],
-        'job_task_code' => ['mansione_codice', 'mansione'],
+        'job_task_code' => ['mansione_codice', 'mansione', 'mansione_codice_o_id_separa_con'],
         'job_unit_code' => ['unita_lavorativa_codice', 'unita_lavorativa'],
         'is_foreigner' => ['straniero'],
         'employment_start_date' => ['data_di_assunzione'],
@@ -238,18 +238,20 @@ class UserImportService
             'declared_language_level_id' => $this->resolveLookupId($this->languageLevels(), $row['language_level'] ?? null, $rowNumber, 'livello conoscenza lingua di lavoro', $isWorker),
         ];
 
-        $jobTaskId = $this->resolveLookupId($this->jobTasks(), $row['job_task_code'] ?? null, $rowNumber, 'mansione', $isWorker);
+        $jobTaskIds = $this->resolveLookupIds($this->jobTasks(), $row['job_task_code'] ?? null, $rowNumber, 'mansione', $isWorker);
 
         if ($payload['employment_start_date'] !== null && $payload['employment_end_date'] !== null && $payload['employment_end_date'] < $payload['employment_start_date']) {
             $this->fail($rowNumber, __('data di cessazione precedente alla data di assunzione.'));
         }
 
-        $payload['job_task_assignments'] = $isWorker && $jobTaskId !== null && $payload['employment_start_date'] !== null
-            ? [[
-                'job_task_id' => $jobTaskId,
-                'starts_at' => $payload['employment_start_date'],
-                'ends_at' => $payload['employment_end_date'],
-            ]]
+        $payload['job_task_assignments'] = $isWorker && $jobTaskIds !== [] && $payload['employment_start_date'] !== null
+            ? collect($jobTaskIds)
+                ->map(fn (int $jobTaskId): array => [
+                    'job_task_id' => $jobTaskId,
+                    'starts_at' => $payload['employment_start_date'],
+                    'ends_at' => $payload['employment_end_date'],
+                ])
+                ->all()
             : [];
 
         return $payload;
@@ -394,6 +396,30 @@ class UserImportService
         }
 
         return $resolved;
+    }
+
+    /**
+     * @param  array<string, int>  $lookup
+     * @return array<int, int>
+     */
+    private function resolveLookupIds(array $lookup, ?string $value, int $rowNumber, string $fieldLabel, bool $required): array
+    {
+        $cleanValue = $this->nullableString($value);
+
+        if ($cleanValue === null) {
+            if ($required) {
+                $this->fail($rowNumber, __(':field obbligatorio.', ['field' => $fieldLabel]));
+            }
+
+            return [];
+        }
+
+        return collect(explode(';', $cleanValue))
+            ->map(fn (string $item): ?int => $this->resolveLookupId($lookup, $item, $rowNumber, $fieldLabel, true))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private function resolveCountryId(?string $value, int $rowNumber): ?int
@@ -597,7 +623,23 @@ class UserImportService
      */
     private function jobTasks(): array
     {
-        return $this->jobTasks ??= $this->codeLookup(JobTask::query()->get(['id', 'code'])->all());
+        if ($this->jobTasks !== null) {
+            return $this->jobTasks;
+        }
+
+        $lookup = [];
+
+        foreach (JobTask::query()->get(['id', 'code']) as $jobTask) {
+            $lookup[(string) $jobTask->getKey()] = $jobTask->getKey();
+
+            $code = $this->nullableString($jobTask->code);
+
+            if ($code !== null) {
+                $lookup[$this->normalizeKey($code)] = $jobTask->getKey();
+            }
+        }
+
+        return $this->jobTasks = $lookup;
     }
 
     /**

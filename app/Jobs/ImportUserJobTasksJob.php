@@ -3,14 +3,14 @@
 namespace App\Jobs;
 
 use App\Models\Importazione;
-use App\Services\JobTaskImportService;
+use App\Services\UserJobTaskImportService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
-class ImportJobTasksJob implements ShouldQueue
+class ImportUserJobTasksJob implements ShouldQueue
 {
     use Queueable;
 
@@ -20,7 +20,7 @@ class ImportJobTasksJob implements ShouldQueue
 
     public function __construct(public int $importazioneId) {}
 
-    public function handle(JobTaskImportService $jobTaskImportService): void
+    public function handle(UserJobTaskImportService $userJobTaskImportService): void
     {
         $importazione = Importazione::query()->findOrFail($this->importazioneId);
         $disk = Storage::disk(Importazione::STORAGE_DISK);
@@ -36,10 +36,10 @@ class ImportJobTasksJob implements ShouldQueue
             return;
         }
 
-        $temporaryFile = tempnam(sys_get_temp_dir(), 'job-tasks-import-');
+        $temporaryFile = tempnam(sys_get_temp_dir(), 'user-job-tasks-import-');
 
         if ($temporaryFile === false) {
-            throw new \RuntimeException('Impossibile creare file temporaneo per import mansioni.');
+            throw new \RuntimeException('Impossibile creare file temporaneo per import associazione utenti mansioni.');
         }
 
         $importazione->update([
@@ -52,7 +52,7 @@ class ImportJobTasksJob implements ShouldQueue
         file_put_contents($temporaryFile, $disk->get($importazione->file_path));
 
         try {
-            $jobTaskImportService->import($importazione, $temporaryFile);
+            $userJobTaskImportService->import($importazione, $temporaryFile);
 
             $importazione->update([
                 'status' => Importazione::STATUS_FINISHED,

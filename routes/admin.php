@@ -22,6 +22,8 @@ use App\Http\Controllers\Admin\JobLevelController;
 use App\Http\Controllers\Admin\JobRoleController;
 use App\Http\Controllers\Admin\JobSectorController;
 use App\Http\Controllers\Admin\JobTaskController;
+use App\Http\Controllers\Admin\JobTaskImportController;
+use App\Http\Controllers\Admin\JobTaskRiskAssociationImportController;
 use App\Http\Controllers\Admin\JobUnitController;
 use App\Http\Controllers\Admin\JobUnitImportController;
 use App\Http\Controllers\Admin\LanguageLevelController;
@@ -39,9 +41,11 @@ use App\Http\Controllers\Admin\ScormPackageController;
 use App\Http\Controllers\Admin\TrainingPathController;
 use App\Http\Controllers\Admin\TrainingPathDocumentController;
 use App\Http\Controllers\Admin\TrainingPathEnrollmentController;
+use App\Http\Controllers\Admin\TrainingPathImportController;
 use App\Http\Controllers\Admin\UserCertificateController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserImportController;
+use App\Http\Controllers\Admin\UserJobTaskImportController;
 use App\Http\Controllers\Admin\VideoController;
 use App\Http\Controllers\Admin\VideoExerciseController;
 use App\Http\Controllers\Admin\VideoReportController;
@@ -64,10 +68,22 @@ Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
         Route::get('/imports/job-units/template', [JobUnitImportController::class, 'downloadTemplate'])->name('imports.job-units.template');
         Route::get('/imports/job-units/status-card', [JobUnitImportController::class, 'statusCard'])->name('imports.job-units.status-card');
         Route::post('/imports/job-units', [JobUnitImportController::class, 'store'])->name('imports.job-units.store');
-        Route::view('/imports/job-tasks', 'admin.imports.placeholder', [
-            'title' => __('Import mansioni'),
-            'description' => __('Area riservata al futuro import delle mansioni.'),
-        ])->name('imports.job-tasks');
+        Route::get('/imports/job-tasks', [JobTaskImportController::class, 'index'])->name('imports.job-tasks');
+        Route::get('/imports/job-tasks/template', [JobTaskImportController::class, 'downloadTemplate'])->name('imports.job-tasks.template');
+        Route::get('/imports/job-tasks/status-card', [JobTaskImportController::class, 'statusCard'])->name('imports.job-tasks.status-card');
+        Route::post('/imports/job-tasks', [JobTaskImportController::class, 'store'])->name('imports.job-tasks.store');
+        Route::get('/imports/user-job-tasks', [UserJobTaskImportController::class, 'index'])->name('imports.user-job-tasks');
+        Route::get('/imports/user-job-tasks/template', [UserJobTaskImportController::class, 'downloadTemplate'])->name('imports.user-job-tasks.template');
+        Route::get('/imports/user-job-tasks/status-card', [UserJobTaskImportController::class, 'statusCard'])->name('imports.user-job-tasks.status-card');
+        Route::post('/imports/user-job-tasks', [UserJobTaskImportController::class, 'store'])->name('imports.user-job-tasks.store');
+        Route::get('/imports/user-training-paths', [TrainingPathImportController::class, 'index'])->name('imports.user-training-paths');
+        Route::get('/imports/user-training-paths/template', [TrainingPathImportController::class, 'downloadTemplate'])->name('imports.user-training-paths.template');
+        Route::get('/imports/user-training-paths/status-card', [TrainingPathImportController::class, 'statusCard'])->name('imports.user-training-paths.status-card');
+        Route::post('/imports/user-training-paths', [TrainingPathImportController::class, 'store'])->name('imports.user-training-paths.store');
+        Route::get('/imports/job-task-risk-associations', [JobTaskRiskAssociationImportController::class, 'index'])->name('imports.job-task-risk-associations');
+        Route::get('/imports/job-task-risk-associations/template', [JobTaskRiskAssociationImportController::class, 'downloadTemplate'])->name('imports.job-task-risk-associations.template');
+        Route::get('/imports/job-task-risk-associations/status-card', [JobTaskRiskAssociationImportController::class, 'statusCard'])->name('imports.job-task-risk-associations.status-card');
+        Route::post('/imports/job-task-risk-associations', [JobTaskRiskAssociationImportController::class, 'store'])->name('imports.job-task-risk-associations.store');
 
         Route::middleware(['env.development', 'active.role:superadmin'])->group(function () {
             Route::get('/development-tools/reset-enrollments', [DevelopmentToolController::class, 'resetEnrollments'])->name('development-tools.reset-enrollments.index');

@@ -13,6 +13,12 @@ class Importazione extends Model
 
     public const TYPE_JOB_TASKS = 'mansioni';
 
+    public const TYPE_USER_JOB_TASKS = 'associazione_utenti_mansioni';
+
+    public const TYPE_USER_TRAINING_PATHS = 'associazione_utenti_percorsi_formativi';
+
+    public const TYPE_JOB_TASK_RISK_ASSOCIATIONS = 'associazione_mansioni_rischio';
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_PROGRESS = 'progress';
@@ -54,14 +60,37 @@ class Importazione extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function typeLabel(): string
+    /**
+     * @return list<string>
+     */
+    public static function availableTypes(): array
     {
-        return match ($this->import_type) {
+        return [
+            self::TYPE_USERS,
+            self::TYPE_JOB_UNITS,
+            self::TYPE_JOB_TASKS,
+            self::TYPE_USER_JOB_TASKS,
+            self::TYPE_USER_TRAINING_PATHS,
+            self::TYPE_JOB_TASK_RISK_ASSOCIATIONS,
+        ];
+    }
+
+    public static function typeLabelFor(string $type): string
+    {
+        return match ($type) {
             self::TYPE_USERS => __('Utenti'),
             self::TYPE_JOB_UNITS => __('Unità lavorative'),
             self::TYPE_JOB_TASKS => __('Mansioni'),
-            default => (string) $this->import_type,
+            self::TYPE_USER_JOB_TASKS => __('Associazione utenti mansioni'),
+            self::TYPE_USER_TRAINING_PATHS => __('Associazione utenti percorsi formativi'),
+            self::TYPE_JOB_TASK_RISK_ASSOCIATIONS => __('Associazione mansioni rischio'),
+            default => $type,
         };
+    }
+
+    public function typeLabel(): string
+    {
+        return self::typeLabelFor((string) $this->import_type);
     }
 
     public function statusLabel(): string
