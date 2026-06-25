@@ -1,5 +1,6 @@
 import * as TwilioVideo from 'twilio-video';
 import { Expand, Hand, Image as ImageIcon, Mic, MicOff, Pin, ScreenShare, ScreenShareOff, Shrink, Trash2 } from 'lucide';
+import { applyMuxPlayerRestrictions } from '../mux-player.js';
 
 const LIVE_STREAM_VIDEO_CONSTRAINTS = Object.freeze({
     width: 640,
@@ -650,6 +651,7 @@ export function renderMuxStage(stageElement, mux, options = {}) {
     muxPlayer.setAttribute('primary-color', accentColor || '#2563eb');
     muxPlayer.setAttribute('muted', 'false');
     muxPlayer.setAttribute('autoplay', 'false');
+    applyMuxPlayerRestrictions(muxPlayer);
 
     wrapper.appendChild(muxPlayer);
 

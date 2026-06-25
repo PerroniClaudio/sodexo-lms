@@ -1,4 +1,5 @@
 import { toggleAsyncTableLoading } from './ui/loading-state';
+import { applyMuxPlayerRestrictions } from './mux-player.js';
 
 // Stato tabella video modulo
 const wrapper = document.querySelector('[data-module-id]');
@@ -141,6 +142,7 @@ function showModuleVideoModalWithMuxPlayer(playbackId, token) {
     muxPlayer.setAttribute('accent-color', '#2563eb');
     muxPlayer.setAttribute('auto-play', 'true');
     muxPlayer.setAttribute('style', 'width:100%;height:320px;border-radius:8px;');
+    applyMuxPlayerRestrictions(muxPlayer);
     playerContainer.appendChild(muxPlayer);
     modal.classList.remove('hidden');
     modal.style.display = '';

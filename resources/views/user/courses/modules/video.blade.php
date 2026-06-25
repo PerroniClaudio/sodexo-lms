@@ -61,6 +61,26 @@
     </div>
 </dialog>
 
+<dialog class="modal" data-video-interruption-modal>
+    <div class="modal-box max-w-lg">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <h3 class="text-lg font-bold">{{ __('Riproduzione interrotta') }}</h3>
+                <p class="text-sm text-base-content/60" data-video-interruption-message>
+                    {{ __('Il video è stato messo in pausa.') }}
+                </p>
+            </div>
+            <span class="badge badge-warning badge-outline">{{ __('Attenzione') }}</span>
+        </div>
+
+        <div class="modal-action">
+            <form method="dialog">
+                <button type="submit" class="btn btn-primary">{{ __('Ho capito') }}</button>
+            </form>
+        </div>
+    </div>
+</dialog>
+
 @if ($module->teachingMaterials->isNotEmpty())
     <div class="card border border-base-300 bg-base-100 shadow-sm">
         <div class="card-body gap-4">

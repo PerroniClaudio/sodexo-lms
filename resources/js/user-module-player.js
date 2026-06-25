@@ -3,6 +3,8 @@
  * Gestisce la fruizione dei moduli video e questionario di apprendimento/gradimento.
  */
 
+import { applyMuxPlayerRestrictions } from './mux-player.js';
+
 const wrapper = document.getElementById('module-player');
 const root = wrapper ? wrapper.closest('[data-module-id]') : null;
 
@@ -54,6 +56,7 @@ if (!root) {
                 muxPlayer.setAttribute('primary-color', '#2563eb');
                 muxPlayer.setAttribute('accent-color', '#2563eb');
                 muxPlayer.setAttribute('style', 'width:100%;border-radius:8px;');
+                applyMuxPlayerRestrictions(muxPlayer);
 
                 if (data.video_current_second && data.video_current_second > 0) {
                     muxPlayer.setAttribute('start-time', String(data.video_current_second));

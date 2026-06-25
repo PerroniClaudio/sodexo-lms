@@ -41,7 +41,11 @@
                         'admin.regia.*',
                         'admin.certificates.*',
                         'admin.videos.*',
+                    ];
+
+                    $exportsMenuPatterns = [
                         'admin.video-reports.*',
+                        'admin.user-accesses.*',
                     ];
 
                     $registryMenuPatterns = [
@@ -86,6 +90,7 @@
                     ];
 
                     $formationMenuOpen = $matchesRoutePatterns($formationMenuPatterns);
+                    $exportsMenuOpen = $matchesRoutePatterns($exportsMenuPatterns);
                     $registryMenuOpen = $matchesRoutePatterns($registryMenuPatterns);
                     $portalMenuOpen = $matchesRoutePatterns($portalMenuPatterns);
                     $importsMenuOpen = $matchesRoutePatterns($importsMenuPatterns);
@@ -177,6 +182,17 @@
                                             {{ __('Libreria Video') }}
                                         </a>
                                     </li>
+                                </ul>
+                            </details>
+                        </li>
+
+                        <li>
+                            <details @if($exportsMenuOpen) open @endif>
+                                <summary>
+                                    <x-lucide-download class="mr-2 inline-block h-5 w-5" />
+                                    {{ __('Esportazioni') }}
+                                </summary>
+                                <ul>
                                     <li>
                                         <a
                                             href="{{ route('admin.video-reports.index') }}"
@@ -184,6 +200,15 @@
                                         >
                                             <x-lucide-chart-column class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Audit trail') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.user-accesses.index') }}"
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.user-accesses.*'])])
+                                        >
+                                            <x-lucide-log-in class="mr-2 inline-block h-5 w-5" />
+                                            {{ __('Accessi utente') }}
                                         </a>
                                     </li>
                                 </ul>

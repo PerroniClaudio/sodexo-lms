@@ -199,6 +199,16 @@
                         muxPlayer.setAttribute('accent-color', '#2563eb');
                         muxPlayer.setAttribute('auto-play', 'true');
                         muxPlayer.setAttribute('style', 'width:100%;height:320px;border-radius:8px;');
+                        muxPlayer.setAttribute('playbackrates', '1');
+                        muxPlayer.setAttribute('disablepictureinpicture', '');
+                        if ('disablePictureInPicture' in muxPlayer) {
+                            muxPlayer.disablePictureInPicture = true;
+                        }
+                        muxPlayer.addEventListener('ratechange', () => {
+                            if (muxPlayer.playbackRate !== 1) {
+                                muxPlayer.playbackRate = 1;
+                            }
+                        });
                         playerContainer.appendChild(muxPlayer);
                         modal.classList.remove('hidden');
                     }

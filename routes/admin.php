@@ -42,6 +42,7 @@ use App\Http\Controllers\Admin\TrainingPathController;
 use App\Http\Controllers\Admin\TrainingPathDocumentController;
 use App\Http\Controllers\Admin\TrainingPathEnrollmentController;
 use App\Http\Controllers\Admin\TrainingPathImportController;
+use App\Http\Controllers\Admin\UserAccessController;
 use App\Http\Controllers\Admin\UserCertificateController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserImportController;
@@ -218,6 +219,10 @@ Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
         Route::get('/video-reports', [VideoReportController::class, 'index'])->name('video-reports.index');
         Route::post('/video-reports', [VideoReportController::class, 'store'])->name('video-reports.store');
         Route::get('/video-reports/{videoReportRequest}', [VideoReportController::class, 'show'])->name('video-reports.show');
+        Route::get('/user-accesses', [UserAccessController::class, 'index'])->name('user-accesses.index');
+        Route::post('/user-accesses/export', [UserAccessController::class, 'export'])->name('user-accesses.export');
+        Route::get('/user-accesses/exports/{userAccessExport}', [UserAccessController::class, 'show'])->name('user-accesses.show');
+        Route::get('/user-accesses/exports/{userAccessExport}/download', [UserAccessController::class, 'download'])->name('user-accesses.download');
         Route::get('/video-reports/{videoReportRequest}/download', [VideoReportController::class, 'download'])->name('video-reports.download');
         Route::resource('users', UserController::class)->except(['show']);
         Route::put('users/{user}/user-section', [UserController::class, 'updateUserSection'])->name('users.user-section.update');

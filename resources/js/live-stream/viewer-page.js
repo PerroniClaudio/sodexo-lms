@@ -35,6 +35,10 @@ export function initViewerPage() {
         return;
     }
 
+    root.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+    });
+
     const config = getLiveStreamConfig(root);
 
     if (!config) {

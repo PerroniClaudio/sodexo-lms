@@ -4,9 +4,15 @@
  */
 
 import { escapeHtml, fetchJSON, getModuleData, getModuleRoot, refreshModulePlayerState, showError } from './module-base.js';
+import { applyMuxPlayerRestrictions } from '../mux-player.js';
 
 const HEARTBEAT_INTERVAL_MS = 60_000;
 const SEEK_GRACE_SECONDS = 3;
+const INTERRUPTION_MESSAGES = {
+    hidden: 'Hai cambiato scheda o finestra. Il video è stato messo in pausa.',
+    blur: 'Hai lasciato la pagina attiva. Il video è stato messo in pausa.',
+    muted: 'Hai messo in muto il player. Il video è stato messo in pausa.',
+};
 
 export function initVideoModule() {
     const root = getModuleRoot();
@@ -22,6 +28,10 @@ export function initVideoModule() {
     if (!wrapper || !tpl) {
         return;
     }
+
+    wrapper.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+    });
 
     wrapper.appendChild(tpl.content.cloneNode(true));
 
@@ -91,6 +101,7 @@ function createMuxPlayer({
     muxPlayer.setAttribute('primary-color', '#2563eb');
     muxPlayer.setAttribute('accent-color', '#2563eb');
     muxPlayer.setAttribute('style', 'width:100%;border-radius:8px;');
+    applyMuxPlayerRestrictions(muxPlayer);
 
     const resumeSecond = trackingData.resume_second ?? playbackData.resume_second ?? 0;
 
@@ -111,6 +122,8 @@ function setupProgressTracking(muxPlayer, state, moduleData) {
     let lastKnownSecond = state.lastHeartbeatSecond;
     let lastSeekFromSecond = state.lastHeartbeatSecond;
     let trackingQueue = Promise.resolve();
+    const interruptionModal = document.querySelector('[data-video-interruption-modal]');
+    const interruptionMessage = interruptionModal?.querySelector('[data-video-interruption-message]');
 
     const syncBlockedPlayback = (targetSecond) => {
         state.suppressSeekEvent = true;
@@ -118,6 +131,24 @@ function setupProgressTracking(muxPlayer, state, moduleData) {
         window.setTimeout(() => {
             state.suppressSeekEvent = false;
         }, 0);
+    };
+
+    const pauseForInterruption = (reason) => {
+        if (muxPlayer.paused || muxPlayer.ended) {
+            return;
+        }
+
+        muxPlayer.pause();
+
+        if (!(interruptionModal instanceof HTMLDialogElement) || interruptionModal.open) {
+            return;
+        }
+
+        if (interruptionMessage instanceof HTMLElement) {
+            interruptionMessage.textContent = INTERRUPTION_MESSAGES[reason] ?? INTERRUPTION_MESSAGES.hidden;
+        }
+
+        interruptionModal.showModal();
     };
 
     const sendTrackingEvent = async (eventType, overrides = {}, options = {}) => {
@@ -312,6 +343,34 @@ function setupProgressTracking(muxPlayer, state, moduleData) {
 
     window.addEventListener('pagehide', flushBeforeUnload);
     window.addEventListener('beforeunload', flushBeforeUnload);
+    document.addEventListener('visibilitychange', () => {
+        const interruptionReason = resolveVideoInterruptionReason({
+            visibilityState: document.visibilityState,
+        });
+
+        if (interruptionReason) {
+            pauseForInterruption(interruptionReason);
+        }
+    });
+    window.addEventListener('blur', () => {
+        const interruptionReason = resolveVideoInterruptionReason({
+            visibilityState: document.visibilityState,
+            hasWindowFocus: typeof document.hasFocus === 'function' ? document.hasFocus() : false,
+        });
+
+        if (interruptionReason) {
+            pauseForInterruption(interruptionReason);
+        }
+    });
+    muxPlayer.addEventListener('volumechange', () => {
+        const interruptionReason = resolveVideoInterruptionReason({
+            muted: muxPlayer.muted,
+        });
+
+        if (interruptionReason) {
+            pauseForInterruption(interruptionReason);
+        }
+    });
 }
 
 function createVideoExerciseController(moduleData, muxPlayer) {
@@ -690,4 +749,24 @@ function appendNextModuleButton(moduleData) {
         </a>
     `;
     playerCardBody?.appendChild(nextModuleBtn);
+}
+
+export function resolveVideoInterruptionReason({
+    visibilityState = 'visible',
+    hasWindowFocus = true,
+    muted = false,
+} = {}) {
+    if (muted) {
+        return 'muted';
+    }
+
+    if (visibilityState === 'hidden') {
+        return 'hidden';
+    }
+
+    if (!hasWindowFocus) {
+        return 'blur';
+    }
+
+    return null;
 }
