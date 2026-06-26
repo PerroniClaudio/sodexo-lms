@@ -27,6 +27,11 @@ class DevelopmentToolController extends Controller
         return view('admin.development-tools.reset-enrollments');
     }
 
+    public function forceDeleteEnrollments(): View
+    {
+        return view('admin.development-tools.force-delete-enrollments');
+    }
+
     public function performReset(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -61,6 +66,27 @@ class DevelopmentToolController extends Controller
         }
 
         return back()->with('status', __('Reset completato con successo.'));
+    }
+
+    public function performForceDelete(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'target_type' => ['required', 'string', 'in:course,training_path'],
+            'target_id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        try {
+            match ($validated['target_type']) {
+                'course' => $this->forceDeleteCourseEnrollment((int) $validated['target_id']),
+                'training_path' => $this->forceDeleteTrainingPathEnrollment((int) $validated['target_id']),
+            };
+        } catch (Throwable $throwable) {
+            report($throwable);
+
+            return back()->with('error', __('Force delete non completato. Verifica ID e relazione dei dati.'));
+        }
+
+        return back()->with('status', __('Force delete completato con successo.'));
     }
 
     /**
@@ -366,5 +392,120 @@ class DevelopmentToolController extends Controller
             'last_accessed_at' => null,
             'completion_percentage' => $firstModule === null ? 100 : 0,
         ])->saveQuietly();
+    }
+
+    private function forceDeleteCourseEnrollment(int $courseEnrollmentId): void
+    {
+        $userId = DB::transaction(function () use ($courseEnrollmentId): int {
+            $enrollment = CourseEnrollment::query()
+                ->lockForUpdate()
+                ->findOrFail($courseEnrollmentId);
+
+            $this->applyEnrollmentOriginsAfterForcedRemoval(
+                $enrollment,
+                directOrigin: false,
+                pathwayOrigin: $this->hasOtherActivePathwayOriginForCourse($enrollment),
+            );
+
+            return (int) $enrollment->user_id;
+        });
+
+        $this->trainingPathEnrollmentSyncService->syncAllEnrollmentsForUser($userId);
+    }
+
+    private function forceDeleteTrainingPathEnrollment(int $trainingPathEnrollmentId): void
+    {
+        $userId = DB::transaction(function () use ($trainingPathEnrollmentId): int {
+            $trainingPathEnrollment = TrainingPathEnrollment::query()
+                ->with(['trainingPath.courses:id,status'])
+                ->lockForUpdate()
+                ->findOrFail($trainingPathEnrollmentId);
+
+            $trainingPath = $trainingPathEnrollment->trainingPath;
+            abort_unless($trainingPath !== null, 404);
+
+            $courseIds = $trainingPath->courses
+                ->where('status', 'published')
+                ->pluck('id')
+                ->map(fn (mixed $id): int => (int) $id)
+                ->values();
+
+            $remainingPathwayOriginsByCourseId = $this->remainingPathwayOriginsByCourseId(
+                $trainingPathEnrollment,
+                $courseIds,
+            );
+
+            $courseEnrollments = CourseEnrollment::query()
+                ->where('user_id', $trainingPathEnrollment->user_id)
+                ->whereIn('course_id', $courseIds->all())
+                ->whereNull('deleted_at')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($courseEnrollments as $courseEnrollment) {
+                $this->applyEnrollmentOriginsAfterForcedRemoval(
+                    $courseEnrollment,
+                    directOrigin: (bool) $courseEnrollment->direct_origin,
+                    pathwayOrigin: ((int) $remainingPathwayOriginsByCourseId->get((int) $courseEnrollment->course_id, 0)) > 0,
+                );
+            }
+
+            $trainingPathEnrollment->forceDelete();
+
+            return (int) $trainingPathEnrollment->user_id;
+        });
+
+        $this->trainingPathEnrollmentSyncService->syncAllEnrollmentsForUser($userId);
+    }
+
+    private function applyEnrollmentOriginsAfterForcedRemoval(
+        CourseEnrollment $enrollment,
+        bool $directOrigin,
+        bool $pathwayOrigin,
+    ): void {
+        if (! $directOrigin && ! $pathwayOrigin) {
+            $enrollment->forceDelete();
+
+            return;
+        }
+
+        $enrollment->forceFill([
+            'direct_origin' => $directOrigin,
+            'pathway_origin' => $pathwayOrigin,
+        ])->save();
+    }
+
+    private function hasOtherActivePathwayOriginForCourse(CourseEnrollment $enrollment): bool
+    {
+        return DB::table('training_path_user')
+            ->join('training_path_course', 'training_path_course.training_path_id', '=', 'training_path_user.training_path_id')
+            ->where('training_path_user.user_id', $enrollment->user_id)
+            ->whereNull('training_path_user.deleted_at')
+            ->where('training_path_course.course_id', $enrollment->course_id)
+            ->exists();
+    }
+
+    /**
+     * @param  Collection<int, int>  $courseIds
+     * @return Collection<int, int>
+     */
+    private function remainingPathwayOriginsByCourseId(
+        TrainingPathEnrollment $trainingPathEnrollment,
+        Collection $courseIds,
+    ): Collection {
+        if ($courseIds->isEmpty()) {
+            return collect();
+        }
+
+        return DB::table('training_path_user')
+            ->join('training_path_course', 'training_path_course.training_path_id', '=', 'training_path_user.training_path_id')
+            ->where('training_path_user.user_id', $trainingPathEnrollment->user_id)
+            ->whereNull('training_path_user.deleted_at')
+            ->where('training_path_user.id', '!=', (int) $trainingPathEnrollment->getKey())
+            ->whereIn('training_path_course.course_id', $courseIds->all())
+            ->selectRaw('training_path_course.course_id, COUNT(DISTINCT training_path_user.id) as aggregate')
+            ->groupBy('training_path_course.course_id')
+            ->pluck('aggregate', 'training_path_course.course_id')
+            ->mapWithKeys(fn (mixed $count, mixed $courseId): array => [(int) $courseId => (int) $count]);
     }
 }
