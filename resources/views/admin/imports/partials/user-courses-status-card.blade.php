@@ -2,7 +2,7 @@
     <div class="card-body gap-4">
         <div>
             <div>
-                <h2 class="card-title">{{ __('Import associazione utenti percorsi formativi recenti') }}</h2>
+                <h2 class="card-title">{{ __('Import associazione utenti corsi recenti') }}</h2>
                 <p class="text-sm text-base-content/60">{{ __('Se un import fallisce non applica nessuna modifica. Correggere il file e ripetere l\'operazione.') }}</p>
             </div>
         </div>
@@ -45,7 +45,7 @@
                     @empty
                         <tr>
                             <td colspan="5" class="py-8 text-center text-base-content/60">
-                                {{ __('Nessun import associazione utenti percorsi formativi ancora avviato.') }}
+                                {{ __('Nessun import associazione utenti corsi ancora avviato.') }}
                             </td>
                         </tr>
                     @endforelse

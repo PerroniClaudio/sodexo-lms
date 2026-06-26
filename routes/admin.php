@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\CourseClassController;
 use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\CourseDocumentController;
 use App\Http\Controllers\Admin\CourseEnrollmentController;
+use App\Http\Controllers\Admin\CourseEnrollmentImportController;
 use App\Http\Controllers\Admin\CourseFacultyMemberController;
 use App\Http\Controllers\Admin\CourseModuleController;
 use App\Http\Controllers\Admin\CourseTeacherEnrollmentController;
@@ -77,6 +78,10 @@ Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
         Route::get('/imports/user-job-tasks/template', [UserJobTaskImportController::class, 'downloadTemplate'])->name('imports.user-job-tasks.template');
         Route::get('/imports/user-job-tasks/status-card', [UserJobTaskImportController::class, 'statusCard'])->name('imports.user-job-tasks.status-card');
         Route::post('/imports/user-job-tasks', [UserJobTaskImportController::class, 'store'])->name('imports.user-job-tasks.store');
+        Route::get('/imports/user-courses', [CourseEnrollmentImportController::class, 'index'])->name('imports.user-courses');
+        Route::get('/imports/user-courses/template', [CourseEnrollmentImportController::class, 'downloadTemplate'])->name('imports.user-courses.template');
+        Route::get('/imports/user-courses/status-card', [CourseEnrollmentImportController::class, 'statusCard'])->name('imports.user-courses.status-card');
+        Route::post('/imports/user-courses', [CourseEnrollmentImportController::class, 'store'])->name('imports.user-courses.store');
         Route::get('/imports/user-training-paths', [TrainingPathImportController::class, 'index'])->name('imports.user-training-paths');
         Route::get('/imports/user-training-paths/template', [TrainingPathImportController::class, 'downloadTemplate'])->name('imports.user-training-paths.template');
         Route::get('/imports/user-training-paths/status-card', [TrainingPathImportController::class, 'statusCard'])->name('imports.user-training-paths.status-card');
