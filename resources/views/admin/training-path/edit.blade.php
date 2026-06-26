@@ -230,10 +230,16 @@
                                         <h2 class="card-title">{{ __('Documenti') }}</h2>
                                         <p class="text-sm text-base-content/70">{{ __('Gestisci i documenti collegati al percorso formativo.') }}</p>
                                     </div>
-                                    <button type="button" class="btn btn-primary" onclick="training_path_document_upload_modal.showModal()">
-                                        <x-lucide-upload class="h-4 w-4" />
-                                        <span>{{ __('Carica documento') }}</span>
-                                    </button>
+                                    <div class="flex flex-col gap-2 sm:flex-row">
+                                        <a href="{{ route('admin.training-paths.program.download', $trainingPath) }}" class="btn btn-outline">
+                                            <x-lucide-download class="h-4 w-4" />
+                                            <span>{{ __('Scarica programma del percorso formativo') }}</span>
+                                        </a>
+                                        <button type="button" class="btn btn-primary" onclick="training_path_document_upload_modal.showModal()">
+                                            <x-lucide-upload class="h-4 w-4" />
+                                            <span>{{ __('Carica documento') }}</span>
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div class="overflow-x-auto">

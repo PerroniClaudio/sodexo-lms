@@ -132,20 +132,20 @@
                                 <ul>
                                     <li>
                                         <a
-                                            href="{{ route('admin.courses.index') }}"
-                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.courses.*'])])
-                                        >
-                                            <x-lucide-graduation-cap class="mr-2 inline-block h-5 w-5" />
-                                            {{ __('Corsi') }}
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a
                                             href="{{ route('admin.training-paths.index') }}"
                                             @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.training-paths.*'])])
                                         >
                                             <x-lucide-route class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Percorsi formativi') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.courses.index') }}"
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.courses.*'])])
+                                        >
+                                            <x-lucide-graduation-cap class="mr-2 inline-block h-5 w-5" />
+                                            {{ __('Corsi') }}
                                         </a>
                                     </li>
                                     <li>

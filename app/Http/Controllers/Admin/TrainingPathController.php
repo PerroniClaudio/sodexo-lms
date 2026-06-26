@@ -19,7 +19,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Spatie\LaravelPdf\Facades\Pdf;
 
 class TrainingPathController extends Controller
 {
@@ -131,6 +133,33 @@ class TrainingPathController extends Controller
                 ->get(['id', 'name', 'unit_code', 'address', 'postal_code', 'city_id']),
             'courseEnrollmentCleanupCounts' => $courseEnrollmentCleanupCounts,
         ]);
+    }
+
+    public function downloadProgram(TrainingPath $trainingPath)
+    {
+        $trainingPath->load([
+            'courses' => fn ($query) => $query
+                ->with([
+                    'categories:id,name',
+                    'partners:id,ragione_sociale',
+                    'riskBasedRequirements:id,name,risk_levels',
+                    'teacherEnrollments' => fn ($teacherQuery) => $teacherQuery
+                        ->whereNull('deleted_at')
+                        ->with('user:id,name,surname'),
+                    'tutorEnrollments' => fn ($tutorQuery) => $tutorQuery
+                        ->whereNull('deleted_at')
+                        ->with('user:id,name,surname'),
+                ]),
+        ]);
+
+        return Pdf::view('pdf.training-path-program', [
+            'trainingPath' => $trainingPath,
+            'courseTypeLabels' => Course::availableTypeLabels(),
+            'courseStatusLabels' => Course::availableStatusLabels(),
+            'courseEventTypeLabels' => Course::availableEventTypeLabels(),
+        ])
+            ->driver('dompdf')
+            ->download($this->programDownloadFileName($trainingPath));
     }
 
     public function availableCoursesApi(Request $request, TrainingPath $trainingPath): JsonResponse
@@ -363,5 +392,13 @@ class TrainingPathController extends Controller
             ->map(fn (mixed $courseId): int => (int) $courseId)
             ->unique()
             ->values();
+    }
+
+    private function programDownloadFileName(TrainingPath $trainingPath): string
+    {
+        return sprintf(
+            '%s-programma-formativo.pdf',
+            Str::slug($trainingPath->title) ?: 'training-path'
+        );
     }
 }

@@ -146,6 +146,7 @@ Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
         Route::get('/training-paths/create', [TrainingPathController::class, 'create'])->name('training-paths.create');
         Route::post('/training-paths', [TrainingPathController::class, 'store'])->name('training-paths.store');
         Route::get('/training-paths/{trainingPath}/edit', [TrainingPathController::class, 'edit'])->name('training-paths.edit');
+        Route::get('/training-paths/{trainingPath}/program', [TrainingPathController::class, 'downloadProgram'])->name('training-paths.program.download');
         Route::put('/training-paths/{trainingPath}/details', [TrainingPathController::class, 'updateDetails'])->name('training-paths.details.update');
         Route::put('/training-paths/{trainingPath}/courses', [TrainingPathController::class, 'updateCourses'])->name('training-paths.courses.update');
         Route::put('/training-paths/{trainingPath}/recipients', [TrainingPathController::class, 'updateRecipients'])->name('training-paths.recipients.update');

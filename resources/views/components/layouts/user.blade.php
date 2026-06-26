@@ -45,21 +45,21 @@
                         </a>
                     </li>
                     <li class="w-full">
-                        <a href="{{ route($coursesRoute) }}" @class([
-                            'w-full',
-                            'menu-active' => request()->routeIs($navigationRoutePrefix . '.courses.*'),
-                        ])>
-                            <x-lucide-graduation-cap class="inline-block mr-2 h-5 w-5" />
-                            {{ __('I miei corsi') }}
-                        </a>
-                    </li>
-                    <li class="w-full">
                         <a href="{{ $trainingPathsRoute }}" @class([
                             'w-full',
                             'menu-active' => request()->routeIs('user.training-paths.*'),
                         ])>
                             <x-lucide-list-checks class="inline-block mr-2 h-5 w-5" />
                             {{ __('Percorsi formativi') }}
+                        </a>
+                    </li>
+                    <li class="w-full">
+                        <a href="{{ route($coursesRoute) }}" @class([
+                            'w-full',
+                            'menu-active' => request()->routeIs($navigationRoutePrefix . '.courses.*'),
+                        ])>
+                            <x-lucide-graduation-cap class="inline-block mr-2 h-5 w-5" />
+                            {{ __('I miei corsi') }}
                         </a>
                     </li>
                     <li class="w-full">

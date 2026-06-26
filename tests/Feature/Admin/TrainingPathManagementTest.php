@@ -1,13 +1,21 @@
 <?php
 
 use App\Models\Course;
+use App\Models\CourseCategory;
+use App\Models\CourseTeacherEnrollment;
+use App\Models\CourseTutorEnrollment;
 use App\Models\JobRole;
 use App\Models\JobTask;
 use App\Models\JobUnit;
+use App\Models\Partner;
+use App\Models\RiskBasedRequirement;
 use App\Models\TrainingPath;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Spatie\LaravelPdf\Facades\Pdf;
+use Spatie\LaravelPdf\PdfBuilder;
 
 uses(RefreshDatabase::class);
 
@@ -37,7 +45,9 @@ it('renders the main training path edit sections', function () {
 
     $this->get(route('admin.training-paths.edit', [$trainingPath, 'section' => 'documents']))
         ->assertOk()
-        ->assertSeeText('Documenti');
+        ->assertSeeText('Documenti')
+        ->assertSee(route('admin.training-paths.program.download', $trainingPath), escape: false)
+        ->assertSeeText('Scarica programma formativo');
 
     $this->get(route('admin.training-paths.edit', [$trainingPath, 'section' => 'courses']))
         ->assertOk()
@@ -71,8 +81,8 @@ it('updates training path details, recipients and associated courses', function 
     $trainingPath = TrainingPath::factory()->create([
         'status' => 'draft',
     ]);
-    $courseA = Course::factory()->create(['title' => 'Corso A']);
-    $courseB = Course::factory()->create(['title' => 'Corso B']);
+    $courseA = Course::factory()->create(['title' => 'Corso A', 'status' => 'published']);
+    $courseB = Course::factory()->create(['title' => 'Corso B', 'status' => 'published']);
     $jobRole = JobRole::factory()->create(['name' => 'Cuoco']);
     $jobTask = JobTask::factory()->create(['name' => 'Preparazione']);
     $jobUnit = JobUnit::factory()->create(['name' => 'Milano']);
@@ -136,4 +146,67 @@ it('stores downloads and deletes training path documents', function () {
 
     expect($document->fresh())->toBeNull();
     Storage::disk('s3')->assertMissing($document->path);
+});
+
+it('downloads the training path program pdf with course details', function () {
+    Pdf::fake();
+
+    $trainingPath = TrainingPath::factory()->create([
+        'title' => 'Percorso Sicurezza',
+        'code' => 'PATH-001',
+        'description' => 'Programma completo del percorso.',
+        'status' => 'published',
+    ]);
+    $course = Course::factory()->create([
+        'title' => 'Corso Rischio Alto',
+        'code' => 'CRS-100',
+        'description' => 'Dettaglio corso rischio alto',
+        'type' => 'res',
+        'status' => 'published',
+        'year' => 2026,
+        'course_duration_hours' => 8,
+        'event_type' => 'formazione obbligatoria',
+    ]);
+    $trainingPath->courses()->attach($course->getKey(), ['sort_order' => 1]);
+
+    $category = CourseCategory::factory()->create(['name' => 'Sicurezza']);
+    $partner = Partner::factory()->create(['ragione_sociale' => 'Partner Demo']);
+    $requirement = RiskBasedRequirement::factory()->create(['name' => 'Abilitazione Rischio Alto']);
+    $teacher = User::factory()->create(['name' => 'Mario', 'surname' => 'Rossi']);
+    $tutor = User::factory()->create(['name' => 'Giulia', 'surname' => 'Bianchi']);
+
+    $course->categories()->attach($category->getKey());
+    $course->partners()->attach($partner->getKey());
+    $course->riskBasedRequirements()->attach($requirement->getKey(), [
+        'course_validity_types' => json_encode(['first_achievement', 'refresh']),
+        'integrative_start_risk_levels' => null,
+    ]);
+    CourseTeacherEnrollment::enroll($teacher, $course);
+    CourseTutorEnrollment::enroll($tutor, $course);
+
+    $response = $this->get(route('admin.training-paths.program.download', $trainingPath));
+
+    $response->assertOk();
+
+    Pdf::assertRespondedWithPdf(function (PdfBuilder $pdf) use ($trainingPath): bool {
+        $html = $pdf->getHtml();
+
+        expect($pdf->viewName)->toBe('pdf.training-path-program');
+        expect($pdf->viewData['trainingPath']->is($trainingPath))->toBeTrue();
+        expect($pdf->downloadName)->toBe('percorso-sicurezza-programma-formativo.pdf');
+        expect($html)->toContain('Percorso Sicurezza');
+        expect($html)->toContain('PATH-001');
+        expect($html)->toContain('Corso Rischio Alto');
+        expect($html)->toContain('CRS-100');
+        expect($html)->toContain('8 ore');
+        expect($html)->toContain('Abilitazione Rischio Alto');
+        expect($html)->toContain('Sicurezza');
+        expect($html)->toContain('Partner Demo');
+        expect($html)->toContain('Rossi Mario');
+        expect($html)->toContain('Bianchi Giulia');
+        expect($html)->toContain('Primo conseguimento');
+        expect($html)->toContain('Aggiornamento');
+
+        return true;
+    });
 });
