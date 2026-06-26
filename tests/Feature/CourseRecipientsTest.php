@@ -42,6 +42,27 @@ it('shows and updates course recipients', function () {
         ->and($course->jobUnits()->whereKey($jobUnit->getKey())->exists())->toBeTrue();
 });
 
+it('redirects back with an error flash when trying to update recipients for a published course', function () {
+    actingAsRole('admin');
+
+    $course = Course::factory()->create([
+        'status' => 'published',
+    ]);
+    $jobRole = JobRole::factory()->create(['name' => 'Cuoco']);
+
+    $response = $this
+        ->from(route('admin.courses.edit', [$course, 'section' => 'recipients']))
+        ->put(route('admin.courses.recipients.update', $course), [
+            'job_role_ids' => [$jobRole->getKey()],
+        ]);
+
+    $response
+        ->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'recipients']))
+        ->assertSessionHas('error', 'Non è possibile modificare i dati del corso quando è pubblicato. Solo lo stato può essere modificato.');
+
+    expect($course->jobRoles()->whereKey($jobRole->getKey())->exists())->toBeFalse();
+});
+
 it('filters user courses by recipients', function () {
     $this->seed(RoleAndPermissionSeeder::class);
 

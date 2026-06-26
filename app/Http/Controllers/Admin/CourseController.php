@@ -602,17 +602,24 @@ class CourseController extends Controller
 
     public function updateRecipients(UpdateCourseRecipientsRequest $request, Course $course): RedirectResponse
     {
-        $validated = $request->validated();
+        try {
+            $validated = $request->validated();
 
-        $course->update([
-            'visible_to_all' => (bool) ($validated['visible_to_all'] ?? false),
-        ]);
+            $course->update([
+                'visible_to_all' => (bool) ($validated['visible_to_all'] ?? false),
+            ]);
 
-        $course->jobRoles()->sync($this->uniqueIds($validated['job_role_ids'] ?? []));
-        $course->jobTasks()->sync($this->uniqueIds($validated['job_task_ids'] ?? []));
-        $course->jobUnits()->sync($this->uniqueIds($validated['job_unit_ids'] ?? []));
+            $course->jobRoles()->sync($this->uniqueIds($validated['job_role_ids'] ?? []));
+            $course->jobTasks()->sync($this->uniqueIds($validated['job_task_ids'] ?? []));
+            $course->jobUnits()->sync($this->uniqueIds($validated['job_unit_ids'] ?? []));
 
-        return $this->redirectToSection($course, 'recipients', __('Destinatari del corso aggiornati con successo.'));
+            return $this->redirectToSection($course, 'recipients', __('Destinatari del corso aggiornati con successo.'));
+        } catch (RuntimeException $e) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
     }
 
     public function previewCoverImage(Course $course): StreamedResponse
