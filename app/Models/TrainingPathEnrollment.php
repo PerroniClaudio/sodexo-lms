@@ -52,6 +52,12 @@ class TrainingPathEnrollment extends Model
 
     public static function enroll(User $user, TrainingPath $trainingPath): self
     {
+        $visibilityErrors = $trainingPath->enrollmentVisibilityErrorsFor($user);
+
+        if ($visibilityErrors !== []) {
+            throw new DomainException(implode(' ', $visibilityErrors));
+        }
+
         $existingEnrollment = static::withTrashed()
             ->where('user_id', $user->getKey())
             ->where('training_path_id', $trainingPath->getKey())

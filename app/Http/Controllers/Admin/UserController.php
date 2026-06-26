@@ -583,6 +583,14 @@ class UserController extends Controller
                 ->with('error', __('L\'utente non possiede i prerequisiti necessari per l\'iscrizione a questo corso.'));
         }
 
+        $visibilityError = $course->enrollmentVisibilityMessageFor($user);
+
+        if ($visibilityError !== null) {
+            return redirect()
+                ->route('admin.users.risk-course-selection', $user)
+                ->with('error', $visibilityError);
+        }
+
         try {
             CourseEnrollment::enroll(
                 $user,

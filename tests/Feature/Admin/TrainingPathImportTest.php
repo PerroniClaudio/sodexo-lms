@@ -4,6 +4,7 @@ use App\Jobs\ImportTrainingPathsJob;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Importazione;
+use App\Models\JobRole;
 use App\Models\TrainingPath;
 use App\Models\TrainingPathEnrollment;
 use App\Models\User;
@@ -126,6 +127,52 @@ it('enrolls user into published training path and linked courses', function () {
         ->and($courseEnrollment->course_id)->toBe($course->getKey())
         ->and($courseEnrollment->pathway_origin)->toBeTrue()
         ->and($courseEnrollment->direct_origin)->toBeFalse();
+});
+
+it('fails the import when the training path contains a linked course not assignable to the user', function () {
+    Storage::fake('s3');
+
+    test()->seed(RoleAndPermissionSeeder::class);
+
+    $allowedRole = JobRole::factory()->create();
+    $otherRole = JobRole::factory()->create();
+    $course = Course::factory()->published()->create([
+        'title' => 'Corso riservato',
+        'visible_to_all' => false,
+    ]);
+    $course->jobRoles()->attach($allowedRole);
+
+    $trainingPath = TrainingPath::factory()->create([
+        'code' => 'PATH-001',
+        'status' => 'published',
+    ]);
+    $trainingPath->courses()->attach($course->getKey(), ['sort_order' => 1]);
+
+    $user = User::factory()->asUser()->state([
+        'fiscal_code' => 'RSSMRA80A01H501Z',
+        'job_role_id' => $otherRole->getKey(),
+    ])->create();
+
+    Storage::disk('s3')->put('imports/user-training-paths/user-training-paths.xlsx', file_get_contents(
+        trainingPathImportFile([
+            ['Codice fiscale', 'Codice percorso formativo'],
+            ['RSSMRA80A01H501Z', 'PATH-001'],
+        ])->getRealPath()
+    ));
+
+    $importazione = Importazione::query()->create([
+        'import_type' => Importazione::TYPE_USER_TRAINING_PATHS,
+        'file_path' => 'imports/user-training-paths/user-training-paths.xlsx',
+        'original_file_name' => 'associazioni-percorsi.xlsx',
+    ]);
+
+    app(ImportTrainingPathsJob::class, ['importazioneId' => $importazione->getKey()])
+        ->handle(app(TrainingPathImportService::class));
+
+    expect($importazione->fresh()->status)->toBe(Importazione::STATUS_FAILED)
+        ->and($importazione->fresh()->error_message)->toContain('Il percorso contiene un corso non assegnabile')
+        ->and(TrainingPathEnrollment::query()->count())->toBe(0)
+        ->and(CourseEnrollment::query()->count())->toBe(0);
 });
 
 function trainingPathImportFile(array $rows): UploadedFile

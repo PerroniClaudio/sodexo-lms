@@ -162,6 +162,12 @@ class TrainingPathImportService
             $this->fail($rowNumber, __('percorso formativo :code non pubblicato.', ['code' => $trainingPath->code]));
         }
 
+        $visibilityErrors = $trainingPath->enrollmentVisibilityErrorsFor($user);
+
+        if ($visibilityErrors !== []) {
+            $this->fail($rowNumber, collect($visibilityErrors)->implode(' '));
+        }
+
         $existingEnrollment = TrainingPathEnrollment::withTrashed()
             ->whereBelongsTo($trainingPath, 'trainingPath')
             ->where('user_id', $user->getKey())

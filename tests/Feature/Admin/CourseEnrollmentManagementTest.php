@@ -6,6 +6,7 @@ use App\Models\Module;
 use App\Models\TrainingPath;
 use App\Models\TrainingPathEnrollment;
 use App\Models\User;
+use App\Models\JobRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -123,4 +124,54 @@ it('restores a training path enrollment and recreates missing course enrollments
                 ->whereNull('deleted_at')
                 ->exists()
         )->toBeTrue();
+});
+
+it('blocks course enrollment creation when the user is outside the configured recipients', function () {
+    $course = Course::factory()->create([
+        'status' => 'published',
+        'visible_to_all' => false,
+        'title' => 'Corso riservato',
+    ]);
+    $allowedRole = JobRole::factory()->create();
+    $otherRole = JobRole::factory()->create();
+    $course->jobRoles()->attach($allowedRole);
+
+    $user = User::factory()->create([
+        'job_role_id' => $otherRole->getKey(),
+    ]);
+
+    $this->postJson(route('admin.api.courses.enrollments.store', $course), [
+        'user_id' => $user->getKey(),
+    ])->assertUnprocessable()
+        ->assertJsonPath('message', 'L\'utente non rientra tra i destinatari del corso "Corso riservato", quindi l\'iscrizione non è stata creata.');
+
+    expect(CourseEnrollment::query()->count())->toBe(0);
+});
+
+it('blocks course enrollment restore when the user is outside the configured recipients', function () {
+    $course = Course::factory()->create([
+        'status' => 'published',
+        'visible_to_all' => false,
+        'title' => 'Corso riservato',
+    ]);
+    $allowedRole = JobRole::factory()->create();
+    $otherRole = JobRole::factory()->create();
+    $course->jobRoles()->attach($allowedRole);
+
+    $user = User::factory()->create([
+        'job_role_id' => $otherRole->getKey(),
+    ]);
+
+    $enrollment = CourseEnrollment::factory()->create([
+        'course_id' => $course->getKey(),
+        'user_id' => $user->getKey(),
+    ]);
+
+    $enrollment->delete();
+
+    $this->postJson(route('admin.api.courses.enrollments.restore', [$course, $enrollment]))
+        ->assertUnprocessable()
+        ->assertJsonPath('message', 'L\'utente non rientra tra i destinatari del corso "Corso riservato", quindi l\'iscrizione non è stata creata.');
+
+    expect($enrollment->fresh()->trashed())->toBeTrue();
 });

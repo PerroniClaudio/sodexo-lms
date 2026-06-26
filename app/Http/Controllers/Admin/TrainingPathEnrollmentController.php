@@ -205,6 +205,15 @@ class TrainingPathEnrollmentController extends Controller
         ]);
 
         $user = User::query()->findOrFail($validated['user_id']);
+        $visibilityErrors = $trainingPath->enrollmentVisibilityErrorsFor($user);
+
+        if ($visibilityErrors !== []) {
+            return response()->json([
+                'success' => false,
+                'message' => collect($visibilityErrors)->implode(' '),
+                'errors' => $visibilityErrors,
+            ], 422);
+        }
 
         $existingEnrollment = TrainingPathEnrollment::withTrashed()
             ->whereBelongsTo($trainingPath, 'trainingPath')
@@ -270,6 +279,18 @@ class TrainingPathEnrollmentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => __('Esiste già un\'iscrizione attiva per questo utente nel percorso.'),
+            ], 422);
+        }
+
+        $visibilityErrors = $trainingPath->enrollmentVisibilityErrorsFor(
+            User::query()->withTrashed()->findOrFail($existingEnrollment->user_id)
+        );
+
+        if ($visibilityErrors !== []) {
+            return response()->json([
+                'success' => false,
+                'message' => collect($visibilityErrors)->implode(' '),
+                'errors' => $visibilityErrors,
             ], 422);
         }
 

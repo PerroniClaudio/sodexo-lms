@@ -471,6 +471,17 @@ class Course extends Model
             && (! $this->jobUnits()->exists() || $this->jobUnits()->whereKey($user->job_unit_id)->exists());
     }
 
+    public function enrollmentVisibilityMessageFor(User $user): ?string
+    {
+        if ($this->isVisibleTo($user)) {
+            return null;
+        }
+
+        return __('L\'utente non rientra tra i destinatari del corso ":title", quindi l\'iscrizione non è stata creata.', [
+            'title' => $this->title,
+        ]);
+    }
+
     public function familyRootCourseId(): int
     {
         return $this->original_course_id ?? (int) $this->getKey();

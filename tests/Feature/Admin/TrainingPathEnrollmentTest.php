@@ -2,6 +2,7 @@
 
 use App\Models\Course;
 use App\Models\CourseEnrollment;
+use App\Models\JobRole;
 use App\Models\Module;
 use App\Models\TrainingPath;
 use App\Models\TrainingPathEnrollment;
@@ -86,4 +87,55 @@ it('asks for restore when a deleted enrollment already exists', function () {
         'user_id' => $user->getKey(),
     ])->assertStatus(409)
         ->assertJsonPath('requires_restore', true);
+});
+
+it('blocks training path enrollment creation when the user is outside the configured recipients', function () {
+    $trainingPath = TrainingPath::factory()->create([
+        'status' => 'published',
+        'visible_to_all' => false,
+        'title' => 'Percorso riservato',
+    ]);
+    $allowedRole = JobRole::factory()->create();
+    $otherRole = JobRole::factory()->create();
+    $trainingPath->jobRoles()->attach($allowedRole);
+
+    $user = User::factory()->create([
+        'job_role_id' => $otherRole->getKey(),
+    ]);
+
+    $this->postJson(route('admin.api.training-paths.enrollments.store', $trainingPath), [
+        'user_id' => $user->getKey(),
+    ])->assertUnprocessable()
+        ->assertJsonPath('message', 'L\'utente non rientra tra i destinatari del percorso formativo "Percorso riservato", quindi l\'iscrizione non è stata creata.');
+
+    expect(TrainingPathEnrollment::query()->count())->toBe(0);
+});
+
+it('blocks training path enrollment creation when a linked published course is not assignable to the user', function () {
+    $trainingPath = TrainingPath::factory()->create([
+        'status' => 'published',
+        'visible_to_all' => true,
+        'title' => 'Percorso onboarding',
+    ]);
+    $course = Course::factory()->create([
+        'status' => 'published',
+        'visible_to_all' => false,
+        'title' => 'Corso riservato',
+    ]);
+    $allowedRole = JobRole::factory()->create();
+    $otherRole = JobRole::factory()->create();
+    $course->jobRoles()->attach($allowedRole);
+    $trainingPath->courses()->attach($course->getKey(), ['sort_order' => 1]);
+
+    $user = User::factory()->create([
+        'job_role_id' => $otherRole->getKey(),
+    ]);
+
+    $this->postJson(route('admin.api.training-paths.enrollments.store', $trainingPath), [
+        'user_id' => $user->getKey(),
+    ])->assertUnprocessable()
+        ->assertJsonPath('errors.0', 'Il percorso contiene un corso non assegnabile: L\'utente non rientra tra i destinatari del corso "Corso riservato", quindi l\'iscrizione non è stata creata.');
+
+    expect(TrainingPathEnrollment::query()->count())->toBe(0)
+        ->and(CourseEnrollment::query()->count())->toBe(0);
 });

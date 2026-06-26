@@ -250,6 +250,15 @@ class CourseEnrollmentController extends Controller
             ], 422);
         }
 
+        $visibilityError = $course->enrollmentVisibilityMessageFor($user);
+
+        if ($visibilityError !== null) {
+            return response()->json([
+                'success' => false,
+                'message' => $visibilityError,
+            ], 422);
+        }
+
         CourseEnrollment::enroll($user, $course, directOrigin: true, pathwayOrigin: false);
 
         return response()->json([
@@ -292,6 +301,17 @@ class CourseEnrollmentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => __('Esiste già un\'iscrizione attiva per questo utente nel corso.'),
+            ], 422);
+        }
+
+        $visibilityError = $course->enrollmentVisibilityMessageFor(
+            User::query()->withTrashed()->findOrFail($existingEnrollment->user_id)
+        );
+
+        if ($visibilityError !== null) {
+            return response()->json([
+                'success' => false,
+                'message' => $visibilityError,
             ], 422);
         }
 

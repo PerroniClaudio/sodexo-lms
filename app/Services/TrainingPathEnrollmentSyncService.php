@@ -45,7 +45,7 @@ class TrainingPathEnrollmentSyncService
             $enrollment->loadMissing([
                 'user:id',
                 'trainingPath:id,enforce_course_order,status',
-                'trainingPath.courses:id,status',
+                'trainingPath.courses:id,title,status,visible_to_all',
             ]);
 
             $trainingPath = $enrollment->trainingPath;
@@ -242,9 +242,15 @@ class TrainingPathEnrollmentSyncService
      */
     private function ensureCourseEnrollments(int $userId, Collection $orderedCourses, string $origin): void
     {
-        $orderedCourses->each(function (Course $course) use ($origin, $userId): void {
+        $user = User::query()->findOrFail($userId);
+
+        $orderedCourses->each(function (Course $course) use ($origin, $user): void {
+            if ($course->enrollmentVisibilityMessageFor($user) !== null) {
+                return;
+            }
+
             $activeEnrollment = CourseEnrollment::query()
-                ->where('user_id', $userId)
+                ->where('user_id', $user->getKey())
                 ->where('course_id', $course->getKey())
                 ->first();
 
@@ -258,7 +264,7 @@ class TrainingPathEnrollmentSyncService
             }
 
             $trashedEnrollment = CourseEnrollment::withTrashed()
-                ->where('user_id', $userId)
+                ->where('user_id', $user->getKey())
                 ->where('course_id', $course->getKey())
                 ->whereNotNull('deleted_at')
                 ->orderByDesc('id')
@@ -272,7 +278,7 @@ class TrainingPathEnrollmentSyncService
                 );
             } else {
                 CourseEnrollment::enroll(
-                    User::query()->findOrFail($userId),
+                    $user,
                     $course,
                     directOrigin: $origin === self::ORIGIN_DIRECT,
                     pathwayOrigin: $origin === self::ORIGIN_PATHWAY,

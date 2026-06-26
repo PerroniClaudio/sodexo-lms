@@ -105,6 +105,12 @@ class CourseEnrollment extends Model
         bool $directOrigin = true,
         bool $pathwayOrigin = false,
     ): self {
+        $visibilityError = $course->enrollmentVisibilityMessageFor($user);
+
+        if ($visibilityError !== null) {
+            throw new DomainException($visibilityError);
+        }
+
         return DB::transaction(function () use ($user, $course, $courseValidityType, $isIntegrativeEnrollment, $directOrigin, $pathwayOrigin): self {
             $existingEnrollment = static::withTrashed()
                 ->where('user_id', $user->getKey())

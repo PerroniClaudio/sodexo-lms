@@ -137,4 +137,57 @@ class TrainingPath extends Model
                 });
         });
     }
+
+    public function isVisibleTo(User $user): bool
+    {
+        if ($this->visible_to_all) {
+            return true;
+        }
+
+        $hasRecipients = $this->jobRoles()->exists()
+            || $this->jobTasks()->exists()
+            || $this->jobUnits()->exists();
+
+        if (! $hasRecipients) {
+            // ponytail: empty restricted training path hides from everyone; add explicit admin UX only if needed.
+            return false;
+        }
+
+        return (! $this->jobRoles()->exists() || $this->jobRoles()->whereKey($user->job_role_id)->exists())
+            && (! $this->jobTasks()->exists() || $this->jobTasks()->whereKey($user->job_task_id)->exists())
+            && (! $this->jobUnits()->exists() || $this->jobUnits()->whereKey($user->job_unit_id)->exists());
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function enrollmentVisibilityErrorsFor(User $user): array
+    {
+        $errors = [];
+
+        if (! $this->isVisibleTo($user)) {
+            $errors[] = __('L\'utente non rientra tra i destinatari del percorso formativo ":title", quindi l\'iscrizione non è stata creata.', [
+                'title' => $this->title,
+            ]);
+        }
+
+        $this->loadMissing([
+            'courses',
+            'courses.jobRoles',
+            'courses.jobTasks',
+            'courses.jobUnits',
+        ]);
+
+        foreach ($this->courses->where('status', 'published') as $course) {
+            $courseError = $course->enrollmentVisibilityMessageFor($user);
+
+            if ($courseError !== null) {
+                $errors[] = __('Il percorso contiene un corso non assegnabile: :message', [
+                    'message' => $courseError,
+                ]);
+            }
+        }
+
+        return $errors;
+    }
 }
