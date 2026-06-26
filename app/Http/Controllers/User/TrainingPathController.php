@@ -3,15 +3,20 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\Course;
 use App\Models\CourseEnrollment;
+use App\Models\TrainingPath;
 use App\Models\TrainingPathEnrollment;
 use App\Models\User;
 use App\Services\TrainingPathCourseOrderService;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Spatie\LaravelPdf\Facades\Pdf;
 
 class TrainingPathController extends Controller
 {
@@ -48,8 +53,7 @@ class TrainingPathController extends Controller
     {
         $user = $this->authUser();
 
-        abort_unless((int) $trainingPathEnrollment->user_id === (int) $user->getKey(), 404);
-        abort_if($trainingPathEnrollment->trashed(), 404);
+        $trainingPathEnrollment = $this->ownedEnrollment($trainingPathEnrollment, $user);
 
         $trainingPathEnrollment->loadMissing([
             'trainingPath:id,title,code,status,enforce_course_order,description',
@@ -96,6 +100,72 @@ class TrainingPathController extends Controller
             'completionPercentage' => $completionPercentage,
             'courseOrderLocks' => $courseOrderLocks,
         ]);
+    }
+
+    public function downloadProgram(TrainingPathEnrollment $trainingPathEnrollment)
+    {
+        $user = $this->authUser();
+
+        [$trainingPathEnrollment, $trainingPath, $courses] = $this->programContext(
+            $this->ownedEnrollment($trainingPathEnrollment, $user)
+        );
+
+        return Pdf::view('pdf.training-path-program', [
+            'trainingPath' => $trainingPath,
+            'courseTypeLabels' => Course::availableTypeLabels(),
+            'courseStatusLabels' => Course::availableStatusLabels(),
+            'courseEventTypeLabels' => Course::availableEventTypeLabels(),
+        ])
+            ->driver('dompdf')
+            ->download($this->programDownloadFileName($trainingPath));
+    }
+
+    public function downloadProgramWithProgress(TrainingPathEnrollment $trainingPathEnrollment)
+    {
+        $user = $this->authUser();
+
+        [$trainingPathEnrollment, $trainingPath, $courses] = $this->programContext(
+            $this->ownedEnrollment($trainingPathEnrollment, $user)
+        );
+
+        $enrollmentsByCourseId = CourseEnrollment::query()
+            ->where('user_id', $user->getKey())
+            ->whereIn('course_id', $courses->pluck('id')->all())
+            ->whereNull('deleted_at')
+            ->get(['course_id', 'status', 'completion_percentage'])
+            ->keyBy(fn (CourseEnrollment $enrollment): int => (int) $enrollment->course_id);
+
+        $completedCourses = $enrollmentsByCourseId
+            ->filter(fn (CourseEnrollment $enrollment): bool => $enrollment->status === CourseEnrollment::STATUS_COMPLETED)
+            ->count();
+
+        $totalCourses = $courses->count();
+        $completionPercentage = $totalCourses > 0
+            ? (int) round(($completedCourses / $totalCourses) * 100)
+            : 0;
+
+        return Pdf::view('pdf.training-path-program', [
+            'trainingPath' => $trainingPath,
+            'courseTypeLabels' => Course::availableTypeLabels(),
+            'courseStatusLabels' => Course::availableStatusLabels(),
+            'courseEventTypeLabels' => Course::availableEventTypeLabels(),
+            'trainingPathProgress' => [
+                'completed_courses' => $completedCourses,
+                'total_courses' => $totalCourses,
+                'completion_percentage' => $completionPercentage,
+            ],
+            'courseProgressByCourseId' => $enrollmentsByCourseId->mapWithKeys(
+                fn (CourseEnrollment $enrollment, int $courseId): array => [
+                    $courseId => [
+                        'status' => $enrollment->status,
+                        'status_label' => $this->courseEnrollmentStatusLabel($enrollment->status),
+                        'completion_percentage' => (int) $enrollment->completion_percentage,
+                    ],
+                ]
+            )->all(),
+        ])
+            ->driver('dompdf')
+            ->download($this->programWithProgressDownloadFileName($trainingPath));
     }
 
     /**
@@ -156,5 +226,71 @@ class TrainingPathController extends Controller
         abort_unless($user instanceof User, 403);
 
         return $user;
+    }
+
+    private function ownedEnrollment(TrainingPathEnrollment $trainingPathEnrollment, User $user): TrainingPathEnrollment
+    {
+        abort_unless((int) $trainingPathEnrollment->user_id === (int) $user->getKey(), 404);
+        abort_if($trainingPathEnrollment->trashed(), 404);
+
+        return $trainingPathEnrollment;
+    }
+
+    /**
+     * @return array{0: TrainingPathEnrollment, 1: TrainingPath, 2: Collection<int, Course>}
+     */
+    private function programContext(TrainingPathEnrollment $trainingPathEnrollment): array
+    {
+        $trainingPathEnrollment->loadMissing([
+            'trainingPath:id,title,code,status,enforce_course_order,description',
+            'trainingPath.courses' => fn ($query) => $query
+                ->where('status', 'published')
+                ->with([
+                    'categories:id,name',
+                    'partners:id,ragione_sociale',
+                    'riskBasedRequirements:id,name,risk_levels',
+                    'teacherEnrollments' => fn ($teacherQuery) => $teacherQuery
+                        ->whereNull('deleted_at')
+                        ->with('user:id,name,surname'),
+                    'tutorEnrollments' => fn ($tutorQuery) => $tutorQuery
+                        ->whereNull('deleted_at')
+                        ->with('user:id,name,surname'),
+                ]),
+        ]);
+
+        $trainingPath = $trainingPathEnrollment->trainingPath;
+        abort_unless($trainingPath !== null, 404);
+
+        $courses = $trainingPath->courses->values();
+        $trainingPath->setRelation('courses', $courses);
+
+        return [$trainingPathEnrollment, $trainingPath, $courses];
+    }
+
+    private function courseEnrollmentStatusLabel(string $status): string
+    {
+        return [
+            CourseEnrollment::STATUS_ASSIGNED => __('Assegnato'),
+            CourseEnrollment::STATUS_IN_PROGRESS => __('In corso'),
+            CourseEnrollment::STATUS_COMPLETED => __('Completato'),
+            CourseEnrollment::STATUS_EXPIRED => __('Scaduto'),
+            CourseEnrollment::STATUS_CANCELLED => __('Annullato'),
+        ][$status] ?? $status;
+    }
+
+    private function programDownloadFileName(TrainingPath $trainingPath): string
+    {
+        return sprintf(
+            '%s-programma-formativo.pdf',
+            Str::slug($trainingPath->title) ?: 'training-path'
+        );
+    }
+
+    private function programWithProgressDownloadFileName(TrainingPath $trainingPath): string
+    {
+        return sprintf(
+            '%s-programma-formativo-avanzamento.pdf',
+            Str::slug($trainingPath->title) ?: 'training-path'
+        );
     }
 }

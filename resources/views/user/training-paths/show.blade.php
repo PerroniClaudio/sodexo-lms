@@ -31,7 +31,17 @@
                         @endif
                         <h2 class="text-2xl font-semibold text-base-content">{{ __('Avanzamento percorso') }}</h2>
                     </div>
-                    <span class="badge badge-outline h-fit">{{ __(':done/:total corsi completati', ['done' => $completedCourses, 'total' => $totalCourses]) }}</span>
+                    <div class="flex flex-wrap justify-end gap-2">
+                        <a href="{{ route('user.training-paths.program.download', $trainingPathEnrollment) }}" class="btn btn-outline btn-sm">
+                            <x-lucide-download class="h-4 w-4" />
+                            {{ __('Scarica programma') }}
+                        </a>
+                        <a href="{{ route('user.training-paths.program-with-progress.download', $trainingPathEnrollment) }}" class="btn btn-primary btn-sm">
+                            <x-lucide-download class="h-4 w-4" />
+                            {{ __('Scarica con avanzamento') }}
+                        </a>
+                        <span class="badge badge-outline h-fit">{{ __(':done/:total corsi completati', ['done' => $completedCourses, 'total' => $totalCourses]) }}</span>
+                    </div>
                 </div>
 
                 <div>

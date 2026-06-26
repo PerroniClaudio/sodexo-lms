@@ -101,6 +101,8 @@ Route::middleware(['auth', 'active.role:user|superadmin'])->group(function () {
         Route::get('courses', [CourseController::class, 'index'])->name('courses.index');
         Route::get('training-paths', [TrainingPathController::class, 'index'])->name('training-paths.index');
         Route::get('training-paths/{trainingPathEnrollment}', [TrainingPathController::class, 'show'])->name('training-paths.show');
+        Route::get('training-paths/{trainingPathEnrollment}/program', [TrainingPathController::class, 'downloadProgram'])->name('training-paths.program.download');
+        Route::get('training-paths/{trainingPathEnrollment}/program-with-progress', [TrainingPathController::class, 'downloadProgramWithProgress'])->name('training-paths.program-with-progress.download');
         Route::get('completed-courses', [CourseController::class, 'completed'])->name('completed-courses.index');
         Route::get('completed-courses/{courseEnrollment}/certificate', [CourseController::class, 'downloadCertificate'])
             ->name('completed-courses.certificate.download');

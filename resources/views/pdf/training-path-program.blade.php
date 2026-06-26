@@ -89,6 +89,11 @@
     </style>
 </head>
 <body>
+    @php
+        $courseProgressByCourseId = collect($courseProgressByCourseId ?? []);
+        $trainingPathProgress = $trainingPathProgress ?? null;
+    @endphp
+
     <div class="section">
         <h1>{{ $trainingPath->title }}</h1>
         <p class="muted">{{ __('Programma del percorso formativo') }}</p>
@@ -115,6 +120,22 @@
             </tr>
         </table>
     </div>
+
+    @if (is_array($trainingPathProgress))
+        <div class="section">
+            <h2>{{ __('Avanzamento utente') }}</h2>
+            <table class="grid">
+                <tr>
+                    <td class="label">{{ __('Corsi completati') }}</td>
+                    <td>{{ $trainingPathProgress['completed_courses'] }}/{{ $trainingPathProgress['total_courses'] }}</td>
+                </tr>
+                <tr>
+                    <td class="label">{{ __('Completamento') }}</td>
+                    <td>{{ $trainingPathProgress['completion_percentage'] }}%</td>
+                </tr>
+            </table>
+        </div>
+    @endif
 
     <div class="section">
         <h2>{{ __('Dettaglio corsi') }}</h2>
@@ -171,6 +192,7 @@
                         ->filter()
                         ->implode(', ');
 
+                    $courseProgress = $courseProgressByCourseId->get((int) $course->getKey());
                     $courseRows = collect([
                         __('Titolo') => $course->title,
                         __('Codice') => $course->code,
@@ -183,6 +205,8 @@
                         __('Partner') => $course->partners->pluck('ragione_sociale')->implode(', '),
                         __('Docenti') => $teachersText,
                         __('Tutor') => $tutorsText,
+                        __('Stato utente') => is_array($courseProgress) ? ($courseProgress['status_label'] ?? null) : null,
+                        __('Avanzamento corso') => is_array($courseProgress) ? (($courseProgress['completion_percentage'] ?? 0).'%') : null,
                     ])->filter(fn ($value) => filled($value));
                 @endphp
 
