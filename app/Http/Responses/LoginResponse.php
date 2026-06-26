@@ -27,7 +27,7 @@ class LoginResponse implements LoginResponseContract
         if (in_array($activeRole, ['admin', 'superadmin'], true)) {
             $redirectTo = route('admin.dashboard');
         } elseif (in_array($activeRole, ['teacher', 'docente'], true)) {
-            $redirectTo = route('teacher.courses.index');
+            $redirectTo = route('teacher.dashboard');
         } elseif ($activeRole === 'tutor') {
             $redirectTo = route('tutor.dashboard');
         } elseif ($activeRole === 'user') {

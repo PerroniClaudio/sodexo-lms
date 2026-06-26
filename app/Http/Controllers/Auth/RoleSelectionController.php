@@ -51,7 +51,7 @@ class RoleSelectionController extends Controller
 
         return redirect(match ($role) {
             'admin', 'superadmin' => route('admin.dashboard'),
-            'teacher', 'docente' => route('teacher.courses.index'),
+            'teacher', 'docente' => route('teacher.dashboard'),
             'tutor' => route('tutor.dashboard'),
             default => route('user.dashboard'),
         });

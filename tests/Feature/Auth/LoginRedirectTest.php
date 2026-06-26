@@ -147,7 +147,7 @@ test('multi role users choose active role before dashboard', function () {
 
     $this->post(route('role.select.update'), [
         'role' => 'teacher',
-    ])->assertRedirect(route('teacher.courses.index'));
+    ])->assertRedirect(route('teacher.dashboard'));
 
     expect(session('active_role'))->toBe('teacher');
 });

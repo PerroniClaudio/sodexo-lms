@@ -43,11 +43,12 @@ return Application::configure(basePath: dirname(__DIR__))
 
             $activeRole = $request->session()->get('active_role') ?? $user?->getRoleNames()->first();
 
-            if (in_array($activeRole, ['admin', 'superadmin'], true)) {
-                return route('dashboard');
-            }
-
-            return route('reserved-area');
+            return match ($activeRole) {
+                'admin', 'superadmin' => route('dashboard'),
+                'teacher', 'docente' => route('teacher.dashboard'),
+                'tutor' => route('tutor.dashboard'),
+                default => route('user.dashboard'),
+            };
         });
 
         // Registra middleware alias di Spatie Permission e custom
