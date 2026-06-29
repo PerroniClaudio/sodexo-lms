@@ -18,6 +18,7 @@ use App\Models\CourseClassUser;
 use App\Models\Module;
 use App\Models\ModuleTeacherEnrollment;
 use App\Models\ModuleTutorEnrollment;
+use App\Models\ScormTrackingArchive;
 use App\Models\User;
 use App\Models\Video;
 use App\Services\LiveModuleAttendanceService;
@@ -151,6 +152,14 @@ class CourseModuleController extends Controller
             'videoExercises.materials',
             'videoExercises.questions',
         ]);
+        $scormResetCountsByEnrollmentId = $module->type === Module::TYPE_SCORM
+            ? ScormTrackingArchive::query()
+                ->where('module_id', $module->getKey())
+                ->selectRaw('course_user_id, COUNT(DISTINCT reset_batch_uuid) as aggregate')
+                ->groupBy('course_user_id')
+                ->pluck('aggregate', 'course_user_id')
+                ->map(fn (mixed $count): int => (int) $count)
+            : collect();
 
         return view('admin.module.edit', [
             'course' => $course,
@@ -208,10 +217,11 @@ class CourseModuleController extends Controller
                         ->where('module_id', $module->getKey()),
                 ])
                 ->get()
-                ->map(function ($enrollment) {
+                ->map(function ($enrollment) use ($scormResetCountsByEnrollmentId) {
                     $progress = $enrollment->moduleProgresses->first();
 
                     return (object) [
+                        'course_enrollment_id' => (int) $enrollment->getKey(),
                         'user' => $enrollment->user,
                         'progress' => $progress,
                         'quiz_attempts' => $progress?->quiz_attempts ?? 0,
@@ -219,6 +229,7 @@ class CourseModuleController extends Controller
                         'quiz_total_score' => $progress?->quiz_total_score,
                         'status' => $progress?->status ?? 'locked',
                         'passed' => $progress && $progress->status === 'completed',
+                        'scorm_reset_count' => $scormResetCountsByEnrollmentId->get((int) $enrollment->getKey(), 0),
                     ];
                 }),
             'isValidQuiz' => $module->type === 'learning_quiz' ? $module->isValidQuiz() : false,

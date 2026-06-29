@@ -1,5 +1,9 @@
 <div class="card border border-base-300 bg-base-100 shadow-sm">
     <div class="card-body gap-6">
+        @php
+            $showScormResetCount = $module->type === 'scorm' && auth()->user()?->hasRole('superadmin');
+        @endphp
+
         <div>
             <h2 class="card-title">{{ __('Iscritti al modulo') }}</h2>
             <p class="text-sm text-base-content/70">
@@ -18,6 +22,9 @@
                         <tr>
                             <th>{{ __('Utente') }}</th>
                             <th>{{ __('Stato') }}</th>
+                            @if ($showScormResetCount)
+                                <th>{{ __('Azzeramenti SCORM') }}</th>
+                            @endif
                             @if ($module->type === 'learning_quiz')
                                 <th>{{ __('Tentativi') }}</th>
                                 <th>{{ __('Miglior punteggio') }}</th>
@@ -40,6 +47,13 @@
                                         {{ $moduleProgressStatusLabels[$enrollment->status] ?? $enrollment->status }}
                                     </span>
                                 </td>
+                                @if ($showScormResetCount)
+                                    <td>
+                                        {{ $enrollment->scorm_reset_count === 1
+                                            ? __('1 azzeramento SCORM')
+                                            : __(':count azzeramenti SCORM', ['count' => $enrollment->scorm_reset_count]) }}
+                                    </td>
+                                @endif
                                 @if ($module->type === 'learning_quiz')
                                     <td>
                                         {{ $enrollment->quiz_attempts }} / {{ $module->max_attempts ?? '∞' }}

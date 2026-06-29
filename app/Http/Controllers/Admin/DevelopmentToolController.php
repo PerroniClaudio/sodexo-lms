@@ -41,6 +41,8 @@ class DevelopmentToolController extends Controller
         $targetId = (int) $validated['target_id'];
         $forceReset = (bool) ($validated['force_reset'] ?? false);
 
+        $actorUserId = $request->user()?->getKey();
+
         try {
             $riskAssessment = $this->assessResetSafety($targetType, $targetId);
 
@@ -52,9 +54,9 @@ class DevelopmentToolController extends Controller
             }
 
             match ($targetType) {
-                'module' => $this->resetModuleProgress($targetId),
-                'course' => $this->resetCourseEnrollment($targetId),
-                'training_path' => $this->resetTrainingPathEnrollment($targetId),
+                'module' => $this->resetModuleProgress($targetId, $actorUserId),
+                'course' => $this->resetCourseEnrollment($targetId, $actorUserId),
+                'training_path' => $this->resetTrainingPathEnrollment($targetId, $actorUserId),
             };
         } catch (Throwable $throwable) {
             report($throwable);
@@ -200,9 +202,9 @@ class DevelopmentToolController extends Controller
         return $warnings;
     }
 
-    private function resetModuleProgress(int $moduleProgressId): void
+    private function resetModuleProgress(int $moduleProgressId, ?int $actorUserId = null): void
     {
-        $userId = DB::transaction(function () use ($moduleProgressId): int {
+        $userId = DB::transaction(function () use ($moduleProgressId, $actorUserId): int {
             $progress = ModuleProgress::query()
                 ->with(['courseEnrollment.course'])
                 ->lockForUpdate()
@@ -259,7 +261,8 @@ class DevelopmentToolController extends Controller
                     ->filter(fn (Module $module): bool => $module->order >= $targetModule->order)
                     ->pluck('id')
                     ->map(fn (mixed $id): int => (int) $id)
-                    ->values()
+                    ->values(),
+                $actorUserId,
             );
 
             $enrollment->forceFill([
@@ -275,15 +278,15 @@ class DevelopmentToolController extends Controller
         $this->trainingPathEnrollmentSyncService->syncAllEnrollmentsForUser($userId);
     }
 
-    private function resetCourseEnrollment(int $courseEnrollmentId): void
+    private function resetCourseEnrollment(int $courseEnrollmentId, ?int $actorUserId = null): void
     {
-        $userId = DB::transaction(function () use ($courseEnrollmentId): int {
+        $userId = DB::transaction(function () use ($courseEnrollmentId, $actorUserId): int {
             $enrollment = CourseEnrollment::query()
                 ->with('course')
                 ->lockForUpdate()
                 ->findOrFail($courseEnrollmentId);
 
-            $this->resetCourseEnrollmentState($enrollment);
+            $this->resetCourseEnrollmentState($enrollment, $actorUserId);
 
             return (int) $enrollment->user_id;
         });
@@ -291,9 +294,9 @@ class DevelopmentToolController extends Controller
         $this->trainingPathEnrollmentSyncService->syncAllEnrollmentsForUser($userId);
     }
 
-    private function resetTrainingPathEnrollment(int $trainingPathEnrollmentId): void
+    private function resetTrainingPathEnrollment(int $trainingPathEnrollmentId, ?int $actorUserId = null): void
     {
-        $trainingPathEnrollment = DB::transaction(function () use ($trainingPathEnrollmentId): TrainingPathEnrollment {
+        $trainingPathEnrollment = DB::transaction(function () use ($trainingPathEnrollmentId, $actorUserId): TrainingPathEnrollment {
             $trainingPathEnrollment = TrainingPathEnrollment::query()
                 ->with(['trainingPath.courses'])
                 ->lockForUpdate()
@@ -315,7 +318,7 @@ class DevelopmentToolController extends Controller
                 ->get();
 
             foreach ($courseEnrollments as $courseEnrollment) {
-                $this->resetCourseEnrollmentState($courseEnrollment);
+                $this->resetCourseEnrollmentState($courseEnrollment, $actorUserId);
             }
 
             $trainingPathEnrollment->forceFill([
@@ -328,7 +331,7 @@ class DevelopmentToolController extends Controller
         $this->trainingPathEnrollmentSyncService->syncEnrollment($trainingPathEnrollment->fresh() ?? $trainingPathEnrollment);
     }
 
-    private function resetCourseEnrollmentState(CourseEnrollment $enrollment): void
+    private function resetCourseEnrollmentState(CourseEnrollment $enrollment, ?int $actorUserId = null): void
     {
         $course = $enrollment->course()->firstOrFail();
         $orderedModules = $course->modules()->orderBy('order')->get();
@@ -336,7 +339,8 @@ class DevelopmentToolController extends Controller
 
         $this->scormService->purgeEnrollmentRuntimeData(
             $enrollment,
-            $orderedModules->pluck('id')->map(fn (mixed $id): int => (int) $id)->values()
+            $orderedModules->pluck('id')->map(fn (mixed $id): int => (int) $id)->values(),
+            $actorUserId,
         );
 
         $enrollment->moduleProgresses()->whereNotIn('module_id', $orderedModules->pluck('id')->all())->delete();

@@ -9,10 +9,12 @@ use App\Models\ModuleProgress;
 use App\Models\ScormPackage;
 use App\Models\ScormSession;
 use App\Models\ScormTracking;
+use App\Models\ScormTrackingArchive;
 use App\Models\User;
 use Carbon\CarbonInterface;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -352,10 +354,13 @@ class ScormService
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, int>|null  $moduleIds
+     * @param  Collection<int, int>|null  $moduleIds
      */
-    public function purgeEnrollmentRuntimeData(CourseEnrollment $enrollment, ?\Illuminate\Support\Collection $moduleIds = null): void
-    {
+    public function purgeEnrollmentRuntimeData(
+        CourseEnrollment $enrollment,
+        ?Collection $moduleIds = null,
+        ?int $archivedByUserId = null,
+    ): void {
         $packageIds = ScormPackage::query()
             ->where('course_id', $enrollment->course_id)
             ->when(
@@ -366,6 +371,51 @@ class ScormService
 
         if ($packageIds->isEmpty()) {
             return;
+        }
+
+        $trackingRows = DB::table('scorm_tracking')
+            ->join('scorm_packages', 'scorm_packages.id', '=', 'scorm_tracking.scorm_package_id')
+            ->where('scorm_tracking.course_user_id', $enrollment->getKey())
+            ->whereIn('scorm_tracking.scorm_package_id', $packageIds->all())
+            ->select([
+                'scorm_tracking.id as original_tracking_id',
+                'scorm_tracking.user_id',
+                'scorm_tracking.course_user_id',
+                'scorm_packages.module_id',
+                'scorm_tracking.scorm_package_id',
+                'scorm_tracking.sco_identifier',
+                'scorm_tracking.element',
+                'scorm_tracking.value',
+                'scorm_tracking.tracked_at',
+                'scorm_tracking.session_id',
+            ])
+            ->get();
+
+        if ($trackingRows->isNotEmpty()) {
+            $archivedAt = now();
+            $resetBatchUuid = (string) Str::uuid();
+
+            ScormTrackingArchive::query()->insert(
+                $trackingRows
+                    ->map(fn (object $trackingRow): array => [
+                        'original_tracking_id' => (int) $trackingRow->original_tracking_id,
+                        'user_id' => (int) $trackingRow->user_id,
+                        'course_user_id' => (int) $trackingRow->course_user_id,
+                        'module_id' => (int) $trackingRow->module_id,
+                        'scorm_package_id' => (int) $trackingRow->scorm_package_id,
+                        'reset_batch_uuid' => $resetBatchUuid,
+                        'archived_by_user_id' => $archivedByUserId,
+                        'sco_identifier' => (string) $trackingRow->sco_identifier,
+                        'element' => (string) $trackingRow->element,
+                        'value' => $trackingRow->value,
+                        'tracked_at' => $trackingRow->tracked_at,
+                        'session_id' => $trackingRow->session_id,
+                        'archived_at' => $archivedAt,
+                        'created_at' => $archivedAt,
+                        'updated_at' => $archivedAt,
+                    ])
+                    ->all()
+            );
         }
 
         ScormTracking::query()
@@ -855,8 +905,7 @@ class ScormService
         ScormPackage $package,
         string $scoIdentifier,
         ?int $courseEnrollmentId,
-    ): array
-    {
+    ): array {
         $query = ScormTracking::query()
             ->where('user_id', $user->getKey())
             ->where('scorm_package_id', $package->getKey())
@@ -1386,8 +1435,7 @@ class ScormService
         ScormPackage $package,
         CourseEnrollment $enrollment,
         string $element,
-    ): ?string
-    {
+    ): ?string {
         $values = ScormTracking::query()
             ->where('user_id', $user->getKey())
             ->where('course_user_id', $enrollment->getKey())
