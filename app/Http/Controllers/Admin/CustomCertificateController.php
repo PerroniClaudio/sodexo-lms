@@ -235,11 +235,9 @@ class CustomCertificateController extends Controller
     {
         abort_unless($documentConversionJob->hasGeneratedFile(), 404);
 
-        $disk = Storage::disk($documentConversionJob->output_disk);
+        abort_unless(Storage::exists($documentConversionJob->output_path), 404);
 
-        abort_unless($disk->exists($documentConversionJob->output_path), 404);
-
-        return $disk->download(
+        return Storage::download(
             $documentConversionJob->output_path,
             $documentConversionJob->outputFileName()
         );

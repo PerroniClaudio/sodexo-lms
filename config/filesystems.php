@@ -34,7 +34,7 @@ return [
     |
     */
 
-    'default' => env('FILESYSTEM_DISK', 'local'),
+    'default' => env('FILESYSTEM_DISK', $cloudDiskConfig === [] ? 'local' : 'cloud'),
 
     'cloud' => env('FILESYSTEM_CLOUD_DISK', $cloudDiskConfig === [] ? 's3' : 'cloud'),
 
