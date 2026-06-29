@@ -32,6 +32,13 @@ class ScormPackageController extends Controller
         ScormService $scormService,
     ): RedirectResponse {
         $this->abortUnlessScormModule($course, $module);
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.modules.scorm.index', [$course, $module])
+                ->with('error', $exception->getMessage());
+        }
 
         try {
             $scormService->storeUploadedPackage(
@@ -62,6 +69,13 @@ class ScormPackageController extends Controller
     ): RedirectResponse {
         $this->abortUnlessScormModule($course, $module);
         abort_unless($scormPackage->module_id === $module->getKey(), 404);
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.modules.scorm.index', [$course, $module])
+                ->with('error', $exception->getMessage());
+        }
 
         $scormService->deletePackage($scormPackage);
 

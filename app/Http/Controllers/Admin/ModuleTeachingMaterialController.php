@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\File;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -19,6 +20,13 @@ class ModuleTeachingMaterialController extends Controller
     public function store(Request $request, Course $course, Module $module): RedirectResponse
     {
         $this->ensureVideoModule($course, $module);
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.modules.edit', [$course, $module])
+                ->with('error', $exception->getMessage());
+        }
 
         $validated = $request->validate([
             'materials' => ['required', 'array', 'min:1'],
@@ -71,6 +79,13 @@ class ModuleTeachingMaterialController extends Controller
     {
         $this->ensureVideoModule($course, $module);
         $this->ensureMaterialBelongsToModule($module, $moduleTeachingMaterial);
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.modules.edit', [$course, $module])
+                ->with('error', $exception->getMessage());
+        }
 
         Storage::disk($moduleTeachingMaterial->disk)->delete($moduleTeachingMaterial->path);
         $moduleTeachingMaterial->delete();

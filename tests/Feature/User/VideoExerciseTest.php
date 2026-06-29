@@ -308,3 +308,15 @@ it('exports user activity for a video exercise as xlsx', function () {
 
     @unlink($temporaryFile);
 });
+
+it('shows an error flash instead of deleting video exercises from a published module', function () {
+    [, $course, $module, , $exercise] = videoExerciseScenario();
+
+    $module->forceFill(['status' => 'published'])->saveQuietly();
+
+    $this->delete(route('admin.courses.modules.video-exercises.destroy', [$course, $module, $exercise]))
+        ->assertRedirect(route('admin.courses.modules.edit', [$course, $module]))
+        ->assertSessionHas('error', 'Non è possibile modificare o eliminare contenuti di un modulo pubblicato.');
+
+    expect(VideoExercise::query()->whereKey($exercise->getKey())->exists())->toBeTrue();
+});

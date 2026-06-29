@@ -124,6 +124,22 @@ it('redirects back with an error flash when trying to create a module for a publ
     expect(Module::query()->count())->toBe(0);
 });
 
+it('redirects with an error flash when trying to delete a published module', function () {
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'belongsTo' => (string) $course->getKey(),
+        'status' => 'published',
+    ]);
+
+    $response = $this->delete(route('admin.courses.modules.destroy', [$course, $module]));
+
+    $response->assertRedirect(route('admin.courses.edit', $course));
+    $response->assertSessionHas('error', 'Non è possibile eliminare un modulo pubblicato.');
+
+    expect($module->fresh())->not->toBeNull();
+    expect($module->fresh()?->trashed())->toBeFalse();
+});
+
 it('rejects module types that are not allowed for the course type', function () {
     $course = Course::factory()->create([
         'type' => 'fad',

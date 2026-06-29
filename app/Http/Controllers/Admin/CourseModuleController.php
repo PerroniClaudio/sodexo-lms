@@ -325,6 +325,13 @@ class CourseModuleController extends Controller
     {
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
         abort_unless($module->supportsStaffAssignments(), 404);
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.modules.edit', [$course, $module])
+                ->with('error', $exception->getMessage());
+        }
 
         $teacherIds = collect($request->validated('teacher_ids'))
             ->map(fn (mixed $teacherId): int => (int) $teacherId)
@@ -372,6 +379,13 @@ class CourseModuleController extends Controller
     {
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
         abort_unless($module->supportsStaffAssignments(), 404);
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.modules.edit', [$course, $module])
+                ->with('error', $exception->getMessage());
+        }
 
         $tutorIds = collect($request->validated('tutor_ids'))
             ->map(fn (mixed $tutorId): int => (int) $tutorId)
@@ -423,6 +437,13 @@ class CourseModuleController extends Controller
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
         abort_unless($module->supportsStaffAssignments(), 404);
         abort_unless($teacherEnrollment->module_id === $module->getKey(), 404);
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.modules.edit', [$course, $module])
+                ->with('error', $exception->getMessage());
+        }
 
         $teacherEnrollment->delete();
 
@@ -439,6 +460,13 @@ class CourseModuleController extends Controller
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
         abort_unless($module->supportsStaffAssignments(), 404);
         abort_unless($tutorEnrollment->module_id === $module->getKey(), 404);
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.modules.edit', [$course, $module])
+                ->with('error', $exception->getMessage());
+        }
 
         $tutorEnrollment->delete();
 
@@ -530,8 +558,13 @@ class CourseModuleController extends Controller
     public function destroy(Course $course, Module $module): RedirectResponse
     {
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
-
-        $module->delete();
+        try {
+            $module->delete();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.edit', $course)
+                ->with('error', $exception->getMessage());
+        }
 
         return redirect()
             ->route('admin.courses.edit', $course)
@@ -679,8 +712,13 @@ class CourseModuleController extends Controller
         if (! $videoId || ! Video::find($videoId)) {
             return response()->json(['success' => false, 'message' => 'Video non valido'], 422);
         }
-        $module->video_id = $videoId;
-        $module->save();
+        try {
+            $module->ensureContentIsEditable();
+            $module->video_id = $videoId;
+            $module->save();
+        } catch (RuntimeException $exception) {
+            return response()->json(['success' => false, 'message' => $exception->getMessage()], 422);
+        }
 
         return response()->json(['success' => true, 'video_id' => $videoId]);
     }
@@ -690,8 +728,13 @@ class CourseModuleController extends Controller
      */
     public function unassignVideoFromModule(Module $module): JsonResponse
     {
-        $module->video_id = null;
-        $module->save();
+        try {
+            $module->ensureContentIsEditable();
+            $module->video_id = null;
+            $module->save();
+        } catch (RuntimeException $exception) {
+            return response()->json(['success' => false, 'message' => $exception->getMessage()], 422);
+        }
 
         return response()->json(['success' => true]);
     }

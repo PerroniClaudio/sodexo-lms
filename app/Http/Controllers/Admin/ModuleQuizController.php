@@ -10,6 +10,7 @@ use App\Models\ModuleQuizAnswer;
 use App\Models\ModuleQuizQuestion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use RuntimeException;
 use Spatie\LaravelPdf\Facades\Pdf;
 
 class ModuleQuizController extends Controller
@@ -20,11 +21,10 @@ class ModuleQuizController extends Controller
     public function questionsWithAnswersApi(Course $course, Module $module)
     {
         $questions = $module->quizQuestions()->with(['answers'])->orderBy('id')->get()->makeVisible('correct_answer_id');
-        // Aggiungi isValid a ciascuna domanda (senza controllo method_exists)
-        $questions = $questions->map(function ($q) {
-            $q->isValid = $q->isValid();
+        $questions = $questions->map(function ($question) {
+            $question->isValid = $question->isValid();
 
-            return $q;
+            return $question;
         });
 
         return response()->json([
@@ -232,8 +232,10 @@ class ModuleQuizController extends Controller
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
         abort_unless($module->type === Module::TYPE_LEARNING_QUIZ, 404);
 
-        if ($module->status === 'published') {
-            abort(422, __('Non Ã¨ possibile modificare domande o risposte di un quiz pubblicato.'));
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            abort(422, $exception->getMessage());
         }
     }
 }

@@ -92,6 +92,7 @@ class CourseEnrollmentDetailController extends Controller
         return view('admin.course-enrollments.show', [
             'course' => $course,
             'enrollment' => $enrollment,
+            'enrollmentStatusLabel' => $this->enrollmentStatusLabel($enrollment->status),
             'moduleRows' => $moduleRows,
             'moduleTypeLabels' => Module::availableTypeLabels(),
             'isSuperadmin' => request()->user()?->hasRole('superadmin') ?? false,
@@ -371,5 +372,17 @@ class CourseEnrollmentDetailController extends Controller
         $seconds = max(0, $seconds);
 
         return sprintf('%02d:%02d:%02d', intdiv($seconds, 3600), intdiv($seconds % 3600, 60), $seconds % 60);
+    }
+
+    private function enrollmentStatusLabel(string $status): string
+    {
+        return match ($status) {
+            CourseEnrollment::STATUS_ASSIGNED => __('course-enrollment.statuses.assigned'),
+            CourseEnrollment::STATUS_IN_PROGRESS => __('course-enrollment.statuses.in_progress'),
+            CourseEnrollment::STATUS_COMPLETED => __('course-enrollment.statuses.completed'),
+            CourseEnrollment::STATUS_EXPIRED => __('course-enrollment.statuses.expired'),
+            CourseEnrollment::STATUS_CANCELLED => __('course-enrollment.statuses.cancelled'),
+            default => $status,
+        };
     }
 }

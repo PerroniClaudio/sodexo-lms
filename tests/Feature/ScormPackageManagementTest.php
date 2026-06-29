@@ -2,6 +2,7 @@
 
 use App\Models\Course;
 use App\Models\Module;
+use App\Models\ScormPackage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 
@@ -61,4 +62,34 @@ it('rejects invalid SCORM uploads from the admin area', function () {
 
     expect($module->scormPackages()->count())->toBe(1);
     expect($module->scormPackages()->firstOrFail()->status)->toBe('error');
+});
+
+it('shows an error flash instead of deleting a package from a published module', function () {
+    Storage::fake('local');
+    actingAsRole('admin');
+    $this->withoutVite();
+
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => Module::TYPE_SCORM,
+        'status' => 'published',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+    $package = ScormPackage::query()->create([
+        'course_id' => $course->getKey(),
+        'module_id' => $module->getKey(),
+        'title' => 'Pacchetto sicurezza',
+        'entry_point' => 'lesson/index.html',
+        'file_path' => 'scorm/test.zip',
+        'extracted_path' => 'scorm/test',
+        'status' => ScormPackage::STATUS_READY,
+    ]);
+
+    $response = $this->delete(route('admin.courses.modules.scorm.destroy', [$course, $module, $package]));
+
+    $response
+        ->assertRedirect(route('admin.courses.modules.scorm.index', [$course, $module]))
+        ->assertSessionHas('error', 'Non è possibile modificare o eliminare contenuti di un modulo pubblicato.');
+
+    expect(ScormPackage::query()->whereKey($package->getKey())->exists())->toBeTrue();
 });

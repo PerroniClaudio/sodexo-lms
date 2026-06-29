@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\File;
 use Illuminate\View\View;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -32,6 +33,13 @@ class VideoExerciseController extends Controller
     public function store(Request $request, Course $course, Module $module): RedirectResponse
     {
         $this->ensureVideoModule($course, $module);
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.modules.edit', [$course, $module])
+                ->with('error', $exception->getMessage());
+        }
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -96,6 +104,13 @@ class VideoExerciseController extends Controller
     public function update(Request $request, Course $course, Module $module, VideoExercise $videoExercise): RedirectResponse
     {
         $this->ensureVideoExercise($course, $module, $videoExercise);
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.modules.video-exercises.edit', [$course, $module, $videoExercise])
+                ->with('error', $exception->getMessage());
+        }
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -122,6 +137,13 @@ class VideoExerciseController extends Controller
     public function destroy(Course $course, Module $module, VideoExercise $videoExercise): RedirectResponse
     {
         $this->ensureVideoExercise($course, $module, $videoExercise);
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.modules.edit', [$course, $module])
+                ->with('error', $exception->getMessage());
+        }
 
         foreach ($videoExercise->materials as $material) {
             if ($material->type === VideoExerciseMaterial::TYPE_FILE && $material->disk && $material->path) {
@@ -143,6 +165,13 @@ class VideoExerciseController extends Controller
     public function storeMaterial(Request $request, Course $course, Module $module, VideoExercise $videoExercise): RedirectResponse
     {
         $this->ensureVideoExercise($course, $module, $videoExercise);
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.modules.video-exercises.edit', [$course, $module, $videoExercise])
+                ->with('error', $exception->getMessage());
+        }
 
         $validated = $request->validate([
             'type' => ['required', 'string', 'in:file,video,text'],
@@ -209,6 +238,13 @@ class VideoExerciseController extends Controller
         $this->ensureVideoExercise($course, $module, $videoExercise);
         abort_unless($material->video_exercise_id === $videoExercise->getKey(), Response::HTTP_NOT_FOUND);
         abort_unless(in_array($material->type, [VideoExerciseMaterial::TYPE_VIDEO, VideoExerciseMaterial::TYPE_TEXT], true), Response::HTTP_NOT_FOUND);
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.modules.video-exercises.edit', [$course, $module, $videoExercise])
+                ->with('error', $exception->getMessage());
+        }
 
         $rules = [
             'title' => ['required', 'string', 'max:255'],
@@ -240,6 +276,13 @@ class VideoExerciseController extends Controller
     {
         $this->ensureVideoExercise($course, $module, $videoExercise);
         abort_unless($material->video_exercise_id === $videoExercise->getKey(), Response::HTTP_NOT_FOUND);
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.modules.video-exercises.edit', [$course, $module, $videoExercise])
+                ->with('error', $exception->getMessage());
+        }
 
         if ($material->type === VideoExerciseMaterial::TYPE_FILE && $material->disk && $material->path) {
             Storage::disk($material->disk)->delete($material->path);
@@ -255,6 +298,13 @@ class VideoExerciseController extends Controller
     public function storeQuestion(Request $request, Course $course, Module $module, VideoExercise $videoExercise): RedirectResponse
     {
         $this->ensureVideoExercise($course, $module, $videoExercise);
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.modules.video-exercises.edit', [$course, $module, $videoExercise])
+                ->with('error', $exception->getMessage());
+        }
 
         $validated = $request->validate([
             'text' => ['required', 'string'],
@@ -275,6 +325,13 @@ class VideoExerciseController extends Controller
     {
         $this->ensureVideoExercise($course, $module, $videoExercise);
         abort_unless($question->video_exercise_id === $videoExercise->getKey(), Response::HTTP_NOT_FOUND);
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.modules.video-exercises.edit', [$course, $module, $videoExercise])
+                ->with('error', $exception->getMessage());
+        }
 
         $validated = $request->validate([
             'text' => ['required', 'string'],
@@ -292,6 +349,13 @@ class VideoExerciseController extends Controller
     {
         $this->ensureVideoExercise($course, $module, $videoExercise);
         abort_unless($question->video_exercise_id === $videoExercise->getKey(), Response::HTTP_NOT_FOUND);
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.modules.video-exercises.edit', [$course, $module, $videoExercise])
+                ->with('error', $exception->getMessage());
+        }
 
         $question->delete();
 
@@ -303,6 +367,13 @@ class VideoExerciseController extends Controller
     public function destroySelfEvaluation(Course $course, Module $module, VideoExercise $videoExercise): RedirectResponse
     {
         $this->ensureVideoExercise($course, $module, $videoExercise);
+        try {
+            $module->ensureContentIsEditable();
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.courses.modules.video-exercises.edit', [$course, $module, $videoExercise])
+                ->with('error', $exception->getMessage());
+        }
 
         if ($videoExercise->self_evaluation_disk && $videoExercise->self_evaluation_path) {
             Storage::disk($videoExercise->self_evaluation_disk)->delete($videoExercise->self_evaluation_path);

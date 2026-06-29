@@ -13,7 +13,7 @@ describe('ModuleObserver', function () {
     it('prevents publishing invalid module', function () {
         $module = Module::factory()->create([
             'type' => 'video',
-            'video_id' => null, // Invalid!
+            'video_id' => null,
             'status' => 'draft',
         ]);
 
@@ -50,6 +50,15 @@ describe('ModuleObserver', function () {
             ->toThrow(RuntimeException::class, 'Non è possibile modificare i dati del modulo quando è pubblicato');
     });
 
+    it('prevents deleting a published module', function () {
+        $module = Module::factory()->create([
+            'status' => 'published',
+        ]);
+
+        expect(fn () => $module->delete())
+            ->toThrow(RuntimeException::class, 'Non è possibile eliminare un modulo pubblicato.');
+    });
+
     it('allows changing status of published module back to draft', function () {
         $video = Video::factory()->create(['mux_video_status' => 'ready']);
 
@@ -77,7 +86,6 @@ describe('ModuleObserver', function () {
             'status' => 'published',
         ]);
 
-        // Create enrollment
         $user = User::factory()->create();
         CourseEnrollment::factory()->create([
             'course_id' => $course->id,
@@ -100,13 +108,12 @@ describe('ModuleObserver', function () {
             'status' => 'published',
         ]);
 
-        // Create and soft delete enrollment
         $user = User::factory()->create();
         $enrollment = CourseEnrollment::factory()->create([
             'course_id' => $course->id,
             'user_id' => $user->id,
         ]);
-        $enrollment->delete(); // Soft delete
+        $enrollment->delete();
 
         expect(fn () => $module->update(['status' => 'draft']))
             ->toThrow(RuntimeException::class, 'Non è possibile rimuovere la pubblicazione del modulo perché ci sono iscrizioni associate');
@@ -127,5 +134,17 @@ describe('ModuleObserver', function () {
 
         expect(fn () => $module->update(['title' => 'New Title']))
             ->toThrow(RuntimeException::class, 'Non è possibile modificare il modulo perché il corso associato è pubblicato');
+    });
+
+    it('prevents deleting a module when the course is published', function () {
+        $course = Course::factory()->create(['status' => 'published']);
+
+        $module = Module::factory()->create([
+            'belongsTo' => $course->id,
+            'status' => 'draft',
+        ]);
+
+        expect(fn () => $module->delete())
+            ->toThrow(RuntimeException::class, 'Non è possibile eliminare il modulo perché il corso associato è pubblicato.');
     });
 });

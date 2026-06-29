@@ -97,3 +97,33 @@ it('deletes teaching materials and stored files', function () {
     Storage::disk('s3')->assertMissing($material->path);
     expect(ModuleTeachingMaterial::query()->whereKey($material->getKey())->exists())->toBeFalse();
 });
+
+it('shows an error flash instead of deleting teaching materials from a published module', function () {
+    config(['filesystems.default' => 's3']);
+    Storage::fake('s3');
+
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => Module::TYPE_VIDEO,
+        'status' => 'published',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+    $material = $module->teachingMaterials()->create([
+        'uploaded_by' => auth()->id(),
+        'disk' => 's3',
+        'path' => 'modules/'.$module->getKey().'/teaching-materials/dispensa.pdf',
+        'original_name' => 'dispensa.pdf',
+        'mime_type' => 'application/pdf',
+        'size_bytes' => 12,
+        'uploaded_at' => now(),
+    ]);
+
+    Storage::disk('s3')->put($material->path, 'pdf');
+
+    $this->delete(route('admin.courses.modules.teaching-materials.destroy', [$course, $module, $material]))
+        ->assertRedirect(route('admin.courses.modules.edit', [$course, $module]))
+        ->assertSessionHas('error', 'Non è possibile modificare o eliminare contenuti di un modulo pubblicato.');
+
+    Storage::disk('s3')->assertExists($material->path);
+    expect(ModuleTeachingMaterial::query()->whereKey($material->getKey())->exists())->toBeTrue();
+});

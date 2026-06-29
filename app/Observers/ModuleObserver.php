@@ -71,6 +71,16 @@ class ModuleObserver
     }
 
     /**
+     * Handle the Module "deleting" event.
+     *
+     * @throws RuntimeException
+     */
+    public function deleting(Module $module): void
+    {
+        $module->ensureDeletable();
+    }
+
+    /**
      * Validate module can be published.
      *
      *

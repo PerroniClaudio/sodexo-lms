@@ -47,3 +47,24 @@ it('blocks editing quiz answers when the learning quiz is published', function (
         'text' => 'Risposta aggiornata',
     ])->assertStatus(422);
 });
+
+it('blocks editing quiz questions when the parent course is published', function () {
+    $course = Course::factory()->create([
+        'status' => 'published',
+    ]);
+    $module = Module::factory()->create([
+        'type' => Module::TYPE_LEARNING_QUIZ,
+        'status' => 'draft',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+    $question = ModuleQuizQuestion::query()->create([
+        'module_id' => $module->getKey(),
+        'text' => 'Domanda',
+        'points' => 1,
+    ]);
+
+    $this->putJson(route('admin.api.courses.modules.quiz.questions.update', [$course, $module, $question]), [
+        'text' => 'Domanda aggiornata',
+        'points' => 2,
+    ])->assertStatus(422);
+});

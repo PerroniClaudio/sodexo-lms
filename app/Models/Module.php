@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use RuntimeException;
 
 class Module extends Model
 {
@@ -464,5 +465,41 @@ class Module extends Model
     public function submissions(): HasMany
     {
         return $this->quizSubmissions();
+    }
+
+    /**
+     * @throws RuntimeException
+     */
+    public function ensureContentIsEditable(): void
+    {
+        if ($this->course?->status === 'published') {
+            throw new RuntimeException(
+                'Non è possibile modificare il modulo perché il corso associato è pubblicato.'
+            );
+        }
+
+        if ($this->status === 'published') {
+            throw new RuntimeException(
+                'Non è possibile modificare o eliminare contenuti di un modulo pubblicato.'
+            );
+        }
+    }
+
+    /**
+     * @throws RuntimeException
+     */
+    public function ensureDeletable(): void
+    {
+        if ($this->course?->status === 'published') {
+            throw new RuntimeException(
+                'Non è possibile eliminare il modulo perché il corso associato è pubblicato.'
+            );
+        }
+
+        if ($this->status === 'published') {
+            throw new RuntimeException(
+                'Non è possibile eliminare un modulo pubblicato.'
+            );
+        }
     }
 }
