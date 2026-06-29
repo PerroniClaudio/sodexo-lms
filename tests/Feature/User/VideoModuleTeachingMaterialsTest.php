@@ -39,6 +39,7 @@ function videoModuleWithTeachingMaterial(): array
 }
 
 beforeEach(function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     $this->withoutVite();
 });

@@ -14,8 +14,6 @@ use RuntimeException;
 
 class CourseCertificateGenerator
 {
-    private const STORAGE_DISK = 's3';
-
     public function __construct(
         private readonly CertificateEligibilityService $certificateEligibilityService,
         private readonly CertificateVariableResolver $certificateVariableResolver,
@@ -65,7 +63,7 @@ class CourseCertificateGenerator
         $temporaryPath = $this->docxTemplateRenderer->renderToTemporaryPath($certificate, $variables);
 
         try {
-            $inputPath = Storage::disk(self::STORAGE_DISK)->putFileAs(
+            $inputPath = Storage::putFileAs(
                 'certificates/word',
                 new File($temporaryPath),
                 $this->outputFileName($enrollment, $certificate->type)
@@ -77,9 +75,9 @@ class CourseCertificateGenerator
 
             return DocumentConversionJob::query()->create([
                 'status' => DocumentConversionJobStatus::PENDING,
-                'input_disk' => self::STORAGE_DISK,
+                'input_disk' => Storage::getDefaultDriver(),
                 'input_path' => $inputPath,
-                'output_disk' => self::STORAGE_DISK,
+                'output_disk' => Storage::getDefaultDriver(),
                 'output_path' => (string) str($inputPath)->replaceEnd('.docx', '.pdf'),
             ]);
         } finally {

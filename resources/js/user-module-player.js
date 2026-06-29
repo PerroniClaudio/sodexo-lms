@@ -53,8 +53,8 @@ if (!root) {
                 muxPlayer.setAttribute('stream-type', 'on-demand');
                 muxPlayer.setAttribute('src', `https://stream.mux.com/${data.playback_id}.m3u8?token=${data.token}`);
                 muxPlayer.setAttribute('metadata-video-title', root.dataset.moduleTitle ?? '');
-                muxPlayer.setAttribute('primary-color', '#2563eb');
-                muxPlayer.setAttribute('accent-color', '#2563eb');
+                muxPlayer.setAttribute('primary-color', '#ffffff');
+                muxPlayer.setAttribute('accent-color', '#ffffff');
                 muxPlayer.setAttribute('style', 'width:100%;border-radius:8px;');
                 applyMuxPlayerRestrictions(muxPlayer);
 

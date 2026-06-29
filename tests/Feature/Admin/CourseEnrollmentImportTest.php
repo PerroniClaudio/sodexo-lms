@@ -28,6 +28,7 @@ it('shows the user courses import page and navigation entry', function () {
 });
 
 it('queues a course enrollment import from excel upload', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     Queue::fake();
 
@@ -96,6 +97,7 @@ it('downloads course enrollment import template', function () {
 });
 
 it('enrolls user into a published course through the import', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     test()->seed(RoleAndPermissionSeeder::class);
@@ -134,6 +136,7 @@ it('enrolls user into a published course through the import', function () {
 });
 
 it('fails the course enrollment import when the user is outside the configured recipients', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     test()->seed(RoleAndPermissionSeeder::class);

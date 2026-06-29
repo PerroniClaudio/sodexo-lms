@@ -20,6 +20,7 @@ it('shows course documents section', function () {
 });
 
 it('stores course documents on s3', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     $course = Course::factory()->create();
@@ -43,6 +44,7 @@ it('stores course documents on s3', function () {
 });
 
 it('downloads course documents', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     $course = Course::factory()->create();
@@ -64,6 +66,7 @@ it('downloads course documents', function () {
 });
 
 it('deletes course documents and stored files', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     $course = Course::factory()->create();

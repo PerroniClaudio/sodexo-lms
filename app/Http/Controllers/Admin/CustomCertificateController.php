@@ -26,8 +26,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CustomCertificateController extends Controller
 {
-    private const STORAGE_DISK = 's3';
-
     public function __construct(
         private readonly ActivateCustomCertificateTemplate $activateCustomCertificateTemplate
     ) {}
@@ -196,7 +194,7 @@ class CustomCertificateController extends Controller
                 now()->format('Ymd')
             );
 
-            $inputPath = Storage::disk(self::STORAGE_DISK)->putFileAs(
+            $inputPath = Storage::putFileAs(
                 'certificates/word',
                 new File($temporaryPath),
                 $fileName
@@ -208,9 +206,9 @@ class CustomCertificateController extends Controller
 
             $conversionJob = DocumentConversionJob::query()->create([
                 'status' => DocumentConversionJobStatus::PENDING,
-                'input_disk' => self::STORAGE_DISK,
+                'input_disk' => Storage::getDefaultDriver(),
                 'input_path' => $inputPath,
-                'output_disk' => self::STORAGE_DISK,
+                'output_disk' => Storage::getDefaultDriver(),
                 'output_path' => (string) str($inputPath)->replaceEnd('.docx', '.pdf'),
             ]);
 
@@ -237,11 +235,9 @@ class CustomCertificateController extends Controller
     {
         abort_unless($documentConversionJob->hasGeneratedFile(), 404);
 
-        $disk = Storage::disk($documentConversionJob->output_disk);
+        abort_unless(Storage::exists($documentConversionJob->output_path), 404);
 
-        abort_unless($disk->exists($documentConversionJob->output_path), 404);
-
-        return $disk->download(
+        return Storage::download(
             $documentConversionJob->output_path,
             $documentConversionJob->outputFileName()
         );

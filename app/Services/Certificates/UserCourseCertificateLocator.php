@@ -2,18 +2,17 @@
 
 namespace App\Services\Certificates;
 
+use App\Enums\DocumentConversionJobStatus;
 use App\Models\CourseEnrollment;
 use App\Models\CustomCertificate;
-use Illuminate\Contracts\Filesystem\Filesystem;
+use App\Models\DocumentConversionJob;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class UserCourseCertificateLocator
 {
-    private const STORAGE_DISK = 's3';
-
     /**
-     * @return array{disk: Filesystem, download_name: string, path: string}|null
+     * @return array{download_name: string, path: string}|null
      */
     public function locate(CourseEnrollment $courseEnrollment, ?string $type = null): ?array
     {
@@ -33,7 +32,7 @@ class UserCourseCertificateLocator
     }
 
     /**
-     * @return array<string, array{disk: Filesystem, download_name: string, label: string, path: string, type: string}>
+     * @return array<string, array{download_name: string, label: string, path: string, type: string}>
      */
     public function locateAll(CourseEnrollment $courseEnrollment): array
     {
@@ -52,8 +51,33 @@ class UserCourseCertificateLocator
         return $certificates;
     }
 
+    public function hasPendingGeneration(CourseEnrollment $courseEnrollment): bool
+    {
+        foreach (CustomCertificate::availableTypes() as $type) {
+            $path = $this->certificatePath($courseEnrollment, $type);
+
+            if ($path === null || Storage::exists($path)) {
+                continue;
+            }
+
+            $hasPendingJob = DocumentConversionJob::query()
+                ->where('output_path', $path)
+                ->whereIn('status', [
+                    DocumentConversionJobStatus::PENDING,
+                    DocumentConversionJobStatus::PROCESSING,
+                ])
+                ->exists();
+
+            if ($hasPendingJob) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
-     * @return array{disk: Filesystem, download_name: string, label: string, path: string, type: string}|null
+     * @return array{download_name: string, label: string, path: string, type: string}|null
      */
     private function locateByType(CourseEnrollment $courseEnrollment, string $type): ?array
     {
@@ -61,6 +85,27 @@ class UserCourseCertificateLocator
             return null;
         }
 
+        $path = $this->certificatePath($courseEnrollment, $type);
+
+        if ($path === null || ! Storage::exists($path)) {
+            return null;
+        }
+
+        return [
+            'path' => $path,
+            'type' => $type,
+            'label' => CustomCertificate::availableTypeLabels()[$type] ?? $type,
+            'download_name' => sprintf(
+                'attestato-%s-corso-%s-%s.pdf',
+                $type === CustomCertificate::TYPE_COMPLETION ? 'superamento' : 'partecipazione',
+                $courseEnrollment->course->getKey(),
+                $courseEnrollment->completed_at->format('Ymd')
+            ),
+        ];
+    }
+
+    private function certificatePath(CourseEnrollment $courseEnrollment, string $type): ?string
+    {
         $courseEnrollment->loadMissing('course', 'user');
 
         if ($courseEnrollment->completed_at === null) {
@@ -73,31 +118,12 @@ class UserCourseCertificateLocator
                 ->value()
         );
 
-        $path = sprintf(
+        return sprintf(
             'certificates/word/%s_%s_%s_%s.pdf',
             $courseEnrollment->course->getKey(),
             $userFiscalCode,
             $courseEnrollment->completed_at->format('Ymd'),
             $type
         );
-
-        $disk = Storage::disk(self::STORAGE_DISK);
-
-        if (! $disk->exists($path)) {
-            return null;
-        }
-
-        return [
-            'disk' => $disk,
-            'path' => $path,
-            'type' => $type,
-            'label' => CustomCertificate::availableTypeLabels()[$type] ?? $type,
-            'download_name' => sprintf(
-                'attestato-%s-corso-%s-%s.pdf',
-                $type === CustomCertificate::TYPE_COMPLETION ? 'superamento' : 'partecipazione',
-                $courseEnrollment->course->getKey(),
-                $courseEnrollment->completed_at->format('Ymd')
-            ),
-        ];
     }
 }

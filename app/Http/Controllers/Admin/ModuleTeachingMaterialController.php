@@ -16,8 +16,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ModuleTeachingMaterialController extends Controller
 {
-    private const DISK = 's3';
-
     public function store(Request $request, Course $course, Module $module): RedirectResponse
     {
         $this->ensureVideoModule($course, $module);
@@ -35,13 +33,12 @@ class ModuleTeachingMaterialController extends Controller
             $extension = $file->getClientOriginalExtension() ?: $file->extension() ?: 'bin';
             $storedPath = $file->storeAs(
                 'modules/'.$module->getKey().'/teaching-materials',
-                Str::uuid().'.'.$extension,
-                self::DISK,
+                Str::uuid().'.'.$extension
             );
 
             $module->teachingMaterials()->create([
                 'uploaded_by' => $request->user()?->getKey(),
-                'disk' => self::DISK,
+                'disk' => Storage::getDefaultDriver(),
                 'path' => $storedPath,
                 'original_name' => $file->getClientOriginalName(),
                 'mime_type' => $file->getClientMimeType(),

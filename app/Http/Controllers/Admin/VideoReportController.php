@@ -82,7 +82,7 @@ class VideoReportController extends Controller
                 : null,
             'date_from' => $validated['date_from'],
             'date_to' => $validated['date_to'],
-            'output_disk' => 's3',
+            'output_disk' => Storage::getDefaultDriver(),
         ]);
 
         GenerateVideoReport::dispatch($videoReportRequest);

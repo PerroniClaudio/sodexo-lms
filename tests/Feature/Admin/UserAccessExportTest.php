@@ -199,6 +199,7 @@ it('returns status payload for queued user group export', function () {
 });
 
 it('allows admins to download completed queued user group export files', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     actingAsRole('admin');
 

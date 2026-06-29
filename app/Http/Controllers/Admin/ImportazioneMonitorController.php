@@ -56,11 +56,10 @@ class ImportazioneMonitorController extends Controller
 
     public function download(Importazione $importazione): StreamedResponse
     {
-        $disk = Storage::disk(Importazione::STORAGE_DISK);
 
-        abort_unless($disk->exists($importazione->file_path), 404);
+        abort_unless(Storage::exists($importazione->file_path), 404);
 
-        return $disk->download(
+        return Storage::download(
             $importazione->file_path,
             $importazione->fileName(),
         );

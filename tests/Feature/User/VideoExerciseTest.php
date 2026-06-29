@@ -18,6 +18,7 @@ use Spatie\LaravelPdf\Facades\Pdf;
 use Spatie\LaravelPdf\PdfBuilder;
 
 beforeEach(function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     $this->withoutVite();
 });

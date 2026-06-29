@@ -41,8 +41,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CourseClassController extends Controller
 {
-    private const ATTENDANCE_REGISTER_DISK = 's3';
-
     public function index(Course $course): JsonResponse
     {
         $this->abortUnlessCourseSupportsClasses($course);
@@ -123,15 +121,14 @@ class CourseClassController extends Controller
         $file = $request->file('register_file');
         $path = $file->storeAs(
             'course-classes/'.$courseClass->getKey().'/attendance-register',
-            Str::uuid().'.'.($file->getClientOriginalExtension() ?: 'pdf'),
-            self::ATTENDANCE_REGISTER_DISK,
+            Str::uuid().'.'.($file->getClientOriginalExtension() ?: 'pdf')
         );
 
         DB::table('course_class_attendance_register_files')->updateOrInsert(
             ['course_class_id' => $courseClass->getKey()],
             [
                 'uploaded_by_user_id' => $request->user()->getKey(),
-                'disk' => self::ATTENDANCE_REGISTER_DISK,
+                'disk' => Storage::getDefaultDriver(),
                 'path' => $path,
                 'original_name' => $file->getClientOriginalName(),
                 'mime_type' => $file->getClientMimeType(),

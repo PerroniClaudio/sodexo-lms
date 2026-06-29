@@ -98,8 +98,8 @@ function createMuxPlayer({
         `https://stream.mux.com/${playbackData.playback_id}.m3u8?token=${playbackData.token}`
     );
     muxPlayer.setAttribute('metadata-video-title', moduleData.moduleTitle ?? '');
-    muxPlayer.setAttribute('primary-color', '#2563eb');
-    muxPlayer.setAttribute('accent-color', '#2563eb');
+    muxPlayer.setAttribute('primary-color', '#ffffff');
+    muxPlayer.setAttribute('accent-color', '#ffffff');
     muxPlayer.setAttribute('style', 'width:100%;border-radius:8px;');
     applyMuxPlayerRestrictions(muxPlayer);
 

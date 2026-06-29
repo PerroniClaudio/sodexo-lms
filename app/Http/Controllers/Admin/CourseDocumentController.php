@@ -16,8 +16,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CourseDocumentController extends Controller
 {
-    private const DISK = 's3';
-
     public function store(Request $request, Course $course): RedirectResponse
     {
         $validated = $request->validate([
@@ -30,15 +28,14 @@ class CourseDocumentController extends Controller
         $file = $request->file('file');
         $storedPath = $file->storeAs(
             'courses/'.$course->getKey().'/documents',
-            Str::uuid().'.'.($file->getClientOriginalExtension() ?: 'pdf'),
-            self::DISK,
+            Str::uuid().'.'.($file->getClientOriginalExtension() ?: 'pdf')
         );
 
         $course->documents()->create([
             'file_name' => $validated['file_name'],
             'file_type' => $validated['file_type'],
             'category' => $validated['category'],
-            'disk' => self::DISK,
+            'disk' => Storage::getDefaultDriver(),
             'path' => $storedPath,
             'mime_type' => $file->getClientMimeType(),
             'size_bytes' => $file->getSize() ?: 0,

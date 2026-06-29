@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\DocumentConversionJobStatus;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
+use App\Models\DocumentConversionJob;
 use App\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -13,7 +15,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     $this->seed(RoleAndPermissionSeeder::class);
-    Storage::fake('s3');
+    Storage::fake();
 });
 
 it('shows completed courses in user sidebar page with certificate download button', function () {
@@ -31,12 +33,12 @@ it('shows completed courses in user sidebar page with certificate download butto
         'completed_at' => now(),
     ]);
 
-    Storage::disk('s3')->put(
+    Storage::put(
         completedCertificatePath($completedEnrollment, $user->fiscal_code, 'participation'),
         'pdf-content'
     );
 
-    Storage::disk('s3')->put(
+    Storage::put(
         completedCertificatePath($completedEnrollment, $user->fiscal_code, 'completion'),
         'pdf-content'
     );
@@ -63,6 +65,36 @@ it('shows completed courses in user sidebar page with certificate download butto
     $response->assertSee(route('user.completed-courses.certificate.download', ['courseEnrollment' => $completedEnrollment, 'type' => 'completion']), false);
 });
 
+it('shows pending certificate generation message when conversion job is still running', function () {
+    $user = completedCoursesTestUser();
+    $user->assignRole('user');
+
+    $course = Course::factory()->create([
+        'title' => 'Corso Sicurezza',
+    ]);
+
+    $enrollment = CourseEnrollment::factory()->create([
+        'user_id' => $user->getKey(),
+        'course_id' => $course->getKey(),
+        'status' => CourseEnrollment::STATUS_COMPLETED,
+        'completed_at' => now(),
+    ]);
+
+    DocumentConversionJob::query()->create([
+        'status' => DocumentConversionJobStatus::PROCESSING,
+        'input_disk' => 'local',
+        'input_path' => 'certificates/word/source.docx',
+        'output_disk' => 'local',
+        'output_path' => completedCertificatePath($enrollment, $user->fiscal_code, 'participation'),
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('user.completed-courses.index'))
+        ->assertOk()
+        ->assertSeeText('Attestato in fase di generazione')
+        ->assertDontSeeText('Attestato non disponibile');
+});
+
 it('downloads participation certificate for completed course owned by authenticated user', function () {
     $user = completedCoursesTestUser();
     $user->assignRole('user');
@@ -78,7 +110,7 @@ it('downloads participation certificate for completed course owned by authentica
         'completed_at' => now(),
     ]);
 
-    Storage::disk('s3')->put(
+    Storage::put(
         completedCertificatePath($enrollment, $user->fiscal_code, 'participation'),
         'pdf-content'
     );
@@ -104,7 +136,7 @@ it('downloads completion certificate for completed course owned by authenticated
         'completed_at' => now(),
     ]);
 
-    Storage::disk('s3')->put(
+    Storage::put(
         completedCertificatePath($enrollment, $user->fiscal_code, 'completion'),
         'pdf-content'
     );
@@ -131,7 +163,7 @@ it('does not allow downloading another users certificate', function () {
         'completed_at' => now(),
     ]);
 
-    Storage::disk('s3')->put(
+    Storage::put(
         completedCertificatePath($otherEnrollment, $otherUser->fiscal_code, 'participation'),
         'pdf-content'
     );

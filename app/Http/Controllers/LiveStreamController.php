@@ -42,8 +42,6 @@ class LiveStreamController extends Controller
 {
     private const DOCUMENT_DISK = 'local';
 
-    private const LIVE_STREAM_LOG_DISK = 's3';
-
     private const PARTICIPANT_STALE_SECONDS = 25;
 
     private const LIVE_STREAM_BACKGROUND_DIRECTORY = 'images/live-stream-backgrounds';
@@ -367,14 +365,14 @@ class LiveStreamController extends Controller
             $session->getKey(),
             Str::uuid(),
         );
-        $path = $uploadedFile->storeAs($directory, $fileName, self::LIVE_STREAM_LOG_DISK);
+        $path = $uploadedFile->storeAs($directory, $fileName);
 
         $log = LiveStreamSessionLog::query()->create([
             'live_stream_session_id' => $session->getKey(),
             'module_id' => $module->getKey(),
             'teacher_user_id' => $session->teacher_user_id ?? $request->user()->getKey(),
             'source_role' => LiveStreamParticipant::ROLE_TEACHER,
-            'disk' => self::LIVE_STREAM_LOG_DISK,
+            'disk' => Storage::getDefaultDriver(),
             'path' => $path,
             'original_name' => $uploadedFile->getClientOriginalName(),
             'mime_type' => $uploadedFile->getMimeType() ?: 'application/json',

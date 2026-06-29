@@ -284,14 +284,11 @@ class UserCertificateController extends Controller
         ]);
 
         foreach ($uploadedFiles as $uploadedFile) {
-            $storedPath = $uploadedFile->store(
-                sprintf('users/%d/certificates/file', $certificate->user_id),
-                's3',
-            );
+            $storedPath = $uploadedFile->store(sprintf('users/%d/certificates/file', $certificate->user_id));
 
             $certificate->allFiles()->create([
                 'uploaded_by' => $uploadedByUserId,
-                'disk' => 's3',
+                'disk' => Storage::getDefaultDriver(),
                 'path' => $storedPath,
                 'original_name' => $uploadedFile->getClientOriginalName(),
                 'mime_type' => $uploadedFile->getClientMimeType(),

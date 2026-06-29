@@ -29,6 +29,7 @@ it('does not allow regular users to access the certificates section', function (
 });
 
 it('stores a certificate template upload', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     actingAsRole('admin');
 
@@ -67,6 +68,7 @@ it('validates that uploaded templates are docx files', function () {
 });
 
 it('archives the previous active version when uploading a new template for the same type', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     actingAsRole('admin');
 
@@ -156,6 +158,7 @@ it('requires course and user for preview download', function () {
 });
 
 it('creates a conversion job for a preview docx using fallback values when enrollment data is missing', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     actingAsRole('admin');
 
@@ -245,6 +248,7 @@ it('shows a monitoring page for pending preview jobs', function () {
 });
 
 it('allows admins to download a completed preview pdf', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     actingAsRole('admin');
 

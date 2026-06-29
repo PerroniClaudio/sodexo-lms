@@ -14,6 +14,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 it('queues a user job task import from excel upload', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     Queue::fake();
 
@@ -74,6 +75,7 @@ it('downloads user job task import template', function () {
 });
 
 it('associates new job tasks to existing workers without removing existing ones', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     test()->seed(RoleAndPermissionSeeder::class);
@@ -120,6 +122,7 @@ it('associates new job tasks to existing workers without removing existing ones'
 });
 
 it('ignores values different from SI', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     test()->seed(RoleAndPermissionSeeder::class);

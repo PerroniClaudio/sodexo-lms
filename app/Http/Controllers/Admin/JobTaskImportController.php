@@ -71,7 +71,7 @@ class JobTaskImportController extends Controller
 
     public function store(StoreJobTaskImportRequest $request): RedirectResponse
     {
-        $storedPath = $request->file('file')->store('imports/job-tasks', Importazione::STORAGE_DISK);
+        $storedPath = $request->file('file')->store('imports/job-tasks');
 
         $importazione = Importazione::query()->create([
             'import_type' => Importazione::TYPE_JOB_TASKS,

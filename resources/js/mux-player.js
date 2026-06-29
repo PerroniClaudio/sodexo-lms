@@ -3,25 +3,13 @@ export function applyMuxPlayerRestrictions(muxPlayer) {
         return;
     }
 
+    muxPlayer.style.setProperty('--pip-button', 'none');
+    muxPlayer.style.setProperty('--playback-rate-button', 'none');
     muxPlayer.setAttribute('playbackrates', '1');
+    muxPlayer.setAttribute('controlslist', 'nopictureinpicture');
     muxPlayer.setAttribute('disablepictureinpicture', '');
 
     if ('disablePictureInPicture' in muxPlayer) {
         muxPlayer.disablePictureInPicture = true;
     }
-
-    let resettingPlaybackRate = false;
-
-    muxPlayer.addEventListener('ratechange', () => {
-        if (resettingPlaybackRate || muxPlayer.playbackRate === 1) {
-            return;
-        }
-
-        resettingPlaybackRate = true;
-        muxPlayer.playbackRate = 1;
-
-        queueMicrotask(() => {
-            resettingPlaybackRate = false;
-        });
-    });
 }

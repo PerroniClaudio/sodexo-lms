@@ -29,8 +29,6 @@ class Importazione extends Model
 
     public const STATUS_FAILED = 'failed';
 
-    public const STORAGE_DISK = 's3';
-
     protected $table = 'importazioni';
 
     protected $fillable = [

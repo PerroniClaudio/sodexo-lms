@@ -152,7 +152,7 @@ class UserImportController extends Controller
 
     public function store(StoreUserImportRequest $request): RedirectResponse
     {
-        $storedPath = $request->file('file')->store('imports/users', Importazione::STORAGE_DISK);
+        $storedPath = $request->file('file')->store('imports/users');
 
         $importazione = Importazione::query()->create([
             'import_type' => Importazione::TYPE_USERS,

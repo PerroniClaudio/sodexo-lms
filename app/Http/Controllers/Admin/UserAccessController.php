@@ -72,7 +72,7 @@ class UserAccessController extends Controller
                 'date_from' => $validated['date_from'],
                 'date_to' => $validated['date_to'],
                 'status' => UserAccessExport::STATUS_PENDING,
-                'output_disk' => UserAccessExport::STORAGE_DISK,
+                'output_disk' => Storage::getDefaultDriver(),
             ]);
 
             GenerateUserAccessExport::dispatch($userAccessExport);

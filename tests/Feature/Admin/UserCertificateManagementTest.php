@@ -101,6 +101,7 @@ function prepareRiskContextForUser(User $user): array
 
 beforeEach(function () {
     $this->adminUser = actingAsRole('superadmin');
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 });
 

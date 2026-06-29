@@ -22,8 +22,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class VideoExerciseController extends Controller
 {
-    private const DISK = 's3';
-
     public function create(Course $course, Module $module): View
     {
         $this->ensureVideoModule($course, $module);
@@ -159,15 +157,14 @@ class VideoExerciseController extends Controller
             $extension = $file->getClientOriginalExtension() ?: $file->extension() ?: 'bin';
             $storedPath = $file->storeAs(
                 'modules/'.$module->getKey().'/video-exercises/'.$videoExercise->getKey().'/materials',
-                Str::uuid().'.'.$extension,
-                self::DISK,
+                Str::uuid().'.'.$extension
             );
 
             $videoExercise->materials()->create([
                 'uploaded_by' => $request->user()?->getKey(),
                 'type' => VideoExerciseMaterial::TYPE_FILE,
                 'title' => $validated['title'],
-                'disk' => self::DISK,
+                'disk' => Storage::getDefaultDriver(),
                 'path' => $storedPath,
                 'original_name' => $file->getClientOriginalName(),
                 'mime_type' => $file->getClientMimeType(),
@@ -337,12 +334,11 @@ class VideoExerciseController extends Controller
         $file = $request->file('self_evaluation');
         $storedPath = $file->storeAs(
             'modules/'.$exercise->module_id.'/video-exercises/'.$exercise->getKey().'/self-evaluation',
-            Str::uuid().'.pdf',
-            self::DISK,
+            Str::uuid().'.pdf'
         );
 
         $exercise->forceFill([
-            'self_evaluation_disk' => self::DISK,
+            'self_evaluation_disk' => Storage::getDefaultDriver(),
             'self_evaluation_path' => $storedPath,
             'self_evaluation_original_name' => $file->getClientOriginalName(),
             'self_evaluation_mime_type' => $file->getClientMimeType() ?: 'application/pdf',

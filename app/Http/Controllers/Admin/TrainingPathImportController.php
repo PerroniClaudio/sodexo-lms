@@ -85,7 +85,7 @@ class TrainingPathImportController extends Controller
 
     public function store(StoreTrainingPathImportRequest $request): RedirectResponse
     {
-        $storedPath = $request->file('file')->store('imports/user-training-paths', Importazione::STORAGE_DISK);
+        $storedPath = $request->file('file')->store('imports/user-training-paths');
 
         $importazione = Importazione::query()->create([
             'import_type' => Importazione::TYPE_USER_TRAINING_PATHS,

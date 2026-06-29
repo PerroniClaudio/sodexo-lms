@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class UserAccessExport extends Model
 {
@@ -14,8 +15,6 @@ class UserAccessExport extends Model
     public const STATUS_COMPLETED = 'completed';
 
     public const STATUS_FAILED = 'failed';
-
-    public const STORAGE_DISK = 's3';
 
     protected $fillable = [
         'requested_by',
@@ -34,8 +33,14 @@ class UserAccessExport extends Model
 
     protected $attributes = [
         'status' => self::STATUS_PENDING,
-        'output_disk' => self::STORAGE_DISK,
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $userAccessExport): void {
+            $userAccessExport->output_disk ??= self::storageDisk();
+        });
+    }
 
     protected function casts(): array
     {
@@ -52,6 +57,11 @@ class UserAccessExport extends Model
     public function requester(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public static function storageDisk(): string
+    {
+        return Storage::getDefaultDriver();
     }
 
     public function statusLabel(): string

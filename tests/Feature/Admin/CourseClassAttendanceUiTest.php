@@ -163,6 +163,7 @@ it('downloads an attendance import template', function () {
 });
 
 it('uploads and replaces the paper attendance register', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     $course = Course::factory()->res()->create();
