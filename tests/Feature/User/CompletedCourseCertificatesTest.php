@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\DocumentConversionJobStatus;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
+use App\Models\DocumentConversionJob;
 use App\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -61,6 +63,36 @@ it('shows completed courses in user sidebar page with certificate download butto
     $response->assertDontSeeText('Corso In Corso');
     $response->assertSee(route('user.completed-courses.certificate.download', ['courseEnrollment' => $completedEnrollment, 'type' => 'participation']), false);
     $response->assertSee(route('user.completed-courses.certificate.download', ['courseEnrollment' => $completedEnrollment, 'type' => 'completion']), false);
+});
+
+it('shows pending certificate generation message when conversion job is still running', function () {
+    $user = completedCoursesTestUser();
+    $user->assignRole('user');
+
+    $course = Course::factory()->create([
+        'title' => 'Corso Sicurezza',
+    ]);
+
+    $enrollment = CourseEnrollment::factory()->create([
+        'user_id' => $user->getKey(),
+        'course_id' => $course->getKey(),
+        'status' => CourseEnrollment::STATUS_COMPLETED,
+        'completed_at' => now(),
+    ]);
+
+    DocumentConversionJob::query()->create([
+        'status' => DocumentConversionJobStatus::PROCESSING,
+        'input_disk' => 'local',
+        'input_path' => 'certificates/word/source.docx',
+        'output_disk' => 'local',
+        'output_path' => completedCertificatePath($enrollment, $user->fiscal_code, 'participation'),
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('user.completed-courses.index'))
+        ->assertOk()
+        ->assertSeeText('Attestato in fase di generazione')
+        ->assertDontSeeText('Attestato non disponibile');
 });
 
 it('downloads participation certificate for completed course owned by authenticated user', function () {

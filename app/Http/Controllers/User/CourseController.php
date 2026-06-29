@@ -94,6 +94,7 @@ class CourseController extends Controller
                 return [
                     'enrollment' => $enrollment,
                     'certificates' => $userCourseCertificateLocator->locateAll($enrollment),
+                    'hasPendingCertificateGeneration' => $userCourseCertificateLocator->hasPendingGeneration($enrollment),
                 ];
             });
 

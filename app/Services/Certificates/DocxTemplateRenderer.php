@@ -57,6 +57,10 @@ class DocxTemplateRenderer
             throw new RuntimeException('Unable to allocate a temporary file for certificate rendering.');
         }
 
+        if (! Storage::disk($customCertificate->storage_disk)->exists($customCertificate->template_path)) {
+            throw new RuntimeException('The certificate template file does not exist in storage.');
+        }
+
         $sourceStream = Storage::disk($customCertificate->storage_disk)->readStream($customCertificate->template_path);
 
         if (! is_resource($sourceStream)) {

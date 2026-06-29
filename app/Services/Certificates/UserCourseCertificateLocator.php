@@ -2,8 +2,10 @@
 
 namespace App\Services\Certificates;
 
+use App\Enums\DocumentConversionJobStatus;
 use App\Models\CourseEnrollment;
 use App\Models\CustomCertificate;
+use App\Models\DocumentConversionJob;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -49,6 +51,31 @@ class UserCourseCertificateLocator
         return $certificates;
     }
 
+    public function hasPendingGeneration(CourseEnrollment $courseEnrollment): bool
+    {
+        foreach (CustomCertificate::availableTypes() as $type) {
+            $path = $this->certificatePath($courseEnrollment, $type);
+
+            if ($path === null || Storage::exists($path)) {
+                continue;
+            }
+
+            $hasPendingJob = DocumentConversionJob::query()
+                ->where('output_path', $path)
+                ->whereIn('status', [
+                    DocumentConversionJobStatus::PENDING,
+                    DocumentConversionJobStatus::PROCESSING,
+                ])
+                ->exists();
+
+            if ($hasPendingJob) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * @return array{download_name: string, label: string, path: string, type: string}|null
      */
@@ -58,27 +85,9 @@ class UserCourseCertificateLocator
             return null;
         }
 
-        $courseEnrollment->loadMissing('course', 'user');
+        $path = $this->certificatePath($courseEnrollment, $type);
 
-        if ($courseEnrollment->completed_at === null) {
-            return null;
-        }
-
-        $userFiscalCode = Str::upper(
-            Str::of($courseEnrollment->user->fiscal_code ?? 'unknown')
-                ->replaceMatches('/[^A-Za-z0-9]/', '')
-                ->value()
-        );
-
-        $path = sprintf(
-            'certificates/word/%s_%s_%s_%s.pdf',
-            $courseEnrollment->course->getKey(),
-            $userFiscalCode,
-            $courseEnrollment->completed_at->format('Ymd'),
-            $type
-        );
-
-        if (! Storage::exists($path)) {
+        if ($path === null || ! Storage::exists($path)) {
             return null;
         }
 
@@ -93,5 +102,28 @@ class UserCourseCertificateLocator
                 $courseEnrollment->completed_at->format('Ymd')
             ),
         ];
+    }
+
+    private function certificatePath(CourseEnrollment $courseEnrollment, string $type): ?string
+    {
+        $courseEnrollment->loadMissing('course', 'user');
+
+        if ($courseEnrollment->completed_at === null) {
+            return null;
+        }
+
+        $userFiscalCode = Str::upper(
+            Str::of($courseEnrollment->user->fiscal_code ?? 'unknown')
+                ->replaceMatches('/[^A-Za-z0-9]/', '')
+                ->value()
+        );
+
+        return sprintf(
+            'certificates/word/%s_%s_%s_%s.pdf',
+            $courseEnrollment->course->getKey(),
+            $userFiscalCode,
+            $courseEnrollment->completed_at->format('Ymd'),
+            $type
+        );
     }
 }

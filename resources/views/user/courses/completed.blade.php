@@ -22,6 +22,7 @@
                                 @foreach ($completedEnrollments as $item)
                                     @php($enrollment = $item['enrollment'])
                                     @php($certificates = $item['certificates'])
+                                    @php($hasPendingCertificateGeneration = $item['hasPendingCertificateGeneration'])
 
                                     <tr>
                                         <td class="font-semibold">{{ $enrollment->course->title }}</td>
@@ -38,6 +39,8 @@
                                                         </a>
                                                     @endforeach
                                                 </div>
+                                            @elseif ($hasPendingCertificateGeneration)
+                                                <span class="text-sm text-base-content/60">{{ __('Attestato in fase di generazione') }}</span>
                                             @else
                                                 <span class="text-sm text-base-content/60">{{ __('Attestato non disponibile') }}</span>
                                             @endif
