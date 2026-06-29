@@ -1,26 +1,5 @@
 <?php
 
-$cloudDiskConfig = json_decode((string) env('LARAVEL_CLOUD_DISK_CONFIG', 'null'), true);
-$cloudDiskConfig = is_array($cloudDiskConfig) ? $cloudDiskConfig : [];
-$cloudDiskConfig = array_filter($cloudDiskConfig, static fn (mixed $value): bool => $value !== null);
-
-$s3Disk = [
-    'driver' => 's3',
-    'key' => env('AWS_ACCESS_KEY_ID'),
-    'secret' => env('AWS_SECRET_ACCESS_KEY'),
-    'region' => env('AWS_DEFAULT_REGION', 'auto'),
-    'bucket' => env('AWS_BUCKET'),
-    'url' => env('AWS_URL'),
-    'endpoint' => env('AWS_ENDPOINT'),
-    'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-    'throw' => false,
-    'report' => false,
-];
-
-if ($cloudDiskConfig !== []) {
-    $s3Disk = array_replace($s3Disk, $cloudDiskConfig);
-}
-
 return [
 
     /*
@@ -34,9 +13,7 @@ return [
     |
     */
 
-    'default' => env('FILESYSTEM_DISK', $cloudDiskConfig === [] ? 'local' : 'cloud'),
-
-    'cloud' => env('FILESYSTEM_CLOUD_DISK', $cloudDiskConfig === [] ? 's3' : 'cloud'),
+    'default' => env('FILESYSTEM_DISK', 'local'),
 
     /*
     |--------------------------------------------------------------------------
@@ -70,9 +47,18 @@ return [
             'report' => false,
         ],
 
-        's3' => $s3Disk,
-
-        'cloud' => $cloudDiskConfig === [] ? $s3Disk : array_replace($s3Disk, $cloudDiskConfig),
+        's3' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_BUCKET'),
+            'url' => env('AWS_URL'),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'throw' => false,
+            'report' => false,
+        ],
 
     ],
 
