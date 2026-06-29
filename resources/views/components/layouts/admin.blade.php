@@ -546,15 +546,6 @@
                                             {{ __('Reset iscrizioni') }}
                                         </a>
                                     </li>
-                                    <li>
-                                        <a
-                                            href="{{ route('admin.development-tools.force-delete-enrollments.index') }}"
-                                            @class(['menu-active' => $matchesRoutePatterns(['admin.development-tools.force-delete-enrollments.*'])])
-                                        >
-                                            <x-lucide-trash-2 class="mr-2 inline-block h-4 w-4" />
-                                            {{ __('Force delete iscrizioni') }}
-                                        </a>
-                                    </li>
                                 </ul>
                             </details>
                         </li>
