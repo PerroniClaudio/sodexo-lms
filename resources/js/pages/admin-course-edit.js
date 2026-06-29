@@ -1710,6 +1710,7 @@ function initializeEnrollmentsTable(courseEditPage) {
             const fragment = template.content.cloneNode(true);
             const tr = fragment.querySelector('tr');
             const statusBadge = fragment.querySelector('[data-cell="status"]');
+            const detailButton = fragment.querySelector('[data-action="detail"]');
             const editButton = fragment.querySelector('[data-action="edit"]');
             const deleteButton = fragment.querySelector('[data-action="delete"]');
             const restoreButton = fragment.querySelector('[data-action="restore"]');
@@ -1723,6 +1724,16 @@ function initializeEnrollmentsTable(courseEditPage) {
 
             statusBadge.textContent = row.is_deleted ? 'Eliminato' : row.status.label;
             statusBadge.classList.add(buildStatusBadgeClass(row));
+
+            if (detailButton) {
+                if (row.actions.detail_url) {
+                    detailButton.href = row.actions.detail_url;
+                    detailButton.classList.remove('hidden');
+                } else {
+                    detailButton.classList.add('hidden');
+                    detailButton.removeAttribute('href');
+                }
+            }
 
             if (editButton) {
                 if (row.actions.edit_url) {

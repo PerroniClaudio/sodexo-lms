@@ -172,6 +172,7 @@
                     <td data-cell="assigned_at"></td>
                     <td class="sticky right-0 z-10 bg-base-100 shadow-[-8px_0_12px_-10px_rgba(15,23,42,0.35)]">
                         <div class="flex flex-col gap-2 xl:flex-row">
+                            <a href="#" class="btn btn-xs btn-outline xl:btn-sm" data-action="detail">{{ __('Dettaglio') }}</a>
                             <button type="button" class="btn btn-xs btn-error xl:btn-sm" data-action="delete">{{ __('Elimina') }}</button>
                             <button type="button" class="btn btn-xs btn-success xl:btn-sm" data-action="restore">{{ __('Ripristina') }}</button>
                         </div>

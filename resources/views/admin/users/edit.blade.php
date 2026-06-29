@@ -272,6 +272,7 @@
                                                         <th>{{ __('Stato iscrizione') }}</th>
                                                         <th>{{ __('Completamento') }}</th>
                                                         <th>{{ __('Appartenenza percorso') }}</th>
+                                                        <th>{{ __('Dettaglio') }}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -323,10 +324,19 @@
                                                                     </div>
                                                                 @endif
                                                             </td>
+                                                            <td>
+                                                                @if (! $courseEnrollment->trashed() && $course !== null)
+                                                                    <a href="{{ route('admin.courses.enrollments.show', [$course, $courseEnrollment]) }}" class="btn btn-outline btn-primary btn-sm">
+                                                                        {{ __('Apri') }}
+                                                                    </a>
+                                                                @else
+                                                                    <span class="text-sm text-base-content/50">-</span>
+                                                                @endif
+                                                            </td>
                                                         </tr>
                                                     @empty
                                                         <tr>
-                                                            <td colspan="5" class="py-8 text-center text-sm text-base-content/70">
+                                                            <td colspan="6" class="py-8 text-center text-sm text-base-content/70">
                                                                 {{ __('Nessuna iscrizione a corsi.') }}
                                                             </td>
                                                         </tr>

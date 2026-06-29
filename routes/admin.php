@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\CourseClassController;
 use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\CourseDocumentController;
 use App\Http\Controllers\Admin\CourseEnrollmentController;
+use App\Http\Controllers\Admin\CourseEnrollmentDetailController;
 use App\Http\Controllers\Admin\CourseEnrollmentImportController;
 use App\Http\Controllers\Admin\CourseFacultyMemberController;
 use App\Http\Controllers\Admin\CourseModuleController;
@@ -166,6 +167,13 @@ Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
             ->middleware('permission:duplicate courses')
             ->name('courses.duplicate-structure');
         Route::get('/courses/{course}/edit', [CourseController::class, 'edit'])->name('courses.edit');
+        Route::get('/courses/{course}/enrollments/{enrollment}', [CourseEnrollmentDetailController::class, 'show'])->name('courses.enrollments.show');
+        Route::middleware('active.role:superadmin')->group(function () {
+            Route::post('/courses/{course}/enrollments/{enrollment}/modules/{module}/reset-scorm', [CourseEnrollmentDetailController::class, 'resetScorm'])->name('courses.enrollments.modules.reset-scorm');
+            Route::post('/courses/{course}/enrollments/{enrollment}/modules/{module}/reset-quiz-attempts', [CourseEnrollmentDetailController::class, 'resetQuizAttempts'])->name('courses.enrollments.modules.reset-quiz-attempts');
+            Route::post('/courses/{course}/enrollments/{enrollment}/modules/{module}/block', [CourseEnrollmentDetailController::class, 'blockModule'])->name('courses.enrollments.modules.block');
+            Route::post('/courses/{course}/enrollments/{enrollment}/modules/{module}/unlock', [CourseEnrollmentDetailController::class, 'unlockModule'])->name('courses.enrollments.modules.unlock');
+        });
         Route::put('/courses/{course}/details', [CourseController::class, 'updateDetails'])->name('courses.details.update');
         Route::put('/courses/{course}/duration', [CourseController::class, 'updateDuration'])->name('courses.duration.update');
         Route::put('/courses/{course}/program', [CourseController::class, 'updateProgram'])->name('courses.program.update');

@@ -24,7 +24,7 @@
 
                 @if ($riskBasedRequirements->isNotEmpty())
                     <button type="button" class="btn btn-primary btn-sm" data-open-risk-requirement-selection-modal>
-                        <span>{{ __('Aggiungi requisito') }}</span>
+                        <span>{{ __('Aggiungi') }}</span>
                         <x-lucide-plus class="h-4 w-4" />
                     </button>
                 @endif

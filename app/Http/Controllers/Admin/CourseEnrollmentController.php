@@ -130,6 +130,9 @@ class CourseEnrollmentController extends Controller
                     ],
                     'actions' => [
                         'edit_url' => $user !== null ? route('admin.users.edit', $user) : null,
+                        'detail_url' => ! $enrollment->trashed()
+                            ? route('admin.courses.enrollments.show', [$course, $enrollment])
+                            : null,
                         'delete_url' => route('admin.api.courses.enrollments.destroy', [$course, $enrollment]),
                         'can_delete' => ! $enrollment->trashed(),
                         'restore_url' => route('admin.api.courses.enrollments.restore', [$course, $enrollment]),
