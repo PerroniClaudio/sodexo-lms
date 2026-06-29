@@ -46,6 +46,7 @@ use App\Services\CourseValidation\CourseValidatorService;
 use App\Services\ResCourseAttendanceService;
 use App\Services\SyncCourseSatisfactionSurvey;
 use App\Services\TrainingPathEnrollmentSyncService;
+use App\Support\CloudStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -60,8 +61,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CourseController extends Controller
 {
-    private const ATTACHMENTS_DISK = 's3';
-
     public function __construct(
         private readonly CourseValidatorService $courseValidator,
         private readonly TrainingPathEnrollmentSyncService $trainingPathEnrollmentSyncService,
@@ -626,7 +625,7 @@ class CourseController extends Controller
     {
         abort_unless($course->cover_image_path !== null, Response::HTTP_NOT_FOUND);
 
-        $disk = Storage::disk(self::ATTACHMENTS_DISK);
+        $disk = Storage::disk(CloudStorage::disk());
         abort_unless($disk->exists($course->cover_image_path), Response::HTTP_NOT_FOUND);
 
         return response()->streamDownload(
@@ -645,7 +644,7 @@ class CourseController extends Controller
     {
         abort_unless($course->poster_pdf_path !== null, Response::HTTP_NOT_FOUND);
 
-        $disk = Storage::disk(self::ATTACHMENTS_DISK);
+        $disk = Storage::disk(CloudStorage::disk());
         abort_unless($disk->exists($course->poster_pdf_path), Response::HTTP_NOT_FOUND);
 
         return response()->streamDownload(
@@ -873,14 +872,14 @@ class CourseController extends Controller
 
     private function syncAttachments(Request $request, Course $course): void
     {
-        $disk = Storage::disk(self::ATTACHMENTS_DISK);
+        $disk = Storage::disk(CloudStorage::disk());
 
         if ($request->hasFile('cover_image')) {
             $currentPath = $course->cover_image_path;
             $newPath = $request->file('cover_image')->storeAs(
                 $this->attachmentDirectory($course),
                 'cover-image.'.$request->file('cover_image')->extension(),
-                self::ATTACHMENTS_DISK,
+                CloudStorage::disk(),
             );
 
             $course->forceFill([
@@ -897,7 +896,7 @@ class CourseController extends Controller
             $newPath = $request->file('poster_pdf')->storeAs(
                 $this->attachmentDirectory($course),
                 'poster-'.Str::slug(pathinfo($request->file('poster_pdf')->getClientOriginalName(), PATHINFO_FILENAME) ?: 'course').'.pdf',
-                self::ATTACHMENTS_DISK,
+                CloudStorage::disk(),
             );
 
             $course->forceFill([

@@ -10,6 +10,7 @@ use App\Models\VideoExerciseMaterial;
 use App\Models\VideoExerciseQuestion;
 use App\Services\VideoExerciseActivityExporter;
 use App\Services\VideoExerciseResponsesExporter;
+use App\Support\CloudStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,8 +23,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class VideoExerciseController extends Controller
 {
-    private const DISK = 's3';
-
     public function create(Course $course, Module $module): View
     {
         $this->ensureVideoModule($course, $module);
@@ -160,14 +159,14 @@ class VideoExerciseController extends Controller
             $storedPath = $file->storeAs(
                 'modules/'.$module->getKey().'/video-exercises/'.$videoExercise->getKey().'/materials',
                 Str::uuid().'.'.$extension,
-                self::DISK,
+                CloudStorage::disk(),
             );
 
             $videoExercise->materials()->create([
                 'uploaded_by' => $request->user()?->getKey(),
                 'type' => VideoExerciseMaterial::TYPE_FILE,
                 'title' => $validated['title'],
-                'disk' => self::DISK,
+                'disk' => CloudStorage::disk(),
                 'path' => $storedPath,
                 'original_name' => $file->getClientOriginalName(),
                 'mime_type' => $file->getClientMimeType(),

@@ -3,13 +3,12 @@
 namespace App\Actions;
 
 use App\Models\CustomCertificate;
+use App\Support\CloudStorage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 
 class ActivateCustomCertificateTemplate
 {
-    private const STORAGE_DISK = 's3';
-
     /**
      * @param  array<int>|null  $courseIds
      */
@@ -18,7 +17,7 @@ class ActivateCustomCertificateTemplate
         return DB::transaction(function () use ($courseIds, $type, $uploadedFile): CustomCertificate {
             $path = $uploadedFile->store(
                 sprintf('custom-certificates/%s', $type),
-                self::STORAGE_DISK
+                CloudStorage::disk()
             );
 
             $currentActive = CustomCertificate::query()
@@ -37,7 +36,7 @@ class ActivateCustomCertificateTemplate
             $certificate = CustomCertificate::query()->create([
                 'type' => $type,
                 'name' => $this->generateVersionName($type),
-                'storage_disk' => self::STORAGE_DISK,
+                'storage_disk' => CloudStorage::disk(),
                 'template_path' => $path,
                 'original_filename' => $uploadedFile->getClientOriginalName(),
                 'mime_type' => $uploadedFile->getMimeType() ?? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

@@ -21,6 +21,7 @@ use App\Services\CourseClassScheduleResolver;
 use App\Services\LiveStreamAuditTrailService;
 use App\Services\MuxLiveService;
 use App\Services\TwilioVideoService;
+use App\Support\CloudStorage;
 use Carbon\CarbonInterface;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
@@ -41,8 +42,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class LiveStreamController extends Controller
 {
     private const DOCUMENT_DISK = 'local';
-
-    private const LIVE_STREAM_LOG_DISK = 's3';
 
     private const PARTICIPANT_STALE_SECONDS = 25;
 
@@ -367,7 +366,7 @@ class LiveStreamController extends Controller
             $session->getKey(),
             Str::uuid(),
         );
-        $path = $uploadedFile->storeAs($directory, $fileName, self::LIVE_STREAM_LOG_DISK);
+        $path = $uploadedFile->storeAs($directory, $fileName, CloudStorage::disk());
 
         $log = LiveStreamSessionLog::query()->create([
             'live_stream_session_id' => $session->getKey(),

@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StoreUserCertificateRequest;
 use App\Models\User;
 use App\Models\UserCertificate;
 use App\Models\UserCertificateFile;
+use App\Support\CloudStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -286,12 +287,12 @@ class UserCertificateController extends Controller
         foreach ($uploadedFiles as $uploadedFile) {
             $storedPath = $uploadedFile->store(
                 sprintf('users/%d/certificates/file', $certificate->user_id),
-                's3',
+                CloudStorage::disk(),
             );
 
             $certificate->allFiles()->create([
                 'uploaded_by' => $uploadedByUserId,
-                'disk' => 's3',
+                'disk' => CloudStorage::disk(),
                 'path' => $storedPath,
                 'original_name' => $uploadedFile->getClientOriginalName(),
                 'mime_type' => $uploadedFile->getClientMimeType(),

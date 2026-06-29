@@ -23,7 +23,7 @@ class ImportJobUnitsJob implements ShouldQueue
     public function handle(JobUnitImportService $jobUnitImportService): void
     {
         $importazione = Importazione::query()->findOrFail($this->importazioneId);
-        $disk = Storage::disk(Importazione::STORAGE_DISK);
+        $disk = Storage::disk(Importazione::storageDisk());
 
         if (! $disk->exists($importazione->file_path)) {
             $importazione->update([

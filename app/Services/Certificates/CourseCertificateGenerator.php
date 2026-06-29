@@ -6,6 +6,7 @@ use App\Enums\DocumentConversionJobStatus;
 use App\Models\CourseEnrollment;
 use App\Models\CustomCertificate;
 use App\Models\DocumentConversionJob;
+use App\Support\CloudStorage;
 use Illuminate\Http\File;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -14,8 +15,6 @@ use RuntimeException;
 
 class CourseCertificateGenerator
 {
-    private const STORAGE_DISK = 's3';
-
     public function __construct(
         private readonly CertificateEligibilityService $certificateEligibilityService,
         private readonly CertificateVariableResolver $certificateVariableResolver,
@@ -65,7 +64,7 @@ class CourseCertificateGenerator
         $temporaryPath = $this->docxTemplateRenderer->renderToTemporaryPath($certificate, $variables);
 
         try {
-            $inputPath = Storage::disk(self::STORAGE_DISK)->putFileAs(
+            $inputPath = Storage::disk(CloudStorage::disk())->putFileAs(
                 'certificates/word',
                 new File($temporaryPath),
                 $this->outputFileName($enrollment, $certificate->type)
@@ -77,9 +76,9 @@ class CourseCertificateGenerator
 
             return DocumentConversionJob::query()->create([
                 'status' => DocumentConversionJobStatus::PENDING,
-                'input_disk' => self::STORAGE_DISK,
+                'input_disk' => CloudStorage::disk(),
                 'input_path' => $inputPath,
-                'output_disk' => self::STORAGE_DISK,
+                'output_disk' => CloudStorage::disk(),
                 'output_path' => (string) str($inputPath)->replaceEnd('.docx', '.pdf'),
             ]);
         } finally {

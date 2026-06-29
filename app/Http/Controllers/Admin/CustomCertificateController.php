@@ -15,6 +15,7 @@ use App\Models\DocumentConversionJob;
 use App\Models\User;
 use App\Services\Certificates\CertificateVariableResolver;
 use App\Services\Certificates\DocxTemplateRenderer;
+use App\Support\CloudStorage;
 use Illuminate\Http\File;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -26,8 +27,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CustomCertificateController extends Controller
 {
-    private const STORAGE_DISK = 's3';
-
     public function __construct(
         private readonly ActivateCustomCertificateTemplate $activateCustomCertificateTemplate
     ) {}
@@ -196,7 +195,7 @@ class CustomCertificateController extends Controller
                 now()->format('Ymd')
             );
 
-            $inputPath = Storage::disk(self::STORAGE_DISK)->putFileAs(
+            $inputPath = Storage::disk(CloudStorage::disk())->putFileAs(
                 'certificates/word',
                 new File($temporaryPath),
                 $fileName
@@ -208,9 +207,9 @@ class CustomCertificateController extends Controller
 
             $conversionJob = DocumentConversionJob::query()->create([
                 'status' => DocumentConversionJobStatus::PENDING,
-                'input_disk' => self::STORAGE_DISK,
+                'input_disk' => CloudStorage::disk(),
                 'input_path' => $inputPath,
-                'output_disk' => self::STORAGE_DISK,
+                'output_disk' => CloudStorage::disk(),
                 'output_path' => (string) str($inputPath)->replaceEnd('.docx', '.pdf'),
             ]);
 

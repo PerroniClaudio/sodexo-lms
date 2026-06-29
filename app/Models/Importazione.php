@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\CloudStorage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -28,8 +29,6 @@ class Importazione extends Model
     public const STATUS_FINISHED = 'finished';
 
     public const STATUS_FAILED = 'failed';
-
-    public const STORAGE_DISK = 's3';
 
     protected $table = 'importazioni';
 
@@ -60,6 +59,11 @@ class Importazione extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public static function storageDisk(): string
+    {
+        return CloudStorage::disk();
     }
 
     /**

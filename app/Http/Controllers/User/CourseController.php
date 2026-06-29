@@ -17,6 +17,7 @@ use App\Services\CourseClassScheduleResolver;
 use App\Services\QuizAccessDelayService;
 use App\Services\SyncCourseModuleProgresses;
 use App\Services\TrainingPathCourseOrderService;
+use App\Support\CloudStorage;
 use App\Support\LanguageVerificationGate;
 use BaconQrCode\Renderer\Color\Rgb;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
@@ -40,8 +41,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CourseController extends Controller
 {
-    private const ATTACHMENTS_DISK = 's3';
-
     public function __construct(
         private readonly AbandonLearningQuizAttempt $abandonLearningQuizAttempt,
         private readonly SyncCourseModuleProgresses $syncCourseModuleProgresses,
@@ -239,7 +238,7 @@ class CourseController extends Controller
         abort_unless($this->canAccessCourseAssets($user, $course), Response::HTTP_FORBIDDEN);
         abort_unless($course->poster_pdf_path !== null, Response::HTTP_NOT_FOUND);
 
-        $disk = Storage::disk(self::ATTACHMENTS_DISK);
+        $disk = Storage::disk(CloudStorage::disk());
         abort_unless($disk->exists($course->poster_pdf_path), Response::HTTP_NOT_FOUND);
 
         $downloadName = str($course->title)->slug('-')->append('-locandina.pdf')->toString();
@@ -262,7 +261,7 @@ class CourseController extends Controller
         abort_unless($this->canAccessCourseAssets($user, $course), Response::HTTP_FORBIDDEN);
         abort_unless($course->cover_image_path !== null, Response::HTTP_NOT_FOUND);
 
-        $disk = Storage::disk(self::ATTACHMENTS_DISK);
+        $disk = Storage::disk(CloudStorage::disk());
         abort_unless($disk->exists($course->cover_image_path), Response::HTTP_NOT_FOUND);
 
         return response()->streamDownload(

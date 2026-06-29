@@ -4,14 +4,13 @@ namespace App\Services\Certificates;
 
 use App\Models\CourseEnrollment;
 use App\Models\CustomCertificate;
+use App\Support\CloudStorage;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class UserCourseCertificateLocator
 {
-    private const STORAGE_DISK = 's3';
-
     /**
      * @return array{disk: Filesystem, download_name: string, path: string}|null
      */
@@ -81,7 +80,7 @@ class UserCourseCertificateLocator
             $type
         );
 
-        $disk = Storage::disk(self::STORAGE_DISK);
+        $disk = Storage::disk(CloudStorage::disk());
 
         if (! $disk->exists($path)) {
             return null;

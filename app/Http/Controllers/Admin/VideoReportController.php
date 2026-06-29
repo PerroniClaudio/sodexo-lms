@@ -13,6 +13,7 @@ use App\Models\JobSector;
 use App\Models\JobTask;
 use App\Models\JobUnit;
 use App\Models\VideoReportRequest;
+use App\Support\CloudStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -82,7 +83,7 @@ class VideoReportController extends Controller
                 : null,
             'date_from' => $validated['date_from'],
             'date_to' => $validated['date_to'],
-            'output_disk' => 's3',
+            'output_disk' => CloudStorage::disk(),
         ]);
 
         GenerateVideoReport::dispatch($videoReportRequest);

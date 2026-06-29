@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\CloudStorage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -72,8 +73,14 @@ class VideoReportRequest extends Model
     protected $attributes = [
         'status' => self::STATUS_PENDING,
         'report_type' => self::REPORT_TYPE_VIDEO,
-        'output_disk' => 's3',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $videoReportRequest): void {
+            $videoReportRequest->output_disk ??= self::storageDisk();
+        });
+    }
 
     protected function casts(): array
     {
@@ -138,6 +145,11 @@ class VideoReportRequest extends Model
     public function requester(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public static function storageDisk(): string
+    {
+        return CloudStorage::disk();
     }
 
     public function course(): BelongsTo

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Module;
 use App\Models\ModuleTeachingMaterial;
+use App\Support\CloudStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -16,8 +17,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ModuleTeachingMaterialController extends Controller
 {
-    private const DISK = 's3';
-
     public function store(Request $request, Course $course, Module $module): RedirectResponse
     {
         $this->ensureVideoModule($course, $module);
@@ -36,12 +35,12 @@ class ModuleTeachingMaterialController extends Controller
             $storedPath = $file->storeAs(
                 'modules/'.$module->getKey().'/teaching-materials',
                 Str::uuid().'.'.$extension,
-                self::DISK,
+                CloudStorage::disk(),
             );
 
             $module->teachingMaterials()->create([
                 'uploaded_by' => $request->user()?->getKey(),
-                'disk' => self::DISK,
+                'disk' => CloudStorage::disk(),
                 'path' => $storedPath,
                 'original_name' => $file->getClientOriginalName(),
                 'mime_type' => $file->getClientMimeType(),

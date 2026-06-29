@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\TrainingPath;
 use App\Models\TrainingPathDocument;
+use App\Support\CloudStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -16,8 +17,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TrainingPathDocumentController extends Controller
 {
-    private const DISK = 's3';
-
     public function store(Request $request, TrainingPath $trainingPath): RedirectResponse
     {
         $validated = $request->validate([
@@ -31,14 +30,14 @@ class TrainingPathDocumentController extends Controller
         $storedPath = $file->storeAs(
             'training-paths/'.$trainingPath->getKey().'/documents',
             Str::uuid().'.'.($file->getClientOriginalExtension() ?: 'pdf'),
-            self::DISK,
+            CloudStorage::disk(),
         );
 
         $trainingPath->documents()->create([
             'file_name' => $validated['file_name'],
             'file_type' => $validated['file_type'],
             'category' => $validated['category'],
-            'disk' => self::DISK,
+            'disk' => CloudStorage::disk(),
             'path' => $storedPath,
             'mime_type' => $file->getClientMimeType(),
             'size_bytes' => $file->getSize() ?: 0,
