@@ -13,6 +13,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 it('queues a job unit import from excel upload', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     Queue::fake();
 
@@ -88,6 +89,7 @@ it('returns job unit import status card payload', function () {
 });
 
 it('imports job units from excel', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     [$countryId, $regionId, $provinceId, $cityId] = ensureItalianGeography();
@@ -122,6 +124,7 @@ it('imports job units from excel', function () {
 });
 
 it('fails job unit import when required data is missing', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     ensureItalianGeography();

@@ -15,7 +15,6 @@ use App\Models\DocumentConversionJob;
 use App\Models\User;
 use App\Services\Certificates\CertificateVariableResolver;
 use App\Services\Certificates\DocxTemplateRenderer;
-use App\Support\CloudStorage;
 use Illuminate\Http\File;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -195,7 +194,7 @@ class CustomCertificateController extends Controller
                 now()->format('Ymd')
             );
 
-            $inputPath = Storage::disk(CloudStorage::disk())->putFileAs(
+            $inputPath = Storage::putFileAs(
                 'certificates/word',
                 new File($temporaryPath),
                 $fileName
@@ -207,9 +206,9 @@ class CustomCertificateController extends Controller
 
             $conversionJob = DocumentConversionJob::query()->create([
                 'status' => DocumentConversionJobStatus::PENDING,
-                'input_disk' => CloudStorage::disk(),
+                'input_disk' => Storage::getDefaultDriver(),
                 'input_path' => $inputPath,
-                'output_disk' => CloudStorage::disk(),
+                'output_disk' => Storage::getDefaultDriver(),
                 'output_path' => (string) str($inputPath)->replaceEnd('.docx', '.pdf'),
             ]);
 

@@ -21,7 +21,6 @@ use App\Services\CourseClassScheduleResolver;
 use App\Services\LiveStreamAuditTrailService;
 use App\Services\MuxLiveService;
 use App\Services\TwilioVideoService;
-use App\Support\CloudStorage;
 use Carbon\CarbonInterface;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
@@ -366,14 +365,14 @@ class LiveStreamController extends Controller
             $session->getKey(),
             Str::uuid(),
         );
-        $path = $uploadedFile->storeAs($directory, $fileName, CloudStorage::disk());
+        $path = $uploadedFile->storeAs($directory, $fileName);
 
         $log = LiveStreamSessionLog::query()->create([
             'live_stream_session_id' => $session->getKey(),
             'module_id' => $module->getKey(),
             'teacher_user_id' => $session->teacher_user_id ?? $request->user()->getKey(),
             'source_role' => LiveStreamParticipant::ROLE_TEACHER,
-            'disk' => self::LIVE_STREAM_LOG_DISK,
+            'disk' => Storage::getDefaultDriver(),
             'path' => $path,
             'original_name' => $uploadedFile->getClientOriginalName(),
             'mime_type' => $uploadedFile->getMimeType() ?: 'application/json',

@@ -13,7 +13,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     $this->seed(RoleAndPermissionSeeder::class);
-    Storage::fake('s3');
+    Storage::fake();
 });
 
 it('shows completed courses in user sidebar page with certificate download button', function () {
@@ -31,12 +31,12 @@ it('shows completed courses in user sidebar page with certificate download butto
         'completed_at' => now(),
     ]);
 
-    Storage::disk('s3')->put(
+    Storage::put(
         completedCertificatePath($completedEnrollment, $user->fiscal_code, 'participation'),
         'pdf-content'
     );
 
-    Storage::disk('s3')->put(
+    Storage::put(
         completedCertificatePath($completedEnrollment, $user->fiscal_code, 'completion'),
         'pdf-content'
     );
@@ -78,7 +78,7 @@ it('downloads participation certificate for completed course owned by authentica
         'completed_at' => now(),
     ]);
 
-    Storage::disk('s3')->put(
+    Storage::put(
         completedCertificatePath($enrollment, $user->fiscal_code, 'participation'),
         'pdf-content'
     );
@@ -104,7 +104,7 @@ it('downloads completion certificate for completed course owned by authenticated
         'completed_at' => now(),
     ]);
 
-    Storage::disk('s3')->put(
+    Storage::put(
         completedCertificatePath($enrollment, $user->fiscal_code, 'completion'),
         'pdf-content'
     );
@@ -131,7 +131,7 @@ it('does not allow downloading another users certificate', function () {
         'completed_at' => now(),
     ]);
 
-    Storage::disk('s3')->put(
+    Storage::put(
         completedCertificatePath($otherEnrollment, $otherUser->fiscal_code, 'participation'),
         'pdf-content'
     );

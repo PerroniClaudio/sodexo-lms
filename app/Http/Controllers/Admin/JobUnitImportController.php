@@ -103,7 +103,7 @@ class JobUnitImportController extends Controller
 
     public function store(StoreJobUnitImportRequest $request): RedirectResponse
     {
-        $storedPath = $request->file('file')->store('imports/job-units', Importazione::storageDisk());
+        $storedPath = $request->file('file')->store('imports/job-units');
 
         $importazione = Importazione::query()->create([
             'import_type' => Importazione::TYPE_JOB_UNITS,

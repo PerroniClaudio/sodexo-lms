@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use App\Support\CloudStorage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class UserAccessExport extends Model
 {
@@ -61,7 +61,7 @@ class UserAccessExport extends Model
 
     public static function storageDisk(): string
     {
-        return CloudStorage::disk();
+        return Storage::getDefaultDriver();
     }
 
     public function statusLabel(): string

@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use App\Support\CloudStorage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class VideoReportRequest extends Model
 {
@@ -149,7 +149,7 @@ class VideoReportRequest extends Model
 
     public static function storageDisk(): string
     {
-        return CloudStorage::disk();
+        return Storage::getDefaultDriver();
     }
 
     public function course(): BelongsTo

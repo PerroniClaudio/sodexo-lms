@@ -23,9 +23,8 @@ class ImportUsersJob implements ShouldQueue
     public function handle(UserImportService $userImportService): void
     {
         $importazione = Importazione::query()->findOrFail($this->importazioneId);
-        $disk = Storage::disk(Importazione::storageDisk());
 
-        if (! $disk->exists($importazione->file_path)) {
+        if (! Storage::exists($importazione->file_path)) {
             $importazione->update([
                 'status' => Importazione::STATUS_FAILED,
                 'started_at' => now(),
@@ -49,7 +48,7 @@ class ImportUsersJob implements ShouldQueue
             'error_message' => null,
         ]);
 
-        file_put_contents($temporaryFile, $disk->get($importazione->file_path));
+        file_put_contents($temporaryFile, Storage::get($importazione->file_path));
 
         try {
             $userImportService->import($importazione, $temporaryFile);

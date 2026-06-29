@@ -22,6 +22,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 it('queues a user import from excel upload', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     Queue::fake();
 
@@ -111,6 +112,7 @@ it('returns user import status card payload', function () {
 });
 
 it('imports workers and staff from excel', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     Notification::fake();
 
@@ -234,6 +236,7 @@ it('imports workers and staff from excel', function () {
 });
 
 it('fails import when worker required data is missing', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     Notification::fake();
 

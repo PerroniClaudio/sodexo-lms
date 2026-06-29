@@ -17,7 +17,6 @@ use App\Services\CourseClassScheduleResolver;
 use App\Services\QuizAccessDelayService;
 use App\Services\SyncCourseModuleProgresses;
 use App\Services\TrainingPathCourseOrderService;
-use App\Support\CloudStorage;
 use App\Support\LanguageVerificationGate;
 use BaconQrCode\Renderer\Color\Rgb;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
@@ -122,7 +121,7 @@ class CourseController extends Controller
 
         abort_unless($certificate !== null, 404);
 
-        return $certificate['disk']->download($certificate['path'], $certificate['download_name']);
+        return Storage::download($certificate['path'], $certificate['download_name']);
     }
 
     public function showModule(Course $course, Module $module): View|RedirectResponse
@@ -238,18 +237,17 @@ class CourseController extends Controller
         abort_unless($this->canAccessCourseAssets($user, $course), Response::HTTP_FORBIDDEN);
         abort_unless($course->poster_pdf_path !== null, Response::HTTP_NOT_FOUND);
 
-        $disk = Storage::disk(CloudStorage::disk());
-        abort_unless($disk->exists($course->poster_pdf_path), Response::HTTP_NOT_FOUND);
+        abort_unless(Storage::exists($course->poster_pdf_path), Response::HTTP_NOT_FOUND);
 
         $downloadName = str($course->title)->slug('-')->append('-locandina.pdf')->toString();
 
         return response()->streamDownload(
-            static function () use ($disk, $course): void {
-                echo $disk->get($course->poster_pdf_path);
+            static function () use ($course): void {
+                echo Storage::get($course->poster_pdf_path);
             },
             $downloadName,
             [
-                'Content-Type' => $disk->mimeType($course->poster_pdf_path) ?: 'application/pdf',
+                'Content-Type' => Storage::mimeType($course->poster_pdf_path) ?: 'application/pdf',
             ],
         );
     }
@@ -261,16 +259,15 @@ class CourseController extends Controller
         abort_unless($this->canAccessCourseAssets($user, $course), Response::HTTP_FORBIDDEN);
         abort_unless($course->cover_image_path !== null, Response::HTTP_NOT_FOUND);
 
-        $disk = Storage::disk(CloudStorage::disk());
-        abort_unless($disk->exists($course->cover_image_path), Response::HTTP_NOT_FOUND);
+        abort_unless(Storage::exists($course->cover_image_path), Response::HTTP_NOT_FOUND);
 
         return response()->streamDownload(
-            static function () use ($disk, $course): void {
-                echo $disk->get($course->cover_image_path);
+            static function () use ($course): void {
+                echo Storage::get($course->cover_image_path);
             },
             basename($course->cover_image_path),
             [
-                'Content-Type' => $disk->mimeType($course->cover_image_path) ?: 'application/octet-stream',
+                'Content-Type' => Storage::mimeType($course->cover_image_path) ?: 'application/octet-stream',
                 'Content-Disposition' => 'inline; filename="'.basename($course->cover_image_path).'"',
             ],
         );

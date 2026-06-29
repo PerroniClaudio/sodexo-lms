@@ -174,6 +174,7 @@ it('returns status payload for polling', function () {
 });
 
 it('allows admins to download completed video report files', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     actingAsRole('admin');
 
@@ -199,6 +200,7 @@ it('allows admins to download completed video report files', function () {
 });
 
 it('returns not found when completed video report file is missing', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     actingAsRole('admin');
 

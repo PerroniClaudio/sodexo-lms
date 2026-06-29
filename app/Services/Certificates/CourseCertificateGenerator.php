@@ -6,7 +6,6 @@ use App\Enums\DocumentConversionJobStatus;
 use App\Models\CourseEnrollment;
 use App\Models\CustomCertificate;
 use App\Models\DocumentConversionJob;
-use App\Support\CloudStorage;
 use Illuminate\Http\File;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -64,7 +63,7 @@ class CourseCertificateGenerator
         $temporaryPath = $this->docxTemplateRenderer->renderToTemporaryPath($certificate, $variables);
 
         try {
-            $inputPath = Storage::disk(CloudStorage::disk())->putFileAs(
+            $inputPath = Storage::putFileAs(
                 'certificates/word',
                 new File($temporaryPath),
                 $this->outputFileName($enrollment, $certificate->type)
@@ -76,9 +75,9 @@ class CourseCertificateGenerator
 
             return DocumentConversionJob::query()->create([
                 'status' => DocumentConversionJobStatus::PENDING,
-                'input_disk' => CloudStorage::disk(),
+                'input_disk' => Storage::getDefaultDriver(),
                 'input_path' => $inputPath,
-                'output_disk' => CloudStorage::disk(),
+                'output_disk' => Storage::getDefaultDriver(),
                 'output_path' => (string) str($inputPath)->replaceEnd('.docx', '.pdf'),
             ]);
         } finally {

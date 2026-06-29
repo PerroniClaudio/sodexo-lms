@@ -20,6 +20,7 @@ use Spatie\Permission\Models\Role;
 uses(RefreshDatabase::class);
 
 it('builds a live audit workbook filtered by date range', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     actingAsRole('admin');
     app()->setLocale('it');
@@ -47,6 +48,7 @@ it('builds a live audit workbook filtered by date range', function () {
 });
 
 it('stores a live audit trail file when queued job succeeds', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     actingAsRole('admin');
 

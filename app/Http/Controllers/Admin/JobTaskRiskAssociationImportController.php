@@ -100,7 +100,7 @@ class JobTaskRiskAssociationImportController extends Controller
 
     public function store(StoreJobTaskRiskAssociationImportRequest $request): RedirectResponse
     {
-        $storedPath = $request->file('file')->store('imports/job-task-risk-associations', Importazione::storageDisk());
+        $storedPath = $request->file('file')->store('imports/job-task-risk-associations');
 
         $importazione = Importazione::query()->create([
             'import_type' => Importazione::TYPE_JOB_TASK_RISK_ASSOCIATIONS,

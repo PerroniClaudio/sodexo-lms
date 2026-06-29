@@ -122,6 +122,7 @@ it('updates training path details, recipients and associated courses', function 
 });
 
 it('stores downloads and deletes training path documents', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     $trainingPath = TrainingPath::factory()->create();

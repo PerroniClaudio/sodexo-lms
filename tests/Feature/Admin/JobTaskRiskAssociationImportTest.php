@@ -14,6 +14,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 it('queues a job task risk association import from excel upload', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     Queue::fake();
 
@@ -90,6 +91,7 @@ it('returns job task risk association import status card payload', function () {
 });
 
 it('imports job task risk associations from excel', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     $jobTask = JobTask::factory()->create(['code' => 'TASK-001']);
@@ -124,6 +126,7 @@ it('imports job task risk associations from excel', function () {
 });
 
 it('sets sector risk override to false when file says no', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     $jobTask = JobTask::factory()->create(['code' => 'TASK-001']);
@@ -163,6 +166,7 @@ it('sets sector risk override to false when file says no', function () {
 });
 
 it('fails job task risk association import when required data is missing', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     Storage::disk('s3')->put('imports/job-task-risk-associations/invalid-job-task-risk-associations.xlsx', file_get_contents(

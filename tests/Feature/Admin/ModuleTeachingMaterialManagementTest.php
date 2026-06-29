@@ -12,6 +12,7 @@ beforeEach(function () {
 });
 
 it('stores teaching materials for video modules', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     $course = Course::factory()->create();
@@ -70,6 +71,7 @@ it('does not allow teaching materials on non video modules', function () {
 });
 
 it('deletes teaching materials and stored files', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     $course = Course::factory()->create();

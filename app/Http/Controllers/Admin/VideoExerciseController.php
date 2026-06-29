@@ -10,7 +10,6 @@ use App\Models\VideoExerciseMaterial;
 use App\Models\VideoExerciseQuestion;
 use App\Services\VideoExerciseActivityExporter;
 use App\Services\VideoExerciseResponsesExporter;
-use App\Support\CloudStorage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -158,15 +157,14 @@ class VideoExerciseController extends Controller
             $extension = $file->getClientOriginalExtension() ?: $file->extension() ?: 'bin';
             $storedPath = $file->storeAs(
                 'modules/'.$module->getKey().'/video-exercises/'.$videoExercise->getKey().'/materials',
-                Str::uuid().'.'.$extension,
-                CloudStorage::disk(),
+                Str::uuid().'.'.$extension
             );
 
             $videoExercise->materials()->create([
                 'uploaded_by' => $request->user()?->getKey(),
                 'type' => VideoExerciseMaterial::TYPE_FILE,
                 'title' => $validated['title'],
-                'disk' => CloudStorage::disk(),
+                'disk' => Storage::getDefaultDriver(),
                 'path' => $storedPath,
                 'original_name' => $file->getClientOriginalName(),
                 'mime_type' => $file->getClientMimeType(),
@@ -336,12 +334,11 @@ class VideoExerciseController extends Controller
         $file = $request->file('self_evaluation');
         $storedPath = $file->storeAs(
             'modules/'.$exercise->module_id.'/video-exercises/'.$exercise->getKey().'/self-evaluation',
-            Str::uuid().'.pdf',
-            self::DISK,
+            Str::uuid().'.pdf'
         );
 
         $exercise->forceFill([
-            'self_evaluation_disk' => self::DISK,
+            'self_evaluation_disk' => Storage::getDefaultDriver(),
             'self_evaluation_path' => $storedPath,
             'self_evaluation_original_name' => $file->getClientOriginalName(),
             'self_evaluation_mime_type' => $file->getClientMimeType() ?: 'application/pdf',

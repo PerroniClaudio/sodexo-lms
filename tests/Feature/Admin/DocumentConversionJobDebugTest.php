@@ -39,6 +39,7 @@ it('forbids admins from accessing the document conversion debug page', function 
 });
 
 it('allows superadmins to retry a retryable document conversion job', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     actingAsRole('superadmin');
 
@@ -78,6 +79,7 @@ it('allows superadmins to retry a retryable document conversion job', function (
 });
 
 it('does not retry jobs that are still being processed', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     actingAsRole('superadmin');
 
@@ -102,6 +104,7 @@ it('does not retry jobs that are still being processed', function () {
 });
 
 it('allows superadmins to download the generated output file', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     actingAsRole('superadmin');
 
@@ -123,6 +126,7 @@ it('allows superadmins to download the generated output file', function () {
 });
 
 it('returns not found when the generated output file is missing', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     actingAsRole('superadmin');
 

@@ -12,6 +12,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 it('queues a job task import from excel upload', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     Queue::fake();
 
@@ -81,6 +82,7 @@ it('returns job task import status card payload', function () {
 });
 
 it('imports job tasks from excel', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     Storage::disk('s3')->put('imports/job-tasks/job-tasks.xlsx', file_get_contents(
@@ -107,6 +109,7 @@ it('imports job tasks from excel', function () {
 });
 
 it('fails job task import when required data is missing', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     Storage::disk('s3')->put('imports/job-tasks/invalid-job-tasks.xlsx', file_get_contents(

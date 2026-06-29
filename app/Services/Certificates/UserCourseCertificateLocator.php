@@ -4,15 +4,13 @@ namespace App\Services\Certificates;
 
 use App\Models\CourseEnrollment;
 use App\Models\CustomCertificate;
-use App\Support\CloudStorage;
-use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class UserCourseCertificateLocator
 {
     /**
-     * @return array{disk: Filesystem, download_name: string, path: string}|null
+     * @return array{download_name: string, path: string}|null
      */
     public function locate(CourseEnrollment $courseEnrollment, ?string $type = null): ?array
     {
@@ -32,7 +30,7 @@ class UserCourseCertificateLocator
     }
 
     /**
-     * @return array<string, array{disk: Filesystem, download_name: string, label: string, path: string, type: string}>
+     * @return array<string, array{download_name: string, label: string, path: string, type: string}>
      */
     public function locateAll(CourseEnrollment $courseEnrollment): array
     {
@@ -52,7 +50,7 @@ class UserCourseCertificateLocator
     }
 
     /**
-     * @return array{disk: Filesystem, download_name: string, label: string, path: string, type: string}|null
+     * @return array{download_name: string, label: string, path: string, type: string}|null
      */
     private function locateByType(CourseEnrollment $courseEnrollment, string $type): ?array
     {
@@ -80,14 +78,11 @@ class UserCourseCertificateLocator
             $type
         );
 
-        $disk = Storage::disk(CloudStorage::disk());
-
-        if (! $disk->exists($path)) {
+        if (! Storage::exists($path)) {
             return null;
         }
 
         return [
-            'disk' => $disk,
             'path' => $path,
             'type' => $type,
             'label' => CustomCertificate::availableTypeLabels()[$type] ?? $type,

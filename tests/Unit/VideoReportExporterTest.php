@@ -20,6 +20,7 @@ use Spatie\Permission\Models\Role;
 uses(RefreshDatabase::class);
 
 it('builds a workbook with progress and audit sheets filtered by date range', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     actingAsRole('admin');
     app()->setLocale('it');
@@ -50,6 +51,7 @@ it('builds a workbook with progress and audit sheets filtered by date range', fu
 });
 
 it('filters workbook rows by selected job dimension', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     actingAsRole('admin');
 
@@ -83,6 +85,7 @@ it('filters workbook rows by selected job dimension', function () {
 });
 
 it('marks report completed and stores file on s3 when queued job succeeds', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     actingAsRole('admin');
 

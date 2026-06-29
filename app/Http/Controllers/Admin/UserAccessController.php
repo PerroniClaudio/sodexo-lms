@@ -15,7 +15,6 @@ use App\Models\User;
 use App\Models\UserAccessExport;
 use App\Models\VideoReportRequest;
 use App\Services\UserAccessExporter;
-use App\Support\CloudStorage;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -73,7 +72,7 @@ class UserAccessController extends Controller
                 'date_from' => $validated['date_from'],
                 'date_to' => $validated['date_to'],
                 'status' => UserAccessExport::STATUS_PENDING,
-                'output_disk' => CloudStorage::disk(),
+                'output_disk' => Storage::getDefaultDriver(),
             ]);
 
             GenerateUserAccessExport::dispatch($userAccessExport);

@@ -24,6 +24,7 @@ it('shows the certificate templates section on the course edit page', function (
 });
 
 it('stores a course-specific certificate template from the course edit page', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     $course = Course::factory()->create();

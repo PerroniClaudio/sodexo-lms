@@ -18,6 +18,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 it('queues a training path import from excel upload', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
     Queue::fake();
 
@@ -86,6 +87,7 @@ it('downloads training path import template', function () {
 });
 
 it('enrolls user into published training path and linked courses', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     test()->seed(RoleAndPermissionSeeder::class);
@@ -130,6 +132,7 @@ it('enrolls user into published training path and linked courses', function () {
 });
 
 it('fails the import when the training path contains a linked course not assignable to the user', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     test()->seed(RoleAndPermissionSeeder::class);

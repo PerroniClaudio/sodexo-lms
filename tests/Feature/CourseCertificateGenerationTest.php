@@ -19,6 +19,7 @@ use Illuminate\Support\Str;
 uses(RefreshDatabase::class);
 
 it('creates document conversion job when enrollment completes on final module without required satisfaction survey', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     [$enrollment, $videoProgress] = createCertificateEnrollment(false);
@@ -34,6 +35,7 @@ it('creates document conversion job when enrollment completes on final module wi
 });
 
 it('creates document conversion job when required satisfaction survey completes enrollment', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     [$enrollment, $videoProgress, $surveyProgress] = createCertificateEnrollment(true);
@@ -51,6 +53,7 @@ it('creates document conversion job when required satisfaction survey completes 
 });
 
 it('creates pending document conversion job for completed enrollment using active matching template', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     [$enrollment, $videoProgress] = createCertificateEnrollment(false);
@@ -93,6 +96,7 @@ XML,
 });
 
 it('creates only participation certificate when satisfaction survey is completed but learning quiz is not passed', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     $enrollment = createCompletedEnrollmentWithLearningOutcome(false);
@@ -110,6 +114,7 @@ it('creates only participation certificate when satisfaction survey is completed
 });
 
 it('creates participation and completion certificates when learning quiz is passed and satisfaction survey is completed', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     $enrollment = createCompletedEnrollmentWithLearningOutcome(true);

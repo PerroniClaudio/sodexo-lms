@@ -20,6 +20,7 @@ it('shows attachments section on course edit page', function () {
 });
 
 it('stores course attachments on s3', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     $course = Course::factory()->create([
@@ -53,6 +54,7 @@ it('stores course attachments on s3', function () {
 });
 
 it('replaces old course attachments and deletes previous files', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     $course = Course::factory()->create([
@@ -115,6 +117,7 @@ it('validates course attachment types', function () {
 });
 
 it('previews stored attachments for admins', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     $course = Course::factory()->create([

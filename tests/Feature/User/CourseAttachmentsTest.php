@@ -9,6 +9,7 @@ beforeEach(function () {
 });
 
 it('shows course attachments in user course detail', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     $user = actingAsRole('user');
@@ -31,6 +32,7 @@ it('shows course attachments in user course detail', function () {
 });
 
 it('downloads poster pdf for enrolled user', function () {
+    config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     $user = actingAsRole('user');

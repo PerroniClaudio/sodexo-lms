@@ -2,6 +2,7 @@
 
 $cloudDiskConfig = json_decode((string) env('LARAVEL_CLOUD_DISK_CONFIG', 'null'), true);
 $cloudDiskConfig = is_array($cloudDiskConfig) ? $cloudDiskConfig : [];
+$cloudDiskConfig = array_filter($cloudDiskConfig, static fn (mixed $value): bool => $value !== null);
 
 $s3Disk = [
     'driver' => 's3',
