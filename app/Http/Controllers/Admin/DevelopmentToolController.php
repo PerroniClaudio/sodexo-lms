@@ -8,6 +8,7 @@ use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\TrainingPathEnrollment;
 use App\Models\UserCertificate;
+use App\Services\ScormService;
 use App\Services\TrainingPathEnrollmentSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,6 +21,7 @@ class DevelopmentToolController extends Controller
 {
     public function __construct(
         private readonly TrainingPathEnrollmentSyncService $trainingPathEnrollmentSyncService,
+        private readonly ScormService $scormService,
     ) {}
 
     public function resetEnrollments(): View
@@ -277,6 +279,15 @@ class DevelopmentToolController extends Controller
                 ])->saveQuietly();
             }
 
+            $this->scormService->purgeEnrollmentRuntimeData(
+                $enrollment,
+                $orderedModules
+                    ->filter(fn (Module $module): bool => $module->order >= $targetModule->order)
+                    ->pluck('id')
+                    ->map(fn (mixed $id): int => (int) $id)
+                    ->values()
+            );
+
             $enrollment->forceFill([
                 'current_module_id' => $targetModule->getKey(),
                 'completed_at' => null,
@@ -348,6 +359,11 @@ class DevelopmentToolController extends Controller
         $course = $enrollment->course()->firstOrFail();
         $orderedModules = $course->modules()->orderBy('order')->get();
         $firstModule = $orderedModules->first();
+
+        $this->scormService->purgeEnrollmentRuntimeData(
+            $enrollment,
+            $orderedModules->pluck('id')->map(fn (mixed $id): int => (int) $id)->values()
+        );
 
         $enrollment->moduleProgresses()->whereNotIn('module_id', $orderedModules->pluck('id')->all())->delete();
 
@@ -464,6 +480,7 @@ class DevelopmentToolController extends Controller
         bool $pathwayOrigin,
     ): void {
         if (! $directOrigin && ! $pathwayOrigin) {
+            $this->scormService->purgeEnrollmentRuntimeData($enrollment);
             $enrollment->forceDelete();
 
             return;

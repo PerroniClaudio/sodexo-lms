@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Course;
+use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\ScormPackage;
@@ -163,7 +164,7 @@ class ScormService
         string $scoIdentifier,
         ?ModuleProgress $moduleProgress = null,
     ): array {
-        $state = $this->rebuildCurrentState($user, $package, $scoIdentifier);
+        $state = $this->rebuildCurrentState($user, $package, $scoIdentifier, $moduleProgress?->course_user_id);
 
         return array_merge(
             $this->defaultRuntimeState($package, $moduleProgress, $state),
@@ -176,15 +177,23 @@ class ScormService
         ScormPackage $package,
         string $scoIdentifier,
         string $element,
+        ?int $courseEnrollmentId = null,
     ): ?string {
-        return ScormTracking::query()
+        $query = ScormTracking::query()
             ->where('user_id', $user->getKey())
             ->where('scorm_package_id', $package->getKey())
             ->where('sco_identifier', $scoIdentifier)
             ->where('element', $element)
             ->orderByDesc('tracked_at')
-            ->orderByDesc('id')
-            ->value('value');
+            ->orderByDesc('id');
+
+        if ($courseEnrollmentId === null) {
+            $query->whereNull('course_user_id');
+        } else {
+            $query->where('course_user_id', $courseEnrollmentId);
+        }
+
+        return $query->value('value');
     }
 
     public function persistTrackingValue(
@@ -202,6 +211,7 @@ class ScormService
             $scoIdentifier,
             $element,
             $value,
+            $moduleProgress?->course_user_id,
             $sessionId,
         );
 
@@ -210,6 +220,10 @@ class ScormService
                 ->where('session_id', $sessionId)
                 ->where('user_id', $user->getKey())
                 ->where('scorm_package_id', $package->getKey())
+                ->when(
+                    $moduleProgress !== null,
+                    fn ($query) => $query->where('course_user_id', $moduleProgress->course_user_id)
+                )
                 ->first()
             : null;
 
@@ -231,7 +245,15 @@ class ScormService
             );
         }
 
-        $this->persistDerivedTrackingValues($user, $package, $scoIdentifier, $element, $value, $sessionId);
+        $this->persistDerivedTrackingValues(
+            $user,
+            $package,
+            $scoIdentifier,
+            $element,
+            $value,
+            $moduleProgress?->course_user_id,
+            $sessionId,
+        );
 
         return $tracking;
     }
@@ -253,6 +275,7 @@ class ScormService
                     (string) $element,
                     $value === null ? null : (string) $value,
                     $sessionId,
+                    $moduleProgress,
                 );
             }
 
@@ -281,13 +304,6 @@ class ScormService
         array $values = [],
     ): array {
         $snapshot = $this->commitRuntime($user, $package, $moduleProgress, $scoIdentifier, $sessionId, $values);
-
-        $moduleProgress->refresh();
-
-        if ($moduleProgress->status !== ModuleProgress::STATUS_COMPLETED
-            && $moduleProgress->status !== ModuleProgress::STATUS_FAILED) {
-            $moduleProgress->markCompleted();
-        }
 
         ScormSession::query()
             ->where('session_id', $sessionId)
@@ -320,6 +336,7 @@ class ScormService
         User $user,
         Course $course,
         Module $module,
+        CourseEnrollment $enrollment,
     ): array {
         return $module->scormPackages()
             ->latest()
@@ -329,8 +346,37 @@ class ScormService
                 $course,
                 $module,
                 $package,
+                $enrollment,
             ))
             ->all();
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, int>|null  $moduleIds
+     */
+    public function purgeEnrollmentRuntimeData(CourseEnrollment $enrollment, ?\Illuminate\Support\Collection $moduleIds = null): void
+    {
+        $packageIds = ScormPackage::query()
+            ->where('course_id', $enrollment->course_id)
+            ->when(
+                $moduleIds !== null,
+                fn ($query) => $query->whereIn('module_id', $moduleIds->all())
+            )
+            ->pluck('id');
+
+        if ($packageIds->isEmpty()) {
+            return;
+        }
+
+        ScormTracking::query()
+            ->where('course_user_id', $enrollment->getKey())
+            ->whereIn('scorm_package_id', $packageIds->all())
+            ->delete();
+
+        ScormSession::query()
+            ->where('course_user_id', $enrollment->getKey())
+            ->whereIn('scorm_package_id', $packageIds->all())
+            ->delete();
     }
 
     /**
@@ -804,16 +850,28 @@ class ScormService
     /**
      * @return array<string, ?string>
      */
-    private function rebuildCurrentState(User $user, ScormPackage $package, string $scoIdentifier): array
+    private function rebuildCurrentState(
+        User $user,
+        ScormPackage $package,
+        string $scoIdentifier,
+        ?int $courseEnrollmentId,
+    ): array
     {
-        return ScormTracking::query()
+        $query = ScormTracking::query()
             ->where('user_id', $user->getKey())
             ->where('scorm_package_id', $package->getKey())
             ->where('sco_identifier', $scoIdentifier)
             ->where('element', 'not like', '__meta.%')
             ->orderBy('tracked_at')
-            ->orderBy('id')
-            ->get()
+            ->orderBy('id');
+
+        if ($courseEnrollmentId === null) {
+            $query->whereNull('course_user_id');
+        } else {
+            $query->where('course_user_id', $courseEnrollmentId);
+        }
+
+        return $query->get()
             ->reduce(function (array $state, ScormTracking $tracking): array {
                 $state[$tracking->element] = $tracking->value;
 
@@ -901,24 +959,13 @@ class ScormService
      */
     private function syncProgressFromState(ModuleProgress $moduleProgress, array $state): void
     {
-        $status = $state['cmi.core.lesson_status']
-            ?? $state['cmi.completion_status']
-            ?? $state['cmi.success_status']
-            ?? null;
+        $status = $this->runtimeStatusSnapshot($state);
 
-        if ($status === null) {
+        if ($status['status'] === null) {
             return;
         }
 
-        if (in_array($status, ['completed', 'passed'], true)) {
-            if ($moduleProgress->status !== ModuleProgress::STATUS_COMPLETED) {
-                $moduleProgress->markCompleted();
-            }
-
-            return;
-        }
-
-        if ($status === 'failed' || ($state['cmi.success_status'] ?? null) === 'failed') {
+        if ($this->runtimeStateIndicatesFailure($status)) {
             $moduleProgress->forceFill([
                 'status' => ModuleProgress::STATUS_FAILED,
                 'started_at' => $moduleProgress->started_at ?? now(),
@@ -932,7 +979,15 @@ class ScormService
             return;
         }
 
-        if (in_array($status, ['incomplete', 'browsed'], true)) {
+        if ($this->runtimeStateIndicatesCompletion($status)) {
+            if ($moduleProgress->status !== ModuleProgress::STATUS_COMPLETED) {
+                $moduleProgress->markCompleted();
+            }
+
+            return;
+        }
+
+        if (in_array($status['status'], ['incomplete', 'browsed'], true)) {
             if ($moduleProgress->status === ModuleProgress::STATUS_AVAILABLE) {
                 $moduleProgress->start();
 
@@ -949,6 +1004,69 @@ class ScormService
 
             $moduleProgress->courseEnrollment()->firstOrFail()->markAsInProgress();
         }
+    }
+
+    /**
+     * @param  array<string, ?string>  $state
+     * @return array{status:?string,lesson_status:?string,completion_status:?string,success_status:?string}
+     */
+    private function runtimeStatusSnapshot(array $state): array
+    {
+        $lessonStatus = $state['cmi.core.lesson_status'] ?? null;
+        $completionStatus = $state['cmi.completion_status'] ?? null;
+        $successStatus = $state['cmi.success_status'] ?? null;
+
+        return [
+            'status' => $lessonStatus ?? $completionStatus ?? $successStatus ?? null,
+            'lesson_status' => $lessonStatus,
+            'completion_status' => $completionStatus,
+            'success_status' => $successStatus,
+        ];
+    }
+
+    /**
+     * @param  array{status:?string,lesson_status:?string,completion_status:?string,success_status:?string}  $status
+     */
+    private function runtimeStateIndicatesCompletion(array $status): bool
+    {
+        if ($status['success_status'] === 'passed') {
+            return true;
+        }
+
+        if ($status['completion_status'] === 'completed'
+            && in_array($status['success_status'], [null, '', 'unknown'], true)) {
+            return true;
+        }
+
+        if ($status['completion_status'] === 'passed') {
+            return true;
+        }
+
+        if ($status['lesson_status'] === 'passed') {
+            return true;
+        }
+
+        if ($status['lesson_status'] === 'completed') {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array{status:?string,lesson_status:?string,completion_status:?string,success_status:?string}  $status
+     */
+    private function runtimeStateIndicatesFailure(array $status): bool
+    {
+        if ($status['success_status'] === 'failed') {
+            return true;
+        }
+
+        if ($status['completion_status'] === 'failed') {
+            return true;
+        }
+
+        return $status['lesson_status'] === 'failed';
     }
 
     /**
@@ -1120,16 +1238,18 @@ class ScormService
         Course $course,
         Module $module,
         ScormPackage $package,
+        CourseEnrollment $enrollment,
     ): array {
         $latestSession = ScormSession::query()
             ->where('user_id', $user->getKey())
+            ->where('course_user_id', $enrollment->getKey())
             ->where('scorm_package_id', $package->getKey())
             ->orderByDesc('last_activity_at')
             ->orderByDesc('id')
             ->first();
 
-        $state = $this->getLatestPackageState($user, $package);
-        $latestTrackedScoIdentifier = $this->getLatestTrackedScoIdentifier($user, $package);
+        $state = $this->getLatestPackageState($user, $package, $enrollment);
+        $latestTrackedScoIdentifier = $this->getLatestTrackedScoIdentifier($user, $package, $enrollment);
         $primaryScoIdentifier = $latestSession?->sco_identifier
             ?? $latestTrackedScoIdentifier
             ?? data_get($package->sco_data, '0.identifier')
@@ -1137,6 +1257,7 @@ class ScormService
 
         $packageTrackedSeconds = (int) ScormSession::query()
             ->where('user_id', $user->getKey())
+            ->where('course_user_id', $enrollment->getKey())
             ->where('scorm_package_id', $package->getKey())
             ->max('recorded_session_seconds');
         $launchSco = $this->resolveLaunchSco($package, (string) $primaryScoIdentifier);
@@ -1148,11 +1269,11 @@ class ScormService
         $progressPercent = is_numeric($progressMeasure)
             ? (int) round(max(0, min(1, (float) $progressMeasure)) * 100)
             : null;
-        $maxProgressMeasure = $this->getMaxPackageMetaValue($user, $package, '__meta.max_progress_measure');
+        $maxProgressMeasure = $this->getMaxPackageMetaValue($user, $package, $enrollment, '__meta.max_progress_measure');
         $maxProgressPercent = is_numeric($maxProgressMeasure)
             ? (int) round(max(0, min(1, (float) $maxProgressMeasure)) * 100)
             : null;
-        $maxNumericLocation = $this->getMaxPackageMetaValue($user, $package, '__meta.max_numeric_location');
+        $maxNumericLocation = $this->getMaxPackageMetaValue($user, $package, $enrollment, '__meta.max_numeric_location');
         $lessonLocation = $state['cmi.core.lesson_location'] ?? $state['cmi.location'] ?? null;
         $suspendData = $state['cmi.suspend_data'] ?? null;
         $sessionTotalTime = $state['cmi.core.total_time'] ?? $state['cmi.total_time'] ?? null;
@@ -1232,10 +1353,11 @@ class ScormService
     /**
      * @return array<string, ?string>
      */
-    private function getLatestPackageState(User $user, ScormPackage $package): array
+    private function getLatestPackageState(User $user, ScormPackage $package, CourseEnrollment $enrollment): array
     {
         return ScormTracking::query()
             ->where('user_id', $user->getKey())
+            ->where('course_user_id', $enrollment->getKey())
             ->where('scorm_package_id', $package->getKey())
             ->where('element', 'not like', '__meta.%')
             ->orderBy('tracked_at')
@@ -1248,20 +1370,27 @@ class ScormService
             }, []);
     }
 
-    private function getLatestTrackedScoIdentifier(User $user, ScormPackage $package): ?string
+    private function getLatestTrackedScoIdentifier(User $user, ScormPackage $package, CourseEnrollment $enrollment): ?string
     {
         return ScormTracking::query()
             ->where('user_id', $user->getKey())
+            ->where('course_user_id', $enrollment->getKey())
             ->where('scorm_package_id', $package->getKey())
             ->orderByDesc('tracked_at')
             ->orderByDesc('id')
             ->value('sco_identifier');
     }
 
-    private function getMaxPackageMetaValue(User $user, ScormPackage $package, string $element): ?string
+    private function getMaxPackageMetaValue(
+        User $user,
+        ScormPackage $package,
+        CourseEnrollment $enrollment,
+        string $element,
+    ): ?string
     {
         $values = ScormTracking::query()
             ->where('user_id', $user->getKey())
+            ->where('course_user_id', $enrollment->getKey())
             ->where('scorm_package_id', $package->getKey())
             ->where('element', $element)
             ->pluck('value')
@@ -1285,12 +1414,18 @@ class ScormService
         ?ScormSession $latestSession,
         array $state,
     ): string {
-        if (in_array($completionStatus, ['completed', 'passed'], true) || $successStatus === 'passed') {
-            return 'Completato';
+        $status = $this->runtimeStatusSnapshot([
+            'cmi.core.lesson_status' => $state['cmi.core.lesson_status'] ?? null,
+            'cmi.completion_status' => $completionStatus,
+            'cmi.success_status' => $successStatus,
+        ]);
+
+        if ($this->runtimeStateIndicatesFailure($status)) {
+            return 'Fallito';
         }
 
-        if ($completionStatus === 'failed' || $successStatus === 'failed') {
-            return 'Fallito';
+        if ($this->runtimeStateIndicatesCompletion($status)) {
+            return 'Completato';
         }
 
         if (in_array($completionStatus, ['incomplete', 'browsed'], true)) {
@@ -1348,16 +1483,24 @@ class ScormService
         string $scoIdentifier,
         string $element,
         ?string $value,
+        ?int $courseEnrollmentId = null,
         ?string $sessionId = null,
     ): ScormTracking {
-        $latestTracking = ScormTracking::query()
+        $latestTrackingQuery = ScormTracking::query()
             ->where('user_id', $user->getKey())
             ->where('scorm_package_id', $package->getKey())
             ->where('sco_identifier', $scoIdentifier)
             ->where('element', $element)
             ->orderByDesc('tracked_at')
-            ->orderByDesc('id')
-            ->first();
+            ->orderByDesc('id');
+
+        if ($courseEnrollmentId === null) {
+            $latestTrackingQuery->whereNull('course_user_id');
+        } else {
+            $latestTrackingQuery->where('course_user_id', $courseEnrollmentId);
+        }
+
+        $latestTracking = $latestTrackingQuery->first();
 
         if ($latestTracking !== null && $latestTracking->value === $value) {
             return $latestTracking;
@@ -1365,6 +1508,7 @@ class ScormService
 
         return ScormTracking::query()->create([
             'user_id' => $user->getKey(),
+            'course_user_id' => $courseEnrollmentId,
             'scorm_package_id' => $package->getKey(),
             'sco_identifier' => $scoIdentifier,
             'element' => $element,
@@ -1380,6 +1524,7 @@ class ScormService
         string $scoIdentifier,
         string $element,
         ?string $value,
+        ?int $courseEnrollmentId = null,
         ?string $sessionId = null,
     ): void {
         if ($value === null || $value === '') {
@@ -1387,15 +1532,15 @@ class ScormService
         }
 
         if (in_array($element, ['cmi.core.lesson_location', 'cmi.location'], true)) {
-            $this->createTrackingRecordIfChanged($user, $package, $scoIdentifier, '__meta.last_location', $value, $sessionId);
+            $this->createTrackingRecordIfChanged($user, $package, $scoIdentifier, '__meta.last_location', $value, $courseEnrollmentId, $sessionId);
         }
 
         if (in_array($element, ['cmi.core.lesson_status', 'cmi.completion_status', 'cmi.success_status'], true)) {
-            $this->createTrackingRecordIfChanged($user, $package, $scoIdentifier, '__meta.last_status', $value, $sessionId);
+            $this->createTrackingRecordIfChanged($user, $package, $scoIdentifier, '__meta.last_status', $value, $courseEnrollmentId, $sessionId);
         }
 
         if ($element === 'cmi.suspend_data') {
-            $this->createTrackingRecordIfChanged($user, $package, $scoIdentifier, '__meta.resume_available', '1', $sessionId);
+            $this->createTrackingRecordIfChanged($user, $package, $scoIdentifier, '__meta.resume_available', '1', $courseEnrollmentId, $sessionId);
         }
 
         if (in_array($element, ['cmi.progress_measure'], true) && is_numeric($value)) {
@@ -1405,6 +1550,7 @@ class ScormService
                 $scoIdentifier,
                 '__meta.max_progress_measure',
                 (float) $value,
+                $courseEnrollmentId,
                 $sessionId,
             );
         }
@@ -1416,6 +1562,7 @@ class ScormService
                 $scoIdentifier,
                 '__meta.max_score_raw',
                 (float) $value,
+                $courseEnrollmentId,
                 $sessionId,
             );
         }
@@ -1427,6 +1574,7 @@ class ScormService
                 $scoIdentifier,
                 '__meta.max_numeric_location',
                 (float) $value,
+                $courseEnrollmentId,
                 $sessionId,
             );
         }
@@ -1438,9 +1586,10 @@ class ScormService
         string $scoIdentifier,
         string $element,
         float $value,
+        ?int $courseEnrollmentId = null,
         ?string $sessionId = null,
     ): void {
-        $currentValue = $this->getLastValue($user, $package, $scoIdentifier, $element);
+        $currentValue = $this->getLastValue($user, $package, $scoIdentifier, $element, $courseEnrollmentId);
 
         if ($currentValue !== null && is_numeric($currentValue) && (float) $currentValue >= $value) {
             return;
@@ -1452,6 +1601,7 @@ class ScormService
             $scoIdentifier,
             $element,
             (string) $value,
+            $courseEnrollmentId,
             $sessionId,
         );
     }

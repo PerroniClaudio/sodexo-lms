@@ -11,6 +11,7 @@ class ScormTracking extends Model
 
     protected $fillable = [
         'user_id',
+        'course_user_id',
         'scorm_package_id',
         'sco_identifier',
         'element',

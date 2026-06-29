@@ -24,7 +24,7 @@ class ScormModulePackageController extends Controller
         [$enrollment, $moduleProgress] = $this->resolveLearnerContext($request, $course, $module);
 
         return response()->json([
-            'packages' => $scormService->getLearnerPackageSummaries($request->user(), $course, $module),
+            'packages' => $scormService->getLearnerPackageSummaries($request->user(), $course, $module, $enrollment),
             'module_progress' => [
                 'status' => $moduleProgress->status,
                 'time_spent_seconds' => $moduleProgress->time_spent_seconds,

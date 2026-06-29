@@ -130,10 +130,12 @@ it('initializes runtime, persists values, resumes state and terminates the sessi
     expect(ScormSession::query()->where('session_id', 'session-1')->value('status'))->toBe('terminated');
     expect(ScormTracking::query()->where('scorm_package_id', $package->getKey())->count())->toBeGreaterThan(0);
     expect(ScormTracking::query()
+        ->where('course_user_id', $enrollment->getKey())
         ->where('scorm_package_id', $package->getKey())
         ->where('element', 'cmi.core.lesson_location')
         ->exists())->toBeTrue();
     expect(ScormTracking::query()
+        ->where('course_user_id', $enrollment->getKey())
         ->where('scorm_package_id', $package->getKey())
         ->where('element', '__meta.last_location')
         ->exists())->toBeTrue();
@@ -160,7 +162,7 @@ it('persists scorm 2004 values, progress and interaction data', function () {
         'lesson2004/assessment.html' => '<html><body>Assessment lesson</body></html>',
     ]));
 
-    CourseEnrollment::enroll($user, $course);
+    $enrollment = CourseEnrollment::enroll($user, $course);
 
     $this->postJson(route('user.courses.modules.scorm.runtime.initialize', [$course, $module, $package]), [
         'session_id' => 'session-2004',
@@ -184,18 +186,22 @@ it('persists scorm 2004 values, progress and interaction data', function () {
     ])->assertOk();
 
     expect(ScormTracking::query()
+        ->where('course_user_id', $enrollment->getKey())
         ->where('scorm_package_id', $package->getKey())
         ->where('element', 'cmi.location')
         ->value('value'))->toBe('12');
     expect(ScormTracking::query()
+        ->where('course_user_id', $enrollment->getKey())
         ->where('scorm_package_id', $package->getKey())
         ->where('element', 'cmi.interactions.0.learner_response')
         ->value('value'))->toBe('B');
     expect(ScormTracking::query()
+        ->where('course_user_id', $enrollment->getKey())
         ->where('scorm_package_id', $package->getKey())
         ->where('element', '__meta.max_progress_measure')
         ->exists())->toBeTrue();
     expect(ScormTracking::query()
+        ->where('course_user_id', $enrollment->getKey())
         ->where('scorm_package_id', $package->getKey())
         ->where('element', '__meta.max_numeric_location')
         ->exists())->toBeTrue();
@@ -503,7 +509,7 @@ it('keeps scorm runtime and player reachable after module completion advances cu
         ->assertOk();
 });
 
-it('advances the course when scorm runtime is terminated without an explicit completion status', function () {
+it('does not complete the module when scorm runtime is terminated without an explicit completion status', function () {
     $this->seed(RoleAndPermissionSeeder::class);
     $user = User::factory()->create();
     $user->assignRole('user');
@@ -545,9 +551,155 @@ it('advances the course when scorm runtime is terminated without an explicit com
     $moduleProgress->refresh();
     $nextProgress = $enrollment->moduleProgresses()->where('module_id', $nextModule->getKey())->firstOrFail();
 
-    expect($moduleProgress->status)->toBe(ModuleProgress::STATUS_COMPLETED);
-    expect((int) $enrollment->current_module_id)->toBe($nextModule->getKey());
-    expect($nextProgress->status)->toBe(ModuleProgress::STATUS_AVAILABLE);
-    expect($terminateResponse->json('redirect_url'))->toBe(route('user.courses.modules.player', [$course, $nextModule]));
+    expect($moduleProgress->status)->toBe(ModuleProgress::STATUS_IN_PROGRESS);
+    expect((int) $enrollment->current_module_id)->toBe($module->getKey());
+    expect($nextProgress->status)->toBe(ModuleProgress::STATUS_LOCKED);
+    expect($terminateResponse->json('redirect_url'))->toBe(route('user.courses.modules.player', [$course, $module]));
     expect(ScormSession::query()->where('session_id', 'session-exit')->value('status'))->toBe(ScormSession::STATUS_TERMINATED);
+});
+
+it('keeps scorm runtime state isolated per enrollment for the same user and package', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+    $user = User::factory()->create();
+    $user->assignRole('user');
+    $this->actingAs($user);
+
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => 'scorm',
+        'title' => 'Modulo SCORM',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $package = createReadyScormPackage($module);
+    $firstEnrollment = CourseEnrollment::enroll($user, $course);
+
+    $this->postJson(route('user.courses.modules.scorm.runtime.initialize', [$course, $module, $package]), [
+        'session_id' => 'session-first-enrollment',
+        'sco_identifier' => 'ITEM-DEFAULT',
+        'version' => '1.2',
+    ])->assertOk();
+
+    $this->postJson(route('user.courses.modules.scorm.runtime.commit', [$course, $module, $package]), [
+        'session_id' => 'session-first-enrollment',
+        'sco_identifier' => 'ITEM-DEFAULT',
+        'values' => [
+            'cmi.core.lesson_location' => 'page-9',
+            'cmi.suspend_data' => '{"slide":9}',
+            'cmi.core.lesson_status' => 'incomplete',
+        ],
+    ])->assertOk();
+
+    $firstEnrollment->forceDelete();
+
+    $secondEnrollment = CourseEnrollment::enroll($user, $course);
+
+    $response = $this->postJson(route('user.courses.modules.scorm.runtime.initialize', [$course, $module, $package]), [
+        'session_id' => 'session-second-enrollment',
+        'sco_identifier' => 'ITEM-DEFAULT',
+        'version' => '1.2',
+    ]);
+
+    $response->assertOk();
+
+    expect($response->json('state.cmi.core.lesson_location'))->toBe('');
+    expect($response->json('state.cmi.suspend_data'))->toBe('');
+    expect($response->json('state.cmi.core.entry'))->toBe('ab-initio');
+    expect(ScormTracking::query()->where('course_user_id', $firstEnrollment->getKey())->exists())->toBeTrue();
+    expect(ScormTracking::query()->where('course_user_id', $secondEnrollment->getKey())->exists())->toBeFalse();
+});
+
+it('does not complete a scorm module when completion is reached but success status is failed', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+    $user = User::factory()->create();
+    $user->assignRole('user');
+    $this->actingAs($user);
+
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => 'scorm',
+        'title' => 'Modulo SCORM 2004 con test',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    Storage::fake('local');
+
+    $package = app(ScormService::class)->storeUploadedPackage($module, scormZipUpload([
+        'imsmanifest.xml' => validScorm2004Manifest(),
+        'lesson2004/index.html' => '<html><body>SCORM 2004 lesson</body></html>',
+        'lesson2004/assessment.html' => '<html><body>Assessment lesson</body></html>',
+    ]));
+
+    $enrollment = CourseEnrollment::enroll($user, $course);
+    $moduleProgress = $enrollment->moduleProgresses()->where('module_id', $module->getKey())->firstOrFail();
+
+    $this->postJson(route('user.courses.modules.scorm.runtime.initialize', [$course, $module, $package]), [
+        'session_id' => 'session-failed-test',
+        'sco_identifier' => 'ITEM-2004',
+        'version' => '2004',
+    ])->assertOk();
+
+    $this->postJson(route('user.courses.modules.scorm.runtime.commit', [$course, $module, $package]), [
+        'session_id' => 'session-failed-test',
+        'sco_identifier' => 'ITEM-2004',
+        'values' => [
+            'cmi.completion_status' => 'completed',
+            'cmi.success_status' => 'failed',
+            'cmi.score.raw' => '40',
+            'cmi.session_time' => 'PT0H0M30S',
+        ],
+    ])->assertOk();
+
+    $moduleProgress->refresh();
+    $enrollment->refresh();
+
+    expect($moduleProgress->status)->toBe(ModuleProgress::STATUS_FAILED);
+    expect($moduleProgress->completed_at)->toBeNull();
+    expect($enrollment->status)->toBe(CourseEnrollment::STATUS_IN_PROGRESS);
+});
+
+it('completes a scorm module when completion is reached and success status is unknown', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+    $user = User::factory()->create();
+    $user->assignRole('user');
+    $this->actingAs($user);
+
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => 'scorm',
+        'title' => 'Modulo SCORM 2004 senza test',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    Storage::fake('local');
+
+    $package = app(ScormService::class)->storeUploadedPackage($module, scormZipUpload([
+        'imsmanifest.xml' => validScorm2004Manifest(),
+        'lesson2004/index.html' => '<html><body>SCORM 2004 lesson</body></html>',
+        'lesson2004/assessment.html' => '<html><body>Assessment lesson</body></html>',
+    ]));
+
+    $enrollment = CourseEnrollment::enroll($user, $course);
+    $moduleProgress = $enrollment->moduleProgresses()->where('module_id', $module->getKey())->firstOrFail();
+
+    $this->postJson(route('user.courses.modules.scorm.runtime.initialize', [$course, $module, $package]), [
+        'session_id' => 'session-unknown-success',
+        'sco_identifier' => 'ITEM-2004',
+        'version' => '2004',
+    ])->assertOk();
+
+    $this->postJson(route('user.courses.modules.scorm.runtime.commit', [$course, $module, $package]), [
+        'session_id' => 'session-unknown-success',
+        'sco_identifier' => 'ITEM-2004',
+        'values' => [
+            'cmi.completion_status' => 'completed',
+            'cmi.success_status' => 'unknown',
+            'cmi.session_time' => 'PT0H0M30S',
+        ],
+    ])->assertOk();
+
+    $moduleProgress->refresh();
+
+    expect($moduleProgress->status)->toBe(ModuleProgress::STATUS_COMPLETED);
+    expect($moduleProgress->completed_at)->not->toBeNull();
 });

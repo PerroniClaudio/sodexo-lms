@@ -3,9 +3,15 @@
 use App\Http\Middleware\EnsureDevelopmentEnvironment;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
+use App\Models\Module;
+use App\Models\ScormSession;
+use App\Models\ScormTracking;
 use App\Models\TrainingPath;
 use App\Models\TrainingPathEnrollment;
 use App\Models\User;
+use App\Services\ScormService;
+use Database\Seeders\RoleAndPermissionSeeder;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     actingAsRole('superadmin');
@@ -87,4 +93,46 @@ it('force deletes a training path enrollment and preserves only valid course ori
         ->and($sharedEnrollment->fresh()->direct_origin)->toBeTrue()
         ->and($sharedEnrollment->fresh()->pathway_origin)->toBeTrue()
         ->and(CourseEnrollment::withTrashed()->find($pathOnlyEnrollment->getKey()))->toBeNull();
+});
+
+it('force deleting a course enrollment also removes scorm runtime data for that enrollment', function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+
+    $learner = User::factory()->create();
+    $learner->assignRole('user');
+
+    $course = Course::factory()->published()->create();
+    $module = Module::factory()->create([
+        'type' => 'scorm',
+        'title' => 'Modulo SCORM',
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    Storage::fake('local');
+
+    $package = app(ScormService::class)->storeUploadedPackage($module, scormZipUpload([
+        'imsmanifest.xml' => validScormManifest(),
+        'lesson/index.html' => '<html><body>SCORM lesson</body></html>',
+    ]));
+
+    $enrollment = CourseEnrollment::enroll($learner, $course);
+    $progress = $enrollment->moduleProgresses()->where('module_id', $module->getKey())->firstOrFail();
+
+    app(ScormService::class)->initializeRuntime($learner, $package, $progress, 'ITEM-DEFAULT', 'force-delete-session');
+    app(ScormService::class)->commitRuntime($learner, $package, $progress, 'ITEM-DEFAULT', 'force-delete-session', [
+        'cmi.core.lesson_location' => 'page-4',
+        'cmi.core.lesson_status' => 'incomplete',
+    ]);
+
+    expect(ScormTracking::query()->where('course_user_id', $enrollment->getKey())->exists())->toBeTrue();
+    expect(ScormSession::query()->where('course_user_id', $enrollment->getKey())->exists())->toBeTrue();
+
+    $this->post(route('admin.development-tools.force-delete-enrollments.store'), [
+        'target_type' => 'course',
+        'target_id' => $enrollment->getKey(),
+    ])->assertRedirect();
+
+    expect(CourseEnrollment::withTrashed()->find($enrollment->getKey()))->toBeNull();
+    expect(ScormTracking::query()->where('course_user_id', $enrollment->getKey())->exists())->toBeFalse();
+    expect(ScormSession::query()->where('course_user_id', $enrollment->getKey())->exists())->toBeFalse();
 });
