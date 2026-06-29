@@ -12,6 +12,7 @@ use App\Models\UserCertificate;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class CourseRiskRequirementService
 {
@@ -352,6 +353,89 @@ class CourseRiskRequirementService
         });
     }
 
+    /**
+     * @return array<int, array{
+     *     requirement_name: string,
+     *     required_validity_type: CourseRiskRequirementValidityType,
+     *     supported_validity_types: array<int, CourseRiskRequirementValidityType>,
+     *     allowed_start_risk_levels: array<int, RiskLevel>,
+     *     reason: string,
+     *     message: string
+     * }>
+     */
+    public function enrollmentRequirementIssues(
+        User $user,
+        Course $course,
+        ?CarbonInterface $referenceDate = null,
+    ): array {
+        $referenceDate ??= now();
+        $course->loadMissing('riskBasedRequirements');
+
+        return $course->riskBasedRequirements
+            ->map(function (RiskBasedRequirement $riskBasedRequirement) use ($course, $referenceDate, $user): ?array {
+                $supportedValidityTypes = $course->courseValidityTypesForRequirement($riskBasedRequirement)->all();
+                $requiredValidityType = $this->determineRequiredCourseValidityType($user, $riskBasedRequirement, $referenceDate);
+                $allowedStartRiskLevels = $course->integrativeStartRiskLevelsForRequirement($riskBasedRequirement)->all();
+
+                if (! in_array($requiredValidityType, $supportedValidityTypes, true)) {
+                    return [
+                        'requirement_name' => $riskBasedRequirement->name,
+                        'required_validity_type' => $requiredValidityType,
+                        'supported_validity_types' => $supportedValidityTypes,
+                        'allowed_start_risk_levels' => $allowedStartRiskLevels,
+                        'reason' => 'validity_mismatch',
+                        'message' => $this->formatValidityMismatchMessage(
+                            $riskBasedRequirement,
+                            $requiredValidityType,
+                            $supportedValidityTypes,
+                        ),
+                    ];
+                }
+
+                if (! $this->userSatisfiesCoursePrerequisiteAtDate($user, $course, $riskBasedRequirement, $referenceDate)) {
+                    return [
+                        'requirement_name' => $riskBasedRequirement->name,
+                        'required_validity_type' => $requiredValidityType,
+                        'supported_validity_types' => $supportedValidityTypes,
+                        'allowed_start_risk_levels' => $allowedStartRiskLevels,
+                        'reason' => 'missing_prerequisite',
+                        'message' => $this->formatMissingPrerequisiteMessage(
+                            $user,
+                            $riskBasedRequirement,
+                            $allowedStartRiskLevels,
+                            $referenceDate,
+                        ),
+                    ];
+                }
+
+                return null;
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    public function enrollmentEligibilityMessage(
+        User $user,
+        Course $course,
+        ?CarbonInterface $referenceDate = null,
+    ): ?string {
+        $issues = $this->enrollmentRequirementIssues($user, $course, $referenceDate);
+
+        if ($issues === []) {
+            return null;
+        }
+
+        $details = collect($issues)
+            ->pluck('message')
+            ->map(static fn (string $message): string => Str::finish($message, '.'))
+            ->implode(' ');
+
+        return __('L\'utente non possiede i prerequisiti necessari per l\'iscrizione a questo corso. Requisiti mancanti: :details', [
+            'details' => $details,
+        ]);
+    }
+
     public function userSatisfiesCoursePrerequisiteAtDate(
         User $user,
         Course $course,
@@ -617,5 +701,69 @@ class CourseRiskRequirementService
         $courseEnrollment->forceFill([
             'certificate_generation_error' => $errorCode,
         ])->save();
+    }
+
+    /**
+     * @param  array<int, CourseRiskRequirementValidityType>  $supportedValidityTypes
+     */
+    private function formatValidityMismatchMessage(
+        RiskBasedRequirement $riskBasedRequirement,
+        CourseRiskRequirementValidityType $requiredValidityType,
+        array $supportedValidityTypes,
+    ): string {
+        $supportedLabels = CourseRiskRequirementValidityType::labelsText($supportedValidityTypes);
+
+        return sprintf(
+            '%s: il corso copre %s, ma per questo utente serve %s',
+            $riskBasedRequirement->name,
+            $supportedLabels !== '' ? $supportedLabels : __('nessuna validità configurata'),
+            $requiredValidityType->label(),
+        );
+    }
+
+    /**
+     * @param  array<int, RiskLevel>  $allowedStartRiskLevels
+     */
+    private function formatMissingPrerequisiteMessage(
+        User $user,
+        RiskBasedRequirement $riskBasedRequirement,
+        array $allowedStartRiskLevels,
+        CarbonInterface $referenceDate,
+    ): string {
+        if ($allowedStartRiskLevels === []) {
+            return sprintf(
+                '%s: il corso integrativo non ha livelli iniziali ammessi configurati',
+                $riskBasedRequirement->name,
+            );
+        }
+
+        $allowedRiskLevelLabels = collect($allowedStartRiskLevels)
+            ->map(static fn (RiskLevel $riskLevel): string => $riskLevel->label())
+            ->implode(', ');
+
+        $hasExpiredAllowedCertificate = $this->expiredCertificatesForRequirement($user, $riskBasedRequirement, $referenceDate)
+            ->contains(function (UserCertificate $certificate) use ($allowedStartRiskLevels): bool {
+                return $certificate->riskBasedRequirements
+                    ->contains(function (RiskBasedRequirement $attachedRequirement) use ($allowedStartRiskLevels): bool {
+                        $certificateRiskLevel = $attachedRequirement->singleRiskLevel();
+
+                        return $certificateRiskLevel instanceof RiskLevel
+                            && in_array($certificateRiskLevel, $allowedStartRiskLevels, true);
+                    });
+            });
+
+        if ($hasExpiredAllowedCertificate) {
+            return sprintf(
+                '%s: serve un attestato di partenza valido tra %s, ma quello disponibile risulta scaduto',
+                $riskBasedRequirement->name,
+                $allowedRiskLevelLabels,
+            );
+        }
+
+        return sprintf(
+            '%s: serve un attestato di partenza valido tra %s',
+            $riskBasedRequirement->name,
+            $allowedRiskLevelLabels,
+        );
     }
 }

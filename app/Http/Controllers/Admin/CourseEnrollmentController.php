@@ -246,10 +246,12 @@ class CourseEnrollmentController extends Controller
             ], 409);
         }
 
-        if (! $this->courseRiskRequirementService->userCanEnrollInCourse($user, $course)) {
+        $eligibilityMessage = $this->courseRiskRequirementService->enrollmentEligibilityMessage($user, $course);
+
+        if ($eligibilityMessage !== null) {
             return response()->json([
                 'success' => false,
-                'message' => __('L\'utente non possiede i prerequisiti necessari per l\'iscrizione a questo corso.'),
+                'message' => $eligibilityMessage,
             ], 422);
         }
 

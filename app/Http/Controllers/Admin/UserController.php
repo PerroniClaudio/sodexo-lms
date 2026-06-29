@@ -577,10 +577,12 @@ class UserController extends Controller
 
         $course = Course::query()->with('riskBasedRequirements')->findOrFail($validated['course_id']);
 
-        if (! $this->courseRiskRequirementService->userCanEnrollInCourse($user, $course)) {
+        $eligibilityMessage = $this->courseRiskRequirementService->enrollmentEligibilityMessage($user, $course);
+
+        if ($eligibilityMessage !== null) {
             return redirect()
                 ->route('admin.users.risk-course-selection', $user)
-                ->with('error', __('L\'utente non possiede i prerequisiti necessari per l\'iscrizione a questo corso.'));
+                ->with('error', $eligibilityMessage);
         }
 
         $visibilityError = $course->enrollmentVisibilityMessageFor($user);

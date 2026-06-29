@@ -189,8 +189,10 @@ class CourseEnrollmentImportService
             return;
         }
 
-        if (! $this->courseRiskRequirementService->userCanEnrollInCourse($user, $course)) {
-            $this->fail($rowNumber, __('L\'utente non possiede i prerequisiti necessari per l\'iscrizione a questo corso.'));
+        $eligibilityMessage = $this->courseRiskRequirementService->enrollmentEligibilityMessage($user, $course);
+
+        if ($eligibilityMessage !== null) {
+            $this->fail($rowNumber, $eligibilityMessage);
         }
 
         $visibilityError = $this->courseVisibilityError($course, $user);

@@ -247,6 +247,62 @@ it('does not require an integrative prerequisite when the same course also cover
     expect(app(CourseRiskRequirementService::class)->userCanEnrollInCourse($user, $course))->toBeTrue();
 });
 
+it('describes missing enrollment prerequisites with the missing requirement details', function () {
+    $user = makeTestUser();
+    $highRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::HIGH)
+        ->progressionGroup('specific-worker-training')
+        ->limited(60)
+        ->create(['name' => 'Formazione specifica rischio alto']);
+    $course = Course::factory()->create();
+    $course->riskBasedRequirements()->attach($highRequirement->getKey(), [
+        'course_validity_types' => json_encode([CourseRiskRequirementValidityType::Integrative->value]),
+        'integrative_start_risk_levels' => json_encode([RiskLevel::LOW->value]),
+    ]);
+
+    $message = app(CourseRiskRequirementService::class)->enrollmentEligibilityMessage($user, $course);
+
+    expect($message)
+        ->not->toBeNull()
+        ->toContain('Requisiti mancanti:')
+        ->toContain('Formazione specifica rischio alto')
+        ->toContain('Primo conseguimento');
+});
+
+it('describes when an integrative enrollment is blocked by the allowed starting levels', function () {
+    $user = makeTestUser();
+    $mediumRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::MEDIUM)
+        ->progressionGroup('specific-worker-training')
+        ->limited(60)
+        ->create();
+    $highRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::HIGH)
+        ->progressionGroup('specific-worker-training')
+        ->limited(60)
+        ->create(['name' => 'Formazione specifica rischio alto']);
+    $course = Course::factory()->create();
+    $course->riskBasedRequirements()->attach($highRequirement->getKey(), [
+        'course_validity_types' => json_encode([CourseRiskRequirementValidityType::Integrative->value]),
+        'integrative_start_risk_levels' => json_encode([RiskLevel::LOW->value]),
+    ]);
+
+    $certificate = UserCertificate::factory()
+        ->for($user)
+        ->create([
+            'issued_at' => now()->subMonth()->toDateString(),
+            'expires_at' => now()->addYear()->toDateString(),
+        ]);
+    $certificate->riskBasedRequirements()->attach($mediumRequirement->getKey());
+
+    $message = app(CourseRiskRequirementService::class)->enrollmentEligibilityMessage($user, $course);
+
+    expect($message)
+        ->not->toBeNull()
+        ->toContain('Formazione specifica rischio alto')
+        ->toContain('Rischio Basso');
+});
+
 it('creates an internal risk certificate when an enrollment completes', function () {
     $user = makeTestUser();
     $course = Course::factory()->create([

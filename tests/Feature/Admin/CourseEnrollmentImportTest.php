@@ -1,16 +1,20 @@
 <?php
 
+use App\Enums\CourseRiskRequirementValidityType;
+use App\Enums\RiskLevel;
 use App\Jobs\ImportCourseEnrollmentsJob;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Importazione;
 use App\Models\JobRole;
+use App\Models\RiskBasedRequirement;
 use App\Models\User;
 use App\Services\CourseEnrollmentImportService;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -174,6 +178,104 @@ it('fails the course enrollment import when the user is outside the configured r
     expect($importazione->fresh()->status)->toBe(Importazione::STATUS_FAILED)
         ->and($importazione->fresh()->error_message)->toContain('L\'utente non rientra tra i destinatari del corso "Corso riservato"')
         ->and(CourseEnrollment::query()->count())->toBe(0);
+});
+
+it('reports which risk prerequisite is missing during the course enrollment import', function () {
+    test()->seed(RoleAndPermissionSeeder::class);
+
+    $course = Course::factory()->published()->create([
+        'code' => 'COURSE-001',
+    ]);
+    $requirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::HIGH)
+        ->progressionGroup('specific-worker-training')
+        ->limited(60)
+        ->create(['name' => 'Formazione specifica rischio alto']);
+    $course->riskBasedRequirements()->attach($requirement->getKey(), [
+        'course_validity_types' => json_encode([CourseRiskRequirementValidityType::Integrative->value]),
+        'integrative_start_risk_levels' => json_encode([RiskLevel::LOW->value]),
+    ]);
+
+    User::factory()->asUser()->state([
+        'fiscal_code' => 'RSSMRA80A01H501Z',
+    ])->create();
+
+    $file = courseEnrollmentImportFile([
+        ['Codice fiscale', 'Codice corso'],
+        ['RSSMRA80A01H501Z', 'COURSE-001'],
+    ]);
+
+    $importazione = Importazione::query()->create([
+        'import_type' => Importazione::TYPE_USER_COURSES,
+        'file_path' => 'imports/user-courses/user-courses.xlsx',
+        'original_file_name' => 'associazioni-corsi.xlsx',
+    ]);
+
+    try {
+        app(CourseEnrollmentImportService::class)->import($importazione, $file->getRealPath());
+        $this->fail('Expected the import to fail for missing risk prerequisites.');
+    } catch (ValidationException $exception) {
+        expect($exception->getMessage())
+            ->toContain('Formazione specifica rischio alto')
+            ->toContain('Primo conseguimento');
+    }
+
+    expect(CourseEnrollment::query()->count())->toBe(0);
+});
+
+it('reports missing allowed starting levels during the course enrollment import', function () {
+    test()->seed(RoleAndPermissionSeeder::class);
+
+    $course = Course::factory()->published()->create([
+        'code' => 'COURSE-001',
+    ]);
+    $mediumRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::MEDIUM)
+        ->progressionGroup('specific-worker-training')
+        ->limited(60)
+        ->create();
+    $highRequirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::HIGH)
+        ->progressionGroup('specific-worker-training')
+        ->limited(60)
+        ->create(['name' => 'Formazione specifica rischio alto']);
+    $course->riskBasedRequirements()->attach($highRequirement->getKey(), [
+        'course_validity_types' => json_encode([CourseRiskRequirementValidityType::Integrative->value]),
+        'integrative_start_risk_levels' => json_encode([RiskLevel::LOW->value]),
+    ]);
+
+    $user = User::factory()->asUser()->state([
+        'fiscal_code' => 'RSSMRA80A01H501Z',
+    ])->create();
+    $certificate = $user->userCertificates()->create([
+        'name' => 'Attestato medio',
+        'is_internal' => false,
+        'issued_at' => now()->subMonth()->toDateString(),
+        'expires_at' => now()->addYear()->toDateString(),
+    ]);
+    $certificate->riskBasedRequirements()->attach($mediumRequirement->getKey());
+
+    $file = courseEnrollmentImportFile([
+        ['Codice fiscale', 'Codice corso'],
+        ['RSSMRA80A01H501Z', 'COURSE-001'],
+    ]);
+
+    $importazione = Importazione::query()->create([
+        'import_type' => Importazione::TYPE_USER_COURSES,
+        'file_path' => 'imports/user-courses/user-courses.xlsx',
+        'original_file_name' => 'associazioni-corsi.xlsx',
+    ]);
+
+    try {
+        app(CourseEnrollmentImportService::class)->import($importazione, $file->getRealPath());
+        $this->fail('Expected the import to fail for invalid starting risk levels.');
+    } catch (ValidationException $exception) {
+        expect($exception->getMessage())
+            ->toContain('Formazione specifica rischio alto')
+            ->toContain('Rischio Basso');
+    }
+
+    expect(CourseEnrollment::query()->count())->toBe(0);
 });
 
 it('shows course enrollment imports in the monitor', function () {

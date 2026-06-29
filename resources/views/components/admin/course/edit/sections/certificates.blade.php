@@ -9,7 +9,7 @@
     'updateUrl',
 ])
 
-<div class="flex flex-col gap-6">
+<div class="flex flex-col gap-6" data-course-risk-requirements>
     @include('admin.course.partials.course-edit-badge-bar')
 
     <div class="card border border-base-300 bg-base-100 shadow-sm">
@@ -34,7 +34,7 @@
             @csrf
             @method('PUT')
 
-            <div class="flex flex-col gap-4" data-course-risk-requirements>
+            <div class="flex flex-col gap-4">
                 @if ($riskBasedRequirements->isEmpty())
                     <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-4 text-sm text-base-content/70">
                         {{ __('Non ci sono ancora abilitazioni configurate.') }}

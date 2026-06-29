@@ -1,12 +1,15 @@
 <?php
 
+use App\Enums\CourseRiskRequirementValidityType;
+use App\Enums\RiskLevel;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
+use App\Models\JobRole;
 use App\Models\Module;
+use App\Models\RiskBasedRequirement;
 use App\Models\TrainingPath;
 use App\Models\TrainingPathEnrollment;
 use App\Models\User;
-use App\Models\JobRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -174,4 +177,26 @@ it('blocks course enrollment restore when the user is outside the configured rec
         ->assertJsonPath('message', 'L\'utente non rientra tra i destinatari del corso "Corso riservato", quindi l\'iscrizione non è stata creata.');
 
     expect($enrollment->fresh()->trashed())->toBeTrue();
+});
+
+it('returns the missing risk prerequisite details when course enrollment creation is blocked', function () {
+    $course = Course::factory()->create([
+        'status' => 'published',
+    ]);
+    $requirement = RiskBasedRequirement::factory()
+        ->forRiskLevel(RiskLevel::HIGH)
+        ->progressionGroup('specific-worker-training')
+        ->limited(60)
+        ->create(['name' => 'Formazione specifica rischio alto']);
+    $course->riskBasedRequirements()->attach($requirement->getKey(), [
+        'course_validity_types' => json_encode([CourseRiskRequirementValidityType::Integrative->value]),
+        'integrative_start_risk_levels' => json_encode([RiskLevel::LOW->value]),
+    ]);
+
+    $user = User::factory()->create();
+
+    $this->postJson(route('admin.api.courses.enrollments.store', $course), [
+        'user_id' => $user->getKey(),
+    ])->assertUnprocessable()
+        ->assertJsonPath('message', 'L\'utente non possiede i prerequisiti necessari per l\'iscrizione a questo corso. Requisiti mancanti: Formazione specifica rischio alto: il corso copre Integrativo, ma per questo utente serve Primo conseguimento.');
 });
