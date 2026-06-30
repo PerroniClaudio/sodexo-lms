@@ -711,6 +711,16 @@ class CourseRiskRequirementService
         CourseRiskRequirementValidityType $requiredValidityType,
         array $supportedValidityTypes,
     ): string {
+        if (
+            ! $riskBasedRequirement->hasLimitedValidity()
+            && $requiredValidityType === CourseRiskRequirementValidityType::Refresh
+        ) {
+            return sprintf(
+                '%s: l\'utente possiede già questo attestato, che non scade',
+                $riskBasedRequirement->name,
+            );
+        }
+
         $supportedLabels = CourseRiskRequirementValidityType::labelsText($supportedValidityTypes);
 
         return sprintf(

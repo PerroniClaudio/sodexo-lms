@@ -269,6 +269,34 @@ it('describes missing enrollment prerequisites with the missing requirement deta
         ->toContain('Primo conseguimento');
 });
 
+it('describes unlimited base training as already owned and non-expiring', function () {
+    $user = makeTestUser();
+    $requirement = RiskBasedRequirement::factory()->unlimited()->create([
+        'name' => 'Formazione base',
+    ]);
+    $course = Course::factory()->create();
+    $course->riskBasedRequirements()->attach($requirement->getKey(), [
+        'course_validity_types' => json_encode([CourseRiskRequirementValidityType::FirstAchievement->value]),
+    ]);
+
+    $certificate = UserCertificate::factory()
+        ->for($user)
+        ->create([
+            'issued_at' => now()->subYear()->toDateString(),
+            'expires_at' => null,
+        ]);
+    $certificate->riskBasedRequirements()->attach($requirement->getKey());
+
+    $message = app(CourseRiskRequirementService::class)->enrollmentEligibilityMessage($user, $course);
+
+    expect($message)
+        ->not->toBeNull()
+        ->toContain('Formazione base')
+        ->toContain('possiede gi')
+        ->toContain('non scade')
+        ->not->toContain('serve Aggiornamento periodico');
+});
+
 it('describes when an integrative enrollment is blocked by the allowed starting levels', function () {
     $user = makeTestUser();
     $mediumRequirement = RiskBasedRequirement::factory()
