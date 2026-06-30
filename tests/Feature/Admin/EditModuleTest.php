@@ -259,7 +259,7 @@ it('does not require or update appointment fields for class-enabled scheduled mo
         'description' => 'Nuova descrizione',
         'status' => 'published',
         'is_live_teacher' => '1',
-    ])->assertRedirect(route('admin.courses.edit', $course));
+    ])->assertRedirect(route('admin.courses.modules.edit', [$course, $module]));
 
     $module->refresh();
 
@@ -347,4 +347,18 @@ it('resolves the dedicated edit view for video modules', function () {
     $response->assertDontSee('name="appointment_date"', escape: false);
     $response->assertDontSeeText('Docenti assegnati');
     $response->assertDontSeeText('Tutor assegnati');
+});
+
+it('shows the scorm limits note on the edit module page', function () {
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => Module::TYPE_SCORM,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $response = $this->get(route('admin.courses.modules.edit', [$course, $module]));
+
+    $response->assertOk()
+        ->assertViewHas('moduleEditView', 'admin.module.types.scorm')
+        ->assertSeeText('Limiti attivi: un solo modulo SCORM per corso e un solo pacchetto SCORM per modulo.');
 });

@@ -4,9 +4,9 @@
             <div class="card-body gap-6">
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div class="space-y-2">
-                        <h2 class="card-title">{{ __('Pacchetti SCORM del modulo') }}</h2>
+                        <h2 class="card-title">{{ __('Pacchetto SCORM del modulo') }}</h2>
                         <p class="text-sm text-base-content/70">
-                            {{ __('Consulta i pacchetti disponibili, lo stato della tua fruizione e apri il player del singolo contenuto senza lasciare il corso.') }}
+                            {{ __('Consulta il pacchetto disponibile, lo stato della tua fruizione e apri il player del singolo contenuto senza lasciare il corso.') }}
                         </p>
                     </div>
 
@@ -26,7 +26,7 @@
                 </div>
 
                 <div class="hidden rounded-box border border-error/30 bg-error/5 p-4 text-sm text-error" data-scorm-error>
-                    {{ __('Impossibile recuperare i dettagli dei pacchetti SCORM. Riprova tra qualche istante.') }}
+                    {{ __('Impossibile recuperare i dettagli del pacchetto SCORM. Riprova tra qualche istante.') }}
                 </div>
 
                 <div class="hidden rounded-box border border-dashed border-base-300 bg-base-200/40 p-6 text-center text-sm text-base-content/70" data-scorm-empty>

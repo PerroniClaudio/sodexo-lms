@@ -19,6 +19,9 @@
                     <p class="text-sm text-base-content/70">
                         {{ __('Aggiungi un nuovo modulo scegliendo la tipologia da creare.') }}
                     </p>
+                    <p class="mt-2 text-sm text-base-content/70">
+                        {{ __('Per i contenuti SCORM il corso può avere un solo modulo SCORM.') }}
+                    </p>
                 </div>
 
                 <span
@@ -35,7 +38,7 @@
                         data-open-module-modal
                         @disabled($course->status === 'published')
                     >
-                        <span>{{ __('New module') }}</span>
+                        <span>{{ __('Nuovo modulo') }}</span>
                         <x-lucide-plus class="h-4 w-4" />
                     </button>
                 </span>
@@ -153,6 +156,9 @@
                         <h3 class="text-lg font-semibold">{{ __('New module') }}</h3>
                         <p class="text-sm text-base-content/70">
                             {{ __('Select a type, then confirm to create the module.') }}
+                        </p>
+                        <p class="text-sm text-base-content/70">
+                            {{ __('Nota SCORM: per ogni corso Ã¨ consentito un solo modulo SCORM.') }}
                         </p>
                     </div>
 

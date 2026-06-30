@@ -185,3 +185,41 @@ it('shows translated course type in the badge instead of raw database value', fu
         ->assertSeeText('Tipologia: FAD Asincrona')
         ->assertDontSeeText('Tipologia: async');
 });
+
+it('shows the scorm module limit note in the course modules section', function () {
+    $course = Course::factory()->create([
+        'type' => 'blended',
+    ]);
+
+    $response = $this->get(route('admin.courses.edit', [$course, 'section' => 'modules']));
+
+    $response->assertOk()
+        ->assertSeeText('Per i contenuti SCORM il corso può avere un solo modulo SCORM.')
+        ->assertSeeText('Nota SCORM: per ogni corso è consentito un solo modulo SCORM.');
+});
+
+it('rejects creation of a second scorm module in the same course', function () {
+    $course = Course::factory()->create([
+        'type' => 'blended',
+    ]);
+
+    Module::factory()->create([
+        'type' => Module::TYPE_SCORM,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $response = $this
+        ->from(route('admin.courses.edit', [$course, 'section' => 'modules']))
+        ->post(route('admin.courses.modules.store', $course), [
+            'type' => Module::TYPE_SCORM,
+            'title' => 'Secondo modulo SCORM',
+        ]);
+
+    $response
+        ->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'modules']))
+        ->assertSessionHasErrors([
+            'type' => 'Il corso può contenere un solo modulo SCORM.',
+        ]);
+
+    expect($course->modules()->where('type', Module::TYPE_SCORM)->count())->toBe(1);
+});

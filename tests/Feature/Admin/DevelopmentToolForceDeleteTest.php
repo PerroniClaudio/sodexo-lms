@@ -10,8 +10,10 @@ use App\Models\TrainingPath;
 use App\Models\TrainingPathEnrollment;
 use App\Models\User;
 use App\Services\ScormService;
-use Database\Seeders\RoleAndPermissionSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+
+uses(RefreshDatabase::class);
 
 beforeEach(function () {
     actingAsRole('superadmin');
@@ -26,7 +28,7 @@ it('shows the force delete enrollments development tool page', function () {
 });
 
 it('force deletes a course enrollment only when no pathway origin remains', function () {
-    $course = Course::factory()->published()->create();
+    $course = Course::factory()->create();
     $trainingPath = TrainingPath::factory()->create([
         'status' => 'published',
     ]);
@@ -96,12 +98,10 @@ it('force deletes a training path enrollment and preserves only valid course ori
 });
 
 it('force deleting a course enrollment also removes scorm runtime data for that enrollment', function () {
-    $this->seed(RoleAndPermissionSeeder::class);
-
     $learner = User::factory()->create();
     $learner->assignRole('user');
 
-    $course = Course::factory()->published()->create();
+    $course = Course::factory()->create();
     $module = Module::factory()->create([
         'type' => 'scorm',
         'title' => 'Modulo SCORM',
@@ -135,4 +135,22 @@ it('force deleting a course enrollment also removes scorm runtime data for that 
     expect(CourseEnrollment::withTrashed()->find($enrollment->getKey()))->toBeNull();
     expect(ScormTracking::query()->where('course_user_id', $enrollment->getKey())->exists())->toBeFalse();
     expect(ScormSession::query()->where('course_user_id', $enrollment->getKey())->exists())->toBeFalse();
+});
+
+it('force deletes a soft deleted course enrollment', function () {
+    $course = Course::factory()->published()->create();
+    $user = User::factory()->create();
+
+    $enrollment = CourseEnrollment::enroll($user, $course);
+    $enrollment->delete();
+
+    expect(CourseEnrollment::withTrashed()->find($enrollment->getKey()))->not->toBeNull()
+        ->and(CourseEnrollment::withTrashed()->find($enrollment->getKey())?->trashed())->toBeTrue();
+
+    $this->post(route('admin.development-tools.force-delete-enrollments.store'), [
+        'target_type' => 'course',
+        'target_id' => $enrollment->getKey(),
+    ])->assertRedirect();
+
+    expect(CourseEnrollment::withTrashed()->find($enrollment->getKey()))->toBeNull();
 });

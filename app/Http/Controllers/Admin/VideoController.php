@@ -7,8 +7,10 @@ use App\Http\Requests\StoreVideoRequest;
 use App\Jobs\SyncMuxVideosStatusJob;
 use App\Models\Video;
 use App\Services\MuxService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\View\View;
 
 class VideoController extends Controller
 {
@@ -195,22 +197,35 @@ class VideoController extends Controller
         return redirect($url);
     }
 
-    public function create()
+    public function create(): View
     {
-        // Mostra form di caricamento video
         return view('admin.videos.create');
     }
 
-    public function edit(Video $video)
+    public function edit(Video $video): View
     {
-        // Mostra form di modifica video
-        return view('admin.videos.edit', compact('video'));
+        $video->loadCount('modules');
+
+        return view('admin.videos.edit', [
+            'video' => $video,
+            'isLocked' => $video->modules_count > 0,
+        ]);
     }
 
-    public function update(Request $request, Video $video)
+    public function update(Request $request, Video $video): RedirectResponse
     {
-        // Aggiorna dati video
-        $video->update($request->only(['title', 'description']));
+        if ($video->modules()->exists()) {
+            return redirect()
+                ->route('admin.videos.edit', $video)
+                ->with('error', 'Non Ã¨ possibile modificare un video giÃ  utilizzato in uno o piÃ¹ moduli.');
+        }
+
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        $video->update($validated);
 
         return redirect()->route('admin.videos.index')->with('success', 'Video aggiornato');
     }

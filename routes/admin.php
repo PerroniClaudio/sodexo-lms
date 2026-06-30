@@ -95,6 +95,8 @@ Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
         Route::middleware(['env.development', 'active.role:superadmin'])->group(function () {
             Route::get('/development-tools/reset-enrollments', [DevelopmentToolController::class, 'resetEnrollments'])->name('development-tools.reset-enrollments.index');
             Route::post('/development-tools/reset-enrollments', [DevelopmentToolController::class, 'performReset'])->name('development-tools.reset-enrollments.store');
+            Route::get('/development-tools/force-delete-enrollments', [DevelopmentToolController::class, 'forceDeleteEnrollments'])->name('development-tools.force-delete-enrollments.index');
+            Route::post('/development-tools/force-delete-enrollments', [DevelopmentToolController::class, 'performForceDelete'])->name('development-tools.force-delete-enrollments.store');
         });
 
         // Libreria video Mux

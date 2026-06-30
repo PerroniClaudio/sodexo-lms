@@ -11,20 +11,18 @@
     @endphp
 
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
-
-
-        <div class="flex flex-col gap-3 mb-4">
+        <div class="mb-4 flex flex-col gap-3">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex flex-col gap-1">
-                    <h1 class="text-3xl font-semibold text-base-content">Libreria Video</h1>
+                    <h1 class="text-3xl font-semibold text-base-content">{{ __('Libreria Video') }}</h1>
                 </div>
-                <div class="shrink-0 flex gap-2">
+                <div class="flex shrink-0 gap-2">
                     <button type="button" class="btn btn-primary" onclick="openVideoUploadModal()">
-                        <span>Carica nuovo</span>
-                        <svg xmlns='http://www.w3.org/2000/svg' class='h-4 w-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 4v16m8-8H4'/></svg>
+                        <span>{{ __('Carica nuovo') }}</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     </button>
                     <button type="button" id="sync-mux-btn" class="btn btn-outline" onclick="syncMuxVideosStatus()">
-                        <span>Sincronizza Mux</span>
+                        <span>{{ __('Sincronizza Mux') }}</span>
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
@@ -35,11 +33,11 @@
         </div>
 
         <template id="video-upload-modal-template">
-            <div id="video-upload-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
-                <div class="bg-base-100 p-6 rounded shadow-lg relative w-full max-w-xl flex flex-col gap-4">
-                    <div class="flex items-center justify-between mb-2">
-                        <h2 class="text-lg font-semibold">Carica nuovo video</h2>
-                        <button onclick="closeVideoUploadModal()" class="btn btn-sm btn-circle ml-2">✕</button>
+            <div id="video-upload-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60">
+                <div class="relative flex w-full max-w-xl flex-col gap-4 rounded bg-base-100 p-6 shadow-lg">
+                    <div class="mb-2 flex items-center justify-between">
+                        <h2 class="text-lg font-semibold">{{ __('Carica nuovo video') }}</h2>
+                        <button onclick="closeVideoUploadModal()" class="btn btn-sm btn-circle ml-2">x</button>
                     </div>
                     <div class="mt-2">
                         @include('admin.videos.partials.upload-form')
@@ -47,61 +45,6 @@
                 </div>
             </div>
         </template>
-        <script>
-        function openVideoUploadModal() {
-            let modal = document.getElementById('video-upload-modal');
-            if (!modal) {
-                const tpl = document.getElementById('video-upload-modal-template');
-                document.body.appendChild(tpl.content.cloneNode(true));
-                modal = document.getElementById('video-upload-modal');
-            }
-            modal.classList.remove('hidden');
-            // Inizializza drag&drop JS ogni volta che il modal viene aperto
-            if (typeof initVideoUploadForm === 'function') {
-                initVideoUploadForm();
-            }
-        }
-        function closeVideoUploadModal() {
-            const modal = document.getElementById('video-upload-modal');
-            if (modal) {
-                modal.classList.add('hidden');
-            }
-        }
-
-        function syncMuxVideosStatus() {
-            const btn = document.getElementById('sync-mux-btn');
-            const originalHtml = btn.innerHTML;
-            
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading loading-spinner loading-sm"></span><span>Sincronizzazione...</span>';
-            
-            fetch('{{ route('admin.videos.sync-mux-status') }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Accept': 'application/json',
-                },
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('✓ ' + data.message);
-                    // Ricarica la pagina dopo 2 secondi per vedere i nuovi stati
-                    setTimeout(() => window.location.reload(), 2000);
-                } else {
-                    alert('⚠ ' + data.message);
-                }
-            })
-            .catch(error => {
-                alert('Errore durante la sincronizzazione: ' + error.message);
-            })
-            .finally(() => {
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
-            });
-        }
-        </script>
 
         <x-data-table
             :columns="$columns"
@@ -152,79 +95,29 @@
                     </div>
                 </form>
             </x-slot:filters>
+
             @foreach ($videos as $video)
                 <tr class="hover:bg-base-200">
                     <td>{{ $video->title }}</td>
                     <td>{{ $video->modules_count ?? $video->modules()->count() }}</td>
                     <td>
-                        @if($video->mux_playback_id && $video->mux_video_status === 'ready')
-                            
+                        @if ($video->mux_playback_id && $video->mux_video_status === 'ready')
                             <button type="button" class="hover:cursor-pointer" onclick="openVideoPreview({{ $video->id }})">
                                 <img
                                     src="{{ route('admin.videos.signed-thumbnail', $video) }}"
-                                    alt="Anteprima video"
-                                    class="w-24 h-16 object-cover rounded border border-base-300"
+                                    alt="{{ __('Anteprima video') }}"
+                                    class="h-16 w-24 rounded border border-base-300 object-cover"
                                     loading="lazy"
                                     onerror="this.style.display='none'"
                                 />
                             </button>
                         @else
-                            <span class="text-xs text-gray-500">Non disponibile</span>
+                            <span class="text-xs text-gray-500">{{ __('Non disponibile') }}</span>
                         @endif
                     </td>
-                    @push('scripts')
-                    <script>
-                    function openVideoPreview(videoId) {
-                        fetch(`/admin/videos/${videoId}/signed-playback-url`)
-                            .then(r => r.json())
-                            .then(data => {
-                                if (data.playback_id && data.token) {
-                                    showModalWithMuxPlayer(data.playback_id, data.token);
-                                } else {
-                                    alert('Impossibile generare la preview');
-                                }
-                            });
-                    }
-
-                    function showModalWithMuxPlayer(playbackId, token) {
-                        const modal = document.getElementById('video-preview-modal');
-                        const playerContainer = modal.querySelector('[data-mux-player-container]');
-                        playerContainer.innerHTML = '';
-                        const muxPlayer = document.createElement('mux-player');
-                        muxPlayer.setAttribute('stream-type', 'on-demand');
-                        muxPlayer.setAttribute('playback-id', playbackId);
-                        muxPlayer.setAttribute('token', token);
-                        muxPlayer.setAttribute('metadata-video-title', 'Anteprima video');
-                        muxPlayer.setAttribute('primary-color', '#2563eb');
-                        muxPlayer.setAttribute('accent-color', '#2563eb');
-                        muxPlayer.setAttribute('auto-play', 'true');
-                        muxPlayer.setAttribute('style', 'width:100%;height:320px;border-radius:8px;');
-                        muxPlayer.setAttribute('playbackrates', '1');
-                        muxPlayer.setAttribute('disablepictureinpicture', '');
-                        if ('disablePictureInPicture' in muxPlayer) {
-                            muxPlayer.disablePictureInPicture = true;
-                        }
-                        muxPlayer.addEventListener('ratechange', () => {
-                            if (muxPlayer.playbackRate !== 1) {
-                                muxPlayer.playbackRate = 1;
-                            }
-                        });
-                        playerContainer.appendChild(muxPlayer);
-                        modal.classList.remove('hidden');
-                    }
-                    function closeVideoPreview() {
-                        const modal = document.getElementById('video-preview-modal');
-                        if (modal) {
-                            modal.classList.add('hidden');
-                            const playerContainer = modal.querySelector('[data-mux-player-container]');
-                            playerContainer.innerHTML = '';
-                        }
-                    }
-                    </script>
-                    @endpush
                     <td>{{ $video->mux_video_status }}</td>
                     <td>
-                        @if($video->trashed())
+                        @if ($video->trashed())
                             <span class="badge badge-outline badge-error h-fit">{{ __('Eliminato') }}</span>
                         @else
                             <span class="badge badge-outline badge-success h-fit">{{ __('Attivo') }}</span>
@@ -232,14 +125,14 @@
                     </td>
                     <td>
                         <div class="flex gap-2">
-                            @if(!$video->trashed())
+                            @if (! $video->trashed())
                                 <a href="{{ route('admin.videos.edit', $video) }}" class="btn btn-primary btn-sm">
                                     {{ __('Modifica') }}
                                 </a>
                                 <form action="{{ route('admin.videos.destroy', $video) }}" method="POST" class="inline">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="btn btn-error btn-sm" onclick="return confirm('Sei sicuro?')">
+                                    <button type="submit" class="btn btn-error btn-sm" onclick="return confirm('{{ __('Sei sicuro?') }}')">
                                         {{ __('Elimina') }}
                                     </button>
                                 </form>
@@ -255,25 +148,148 @@
                     </td>
                 </tr>
             @endforeach
+
             <template id="video-preview-modal-template">
-                <div id="video-preview-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
-                    <div class="bg-base-100 p-6 rounded shadow-lg relative w-full max-w-xl flex flex-col gap-4">
-                        <div class="flex items-center justify-between mb-2">
-                            <h2 class="text-lg font-semibold">Preview</h2>
-                            <button onclick="closeVideoPreview()" class="btn btn-sm btn-circle ml-2">✕</button>
+                <div id="video-preview-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60">
+                    <div class="relative flex w-full max-w-xl flex-col gap-4 rounded bg-base-100 p-6 shadow-lg">
+                        <div class="mb-2 flex items-center justify-between">
+                            <h2 class="text-lg font-semibold">{{ __('Preview') }}</h2>
+                            <button onclick="closeVideoPreview()" class="btn btn-sm btn-circle ml-2">x</button>
                         </div>
                         <div data-mux-player-container class="mt-2"></div>
                     </div>
                 </div>
             </template>
+
             <script type="module" src="https://unpkg.com/@mux/mux-player@latest/dist/mux-player.js"></script>
             <script>
-            // Inizializza il modal una sola volta
-            if (!document.getElementById('video-preview-modal')) {
-                const tpl = document.getElementById('video-preview-modal-template');
-                document.body.appendChild(tpl.content.cloneNode(true));
-            }
+                function openVideoUploadModal() {
+                    let modal = document.getElementById('video-upload-modal');
+
+                    if (!modal) {
+                        const template = document.getElementById('video-upload-modal-template');
+                        document.body.appendChild(template.content.cloneNode(true));
+                        modal = document.getElementById('video-upload-modal');
+                    }
+
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+
+                    if (typeof initVideoUploadForm === 'function') {
+                        initVideoUploadForm();
+                    }
+                }
+
+                function closeVideoUploadModal() {
+                    const modal = document.getElementById('video-upload-modal');
+
+                    if (!modal) {
+                        return;
+                    }
+
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }
+
+                function syncMuxVideosStatus() {
+                    const btn = document.getElementById('sync-mux-btn');
+                    const originalHtml = btn.innerHTML;
+
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="loading loading-spinner loading-sm"></span><span>{{ __('Sincronizzazione...') }}</span>';
+
+                    fetch('{{ route('admin.videos.sync-mux-status') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json',
+                        },
+                    })
+                        .then((response) => response.json())
+                        .then((data) => {
+                            if (data.success) {
+                                alert('✓ ' + data.message);
+                                setTimeout(() => window.location.reload(), 2000);
+
+                                return;
+                            }
+
+                            alert('⚠ ' + data.message);
+                        })
+                        .catch((error) => {
+                            alert('Errore durante la sincronizzazione: ' + error.message);
+                        })
+                        .finally(() => {
+                            btn.disabled = false;
+                            btn.innerHTML = originalHtml;
+                        });
+                }
+
+                function ensureVideoPreviewModal() {
+                    if (document.getElementById('video-preview-modal')) {
+                        return document.getElementById('video-preview-modal');
+                    }
+
+                    const template = document.getElementById('video-preview-modal-template');
+                    document.body.appendChild(template.content.cloneNode(true));
+
+                    return document.getElementById('video-preview-modal');
+                }
+
+                function openVideoPreview(videoId) {
+                    fetch(`/admin/videos/${videoId}/signed-playback-url`)
+                        .then((response) => response.json())
+                        .then((data) => {
+                            if (!data.playback_id || !data.token) {
+                                alert('Impossibile generare la preview');
+
+                                return;
+                            }
+
+                            showVideoPreviewModal(data.playback_id, data.token);
+                        })
+                        .catch(() => {
+                            alert('Impossibile generare la preview');
+                        });
+                }
+
+                function showVideoPreviewModal(playbackId, token) {
+                    const modal = ensureVideoPreviewModal();
+                    const playerContainer = modal.querySelector('[data-mux-player-container]');
+
+                    playerContainer.innerHTML = '';
+
+                    const muxPlayer = document.createElement('mux-player');
+                    muxPlayer.setAttribute('stream-type', 'on-demand');
+                    muxPlayer.setAttribute('playback-id', playbackId);
+                    muxPlayer.setAttribute('token', token);
+                    muxPlayer.setAttribute('metadata-video-title', '{{ __('Anteprima video') }}');
+                    muxPlayer.setAttribute('primary-color', '#2563eb');
+                    muxPlayer.setAttribute('accent-color', '#2563eb');
+                    muxPlayer.setAttribute('auto-play', 'true');
+                    muxPlayer.setAttribute('style', 'width:100%;height:320px;border-radius:8px;');
+                    muxPlayer.setAttribute('playbackrates', '1');
+                    muxPlayer.setAttribute('disablepictureinpicture', '');
+                    playerContainer.appendChild(muxPlayer);
+
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                }
+
+                function closeVideoPreview() {
+                    const modal = document.getElementById('video-preview-modal');
+
+                    if (!modal) {
+                        return;
+                    }
+
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    modal.querySelector('[data-mux-player-container]').innerHTML = '';
+                }
             </script>
+
             <div class="mt-4">
                 {{ $videos->links() }}
             </div>

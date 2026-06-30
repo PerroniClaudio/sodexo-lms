@@ -17,11 +17,13 @@ class ScormPackageController extends Controller
     public function index(Course $course, Module $module): View
     {
         $this->abortUnlessScormModule($course, $module);
+        $module->loadMissing('scormPackages');
 
         return view('admin.scorm.index', [
             'course' => $course,
-            'module' => $module->loadMissing('scormPackages'),
+            'module' => $module,
             'packages' => $module->scormPackages()->latest()->get(),
+            'hasPackageLimitReached' => $module->scormPackages->isNotEmpty(),
         ]);
     }
 
@@ -38,6 +40,14 @@ class ScormPackageController extends Controller
             return redirect()
                 ->route('admin.courses.modules.scorm.index', [$course, $module])
                 ->with('error', $exception->getMessage());
+        }
+
+        if ($module->scormPackages()->exists()) {
+            return redirect()
+                ->route('admin.courses.modules.scorm.index', [$course, $module])
+                ->withErrors([
+                    'package' => __('Il modulo SCORM può contenere un solo pacchetto. Elimina quello esistente prima di caricarne un altro.'),
+                ]);
         }
 
         try {

@@ -1,6 +1,6 @@
 <x-layouts.admin>
     <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
-        <x-page-header :title="__('Pacchetti SCORM')">
+        <x-page-header :title="__('Pacchetto SCORM')">
             <x-slot:actions>
                 <a href="{{ route('admin.courses.modules.edit', [$course, $module]) }}" class="btn btn-ghost">
                     <x-lucide-arrow-left class="h-4 w-4" />
@@ -16,59 +16,68 @@
                     <p class="text-sm text-base-content/70">
                         {{ __('L\'archivio ZIP viene validato, estratto e parsato prima di diventare disponibile al player.') }}
                     </p>
+                    <p class="mt-2 text-sm text-base-content/70">
+                        {{ __('Ogni modulo SCORM può contenere un solo pacchetto. Se vuoi sostituirlo, elimina prima quello già presente.') }}
+                    </p>
                 </div>
 
-                <form method="POST" action="{{ route('admin.courses.modules.scorm.store', [$course, $module]) }}" enctype="multipart/form-data" class="grid gap-6">
-                    @csrf
-
-                    <div class="form-control flex flex-col gap-2">
-                        <label for="package" class="label p-0">
-                            <span class="label-text font-medium">{{ __('Archivio ZIP') }}</span>
-                        </label>
-                        <input id="package" name="package" type="file" accept=".zip,application/zip" class="file-input file-input-bordered w-full @error('package') file-input-error @enderror" required>
-                        @error('package')
-                            <p class="text-sm text-error">{{ $message }}</p>
-                        @enderror
+                @if ($hasPackageLimitReached)
+                    <div class="rounded-box border border-warning/30 bg-warning/10 p-4 text-sm text-base-content/80">
+                        {{ __('Hai già raggiunto il limite di un pacchetto SCORM per questo modulo.') }}
                     </div>
+                @else
+                    <form method="POST" action="{{ route('admin.courses.modules.scorm.store', [$course, $module]) }}" enctype="multipart/form-data" class="grid gap-6">
+                        @csrf
 
-                    <div class="grid gap-6 md:grid-cols-2">
                         <div class="form-control flex flex-col gap-2">
-                            <label for="title" class="label p-0">
-                                <span class="label-text font-medium">{{ __('Titolo personalizzato') }}</span>
+                            <label for="package" class="label p-0">
+                                <span class="label-text font-medium">{{ __('Archivio ZIP') }}</span>
                             </label>
-                            <input id="title" name="title" type="text" value="{{ old('title') }}" class="input input-bordered w-full @error('title') input-error @enderror">
-                            @error('title')
+                            <input id="package" name="package" type="file" accept=".zip,application/zip" class="file-input file-input-bordered w-full @error('package') file-input-error @enderror" required>
+                            @error('package')
                                 <p class="text-sm text-error">{{ $message }}</p>
                             @enderror
                         </div>
 
-                        <div class="form-control flex flex-col gap-2 md:col-span-2">
-                            <label for="description" class="label p-0">
-                                <span class="label-text font-medium">{{ __('Descrizione personalizzata') }}</span>
-                            </label>
-                            <textarea id="description" name="description" class="textarea textarea-bordered min-h-24 w-full @error('description') textarea-error @enderror">{{ old('description') }}</textarea>
-                            @error('description')
-                                <p class="text-sm text-error">{{ $message }}</p>
-                            @enderror
-                        </div>
-                    </div>
+                        <div class="grid gap-6 md:grid-cols-2">
+                            <div class="form-control flex flex-col gap-2">
+                                <label for="title" class="label p-0">
+                                    <span class="label-text font-medium">{{ __('Titolo personalizzato') }}</span>
+                                </label>
+                                <input id="title" name="title" type="text" value="{{ old('title') }}" class="input input-bordered w-full @error('title') input-error @enderror">
+                                @error('title')
+                                    <p class="text-sm text-error">{{ $message }}</p>
+                                @enderror
+                            </div>
 
-                    <div class="flex justify-end">
-                        <button type="submit" class="btn btn-primary">
-                            <x-lucide-upload class="h-4 w-4" />
-                            <span>{{ __('Carica pacchetto') }}</span>
-                        </button>
-                    </div>
-                </form>
+                            <div class="form-control flex flex-col gap-2 md:col-span-2">
+                                <label for="description" class="label p-0">
+                                    <span class="label-text font-medium">{{ __('Descrizione personalizzata') }}</span>
+                                </label>
+                                <textarea id="description" name="description" class="textarea textarea-bordered min-h-24 w-full @error('description') textarea-error @enderror">{{ old('description') }}</textarea>
+                                @error('description')
+                                    <p class="text-sm text-error">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end">
+                            <button type="submit" class="btn btn-primary">
+                                <x-lucide-upload class="h-4 w-4" />
+                                <span>{{ __('Carica pacchetto') }}</span>
+                            </button>
+                        </div>
+                    </form>
+                @endif
             </div>
         </div>
 
         <div class="card border border-base-300 bg-base-100 shadow-sm">
             <div class="card-body gap-6">
                 <div>
-                    <h2 class="card-title">{{ __('Pacchetti presenti') }}</h2>
+                    <h2 class="card-title">{{ __('Pacchetto presente') }}</h2>
                     <p class="text-sm text-base-content/70">
-                        {{ __('Qui trovi i pacchetti caricati per questo modulo. Per ciascun pacchetto mostriamo versione SCORM rilevata, stato di elaborazione, identificativo del manifest e file iniziale che verrà aperto nel player.') }}
+                        {{ __('Qui trovi il pacchetto caricato per questo modulo. Mostriamo versione SCORM rilevata, stato di elaborazione, identificativo del manifest e file iniziale che verrà aperto nel player.') }}
                     </p>
                 </div>
 

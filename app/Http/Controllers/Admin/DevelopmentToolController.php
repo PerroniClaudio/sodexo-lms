@@ -29,6 +29,11 @@ class DevelopmentToolController extends Controller
         return view('admin.development-tools.reset-enrollments');
     }
 
+    public function forceDeleteEnrollments(): View
+    {
+        return view('admin.development-tools.force-delete-enrollments');
+    }
+
     public function performReset(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -65,6 +70,27 @@ class DevelopmentToolController extends Controller
         }
 
         return back()->with('status', __('Reset completato con successo.'));
+    }
+
+    public function performForceDelete(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'target_type' => ['required', 'string', 'in:course,training_path'],
+            'target_id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        try {
+            match ($validated['target_type']) {
+                'course' => $this->forceDeleteCourseEnrollment((int) $validated['target_id']),
+                'training_path' => $this->forceDeleteTrainingPathEnrollment((int) $validated['target_id']),
+            };
+        } catch (Throwable $throwable) {
+            report($throwable);
+
+            return back()->with('error', __('Force delete non completato. Verifica ID e relazione dei dati.'));
+        }
+
+        return back()->with('status', __('Force delete completato con successo.'));
     }
 
     /**
@@ -391,7 +417,7 @@ class DevelopmentToolController extends Controller
     private function forceDeleteCourseEnrollment(int $courseEnrollmentId): void
     {
         $userId = DB::transaction(function () use ($courseEnrollmentId): int {
-            $enrollment = CourseEnrollment::query()
+            $enrollment = CourseEnrollment::withTrashed()
                 ->lockForUpdate()
                 ->findOrFail($courseEnrollmentId);
 
@@ -410,7 +436,7 @@ class DevelopmentToolController extends Controller
     private function forceDeleteTrainingPathEnrollment(int $trainingPathEnrollmentId): void
     {
         $userId = DB::transaction(function () use ($trainingPathEnrollmentId): int {
-            $trainingPathEnrollment = TrainingPathEnrollment::query()
+            $trainingPathEnrollment = TrainingPathEnrollment::withTrashed()
                 ->with(['trainingPath.courses:id,status'])
                 ->lockForUpdate()
                 ->findOrFail($trainingPathEnrollmentId);
@@ -462,6 +488,10 @@ class DevelopmentToolController extends Controller
             $enrollment->forceDelete();
 
             return;
+        }
+
+        if ($enrollment->trashed()) {
+            $enrollment->restore();
         }
 
         $enrollment->forceFill([

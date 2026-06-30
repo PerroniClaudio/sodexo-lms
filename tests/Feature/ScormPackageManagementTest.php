@@ -93,3 +93,41 @@ it('shows an error flash instead of deleting a package from a published module',
 
     expect(ScormPackage::query()->whereKey($package->getKey())->exists())->toBeTrue();
 });
+
+it('rejects uploading a second scorm package for the same module', function () {
+    Storage::fake('local');
+    actingAsRole('admin');
+    $this->withoutVite();
+
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => Module::TYPE_SCORM,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $this->post(route('admin.courses.modules.scorm.store', [$course, $module]), [
+        'package' => scormZipUpload([
+            'imsmanifest.xml' => validScormManifest(),
+            'lesson/index.html' => '<html><body>SCORM lesson</body></html>',
+        ]),
+        'title' => 'Pacchetto iniziale',
+    ])->assertRedirect(route('admin.courses.modules.scorm.index', [$course, $module]));
+
+    $response = $this
+        ->from(route('admin.courses.modules.scorm.index', [$course, $module]))
+        ->post(route('admin.courses.modules.scorm.store', [$course, $module]), [
+            'package' => scormZipUpload([
+                'imsmanifest.xml' => validScormManifest(),
+                'lesson/index.html' => '<html><body>Altro SCORM lesson</body></html>',
+            ]),
+            'title' => 'Pacchetto sostitutivo',
+        ]);
+
+    $response
+        ->assertRedirect(route('admin.courses.modules.scorm.index', [$course, $module]))
+        ->assertSessionHasErrors([
+            'package' => 'Il modulo SCORM può contenere un solo pacchetto. Elimina quello esistente prima di caricarne un altro.',
+        ]);
+
+    expect($module->scormPackages()->count())->toBe(1);
+});

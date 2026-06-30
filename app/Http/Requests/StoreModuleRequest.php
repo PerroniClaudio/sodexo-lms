@@ -55,8 +55,15 @@ class StoreModuleRequest extends FormRequest
                     $validator->errors()->add(
                         'type',
                         $course->moduleTypeRestrictionMessage($moduleType)
-                            ?? __('Il tipo di modulo selezionato non è disponibile per questo corso.')
+                            ?? __('Il tipo di modulo selezionato non Ã¨ disponibile per questo corso.')
                     );
+                }
+
+                if (
+                    $moduleType === Module::TYPE_SCORM
+                    && $course->modules()->where('type', Module::TYPE_SCORM)->exists()
+                ) {
+                    $validator->errors()->add('type', __('Il corso può contenere un solo modulo SCORM.'));
                 }
             },
         ];

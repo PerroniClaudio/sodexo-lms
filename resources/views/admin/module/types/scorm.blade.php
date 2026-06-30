@@ -6,9 +6,12 @@
 <div class="rounded-box border border-base-300 bg-base-200/40 p-4">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <p class="text-sm font-semibold">{{ __('Pacchetti SCORM') }}</p>
+            <p class="text-sm font-semibold">{{ __('Pacchetto SCORM') }}</p>
             <p class="text-sm text-base-content/70">
-                {{ __('Carica, aggiorna e lancia i pacchetti SCORM associati a questo modulo.') }}
+                {{ __('Carica, aggiorna e lancia il pacchetto SCORM associato a questo modulo.') }}
+            </p>
+            <p class="mt-2 text-sm text-base-content/70">
+                {{ __('Limiti attivi: un solo modulo SCORM per corso e un solo pacchetto SCORM per modulo.') }}
             </p>
         </div>
 
