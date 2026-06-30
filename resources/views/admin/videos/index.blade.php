@@ -262,8 +262,7 @@
 
                     const muxPlayer = document.createElement('mux-player');
                     muxPlayer.setAttribute('stream-type', 'on-demand');
-                    muxPlayer.setAttribute('playback-id', playbackId);
-                    muxPlayer.setAttribute('token', token);
+                    muxPlayer.setAttribute('src', `https://stream.mux.com/${playbackId}.m3u8?token=${token}`);
                     muxPlayer.setAttribute('metadata-video-title', '{{ __('Anteprima video') }}');
                     muxPlayer.setAttribute('primary-color', '#2563eb');
                     muxPlayer.setAttribute('accent-color', '#2563eb');

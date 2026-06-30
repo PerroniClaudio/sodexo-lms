@@ -97,7 +97,7 @@
                         </button>
                     @else
                         <div class="rounded-box border border-dashed border-base-300 bg-base-200/40 p-4 text-sm text-base-content/70">
-                            {{ __('Anteprima non disponibile finchÃ© il video non Ã¨ pronto su Mux.') }}
+                            {{ __('Anteprima non disponibile finchè il video non è pronto su Mux.') }}
                         </div>
                     @endif
 
@@ -153,8 +153,7 @@
 
                     const muxPlayer = document.createElement('mux-player');
                     muxPlayer.setAttribute('stream-type', 'on-demand');
-                    muxPlayer.setAttribute('playback-id', data.playback_id);
-                    muxPlayer.setAttribute('token', data.token);
+                    muxPlayer.setAttribute('src', `https://stream.mux.com/${data.playback_id}.m3u8?token=${data.token}`);
                     muxPlayer.setAttribute('metadata-video-title', '{{ __('Anteprima video') }}');
                     muxPlayer.setAttribute('primary-color', '#2563eb');
                     muxPlayer.setAttribute('accent-color', '#2563eb');

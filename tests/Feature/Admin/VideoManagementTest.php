@@ -27,7 +27,23 @@ it('shows the admin video edit page', function () {
         ->assertSee('value="Video sicurezza"', false)
         ->assertSeeText('Descrizione video')
         ->assertSeeText('Guarda anteprima')
+        ->assertSee('https://stream.mux.com/${data.playback_id}.m3u8?token=${data.token}', false)
         ->assertSeeText('Salva video');
+});
+
+it('shows the admin video library page with mux preview source urls', function () {
+    $video = Video::factory()->create([
+        'title' => 'Video libreria',
+        'mux_playback_id' => 'playback-id-library',
+        'mux_video_status' => 'ready',
+    ]);
+
+    $response = $this->get(route('admin.videos.index'));
+
+    $response->assertOk()
+        ->assertSeeText('Libreria Video')
+        ->assertSeeText('Video libreria')
+        ->assertSee('https://stream.mux.com/${playbackId}.m3u8?token=${token}', false);
 });
 
 it('shows the admin video edit page as locked when the video is already used by a module', function () {
