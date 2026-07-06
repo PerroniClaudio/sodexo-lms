@@ -13,7 +13,7 @@
         <div class="card-body gap-6">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h2 class="card-title">{{ __('Documenti') }}</h2>
+                    <h2 class="card-title">{{ __('Fascicolo Corso') }}</h2>
                     <p class="text-sm text-base-content/70">{{ __('Gestisci i documenti collegati al corso.') }}</p>
                 </div>
                 <button type="button" class="btn btn-primary" onclick="course_document_upload_modal.showModal()">

@@ -73,7 +73,7 @@
 
                 <div class="form-control flex flex-col gap-2 md:col-span-2">
                     <label for="description" class="label p-0">
-                        <span class="label-text font-medium">{{ __('Descrizione') }}</span>
+                        <span class="label-text font-medium">{{ __('Informazioni sul corso') }}</span>
                     </label>
                     <textarea
                         id="description"
