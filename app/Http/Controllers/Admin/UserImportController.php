@@ -12,6 +12,8 @@ use App\Models\JobRole;
 use App\Models\JobSector;
 use App\Models\JobTask;
 use App\Models\JobUnit;
+use App\Models\LanguageLevel;
+use App\Models\WorldCountry;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,7 +21,9 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Response;
 use Illuminate\View\View;
+use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -101,11 +105,16 @@ class UserImportController extends Controller
         $lookupSheet = $spreadsheet->createSheet();
         $lookupSheet->setTitle('Valori disponibili');
         $lookupSheet->fromArray([[
+            'Nazione',
+            'Genere',
+            'Settore',
             'Categoria di lavoro',
             'Livello di inquadramento',
             'Ruolo',
             'Mansione (codice o ID; separa con ;)',
             'Unità lavorativa (codice)',
+            'Straniero',
+            'Livello conoscenza lingua di lavoro',
         ]]);
 
         $lookupRows = max(
@@ -115,17 +124,37 @@ class UserImportController extends Controller
             $exampleData['job_roles']->count(),
             $exampleData['job_tasks']->count(),
             $exampleData['job_units']->count(),
+            $exampleData['countries']->count(),
+            $exampleData['genders']->count(),
+            $exampleData['job_sectors']->count(),
+            $exampleData['foreigner_values']->count(),
+            $exampleData['language_levels']->count(),
         );
 
         for ($index = 0; $index < $lookupRows; $index++) {
             $lookupSheet->fromArray([[
+                $exampleData['countries']->get($index),
+                $exampleData['genders']->get($index),
+                $exampleData['job_sectors']->get($index),
                 $exampleData['job_categories']->get($index),
                 $exampleData['job_levels']->get($index),
                 $exampleData['job_roles']->get($index),
                 $exampleData['job_tasks']->get($index),
                 $exampleData['job_units']->get($index),
+                $exampleData['foreigner_values']->get($index),
+                $exampleData['language_levels']->get($index),
             ]], null, 'A'.($index + 2));
         }
+
+        $this->addListValidation($sheet, 'H', "'Valori disponibili'!\$A\$2:\$A\$".($exampleData['countries']->count() + 1));
+        $this->addListValidation($sheet, 'O', "'Valori disponibili'!\$B\$2:\$B\$".($exampleData['genders']->count() + 1));
+        $this->addListValidation($sheet, 'P', "'Valori disponibili'!\$C\$2:\$C\$".($exampleData['job_sectors']->count() + 1));
+        $this->addListValidation($sheet, 'Q', "'Valori disponibili'!\$D\$2:\$D\$".($exampleData['job_categories']->count() + 1));
+        $this->addListValidation($sheet, 'R', "'Valori disponibili'!\$E\$2:\$E\$".($exampleData['job_levels']->count() + 1));
+        $this->addListValidation($sheet, 'S', "'Valori disponibili'!\$F\$2:\$F\$".($exampleData['job_roles']->count() + 1));
+        $this->addListValidation($sheet, 'U', "'Valori disponibili'!\$H\$2:\$H\$".($exampleData['job_units']->count() + 1));
+        $this->addListValidation($sheet, 'V', "'Valori disponibili'!\$I\$2:\$I\$".($exampleData['foreigner_values']->count() + 1));
+        $this->addListValidation($sheet, 'Y', "'Valori disponibili'!\$J\$2:\$J\$".($exampleData['language_levels']->count() + 1));
 
         $temporaryFile = tempnam(sys_get_temp_dir(), 'user-import-template-');
 
@@ -180,6 +209,11 @@ class UserImportController extends Controller
 
     /**
      * @return array{
+     *     countries: Collection<int, string>,
+     *     genders: Collection<int, string>,
+     *     job_sectors: Collection<int, string>,
+     *     foreigner_values: Collection<int, string>,
+     *     language_levels: Collection<int, string>,
      *     job_sector: string,
      *     job_category: string,
      *     job_level: string,
@@ -196,6 +230,19 @@ class UserImportController extends Controller
      */
     private function templateExampleData(): array
     {
+        $countries = WorldCountry::query()
+            ->orderBy('name')
+            ->pluck('code')
+            ->filter()
+            ->map(fn (string $code): string => mb_strtoupper($code))
+            ->values();
+        $genders = collect(['M', 'F']);
+        $foreignerValues = collect(['SI', 'NO']);
+        $jobSectors = JobSector::query()
+            ->orderBy('name')
+            ->pluck('name')
+            ->filter()
+            ->values();
         $jobCategories = JobCategory::query()
             ->orderBy('name')
             ->pluck('name')
@@ -221,9 +268,20 @@ class UserImportController extends Controller
             ->pluck('unit_code')
             ->filter()
             ->values();
+        $languageLevels = LanguageLevel::query()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->pluck('name')
+            ->filter()
+            ->values();
 
         return [
-            'job_sector' => JobSector::query()->orderBy('name')->value('name') ?? 'Scuole',
+            'countries' => $countries,
+            'genders' => $genders,
+            'job_sectors' => $jobSectors,
+            'foreigner_values' => $foreignerValues,
+            'language_levels' => $languageLevels,
+            'job_sector' => $jobSectors->first() ?? 'Scuole',
             'job_category' => $jobCategories->first() ?? 'Categoria esistente',
             'job_level' => $jobLevels->first() ?? 'Livello esistente',
             'job_role' => $jobRoles->first() ?? 'Ruolo esistente',
@@ -236,5 +294,17 @@ class UserImportController extends Controller
             'job_tasks' => $jobTasks,
             'job_units' => $jobUnits,
         ];
+    }
+
+    private function addListValidation(Worksheet $sheet, string $column, string $formula): void
+    {
+        for ($row = 2; $row <= 1000; $row++) {
+            $validation = $sheet->getCell("{$column}{$row}")->getDataValidation();
+            $validation->setType(DataValidation::TYPE_LIST);
+            $validation->setErrorStyle(DataValidation::STYLE_STOP);
+            $validation->setAllowBlank(true);
+            $validation->setShowDropDown(true);
+            $validation->setFormula1($formula);
+        }
     }
 }

@@ -61,9 +61,12 @@ it('downloads user import template', function () {
     JobCategory::factory()->create(['name' => 'Impiegati']);
     JobLevel::factory()->create(['name' => 'Quadro']);
     JobRole::factory()->create(['name' => 'Operatore']);
+    JobSector::factory()->create(['name' => 'Scuole']);
     JobTask::factory()->create(['code' => 'TASK-001']);
     JobTask::factory()->create(['code' => 'TASK-002']);
     JobUnit::factory()->create(['unit_code' => 'UNIT-001']);
+    $firstLanguageLevel = LanguageLevel::query()->orderBy('sort_order')->orderBy('name')->value('name');
+    $languageLevelRows = LanguageLevel::query()->count();
 
     $response = $this->get(route('admin.imports.users.template'));
 
@@ -83,11 +86,25 @@ it('downloads user import template', function () {
         ->and($importSheet?->getCell('S2')->getValue())->toBe('Operatore')
         ->and($importSheet?->getCell('T2')->getValue())->toBe('TASK-001;TASK-002')
         ->and($importSheet?->getCell('U2')->getValue())->toBe('UNIT-001')
-        ->and($lookupSheet?->getCell('A2')->getValue())->toBe('Impiegati')
-        ->and($lookupSheet?->getCell('B2')->getValue())->toBe('Quadro')
-        ->and($lookupSheet?->getCell('C2')->getValue())->toBe('Operatore')
-        ->and($lookupSheet?->getCell('D2')->getValue())->toBe('TASK-001')
-        ->and($lookupSheet?->getCell('E2')->getValue())->toBe('UNIT-001');
+        ->and($lookupSheet?->getCell('A2')->getValue())->toBe('IT')
+        ->and($lookupSheet?->getCell('B2')->getValue())->toBe('M')
+        ->and($lookupSheet?->getCell('C2')->getValue())->toBe('Scuole')
+        ->and($lookupSheet?->getCell('D2')->getValue())->toBe('Impiegati')
+        ->and($lookupSheet?->getCell('E2')->getValue())->toBe('Quadro')
+        ->and($lookupSheet?->getCell('F2')->getValue())->toBe('Operatore')
+        ->and($lookupSheet?->getCell('G2')->getValue())->toBe('TASK-001')
+        ->and($lookupSheet?->getCell('H2')->getValue())->toBe('UNIT-001')
+        ->and($lookupSheet?->getCell('I2')->getValue())->toBe('SI')
+        ->and($lookupSheet?->getCell('J2')->getValue())->toBe($firstLanguageLevel)
+        ->and($importSheet?->getCell('H2')->getDataValidation()->getFormula1())->toBe("'Valori disponibili'!\$A\$2:\$A\$2")
+        ->and($importSheet?->getCell('O2')->getDataValidation()->getFormula1())->toBe("'Valori disponibili'!\$B\$2:\$B\$3")
+        ->and($importSheet?->getCell('P2')->getDataValidation()->getFormula1())->toBe("'Valori disponibili'!\$C\$2:\$C\$2")
+        ->and($importSheet?->getCell('Q2')->getDataValidation()->getFormula1())->toBe("'Valori disponibili'!\$D\$2:\$D\$2")
+        ->and($importSheet?->getCell('R2')->getDataValidation()->getFormula1())->toBe("'Valori disponibili'!\$E\$2:\$E\$2")
+        ->and($importSheet?->getCell('S2')->getDataValidation()->getFormula1())->toBe("'Valori disponibili'!\$F\$2:\$F\$2")
+        ->and($importSheet?->getCell('U2')->getDataValidation()->getFormula1())->toBe("'Valori disponibili'!\$H\$2:\$H\$2")
+        ->and($importSheet?->getCell('V2')->getDataValidation()->getFormula1())->toBe("'Valori disponibili'!\$I\$2:\$I\$3")
+        ->and($importSheet?->getCell('Y2')->getDataValidation()->getFormula1())->toBe("'Valori disponibili'!\$J\$2:\$J\$".($languageLevelRows + 1));
 
     $spreadsheet->disconnectWorksheets();
     @unlink($temporaryFile);
