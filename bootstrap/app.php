@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\StartPendingDocumentConversionJobs;
+use App\Http\Middleware\EnsureActiveCompanyDivision;
 use App\Http\Middleware\EnsureActiveRole;
 use App\Http\Middleware\EnsureCourseVisibleToUser;
 use App\Http\Middleware\EnsureDesktopVideoPlayerAccess;
@@ -55,6 +56,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => RoleMiddleware::class,
             'active.role' => EnsureActiveRole::class,
+            'active.company_division' => EnsureActiveCompanyDivision::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             'uploadlimit' => IncreaseVideoUploadLimitMiddleware::class,

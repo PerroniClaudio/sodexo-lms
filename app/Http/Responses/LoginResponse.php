@@ -25,6 +25,18 @@ class LoginResponse implements LoginResponseContract
         $request->session()->put('active_role', $activeRole);
 
         if (in_array($activeRole, ['admin', 'superadmin'], true)) {
+            if ($activeRole === 'admin') {
+                $divisionIds = $user->administeredCompanyDivisions()->pluck('company_divisions.id');
+
+                if ($divisionIds->count() === 1) {
+                    $request->session()->put('active_company_division_id', $divisionIds->first());
+                } elseif ($divisionIds->count() > 1) {
+                    $request->session()->forget('active_company_division_id');
+
+                    return redirect()->route('company-division.select');
+                }
+            }
+
             $redirectTo = route('admin.dashboard');
         } elseif (in_array($activeRole, ['teacher', 'docente'], true)) {
             $redirectTo = route('teacher.dashboard');

@@ -44,6 +44,17 @@ class RoleSelectionController extends Controller
     private function redirectToRole(Request $request, ?string $role, ?string $redirectRoute = null): RedirectResponse
     {
         $request->session()->put('active_role', $role);
+        $request->session()->forget('active_company_division_id');
+
+        if ($role === 'admin') {
+            $divisionIds = $request->user()?->administeredCompanyDivisions()->pluck('company_divisions.id') ?? collect();
+
+            if ($divisionIds->count() === 1) {
+                $request->session()->put('active_company_division_id', $divisionIds->first());
+            } elseif ($divisionIds->count() > 1) {
+                return redirect()->route('company-division.select');
+            }
+        }
 
         if ($redirectRoute !== null && Route::has($redirectRoute)) {
             return redirect()->route($redirectRoute);

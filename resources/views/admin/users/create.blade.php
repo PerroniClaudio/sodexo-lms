@@ -32,7 +32,7 @@
                             <h3 class="text-lg font-semibold text-base-content">{{ __('Permessi utente') }}</h3>
                             <p class="mt-1 text-sm text-base-content/65">{{ __('Seleziona uno o più ruoli per l’utente.') }}</p>
                         </div>
-                        <x-admin.users.forms.permission-fields />
+                        <x-admin.users.forms.permission-fields :company-divisions="$companyDivisions" />
                     </section>
 
                     <x-admin.users.forms.user-fields :language-levels="$languageLevels" />

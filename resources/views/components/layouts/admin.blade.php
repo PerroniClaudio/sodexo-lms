@@ -49,6 +49,7 @@
                     ];
 
                     $registryMenuPatterns = [
+                        'admin.company-divisions.*',
                         'admin.users.*',
                         'admin.funding-entities.*',
                         'admin.partners.*',
@@ -225,6 +226,17 @@
                                     {{ __('Anagrafiche') }}
                                 </summary>
                                 <ul>
+                                    <li>
+                                        @if($canAccessSuperadminMenu)
+                                            <a
+                                                href="{{ route('admin.company-divisions.index') }}"
+                                                @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.company-divisions.*'])])
+                                            >
+                                                <x-lucide-building-2 class="mr-2 inline-block h-5 w-5" />
+                                                {{ __('Divisioni aziendali') }}
+                                            </a>
+                                        @endif
+                                    </li>
                                     <li>
                                         <a
                                             href="{{ route('admin.users.index') }}"

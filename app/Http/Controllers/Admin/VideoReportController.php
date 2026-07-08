@@ -24,6 +24,8 @@ class VideoReportController extends Controller
 {
     public function index(): View
     {
+        $activeDivisionId = $this->activeCompanyDivisionId();
+
         return view('admin.video-reports.index', [
             'videoReportRequests' => VideoReportRequest::query()
                 ->select([
@@ -47,6 +49,7 @@ class VideoReportController extends Controller
                 ->paginate(20),
             'courses' => Course::query()
                 ->exportableForAuditTrail()
+                ->forCompanyDivision($activeDivisionId)
                 ->orderBy('title')
                 ->get(['id', 'title']),
             'jobDimensionOptions' => VideoReportRequest::jobDimensionOptions(),
@@ -65,6 +68,14 @@ class VideoReportController extends Controller
     public function store(StoreVideoReportRequest $request): RedirectResponse
     {
         $validated = $request->validated();
+        $activeDivisionId = $this->activeCompanyDivisionId();
+
+        if ($activeDivisionId !== null && $validated['scope_type'] === VideoReportRequest::SCOPE_COURSE) {
+            abort_unless(
+                Course::query()->forCompanyDivision($activeDivisionId)->whereKey((int) $validated['course_id'])->exists(),
+                403
+            );
+        }
 
         $videoReportRequest = VideoReportRequest::query()->create([
             'requested_by' => Auth::id(),
@@ -120,5 +131,16 @@ class VideoReportController extends Controller
             $videoReportRequest->output_path,
             $videoReportRequest->outputFileName()
         );
+    }
+
+    private function activeCompanyDivisionId(): ?int
+    {
+        if (request()->user()?->hasRole('superadmin')) {
+            return null;
+        }
+
+        $divisionId = request()->session()->get('active_company_division_id');
+
+        return $divisionId === null ? null : (int) $divisionId;
     }
 }

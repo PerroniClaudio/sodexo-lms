@@ -1,5 +1,6 @@
 @props([
     'user' => null,
+    'companyDivisions' => collect(),
 ])
 
 @php
@@ -46,4 +47,20 @@
 
     @error('roles')<span class="text-error text-sm md:col-span-2">{{ $message }}</span>@enderror
     @error('roles.*')<span class="text-error text-sm md:col-span-2">{{ $message }}</span>@enderror
+</div>
+
+<div class="mt-4 max-w-xl" data-user-only-block>
+    <label for="company_division_id" class="label p-0 pb-2">
+        <span class="label-text font-medium">{{ __('Divisione aziendale') }}</span>
+        <span class="label-text-alt text-base-content/60">{{ __('Opzionale') }}</span>
+    </label>
+    <select id="company_division_id" name="company_division_id" class="select select-bordered w-full @error('company_division_id') select-error @enderror">
+        <option value="">{{ __('Nessuna divisione') }}</option>
+        @foreach ($companyDivisions as $division)
+            <option value="{{ $division->getKey() }}" @selected((int) old('company_division_id', $user?->company_division_id) === (int) $division->getKey())>
+                {{ $division->name }}
+            </option>
+        @endforeach
+    </select>
+    @error('company_division_id')<span class="text-error text-sm">{{ $message }}</span>@enderror
 </div>

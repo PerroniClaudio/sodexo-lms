@@ -51,6 +51,7 @@ class UserRequest extends FormRequest
             'job_role_id' => [$isWorker ? 'required' : 'nullable', 'exists:job_roles,id'],
             'job_sector_id' => [$isWorker ? 'required' : 'nullable', 'exists:job_sectors,id'],
             'job_unit_id' => [$isWorker ? 'required' : 'nullable', 'exists:job_units,id'],
+            'company_division_id' => [$isWorker ? 'nullable' : 'nullable', 'exists:company_divisions,id'],
             'job_tasks' => [$isWorker ? 'required' : 'nullable', 'array', 'min:1'],
             'job_tasks.*.job_task_id' => ['required_with:job_tasks', 'exists:job_tasks,id'],
             'job_tasks.*.starts_at' => ['required_with:job_tasks', 'date'],

@@ -27,6 +27,8 @@ class UserAccessController extends Controller
 {
     public function index(): View
     {
+        $activeDivisionId = $this->activeCompanyDivisionId();
+
         return view('admin.user-accesses.index', [
             'userAccessExports' => UserAccessExport::query()
                 ->select([
@@ -44,6 +46,7 @@ class UserAccessController extends Controller
                 ->latest()
                 ->paginate(20),
             'users' => User::query()
+                ->when($activeDivisionId !== null, fn ($query) => $query->where('company_division_id', $activeDivisionId))
                 ->orderBy('surname')
                 ->orderBy('name')
                 ->get(['id', 'name', 'surname', 'email']),
@@ -125,5 +128,16 @@ class UserAccessController extends Controller
             $userAccessExport->output_path,
             $userAccessExport->outputFileName()
         );
+    }
+
+    private function activeCompanyDivisionId(): ?int
+    {
+        if (request()->user()?->hasRole('superadmin')) {
+            return null;
+        }
+
+        $divisionId = request()->session()->get('active_company_division_id');
+
+        return $divisionId === null ? null : (int) $divisionId;
     }
 }
