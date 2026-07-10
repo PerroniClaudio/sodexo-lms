@@ -58,6 +58,7 @@ class CourseEnrollmentObserver
             app(LanguageVerificationGate::class)->syncVerifiedLanguageLevelFromEnrollment($enrollment);
             app(CourseCertificateGenerator::class)->generateForEnrollment($enrollment);
             app(CourseRiskRequirementService::class)->syncCertificatesForEnrollment($enrollment);
+            app(CourseRiskRequirementService::class)->syncJobBasedCertificatesForEnrollment($enrollment);
         });
     }
 

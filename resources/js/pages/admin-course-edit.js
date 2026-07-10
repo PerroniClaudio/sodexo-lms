@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeModuleSorting(courseEditPage);
     initializeSatisfactionSurveyFields(courseEditPage);
     initializeCourseRiskRequirements(courseEditPage);
+    initializeCourseJobBasedRequirements(courseEditPage);
     initializeCourseClasses(courseEditPage);
     initializeTeacherAssignmentsTable(courseEditPage);
     initializeTutorAssignmentsTable(courseEditPage);
@@ -81,6 +82,100 @@ function initializeCourseStatusChangeGuards(scope) {
             detachInput.value = '1';
         }
     });
+}
+
+function initializeCourseJobBasedRequirements(courseEditPage) {
+    const container = courseEditPage.querySelector('[data-course-job-based-requirements]');
+
+    if (!container) {
+        return;
+    }
+
+    const list = container.querySelector('[data-job-based-requirements-list]');
+    const emptyState = container.querySelector('[data-job-based-requirements-empty]');
+    const hiddenInputs = container.querySelector('[data-job-based-requirements-inputs]');
+    const addButton = container.querySelector('[data-open-job-based-requirements-modal]');
+    const modal = container.querySelector('[data-job-based-requirements-modal]');
+    const tableBody = container.querySelector('[data-job-based-requirements-modal-body]');
+    const modalEmptyState = container.querySelector('[data-job-based-requirements-modal-empty]');
+    const allRequirementsScript = container.querySelector('[data-job-based-requirements-all]');
+    const selectedRequirementsScript = container.querySelector('[data-job-based-requirements-selected]');
+
+    if (!list || !emptyState || !hiddenInputs || !addButton || !(modal instanceof HTMLDialogElement) || !tableBody || !modalEmptyState || !allRequirementsScript || !selectedRequirementsScript) {
+        return;
+    }
+
+    const allRequirements = JSON.parse(allRequirementsScript.textContent || '[]');
+    let selectedRequirements = JSON.parse(selectedRequirementsScript.textContent || '[]');
+
+    const escapeHtml = (value) => String(value || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+
+    const render = () => {
+        list.innerHTML = '';
+        hiddenInputs.innerHTML = '';
+        emptyState.classList.toggle('hidden', selectedRequirements.length > 0);
+
+        selectedRequirements.forEach((requirement) => {
+            const row = document.createElement('div');
+            row.className = 'flex flex-col gap-3 rounded-box border border-base-300 bg-base-100 p-4 sm:flex-row sm:items-start sm:justify-between';
+            row.innerHTML = `
+                <div>
+                    <p class="font-medium text-base-content">${escapeHtml(requirement.name)}</p>
+                    ${requirement.description ? `<p class="mt-1 text-sm text-base-content/70">${escapeHtml(requirement.description)}</p>` : ''}
+                </div>
+                <button type="button" class="btn btn-accent btn-outline btn-sm">Elimina</button>
+            `;
+            row.querySelector('button').addEventListener('click', () => {
+                selectedRequirements = selectedRequirements.filter((item) => Number(item.id) !== Number(requirement.id));
+                render();
+            });
+            list.appendChild(row);
+
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'job_based_requirement_ids[]';
+            input.value = String(requirement.id);
+            hiddenInputs.appendChild(input);
+        });
+    };
+
+    const renderModal = () => {
+        tableBody.innerHTML = '';
+        const selectedIds = new Set(selectedRequirements.map((requirement) => Number(requirement.id)));
+        const availableRequirements = allRequirements.filter((requirement) => !selectedIds.has(Number(requirement.id)));
+        modalEmptyState.classList.toggle('hidden', availableRequirements.length > 0);
+
+        availableRequirements.forEach((requirement) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="font-medium">${escapeHtml(requirement.name)}</td>
+                <td class="text-sm text-base-content/70">${escapeHtml(requirement.description || '-')}</td>
+                <td class="text-right"><button type="button" class="btn btn-primary btn-sm">Aggiungi</button></td>
+            `;
+            row.querySelector('button').addEventListener('click', () => {
+                selectedRequirements = [...selectedRequirements, requirement].sort((left, right) => left.name.localeCompare(right.name, 'it'));
+                modal.close();
+                render();
+            });
+            tableBody.appendChild(row);
+        });
+    };
+
+    addButton.addEventListener('click', () => {
+        renderModal();
+        modal.showModal();
+    });
+
+    container.querySelectorAll('[data-close-job-based-requirements-modal]').forEach((button) => {
+        button.addEventListener('click', () => modal.close());
+    });
+
+    render();
 }
 
 function initializeResAttendanceDialog(scope) {

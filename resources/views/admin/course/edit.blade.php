@@ -19,6 +19,7 @@
             ['key' => 'program', 'label' => __('Programma corso'), 'icon' => 'lucide-calendar-clock', 'group' => 'planning'],
             ['key' => 'survey', 'label' => __('Gradimento'), 'icon' => 'lucide-message-square-heart', 'group' => 'planning'],
             ['key' => 'certificates', 'label' => __('Abilitazioni di rischio'), 'icon' => 'lucide-file-badge', 'group' => 'certificates'],
+            ['key' => 'job-based-requirements', 'label' => __('Requisiti ruolo / mansione'), 'icon' => 'lucide-list-checks', 'group' => 'certificates'],
             ['key' => 'certificate-templates', 'label' => __('Template attestati'), 'icon' => 'lucide-file-text', 'group' => 'certificates'],
             ['key' => 'categorization', 'label' => __('Categorizzazione'), 'icon' => 'lucide-tags', 'group' => 'audience'],
             ['key' => 'partners', 'label' => __('Partner'), 'icon' => 'lucide-handshake', 'group' => 'audience'],
@@ -65,6 +66,7 @@
         $courseDocumentsStoreUrl = route('admin.courses.documents.store', $course);
         $courseSurveyUpdateUrl = route('admin.courses.survey.update', $course);
         $courseCertificatesUpdateUrl = route('admin.courses.certificates.update', $course);
+        $courseJobBasedRequirementsUpdateUrl = route('admin.courses.job-based-requirements.update', $course);
         $courseCertificateTemplatesUpdateUrl = route('admin.courses.certificate-templates.update', $course);
         $courseCategoriesUpdateUrl = route('admin.courses.categories.update', $course);
         $coursePartnersUpdateUrl = route('admin.courses.partners.update', $course);
@@ -320,6 +322,15 @@
                                 :risk-levels="$riskLevels"
                                 :selected-risk-based-requirements-payload="$selectedRiskBasedRequirementsPayload"
                                 :update-url="$courseCertificatesUpdateUrl"
+                            />
+                        @endif
+
+                        @if ($activeCourseEditSection === 'job-based-requirements')
+                            <x-admin.course.edit.sections.job-based-requirements
+                                :course="$course"
+                                :course-validator="$courseValidator"
+                                :job-based-requirements="$jobBasedRequirements"
+                                :update-url="$courseJobBasedRequirementsUpdateUrl"
                             />
                         @endif
 

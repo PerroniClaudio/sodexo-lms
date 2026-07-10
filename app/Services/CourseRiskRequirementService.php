@@ -314,6 +314,40 @@ class CourseRiskRequirementService
     }
 
     /**
+     * @return Collection<int, UserCertificate>
+     */
+    public function syncJobBasedCertificatesForEnrollment(CourseEnrollment $courseEnrollment): Collection
+    {
+        $courseEnrollment->loadMissing(['course.jobBasedRequirements', 'user']);
+
+        $course = $courseEnrollment->course;
+        $user = $courseEnrollment->user;
+
+        if ($course === null || $user === null || $course->jobBasedRequirements->isEmpty()) {
+            return collect();
+        }
+
+        $certificate = $user->userCertificates()
+            ->where('internal_course_id', $course->getKey())
+            ->where('description', 'Attestato interno per requisiti ruolo/mansione.')
+            ->first();
+
+        if ($certificate === null) {
+            $certificate = $user->userCertificates()->create([
+                'internal_course_id' => $course->getKey(),
+                'name' => $course->title ?: 'Corso interno',
+                'description' => 'Attestato interno per requisiti ruolo/mansione.',
+                'is_internal' => true,
+                'issued_at' => ($courseEnrollment->completed_at ?? now())->copy()->startOfDay(),
+            ]);
+        }
+
+        $certificate->jobBasedRequirements()->syncWithoutDetaching($course->jobBasedRequirements->modelKeys());
+
+        return collect([$certificate]);
+    }
+
+    /**
      * @return Collection<int, CourseEnrollment>
      */
     public function syncCertificatesForCompletedEnrollments(): Collection

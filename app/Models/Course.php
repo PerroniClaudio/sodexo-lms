@@ -549,6 +549,12 @@ class Course extends Model
             ->withTimestamps();
     }
 
+    public function jobBasedRequirements(): BelongsToMany
+    {
+        return $this->belongsToMany(JobBasedRequirement::class)
+            ->withTimestamps();
+    }
+
     /**
      * @return Collection<int, CourseRiskRequirementValidityType>
      */

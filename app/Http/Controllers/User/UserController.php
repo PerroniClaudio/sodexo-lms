@@ -9,6 +9,7 @@ use App\Models\CourseClassSchedule;
 use App\Models\CourseClassTutor;
 use App\Models\CourseEnrollment;
 use App\Models\CourseTeacherEnrollment;
+use App\Models\JobBasedRequirement;
 use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\User;
@@ -37,8 +38,17 @@ class UserController extends Controller
      */
     public function dashboard(): View
     {
+        $user = $this->authUser();
+        $unmetJobBasedRequirements = $this->unmetJobBasedRequirementsFor($user);
+        $courseEnrollments = $user->courseEnrollments()
+            ->whereIn('course_id', $unmetJobBasedRequirements->flatMap(fn ($requirement) => $requirement->courses)->pluck('id'))
+            ->get(['id', 'course_id', 'status', 'completion_percentage'])
+            ->keyBy('course_id');
+
         return view('user.dashboard', [
-            'recentCourses' => $this->recentCoursesFor($this->authUser()),
+            'recentCourses' => $this->recentCoursesFor($user),
+            'unmetJobBasedRequirements' => $unmetJobBasedRequirements,
+            'requirementCourseEnrollments' => $courseEnrollments,
         ]);
     }
 
@@ -110,6 +120,30 @@ class UserController extends Controller
 
         // Reindirizzamento in base al ruolo
         return redirect()->route($userRole.'.profile.edit')->with('status', __('Profilo aggiornato con successo!'));
+    }
+
+    /**
+     * @return Collection<int, JobBasedRequirement>
+     */
+    private function unmetJobBasedRequirementsFor(User $user): Collection
+    {
+        return $user->jobBasedRequirements()
+            ->wherePivot('is_active', true)
+            ->select(['job_based_requirements.id', 'job_based_requirements.name', 'job_based_requirements.description'])
+            ->with([
+                'courses' => fn ($query) => $query
+                    ->where('courses.status', 'published')
+                    ->orderBy('courses.title')
+                    ->select(['courses.id', 'courses.title']),
+                'userCertificates' => fn ($query) => $query
+                    ->where('user_certificates.user_id', $user->getKey())
+                    ->validOn()
+                    ->select(['user_certificates.id', 'user_certificates.user_id']),
+            ])
+            ->orderBy('job_based_requirements.name')
+            ->get()
+            ->filter(fn ($requirement): bool => $requirement->userCertificates->isEmpty())
+            ->values();
     }
 
     public function coursesStats(): JsonResponse

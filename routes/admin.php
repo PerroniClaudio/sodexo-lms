@@ -198,6 +198,7 @@ Route::middleware(['auth', 'active.role:admin|superadmin', 'active.company_divis
         Route::get('/courses/{course}/attachments/cover-image', [CourseController::class, 'previewCoverImage'])->name('courses.attachments.cover-image.preview');
         Route::get('/courses/{course}/attachments/poster-pdf', [CourseController::class, 'previewPosterPdf'])->name('courses.attachments.poster-pdf.preview');
         Route::put('/courses/{course}/certificates', [CourseController::class, 'updateCertificates'])->name('courses.certificates.update');
+        Route::put('/courses/{course}/job-based-requirements', [CourseController::class, 'updateJobBasedRequirements'])->name('courses.job-based-requirements.update');
         Route::post('/courses/{course}/attendance/confirm', [CourseController::class, 'confirmAttendance'])->name('courses.attendance.confirm');
         Route::delete('/courses/{course}', [CourseController::class, 'destroy'])->name('courses.destroy');
         Route::post('/courses/{id}/restore', [CourseController::class, 'restore'])->name('courses.restore');

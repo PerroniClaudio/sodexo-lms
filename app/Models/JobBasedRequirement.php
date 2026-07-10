@@ -45,4 +45,10 @@ class JobBasedRequirement extends Model
             'user_certificate_id',
         );
     }
+
+    public function courses(): BelongsToMany
+    {
+        return $this->belongsToMany(Course::class)
+            ->withTimestamps();
+    }
 }

@@ -17,6 +17,7 @@ use App\Http\Requests\UpdateCourseCertificatesRequest;
 use App\Http\Requests\UpdateCourseCertificateTemplateRequest;
 use App\Http\Requests\UpdateCourseDetailsRequest;
 use App\Http\Requests\UpdateCourseDurationRequest;
+use App\Http\Requests\UpdateCourseJobBasedRequirementsRequest;
 use App\Http\Requests\UpdateCoursePartnersRequest;
 use App\Http\Requests\UpdateCourseProgramRequest;
 use App\Http\Requests\UpdateCourseRecipientsRequest;
@@ -26,6 +27,7 @@ use App\Models\CourseCategory;
 use App\Models\CourseDocument;
 use App\Models\CustomCertificate;
 use App\Models\FundingEntity;
+use App\Models\JobBasedRequirement;
 use App\Models\JobRole;
 use App\Models\JobTask;
 use App\Models\JobUnit;
@@ -175,6 +177,7 @@ class CourseController extends Controller
             'jobRoles',
             'jobTasks',
             'jobUnits',
+            'jobBasedRequirements',
             'partners',
             'riskBasedRequirements',
             'venue',
@@ -222,6 +225,10 @@ class CourseController extends Controller
             'riskBasedRequirements' => RiskBasedRequirement::query()
                 ->orderBy('name')
                 ->get(['id', 'name', 'description', 'risk_levels']),
+            'jobBasedRequirements' => JobBasedRequirement::query()
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name', 'description']),
             'riskLevels' => RiskLevel::ordered(),
             'fundingEntities' => FundingEntity::query()->orderBy('company_name')->get(['id', 'company_name']),
             'courseCategories' => CourseCategory::query()->orderBy('name')->get(['id', 'name']),
@@ -577,11 +584,16 @@ class CourseController extends Controller
 
     public function updateCertificates(UpdateCourseCertificatesRequest $request, Course $course): RedirectResponse
     {
-        $course->riskBasedRequirements()->sync(
-            $this->buildRiskBasedRequirementSyncPayload($request->validated())
-        );
+        $course->riskBasedRequirements()->sync($this->buildRiskBasedRequirementSyncPayload($request->validated()));
 
         return $this->redirectToSection($course, 'certificates', __('Abilitazioni del corso aggiornate con successo.'));
+    }
+
+    public function updateJobBasedRequirements(UpdateCourseJobBasedRequirementsRequest $request, Course $course): RedirectResponse
+    {
+        $course->jobBasedRequirements()->sync($this->uniqueIds($request->validated('job_based_requirement_ids', [])));
+
+        return $this->redirectToSection($course, 'job-based-requirements', __('Requisiti ruolo/mansione aggiornati con successo.'));
     }
 
     public function updateCertificateTemplate(
