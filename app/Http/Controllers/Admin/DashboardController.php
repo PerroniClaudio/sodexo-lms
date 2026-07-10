@@ -25,10 +25,11 @@ class DashboardController extends Controller
     public function index(Request $request): View
     {
         $followUpInactiveDays = $this->normalizeInactiveDays($request);
+        $activeDivisionId = $this->activeCompanyDivisionId($request);
 
         return view('admin.dashboard', [
-            'overview' => $this->buildOverview(),
-            'followUpUsers' => $this->followUpUsers($followUpInactiveDays),
+            'overview' => $this->buildOverview($activeDivisionId),
+            'followUpUsers' => $this->followUpUsers($followUpInactiveDays, $activeDivisionId),
             'followUpInactiveDays' => $followUpInactiveDays,
             'compliance' => $this->buildComplianceSummary(),
             'evaluation' => $this->buildEvaluationSummary(),
@@ -173,15 +174,17 @@ class DashboardController extends Controller
      *     }>
      * }
      */
-    private function buildOverview(): array
+    private function buildOverview(?int $companyDivisionId): array
     {
         $enrollmentStatuses = CourseEnrollment::query()
+            ->when($companyDivisionId !== null, fn ($query) => $query->whereHas('course.companyDivisions', fn ($query) => $query->whereKey($companyDivisionId)))
             ->select('status', DB::raw('COUNT(*) as total'))
             ->groupBy('status')
             ->pluck('total', 'status');
 
         $topCourses = Course::query()
             ->select(['courses.id', 'courses.title'])
+            ->forCompanyDivision($companyDivisionId)
             ->withCount([
                 'enrollments as total_enrollments',
                 'enrollments as in_progress_enrollments' => fn ($query) => $query->where('status', CourseEnrollment::STATUS_IN_PROGRESS),
@@ -200,17 +203,24 @@ class DashboardController extends Controller
             ->all();
 
         return [
-            'learners_count' => User::role('user')->count(),
+            'learners_count' => User::role('user')
+                ->when($companyDivisionId !== null, fn ($query) => $query->where('company_division_id', $companyDivisionId))
+                ->count(),
             'active_learners_count' => User::role('user')
+                ->when($companyDivisionId !== null, fn ($query) => $query->where('company_division_id', $companyDivisionId))
                 ->where('account_state', 'active')
                 ->count(),
             'published_courses_count' => Course::query()
+                ->forCompanyDivision($companyDivisionId)
                 ->where('status', 'published')
                 ->count(),
             'course_completion_average' => (int) round(
-                CourseEnrollment::query()->avg('completion_percentage') ?? 0
+                CourseEnrollment::query()
+                    ->when($companyDivisionId !== null, fn ($query) => $query->whereHas('course.companyDivisions', fn ($query) => $query->whereKey($companyDivisionId)))
+                    ->avg('completion_percentage') ?? 0
             ),
             'completions_last_30_days' => CourseEnrollment::query()
+                ->when($companyDivisionId !== null, fn ($query) => $query->whereHas('course.companyDivisions', fn ($query) => $query->whereKey($companyDivisionId)))
                 ->whereNotNull('completed_at')
                 ->where('completed_at', '>=', now()->subDays(30))
                 ->count(),
@@ -237,10 +247,11 @@ class DashboardController extends Controller
      *     oldest_open_course_started_at_label: string
      * }>
      */
-    private function followUpUsers(?int $inactiveDays = null): Collection
+    private function followUpUsers(?int $inactiveDays = null, ?int $companyDivisionId = null): Collection
     {
         $users = User::role('user')
             ->select(['id', 'name', 'surname', 'email'])
+            ->when($companyDivisionId !== null, fn ($query) => $query->where('company_division_id', $companyDivisionId))
             ->whereHas('courseEnrollments', function ($query) use ($inactiveDays): void {
                 $query
                     ->whereNotNull('started_at')
@@ -313,6 +324,17 @@ class DashboardController extends Controller
             ->values();
 
         return $users;
+    }
+
+    private function activeCompanyDivisionId(Request $request): ?int
+    {
+        if ($request->user()?->hasRole('superadmin')) {
+            return null;
+        }
+
+        $divisionId = $request->session()->get('active_company_division_id');
+
+        return $divisionId === null ? null : (int) $divisionId;
     }
 
     /**

@@ -90,6 +90,22 @@
                 </div>
 
                 <div class="form-control flex flex-col gap-2">
+                    <label for="reporting_date" class="label p-0">
+                        <span class="label-text font-medium">{{ __('Data di rendicontazione') }}</span>
+                    </label>
+                    <input
+                        id="reporting_date"
+                        name="reporting_date"
+                        type="date"
+                        value="{{ $courseBaseValues['reporting_date'] }}"
+                        class="input input-bordered w-full @error('reporting_date') input-error @enderror"
+                    >
+                    @error('reporting_date')
+                        <p class="text-sm text-error">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="form-control flex flex-col gap-2">
                     <label for="course_duration_hours" class="label p-0">
                         <span class="label-text font-medium">{{ __('Durata corso (ore)') }}</span>
                     </label>

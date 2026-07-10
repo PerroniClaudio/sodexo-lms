@@ -60,6 +60,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'job_task_id',
         'job_role_id',
         'job_sector_id',
+        'company_division_id',
         'is_foreigner_or_immigrant',
         'declared_language_level_id',
         'verified_language_level_id',
@@ -90,6 +91,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'is_foreigner_or_immigrant' => 'boolean',
             'declared_language_level_id' => 'integer',
             'verified_language_level_id' => 'integer',
+            'company_division_id' => 'integer',
             'needs_language_level_verification' => 'boolean',
             'account_state' => UserStatus::class,
             'onboarding_step' => OnboardingStep::class,
@@ -160,6 +162,26 @@ class User extends Authenticatable implements MustVerifyEmail
     public function jobSector(): BelongsTo
     {
         return $this->belongsTo(JobSector::class);
+    }
+
+    public function companyDivision(): BelongsTo
+    {
+        return $this->belongsTo(CompanyDivision::class);
+    }
+
+    public function administeredCompanyDivisions(): BelongsToMany
+    {
+        return $this->belongsToMany(CompanyDivision::class, 'company_division_admin')
+            ->withTimestamps();
+    }
+
+    public function activeCompanyDivision(): ?CompanyDivision
+    {
+        $divisionId = session('active_company_division_id');
+
+        return $divisionId === null
+            ? null
+            : $this->administeredCompanyDivisions()->whereKey($divisionId)->first();
     }
 
     /**

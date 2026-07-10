@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\CompanyDivisionController;
 use App\Http\Controllers\Admin\CourseCategoryController;
 use App\Http\Controllers\Admin\CourseClassController;
 use App\Http\Controllers\Admin\CourseController;
@@ -60,7 +61,7 @@ use App\Models\Module;
 use App\Services\ModuleValidation\ModuleValidatorService;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
+Route::middleware(['auth', 'active.role:admin|superadmin', 'active.company_division'])->group(function () {
     Route::group(['prefix' => 'admin', 'as' => 'admin.'], function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/dashboard/calendar-events', [DashboardController::class, 'calendarEvents'])->name('dashboard.calendar-events');
@@ -93,6 +94,10 @@ Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
         Route::get('/imports/job-task-risk-associations/template', [JobTaskRiskAssociationImportController::class, 'downloadTemplate'])->name('imports.job-task-risk-associations.template');
         Route::get('/imports/job-task-risk-associations/status-card', [JobTaskRiskAssociationImportController::class, 'statusCard'])->name('imports.job-task-risk-associations.status-card');
         Route::post('/imports/job-task-risk-associations', [JobTaskRiskAssociationImportController::class, 'store'])->name('imports.job-task-risk-associations.store');
+
+        Route::middleware('active.role:superadmin')->group(function () {
+            Route::resource('company-divisions', CompanyDivisionController::class)->except(['show']);
+        });
 
         Route::middleware(['env.development', 'active.role:superadmin'])->group(function () {
             Route::get('/development-tools/reset-enrollments', [DevelopmentToolController::class, 'resetEnrollments'])->name('development-tools.reset-enrollments.index');

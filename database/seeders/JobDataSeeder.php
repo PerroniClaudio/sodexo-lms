@@ -56,6 +56,7 @@ class JobDataSeeder extends Seeder
             ['name' => 'Dirigente', 'description' => 'Dirigente aziendale'],
             ['name' => 'Datore di Lavoro', 'description' => 'Datore di lavoro responsabile'],
             ['name' => 'RSPP', 'description' => 'Responsabile Servizio Prevenzione e Protezione'],
+            ['name' => 'RPF', 'description' => 'Responsabile del Progetto Formativo'],
             ['name' => 'ASPP', 'description' => 'Addetto Servizio Prevenzione e Protezione'],
             ['name' => 'ASPP', 'description' => 'Addetto Servizio Prevenzione e Protezione'],
             ['name' => 'Altro', 'description' => 'Altro è da usare per esempio per docenti che non sono nell’organizzazione di Sodexo.'],

@@ -140,7 +140,7 @@
                                         @endif
 
                                         @if ($activeUserEditSection === 'permissions')
-                                            <x-admin.users.forms.permission-fields :user="$user" />
+                                            <x-admin.users.forms.permission-fields :user="$user" :company-divisions="$companyDivisions" />
                                         @endif
 
                                         @if ($activeUserEditSection === 'residence')

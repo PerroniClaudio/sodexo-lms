@@ -6,6 +6,7 @@ use App\Enums\CourseRiskRequirementValidityType;
 use App\Enums\RiskLevel;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UserRequest;
+use App\Models\CompanyDivision;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\DocumentType;
@@ -63,6 +64,15 @@ class UserController extends Controller
     public function index(Request $request): View
     {
         $query = User::query()->with('jobRole');
+        $activeDivisionId = $this->activeCompanyDivisionId($request);
+
+        if ($activeDivisionId !== null) {
+            $query->where(function (Builder $query) use ($activeDivisionId): void {
+                $query
+                    ->where('company_division_id', $activeDivisionId)
+                    ->orWhereHas('administeredCompanyDivisions', fn (Builder $query): Builder => $query->whereKey($activeDivisionId));
+            });
+        }
 
         // Mostra eliminati
         $showTrashed = $request->boolean('show_trashed');
@@ -152,8 +162,9 @@ class UserController extends Controller
         $jobSectors = JobSector::all();
         $jobUnits = JobUnit::all();
         $languageLevels = LanguageLevel::query()->ordered()->get();
+        $companyDivisions = CompanyDivision::query()->orderBy('name')->get(['id', 'name']);
 
-        return view('admin.users.create', compact('jobCategories', 'jobLevels', 'jobTasks', 'jobRoles', 'jobSectors', 'jobUnits', 'languageLevels'));
+        return view('admin.users.create', compact('jobCategories', 'jobLevels', 'jobTasks', 'jobRoles', 'jobSectors', 'jobUnits', 'languageLevels', 'companyDivisions'));
     }
 
     public function store(UserRequest $request): RedirectResponse
@@ -164,6 +175,7 @@ class UserController extends Controller
         $jobTaskAssignments = $data['job_tasks'] ?? [];
         unset($data['roles']);
         unset($data['job_tasks']);
+        $data['company_division_id'] = $isWorkerAccount ? ($data['company_division_id'] ?? null) : null;
         $data['declared_language_level_id'] = $data['declared_language_level_id']
             ?? LanguageLevel::defaultOrFirst()?->getKey();
         $data['needs_language_level_verification'] = $this->needsLanguageLevelVerificationResolver
@@ -212,6 +224,7 @@ class UserController extends Controller
         $jobSectors = JobSector::all();
         $jobUnits = JobUnit::all();
         $languageLevels = LanguageLevel::query()->ordered()->get();
+        $companyDivisions = CompanyDivision::query()->orderBy('name')->get(['id', 'name']);
         $allRiskBasedRequirements = RiskBasedRequirement::query()->orderBy('name')->get(['id', 'name']);
         $allJobBasedRequirements = JobBasedRequirement::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
         $documentTypes = DocumentType::query()->orderBy('name')->get(['id', 'name']);
@@ -304,6 +317,7 @@ class UserController extends Controller
             'jobSectors',
             'jobUnits',
             'languageLevels',
+            'companyDivisions',
             'allRiskBasedRequirements',
             'allJobBasedRequirements',
             'documentTypes',
@@ -325,6 +339,7 @@ class UserController extends Controller
         $jobTaskAssignments = $data['job_tasks'] ?? [];
         unset($data['roles']);
         unset($data['job_tasks']);
+        $data['company_division_id'] = $isWorkerAccount ? ($data['company_division_id'] ?? null) : null;
         $data['needs_language_level_verification'] = $this->needsLanguageLevelVerificationResolver
             ->resolve($data['is_foreigner_or_immigrant'] ?? $user->is_foreigner_or_immigrant);
 
@@ -406,13 +421,18 @@ class UserController extends Controller
 
     public function updatePermissionsSection(Request $request, User $user): RedirectResponse|JsonResponse
     {
-        $roles = $this->resolveRoles($request->validate([
+        $validated = $request->validate([
             'roles' => ['required', 'array', 'min:1'],
             'roles.*' => ['required', 'string', 'in:'.implode(',', $this->allowedAssignableRoles($request, $user))],
-        ])['roles']);
+            'company_division_id' => ['nullable', 'integer', 'exists:company_divisions,id'],
+        ]);
+        $roles = $this->resolveRoles($validated['roles']);
 
-        DB::transaction(function () use ($roles, $user): void {
+        DB::transaction(function () use ($roles, $user, $validated): void {
             $user->syncRoles($roles);
+            $user->forceFill([
+                'company_division_id' => in_array('user', $roles, true) ? ($validated['company_division_id'] ?? null) : null,
+            ])->save();
 
             if (! in_array('user', $roles, true)) {
                 $this->userJobAssignmentService->syncAssignments($user, [], false);
@@ -964,6 +984,17 @@ class UserController extends Controller
         }
 
         return array_values(array_unique($roles));
+    }
+
+    private function activeCompanyDivisionId(Request $request): ?int
+    {
+        if ($request->user()?->hasRole('superadmin')) {
+            return null;
+        }
+
+        $divisionId = $request->session()->get('active_company_division_id');
+
+        return $divisionId === null ? null : (int) $divisionId;
     }
 
     /**

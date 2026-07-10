@@ -74,6 +74,7 @@ class CourseController extends Controller
 
     public function index(Request $request): View
     {
+        $activeDivisionId = $this->activeCompanyDivisionId($request);
         $allowedSorts = ['id', 'title', 'status', 'year'];
         $courseStatusLabels = Course::availableStatusLabels();
         $courseTypeLabels = Course::availableTypeLabels();
@@ -89,6 +90,7 @@ class CourseController extends Controller
         return view('admin.course.index', [
             'courses' => Course::query()
                 ->select(['id', 'title', 'type', 'status', 'year', 'deleted_at'])
+                ->forCompanyDivision($activeDivisionId)
                 ->when($showTrashed, function ($query) {
                     $query->withTrashed();
                 })
@@ -150,6 +152,12 @@ class CourseController extends Controller
             ])->save();
         }
 
+        $activeDivisionId = $this->activeCompanyDivisionId($request);
+
+        if ($activeDivisionId !== null) {
+            $course->companyDivisions()->syncWithoutDetaching([$activeDivisionId]);
+        }
+
         return redirect()
             ->route('admin.courses.edit', $course)
             ->with('status', __('Corso creato con successo.'));
@@ -157,6 +165,8 @@ class CourseController extends Controller
 
     public function edit(Course $course, CustomCertificateResolver $customCertificateResolver): View
     {
+        $this->abortUnlessCourseInActiveDivision(request(), $course);
+
         $modules = $course->modules()->get();
         $course->load([
             'categories',
@@ -246,6 +256,8 @@ class CourseController extends Controller
         ResCourseAttendanceService $resCourseAttendanceService,
         AsyncLiveAuditAttendanceService $asyncLiveAuditAttendanceService,
     ): RedirectResponse {
+        $this->abortUnlessCourseInActiveDivision($request, $course);
+
         abort_unless(in_array($course->type, ['res', 'blended', 'async'], true), 404);
 
         $module = $course->modules()
@@ -337,6 +349,26 @@ class CourseController extends Controller
                 ];
             })
             ->values();
+    }
+
+    private function activeCompanyDivisionId(Request $request): ?int
+    {
+        if ($request->user()?->hasRole('superadmin')) {
+            return null;
+        }
+
+        $divisionId = $request->session()->get('active_company_division_id');
+
+        return $divisionId === null ? null : (int) $divisionId;
+    }
+
+    private function abortUnlessCourseInActiveDivision(Request $request, Course $course): void
+    {
+        $divisionId = $this->activeCompanyDivisionId($request);
+
+        if ($divisionId !== null) {
+            abort_unless($course->companyDivisions()->whereKey($divisionId)->exists(), 403);
+        }
     }
 
     private function asyncAttendanceRows(Course $course): Collection

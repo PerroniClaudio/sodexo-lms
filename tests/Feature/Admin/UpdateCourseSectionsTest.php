@@ -411,6 +411,7 @@ it('updates only the course duration through the dedicated endpoint', function (
         'course_start_date' => '2026-01-10',
         'course_end_date' => '2026-01-20',
         'access_closure_date' => '2026-02-10',
+        'reporting_date' => '2026-02-20',
         'course_duration_hours' => 6,
         'interaction_duration_minutes' => 120,
         'expiry_date' => '2026-12-31',
@@ -420,6 +421,7 @@ it('updates only the course duration through the dedicated endpoint', function (
         'course_start_date' => '2026-03-01',
         'course_end_date' => '2026-03-07',
         'access_closure_date' => '2026-03-31',
+        'reporting_date' => '2026-04-15',
         'course_duration_hours' => 10,
         'interaction_duration_minutes' => 180,
         'expiry_date' => '2027-01-31',
@@ -432,6 +434,7 @@ it('updates only the course duration through the dedicated endpoint', function (
     expect($course->course_start_date?->format('Y-m-d'))->toBe('2026-03-01')
         ->and($course->course_end_date?->format('Y-m-d'))->toBe('2026-03-07')
         ->and($course->access_closure_date?->format('Y-m-d'))->toBe('2026-03-31')
+        ->and($course->reporting_date?->format('Y-m-d'))->toBe('2026-04-15')
         ->and($course->course_duration_hours)->toBe(10)
         ->and($course->interaction_duration_minutes)->toBe(180)
         ->and($course->title)->toBe('Titolo invariato');

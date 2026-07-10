@@ -97,6 +97,7 @@ class Course extends Model
         'course_start_date',
         'course_end_date',
         'access_closure_date',
+        'reporting_date',
         'course_duration_hours',
         'interaction_duration_minutes',
         'program_schedule',
@@ -143,6 +144,7 @@ class Course extends Model
             'course_start_date' => 'date',
             'course_end_date' => 'date',
             'access_closure_date' => 'date',
+            'reporting_date' => 'date',
             'course_duration_hours' => 'integer',
             'interaction_duration_minutes' => 'integer',
             'program_schedule' => 'array',
@@ -390,6 +392,21 @@ class Course extends Model
             ->withTimestamps();
     }
 
+    public function companyDivisions(): BelongsToMany
+    {
+        return $this->belongsToMany(CompanyDivision::class, 'company_division_course')
+            ->withTimestamps();
+    }
+
+    public function scopeForCompanyDivision(Builder $query, ?int $companyDivisionId): Builder
+    {
+        if ($companyDivisionId === null) {
+            return $query;
+        }
+
+        return $query->whereHas('companyDivisions', fn (Builder $query): Builder => $query->whereKey($companyDivisionId));
+    }
+
     public function trainingPaths(): BelongsToMany
     {
         return $this->belongsToMany(TrainingPath::class, 'training_path_course')
@@ -420,39 +437,50 @@ class Course extends Model
 
     public function scopeVisibleToUser(Builder $query, User $user): Builder
     {
-        return $query->where(function (Builder $query) use ($user): void {
-            $query
-                ->where('visible_to_all', true)
-                ->orWhere(function (Builder $query) use ($user): void {
-                    $query
-                        ->where('visible_to_all', false)
-                        ->where(function (Builder $query): void {
-                            $query
-                                ->has('jobRoles')
-                                ->orHas('jobTasks')
-                                ->orHas('jobUnits');
-                        })
-                        ->where(function (Builder $query) use ($user): void {
-                            $query
-                                ->doesntHave('jobRoles')
-                                ->orWhereHas('jobRoles', fn (Builder $query): Builder => $query->whereKey($user->job_role_id));
-                        })
-                        ->where(function (Builder $query) use ($user): void {
-                            $query
-                                ->doesntHave('jobTasks')
-                                ->orWhereHas('jobTasks', fn (Builder $query): Builder => $query->whereKey($user->job_task_id));
-                        })
-                        ->where(function (Builder $query) use ($user): void {
-                            $query
-                                ->doesntHave('jobUnits')
-                                ->orWhereHas('jobUnits', fn (Builder $query): Builder => $query->whereKey($user->job_unit_id));
-                        });
-                });
-        });
+        return $query
+            ->where(function (Builder $query) use ($user): void {
+                $query
+                    ->doesntHave('companyDivisions')
+                    ->orWhereHas('companyDivisions', fn (Builder $query): Builder => $query->whereKey($user->company_division_id));
+            })
+            ->where(function (Builder $query) use ($user): void {
+                $query
+                    ->where('visible_to_all', true)
+                    ->orWhere(function (Builder $query) use ($user): void {
+                        $query
+                            ->where('visible_to_all', false)
+                            ->where(function (Builder $query): void {
+                                $query
+                                    ->has('jobRoles')
+                                    ->orHas('jobTasks')
+                                    ->orHas('jobUnits');
+                            })
+                            ->where(function (Builder $query) use ($user): void {
+                                $query
+                                    ->doesntHave('jobRoles')
+                                    ->orWhereHas('jobRoles', fn (Builder $query): Builder => $query->whereKey($user->job_role_id));
+                            })
+                            ->where(function (Builder $query) use ($user): void {
+                                $query
+                                    ->doesntHave('jobTasks')
+                                    ->orWhereHas('jobTasks', fn (Builder $query): Builder => $query->whereKey($user->job_task_id));
+                            })
+                            ->where(function (Builder $query) use ($user): void {
+                                $query
+                                    ->doesntHave('jobUnits')
+                                    ->orWhereHas('jobUnits', fn (Builder $query): Builder => $query->whereKey($user->job_unit_id));
+                            });
+                    });
+            });
     }
 
     public function isVisibleTo(User $user): bool
     {
+        if ($this->companyDivisions()->exists()
+            && ! $this->companyDivisions()->whereKey($user->company_division_id)->exists()) {
+            return false;
+        }
+
         if ($this->visible_to_all) {
             return true;
         }

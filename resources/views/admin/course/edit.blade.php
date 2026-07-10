@@ -14,7 +14,7 @@
                 ? [['key' => 'venue', 'label' => __('Sede'), 'icon' => 'lucide-map-pin', 'group' => 'course']]
                 : [],
             ['key' => 'attachments', 'label' => __('Allegati'), 'icon' => 'lucide-paperclip', 'group' => 'course'],
-            ['key' => 'documents', 'label' => __('Documenti'), 'icon' => 'lucide-file-up', 'group' => 'course'],
+            ['key' => 'documents', 'label' => __('Fascicolo Corso'), 'icon' => 'lucide-book', 'group' => 'course'],
             ['key' => 'duration', 'label' => __('Durata corso'), 'icon' => 'lucide-clock-3', 'group' => 'planning'],
             ['key' => 'program', 'label' => __('Programma corso'), 'icon' => 'lucide-calendar-clock', 'group' => 'planning'],
             ['key' => 'survey', 'label' => __('Gradimento'), 'icon' => 'lucide-message-square-heart', 'group' => 'planning'],
@@ -97,6 +97,7 @@
             'course_start_date' => old('course_start_date', $course->course_start_date?->format('Y-m-d')),
             'course_end_date' => old('course_end_date', $course->course_end_date?->format('Y-m-d')),
             'access_closure_date' => old('access_closure_date', $course->access_closure_date?->format('Y-m-d')),
+            'reporting_date' => old('reporting_date', $course->reporting_date?->format('Y-m-d')),
             'course_duration_hours' => old('course_duration_hours', $course->course_duration_hours),
             'interaction_duration_minutes' => old('interaction_duration_minutes', $course->interaction_duration_minutes),
             'year' => old('year', $course->year),

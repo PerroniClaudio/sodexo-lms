@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\CompanyDivisionSelectionController;
 use App\Http\Controllers\Auth\RoleSelectionController;
 use App\Models\CourseClassSchedule;
 use App\Models\CourseClassTeacher;
@@ -36,6 +37,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/seleziona-ruolo', [RoleSelectionController::class, 'edit'])->name('role.select');
     Route::post('/seleziona-ruolo', [RoleSelectionController::class, 'update'])->name('role.select.update');
     Route::get('/seleziona-ruolo/{role}', [RoleSelectionController::class, 'switch'])->name('role.switch');
+    Route::get('/seleziona-divisione', [CompanyDivisionSelectionController::class, 'edit'])->name('company-division.select');
+    Route::post('/seleziona-divisione', [CompanyDivisionSelectionController::class, 'update'])->name('company-division.select.update');
 });
 
 Route::middleware('auth')->get('/area-riservata', function (CourseClassScheduleResolver $scheduleResolver) {

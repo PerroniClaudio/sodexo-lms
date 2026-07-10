@@ -35,6 +35,7 @@ class CourseFactory extends Factory
             'course_start_date' => fake()->optional()->dateTimeBetween('now', '+1 month'),
             'course_end_date' => fake()->optional()->dateTimeBetween('+1 month', '+2 months'),
             'access_closure_date' => fake()->optional()->dateTimeBetween('+2 months', '+3 months'),
+            'reporting_date' => fake()->optional()->dateTimeBetween('+2 months', '+3 months'),
             'course_duration_hours' => fake()->optional()->numberBetween(1, 80),
             'interaction_duration_minutes' => fake()->optional()->numberBetween(1, 480),
             'program_schedule' => null,
