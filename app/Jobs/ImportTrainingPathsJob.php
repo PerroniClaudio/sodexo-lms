@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Importazione;
+use App\Models\TrainingPathCourseApproval;
 use App\Services\TrainingPathImportService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -53,9 +54,16 @@ class ImportTrainingPathsJob implements ShouldQueue
         try {
             $trainingPathImportService->import($importazione, $temporaryFile);
 
+            $hasPendingApprovals = TrainingPathCourseApproval::query()
+                ->whereBelongsTo($importazione)
+                ->where('status', TrainingPathCourseApproval::STATUS_PENDING)
+                ->exists();
+
             $importazione->update([
-                'status' => Importazione::STATUS_FINISHED,
-                'finished_at' => now(),
+                'status' => $hasPendingApprovals
+                    ? Importazione::STATUS_PROGRESS
+                    : Importazione::STATUS_FINISHED,
+                'finished_at' => $hasPendingApprovals ? null : now(),
                 'error_message' => null,
             ]);
         } catch (\Throwable $throwable) {

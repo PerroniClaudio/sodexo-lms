@@ -3,7 +3,7 @@
         <div>
             <div>
                 <h2 class="card-title">{{ __('Import associazione utenti percorsi formativi recenti') }}</h2>
-                <p class="text-sm text-base-content/60">{{ __('Se un import fallisce non applica nessuna modifica. Correggere il file e ripetere l\'operazione.') }}</p>
+                <p class="text-sm text-base-content/60">{{ __('Le righe idonee vengono elaborate; quelle non idonee restano in attesa di una decisione.') }}</p>
             </div>
         </div>
 
@@ -16,6 +16,7 @@
                         <th>{{ __('Stato') }}</th>
                         <th>{{ __('File') }}</th>
                         <th>{{ __('Errore') }}</th>
+                        <th>{{ __('Approvazioni') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -41,10 +42,26 @@
                                     <span class="text-base-content/50">-</span>
                                 @endif
                             </td>
+                            <td>
+                                @if (($importazione->pending_approvals_count ?? 0) > 0)
+                                    <button
+                                        type="button"
+                                        class="btn btn-warning btn-sm"
+                                        data-open-training-path-import-approvals
+                                        data-approvals-url="{{ route('admin.imports.user-training-paths.approvals.index', $importazione) }}"
+                                        data-decision-url="{{ route('admin.imports.user-training-paths.approvals.decision', $importazione) }}"
+                                        data-approve-all-url="{{ route('admin.imports.user-training-paths.approvals.approve-all', $importazione) }}"
+                                    >
+                                        {{ __('Valuta') }}
+                                    </button>
+                                @else
+                                    <span class="text-base-content/50">-</span>
+                                @endif
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="py-8 text-center text-base-content/60">
+                            <td colspan="6" class="py-8 text-center text-base-content/60">
                                 {{ __('Nessun import associazione utenti percorsi formativi ancora avviato.') }}
                             </td>
                         </tr>

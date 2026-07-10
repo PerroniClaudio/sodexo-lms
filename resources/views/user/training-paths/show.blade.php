@@ -11,6 +11,7 @@
         $courseTypeLabels = \App\Models\Course::availableTypeLabels();
         $enrollmentsByCourseId = collect($enrollmentsByCourseId ?? []);
         $courseOrderLocks = collect($courseOrderLocks ?? []);
+        $skippedCourseIds = collect($skippedCourseIds ?? []);
     @endphp
 
     <section class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
@@ -62,7 +63,7 @@
             <div class="card-body gap-4">
                 <div class="flex items-center justify-between gap-3">
                     <h2 class="text-xl font-semibold text-base-content">{{ __('Corsi del percorso') }}</h2>
-                    <span class="badge badge-lg badge-outline h-fit">{{ $totalCourses }}</span>
+                    <span class="badge badge-lg badge-outline h-fit">{{ $courses->count() }}</span>
                 </div>
 
                 @if($courses->isEmpty())
@@ -75,6 +76,7 @@
                                 $status = $courseEnrollment?->status ?? \App\Models\CourseEnrollment::STATUS_ASSIGNED;
                                 $progress = (int) ($courseEnrollment?->completion_percentage ?? 0);
                                 $courseLock = $courseOrderLocks->get((int) $course->getKey());
+                                $isSkipped = $skippedCourseIds->contains((int) $course->getKey());
                                 $isLockedByPathOrder = is_array($courseLock);
                                 $typeLabel = $courseTypeLabels[$course->type] ?? strtoupper((string) $course->type);
                             @endphp
@@ -85,11 +87,16 @@
                                         <div class="mb-2 flex flex-wrap items-center gap-2">
                                             <span class="badge badge-outline badge-xs h-fit">{{ $statusLabels[$status] ?? $status }}</span>
                                             <span class="badge badge-ghost badge-xs h-fit">{{ $typeLabel }}</span>
+                                            @if($isSkipped)
+                                                <span class="badge badge-warning badge-xs h-fit">{{ __('Saltato per approvazione') }}</span>
+                                            @endif
                                         </div>
                                         <h3 class="text-base font-semibold text-base-content">{{ $course->title }}</h3>
                                     </div>
 
-                                    @if($isLockedByPathOrder)
+                                    @if($isSkipped)
+                                        <span class="badge badge-warning badge-outline h-fit">{{ __('Non richiesto') }}</span>
+                                    @elseif($isLockedByPathOrder)
                                         <span class="badge badge-warning badge-outline h-fit">{{ __('Bloccato da ordine percorso') }}</span>
                                     @else
                                         <a href="{{ route('user.training-paths.courses.show', [$trainingPathEnrollment, $course]) }}" class="btn btn-primary btn-sm">
@@ -98,7 +105,7 @@
                                     @endif
                                 </div>
 
-                                @if($isLockedByPathOrder)
+                                @if($isLockedByPathOrder && ! $isSkipped)
                                     <p class="mt-2 text-sm text-base-content/70">{{ $courseLock['message'] ?? __('Completa prima il corso corrente del percorso.') }}</p>
                                 @endif
 

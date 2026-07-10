@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\TrainingPath;
+use App\Models\TrainingPathCourseApproval;
 use App\Models\TrainingPathEnrollment;
 use App\Models\User;
 use App\Services\TrainingPathCourseOrderService;
@@ -79,14 +80,18 @@ class TrainingPathController extends Controller
             ->get(['course_id', 'status', 'completion_percentage'])
             ->keyBy(fn (CourseEnrollment $enrollment): int => (int) $enrollment->course_id);
 
+        $skippedCourseIds = $this->skippedCourseIdsFor($user, $trainingPath);
+        $requiredCourseIds = $courseIds->reject(fn (int $courseId): bool => $skippedCourseIds->contains($courseId));
+
         $completedCourses = $enrollmentsByCourseId
-            ->filter(fn (CourseEnrollment $enrollment): bool => $enrollment->status === CourseEnrollment::STATUS_COMPLETED)
+            ->filter(fn (CourseEnrollment $enrollment): bool => $requiredCourseIds->contains((int) $enrollment->course_id)
+                && $enrollment->status === CourseEnrollment::STATUS_COMPLETED)
             ->count();
 
-        $totalCourses = $courses->count();
+        $totalCourses = $requiredCourseIds->count();
         $completionPercentage = $totalCourses > 0
             ? (int) round(($completedCourses / $totalCourses) * 100)
-            : 0;
+            : 100;
 
         $courseOrderLocks = $this->trainingPathCourseOrderService->locksByCourseId($user);
 
@@ -99,6 +104,7 @@ class TrainingPathController extends Controller
             'totalCourses' => $totalCourses,
             'completionPercentage' => $completionPercentage,
             'courseOrderLocks' => $courseOrderLocks,
+            'skippedCourseIds' => $skippedCourseIds,
         ]);
     }
 
@@ -135,14 +141,21 @@ class TrainingPathController extends Controller
             ->get(['course_id', 'status', 'completion_percentage'])
             ->keyBy(fn (CourseEnrollment $enrollment): int => (int) $enrollment->course_id);
 
+        $skippedCourseIds = $this->skippedCourseIdsFor($user, $trainingPath);
+        $requiredCourseIds = $courses
+            ->pluck('id')
+            ->map(fn (mixed $courseId): int => (int) $courseId)
+            ->reject(fn (int $courseId): bool => $skippedCourseIds->contains($courseId));
+
         $completedCourses = $enrollmentsByCourseId
-            ->filter(fn (CourseEnrollment $enrollment): bool => $enrollment->status === CourseEnrollment::STATUS_COMPLETED)
+            ->filter(fn (CourseEnrollment $enrollment): bool => $requiredCourseIds->contains((int) $enrollment->course_id)
+                && $enrollment->status === CourseEnrollment::STATUS_COMPLETED)
             ->count();
 
-        $totalCourses = $courses->count();
+        $totalCourses = $requiredCourseIds->count();
         $completionPercentage = $totalCourses > 0
             ? (int) round(($completedCourses / $totalCourses) * 100)
-            : 0;
+            : 100;
 
         return Pdf::view('pdf.training-path-program', [
             'trainingPath' => $trainingPath,
@@ -174,11 +187,23 @@ class TrainingPathController extends Controller
      */
     private function progressByEnrollmentId(User $user, EloquentCollection $enrollments): array
     {
-        $courseIdsByEnrollmentId = $enrollments->mapWithKeys(function (TrainingPathEnrollment $enrollment): array {
+        $skippedCourseIdsByTrainingPathId = TrainingPathCourseApproval::query()
+            ->where('user_id', $user->getKey())
+            ->whereIn('training_path_id', $enrollments->pluck('training_path_id'))
+            ->where('status', TrainingPathCourseApproval::STATUS_APPROVED)
+            ->get(['training_path_id', 'course_id'])
+            ->groupBy('training_path_id')
+            ->map(fn (Collection $approvals): Collection => $approvals
+                ->pluck('course_id')
+                ->map(fn (mixed $courseId): int => (int) $courseId));
+
+        $courseIdsByEnrollmentId = $enrollments->mapWithKeys(function (TrainingPathEnrollment $enrollment) use ($skippedCourseIdsByTrainingPathId): array {
+            $skippedCourseIds = $skippedCourseIdsByTrainingPathId->get((int) $enrollment->training_path_id, collect());
             $courseIds = $enrollment->trainingPath?->courses
                 ?->where('status', 'published')
                 ->pluck('id')
                 ->map(fn (mixed $courseId): int => (int) $courseId)
+                ->reject(fn (int $courseId): bool => $skippedCourseIds->contains($courseId))
                 ->unique()
                 ->values()
                 ->all() ?? [];
@@ -213,7 +238,7 @@ class TrainingPathController extends Controller
                     'total_courses' => $totalCourses,
                     'completion_percentage' => $totalCourses > 0
                         ? (int) round(($completedCourses / $totalCourses) * 100)
-                        : 0,
+                        : 100,
                 ],
             ];
         })->all();
@@ -276,6 +301,21 @@ class TrainingPathController extends Controller
             CourseEnrollment::STATUS_EXPIRED => __('Scaduto'),
             CourseEnrollment::STATUS_CANCELLED => __('Annullato'),
         ][$status] ?? $status;
+    }
+
+    /**
+     * @return Collection<int, int>
+     */
+    private function skippedCourseIdsFor(User $user, TrainingPath $trainingPath): Collection
+    {
+        return TrainingPathCourseApproval::query()
+            ->whereBelongsTo($user)
+            ->whereBelongsTo($trainingPath)
+            ->where('status', TrainingPathCourseApproval::STATUS_APPROVED)
+            ->pluck('course_id')
+            ->map(fn (mixed $courseId): int => (int) $courseId)
+            ->unique()
+            ->values();
     }
 
     private function programDownloadFileName(TrainingPath $trainingPath): string

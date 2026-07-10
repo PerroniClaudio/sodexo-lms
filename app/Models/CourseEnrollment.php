@@ -104,8 +104,9 @@ class CourseEnrollment extends Model
         bool $isIntegrativeEnrollment = false,
         bool $directOrigin = true,
         bool $pathwayOrigin = false,
+        bool $allowOutsideRecipients = false,
     ): self {
-        $visibilityError = $course->enrollmentVisibilityMessageFor($user);
+        $visibilityError = $allowOutsideRecipients ? null : $course->enrollmentVisibilityMessageFor($user);
 
         if ($visibilityError !== null) {
             throw new DomainException($visibilityError);

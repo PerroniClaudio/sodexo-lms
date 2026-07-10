@@ -6,6 +6,7 @@ use App\Models\CourseEnrollment;
 use App\Models\Importazione;
 use App\Models\JobRole;
 use App\Models\TrainingPath;
+use App\Models\TrainingPathCourseApproval;
 use App\Models\TrainingPathEnrollment;
 use App\Models\User;
 use App\Services\TrainingPathImportService;
@@ -131,11 +132,11 @@ it('enrolls user into published training path and linked courses', function () {
         ->and($courseEnrollment->direct_origin)->toBeFalse();
 });
 
-it('fails the import when the training path contains a linked course not assignable to the user', function () {
+it('waits for a per-user approval then enrolls and skips the ineligible course', function () {
     config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
-    test()->seed(RoleAndPermissionSeeder::class);
+    $reviewer = actingAsRole('admin');
 
     $allowedRole = JobRole::factory()->create();
     $otherRole = JobRole::factory()->create();
@@ -165,6 +166,7 @@ it('fails the import when the training path contains a linked course not assigna
 
     $importazione = Importazione::query()->create([
         'import_type' => Importazione::TYPE_USER_TRAINING_PATHS,
+        'created_by' => $reviewer->getKey(),
         'file_path' => 'imports/user-training-paths/user-training-paths.xlsx',
         'original_file_name' => 'associazioni-percorsi.xlsx',
     ]);
@@ -172,10 +174,70 @@ it('fails the import when the training path contains a linked course not assigna
     app(ImportTrainingPathsJob::class, ['importazioneId' => $importazione->getKey()])
         ->handle(app(TrainingPathImportService::class));
 
-    expect($importazione->fresh()->status)->toBe(Importazione::STATUS_FAILED)
-        ->and($importazione->fresh()->error_message)->toContain('Il percorso contiene un corso non assegnabile')
+    expect($importazione->fresh()->status)->toBe(Importazione::STATUS_PROGRESS)
+        ->and(TrainingPathCourseApproval::query()->where('status', TrainingPathCourseApproval::STATUS_PENDING)->count())->toBe(1)
         ->and(TrainingPathEnrollment::query()->count())->toBe(0)
         ->and(CourseEnrollment::query()->count())->toBe(0);
+
+    $this->getJson(route('admin.imports.user-training-paths.approvals.index', $importazione))
+        ->assertOk()
+        ->assertJsonPath('data.0.user.id', $user->getKey())
+        ->assertJsonPath('data.0.courses.0.id', $course->getKey());
+
+    $this->postJson(route('admin.imports.user-training-paths.approvals.decision', $importazione), [
+        'user_id' => $user->getKey(),
+        'training_path_id' => $trainingPath->getKey(),
+        'approved' => true,
+    ])->assertOk();
+
+    expect($importazione->fresh()->status)->toBe(Importazione::STATUS_FINISHED)
+        ->and(TrainingPathCourseApproval::query()->sole()->status)->toBe(TrainingPathCourseApproval::STATUS_APPROVED)
+        ->and(TrainingPathCourseApproval::query()->sole()->reviewed_by)->toBe($reviewer->getKey())
+        ->and(TrainingPathEnrollment::query()->count())->toBe(1)
+        ->and(CourseEnrollment::query()->count())->toBe(1);
+});
+
+it('approves every pending user in a training path import', function () {
+    config(['filesystems.default' => 's3']);
+    Storage::fake('s3');
+
+    $reviewer = actingAsRole('admin');
+    $allowedRole = JobRole::factory()->create();
+    $otherRole = JobRole::factory()->create();
+    $course = Course::factory()->published()->create(['visible_to_all' => false]);
+    $course->jobRoles()->attach($allowedRole);
+    $trainingPath = TrainingPath::factory()->create(['code' => 'PATH-001', 'status' => 'published']);
+    $trainingPath->courses()->attach($course->getKey(), ['sort_order' => 1]);
+    $users = collect(['RSSMRA80A01H501Z', 'VRDLGI80A01H501Z'])->map(fn (string $fiscalCode): User => User::factory()->asUser()->state([
+        'fiscal_code' => $fiscalCode,
+        'job_role_id' => $otherRole->getKey(),
+    ])->create());
+
+    Storage::disk('s3')->put('imports/user-training-paths/multiple.xlsx', file_get_contents(
+        trainingPathImportFile([
+            ['Codice fiscale', 'Codice percorso formativo'],
+            ['RSSMRA80A01H501Z', 'PATH-001'],
+            ['VRDLGI80A01H501Z', 'PATH-001'],
+        ])->getRealPath()
+    ));
+
+    $importazione = Importazione::query()->create([
+        'import_type' => Importazione::TYPE_USER_TRAINING_PATHS,
+        'created_by' => $reviewer->getKey(),
+        'file_path' => 'imports/user-training-paths/multiple.xlsx',
+    ]);
+
+    app(ImportTrainingPathsJob::class, ['importazioneId' => $importazione->getKey()])
+        ->handle(app(TrainingPathImportService::class));
+
+    expect(TrainingPathCourseApproval::query()->where('status', TrainingPathCourseApproval::STATUS_PENDING)->count())->toBe(2);
+
+    $this->postJson(route('admin.imports.user-training-paths.approvals.approve-all', $importazione))->assertOk();
+
+    expect($importazione->fresh()->status)->toBe(Importazione::STATUS_FINISHED)
+        ->and(TrainingPathCourseApproval::query()->where('status', TrainingPathCourseApproval::STATUS_APPROVED)->count())->toBe(2)
+        ->and(TrainingPathEnrollment::query()->whereIn('user_id', $users->pluck('id')->all())->count())->toBe(2)
+        ->and(CourseEnrollment::query()->whereIn('user_id', $users->pluck('id')->all())->count())->toBe(2);
 });
 
 function trainingPathImportFile(array $rows): UploadedFile

@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CourseEnrollment;
 use App\Models\TrainingPath;
+use App\Models\TrainingPathCourseApproval;
 use App\Models\TrainingPathEnrollment;
 use App\Models\User;
+use App\Services\TrainingPathEnrollmentApprovalService;
 use App\Services\TrainingPathEnrollmentSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,6 +19,7 @@ class TrainingPathEnrollmentController extends Controller
 {
     public function __construct(
         private readonly TrainingPathEnrollmentSyncService $trainingPathEnrollmentSyncService,
+        private readonly TrainingPathEnrollmentApprovalService $trainingPathEnrollmentApprovalService,
     ) {}
 
     public function indexApi(Request $request, TrainingPath $trainingPath): JsonResponse
@@ -202,16 +205,15 @@ class TrainingPathEnrollmentController extends Controller
 
         $validated = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'],
+            'approve_ineligible_courses' => ['nullable', 'boolean'],
         ]);
 
         $user = User::query()->findOrFail($validated['user_id']);
-        $visibilityErrors = $trainingPath->enrollmentVisibilityErrorsFor($user);
 
-        if ($visibilityErrors !== []) {
+        if (! $trainingPath->isVisibleTo($user)) {
             return response()->json([
                 'success' => false,
-                'message' => collect($visibilityErrors)->implode(' '),
-                'errors' => $visibilityErrors,
+                'message' => $trainingPath->enrollmentVisibilityErrorsFor($user)[0],
             ], 422);
         }
 
@@ -222,7 +224,17 @@ class TrainingPathEnrollmentController extends Controller
             ->first();
 
         if ($existingEnrollment !== null && ! $existingEnrollment->trashed()) {
-            $this->trainingPathEnrollmentSyncService->syncEnrollment($existingEnrollment);
+            $issues = $this->trainingPathEnrollmentApprovalService->courseIssuesFor($user, $trainingPath);
+
+            if ($issues !== [] && ! ($validated['approve_ineligible_courses'] ?? false)) {
+                return $this->approvalRequiredResponse($issues);
+            }
+
+            if ($issues !== []) {
+                $this->trainingPathEnrollmentApprovalService->approveAndEnroll($user, $trainingPath, $request->user());
+            } else {
+                $this->trainingPathEnrollmentSyncService->syncEnrollment($existingEnrollment);
+            }
 
             return response()->json([
                 'success' => true,
@@ -239,8 +251,17 @@ class TrainingPathEnrollmentController extends Controller
             ], 409);
         }
 
-        $enrollment = TrainingPathEnrollment::enroll($user, $trainingPath);
-        $this->trainingPathEnrollmentSyncService->syncEnrollment($enrollment);
+        $issues = $this->trainingPathEnrollmentApprovalService->courseIssuesFor($user, $trainingPath);
+
+        if ($issues !== [] && ! ($validated['approve_ineligible_courses'] ?? false)) {
+            return $this->approvalRequiredResponse($issues);
+        }
+
+        if ($issues !== []) {
+            $this->trainingPathEnrollmentApprovalService->approveAndEnroll($user, $trainingPath, $request->user());
+        } else {
+            $this->trainingPathEnrollmentApprovalService->enrollEligible($user, $trainingPath);
+        }
 
         return response()->json([
             'success' => true,
@@ -248,7 +269,7 @@ class TrainingPathEnrollmentController extends Controller
         ], 201);
     }
 
-    public function restoreApi(TrainingPath $trainingPath, int $enrollment): JsonResponse
+    public function restoreApi(Request $request, TrainingPath $trainingPath, int $enrollment): JsonResponse
     {
         if ($trainingPath->status !== 'published') {
             return response()->json([
@@ -261,6 +282,10 @@ class TrainingPathEnrollmentController extends Controller
             ->whereBelongsTo($trainingPath, 'trainingPath')
             ->whereKey($enrollment)
             ->firstOrFail();
+
+        $validated = $request->validate([
+            'approve_ineligible_courses' => ['nullable', 'boolean'],
+        ]);
 
         if (! $existingEnrollment->trashed()) {
             return response()->json([
@@ -282,21 +307,26 @@ class TrainingPathEnrollmentController extends Controller
             ], 422);
         }
 
-        $visibilityErrors = $trainingPath->enrollmentVisibilityErrorsFor(
-            User::query()->withTrashed()->findOrFail($existingEnrollment->user_id)
-        );
+        $user = User::query()->withTrashed()->findOrFail($existingEnrollment->user_id);
 
-        if ($visibilityErrors !== []) {
+        if (! $trainingPath->isVisibleTo($user)) {
             return response()->json([
                 'success' => false,
-                'message' => collect($visibilityErrors)->implode(' '),
-                'errors' => $visibilityErrors,
+                'message' => $trainingPath->enrollmentVisibilityErrorsFor($user)[0],
             ], 422);
         }
 
-        $existingEnrollment->restore();
-        $existingEnrollment->refresh();
-        $this->trainingPathEnrollmentSyncService->syncEnrollment($existingEnrollment);
+        $issues = $this->trainingPathEnrollmentApprovalService->courseIssuesFor($user, $trainingPath);
+
+        if ($issues !== [] && ! ($validated['approve_ineligible_courses'] ?? false)) {
+            return $this->approvalRequiredResponse($issues);
+        }
+
+        if ($issues !== []) {
+            $this->trainingPathEnrollmentApprovalService->approveAndEnroll($user, $trainingPath, $request->user());
+        } else {
+            $this->trainingPathEnrollmentApprovalService->enrollEligible($user, $trainingPath);
+        }
 
         return response()->json([
             'success' => true,
@@ -346,13 +376,22 @@ class TrainingPathEnrollmentController extends Controller
             ->pluck('courses.id')
             ->map(fn (mixed $courseId): int => (int) $courseId)
             ->values();
-        $totalCourses = $courseIds->count();
+        $approvedCourseIdsByUser = TrainingPathCourseApproval::query()
+            ->whereBelongsTo($trainingPath)
+            ->whereIn('user_id', $userIds)
+            ->where('status', TrainingPathCourseApproval::STATUS_APPROVED)
+            ->get(['user_id', 'course_id'])
+            ->groupBy('user_id')
+            ->map(fn (Collection $approvals): Collection => $approvals
+                ->pluck('course_id')
+                ->map(fn (mixed $courseId): int => (int) $courseId)
+                ->flip());
 
-        if ($userIds->isEmpty() || $totalCourses === 0) {
+        if ($userIds->isEmpty() || $courseIds->isEmpty()) {
             return $userIds->mapWithKeys(fn (int $userId): array => [
                 $userId => [
                     'completed_courses' => 0,
-                    'total_courses' => $totalCourses,
+                    'total_courses' => $courseIds->count(),
                     'completion_percentage' => 0,
                     'status' => 'assigned',
                     'status_label' => __('Assegnato'),
@@ -360,20 +399,28 @@ class TrainingPathEnrollmentController extends Controller
             ]);
         }
 
-        $completedCounts = DB::table('course_user')
-            ->selectRaw('user_id, COUNT(DISTINCT course_id) as completed_courses')
+        $completedCourseIdsByUser = DB::table('course_user')
+            ->select(['user_id', 'course_id'])
             ->whereIn('user_id', $userIds)
             ->whereIn('course_id', $courseIds)
             ->whereNull('deleted_at')
             ->where('status', CourseEnrollment::STATUS_COMPLETED)
+            ->get()
             ->groupBy('user_id')
-            ->pluck('completed_courses', 'user_id');
+            ->map(fn (Collection $enrollments): Collection => $enrollments
+                ->pluck('course_id')
+                ->map(fn (mixed $courseId): int => (int) $courseId)
+                ->flip());
 
-        return $userIds->mapWithKeys(function (int $userId) use ($completedCounts, $totalCourses): array {
-            $completedCourses = (int) ($completedCounts[$userId] ?? 0);
-            $completionPercentage = (int) round(($completedCourses / $totalCourses) * 100);
+        return $userIds->mapWithKeys(function (int $userId) use ($approvedCourseIdsByUser, $completedCourseIdsByUser, $courseIds): array {
+            $skippedCourseIds = $approvedCourseIdsByUser->get($userId, collect());
+            $requiredCourseIds = $courseIds->reject(fn (int $courseId): bool => $skippedCourseIds->has($courseId));
+            $completedCourseIds = $completedCourseIdsByUser->get($userId, collect());
+            $completedCourses = $requiredCourseIds->filter(fn (int $courseId): bool => $completedCourseIds->has($courseId))->count();
+            $totalCourses = $requiredCourseIds->count();
+            $completionPercentage = $totalCourses > 0 ? (int) round(($completedCourses / $totalCourses) * 100) : 100;
             $status = $completedCourses === 0
-                ? 'assigned'
+                ? ($totalCourses === 0 ? 'completed' : 'assigned')
                 : ($completedCourses >= $totalCourses ? 'completed' : 'in_progress');
 
             return [
@@ -390,5 +437,18 @@ class TrainingPathEnrollmentController extends Controller
                 ],
             ];
         });
+    }
+
+    /**
+     * @param  array<int, array{course_id: int, course_title: string, reasons: array<int, string>}>  $issues
+     */
+    private function approvalRequiredResponse(array $issues): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'requires_approval' => true,
+            'message' => __('Il percorso contiene corsi non assegnabili. Conferma per iscrivere comunque l\'utente e saltare questi corsi nel percorso.'),
+            'issues' => $issues,
+        ], 422);
     }
 }

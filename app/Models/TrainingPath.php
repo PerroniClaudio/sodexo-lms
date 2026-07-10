@@ -77,6 +77,11 @@ class TrainingPath extends Model
         return $this->hasMany(TrainingPathEnrollment::class);
     }
 
+    public function courseApprovals(): HasMany
+    {
+        return $this->hasMany(TrainingPathCourseApproval::class);
+    }
+
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'training_path_user')

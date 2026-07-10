@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\TrainingPath;
+use App\Models\TrainingPathCourseApproval;
 use App\Models\TrainingPathEnrollment;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -59,10 +60,22 @@ class TrainingPathEnrollmentSyncService
                 ->where('status', 'published')
                 ->values();
 
-            $this->ensureCourseEnrollments($user->getKey(), $orderedCourses, self::ORIGIN_PATHWAY);
+            $approvedCourseIds = TrainingPathCourseApproval::query()
+                ->where('user_id', $user->getKey())
+                ->where('training_path_id', $trainingPath->getKey())
+                ->where('status', TrainingPathCourseApproval::STATUS_APPROVED)
+                ->pluck('course_id')
+                ->map(fn (mixed $courseId): int => (int) $courseId)
+                ->unique()
+                ->values();
+
+            $this->ensureCourseEnrollments($user->getKey(), $orderedCourses, self::ORIGIN_PATHWAY, $approvedCourseIds);
 
             $currentCourseId = $trainingPath->enforce_course_order
-                ? $this->resolveCurrentCourseId($user->getKey(), $orderedCourses)
+                ? $this->resolveCurrentCourseId(
+                    $user->getKey(),
+                    $orderedCourses->reject(fn (Course $course): bool => $approvedCourseIds->contains((int) $course->getKey()))->values()
+                )
                 : null;
 
             $enrollment->forceFill([
@@ -239,13 +252,20 @@ class TrainingPathEnrollmentSyncService
 
     /**
      * @param  Collection<int, Course>  $orderedCourses
+     * @param  Collection<int, int>  $approvedCourseIds
      */
-    private function ensureCourseEnrollments(int $userId, Collection $orderedCourses, string $origin): void
-    {
+    private function ensureCourseEnrollments(
+        int $userId,
+        Collection $orderedCourses,
+        string $origin,
+        Collection $approvedCourseIds,
+    ): void {
         $user = User::query()->findOrFail($userId);
 
-        $orderedCourses->each(function (Course $course) use ($origin, $user): void {
-            if ($course->enrollmentVisibilityMessageFor($user) !== null) {
+        $orderedCourses->each(function (Course $course) use ($approvedCourseIds, $origin, $user): void {
+            $isApproved = $approvedCourseIds->contains((int) $course->getKey());
+
+            if (! $isApproved && $course->enrollmentVisibilityMessageFor($user) !== null) {
                 return;
             }
 
@@ -282,6 +302,7 @@ class TrainingPathEnrollmentSyncService
                     $course,
                     directOrigin: $origin === self::ORIGIN_DIRECT,
                     pathwayOrigin: $origin === self::ORIGIN_PATHWAY,
+                    allowOutsideRecipients: $isApproved,
                 );
             }
 

@@ -43,6 +43,7 @@ use App\Http\Controllers\Admin\RegiaController;
 use App\Http\Controllers\Admin\RiskBasedRequirementController;
 use App\Http\Controllers\Admin\SatisfactionSurveyController;
 use App\Http\Controllers\Admin\ScormPackageController;
+use App\Http\Controllers\Admin\TrainingPathApprovalLogController;
 use App\Http\Controllers\Admin\TrainingPathController;
 use App\Http\Controllers\Admin\TrainingPathDocumentController;
 use App\Http\Controllers\Admin\TrainingPathEnrollmentController;
@@ -90,6 +91,9 @@ Route::middleware(['auth', 'active.role:admin|superadmin', 'active.company_divis
         Route::get('/imports/user-training-paths/template', [TrainingPathImportController::class, 'downloadTemplate'])->name('imports.user-training-paths.template');
         Route::get('/imports/user-training-paths/status-card', [TrainingPathImportController::class, 'statusCard'])->name('imports.user-training-paths.status-card');
         Route::post('/imports/user-training-paths', [TrainingPathImportController::class, 'store'])->name('imports.user-training-paths.store');
+        Route::get('/imports/user-training-paths/{importazione}/approvals', [TrainingPathImportController::class, 'approvals'])->name('imports.user-training-paths.approvals.index');
+        Route::post('/imports/user-training-paths/{importazione}/approvals/decision', [TrainingPathImportController::class, 'decideApproval'])->name('imports.user-training-paths.approvals.decision');
+        Route::post('/imports/user-training-paths/{importazione}/approvals/approve-all', [TrainingPathImportController::class, 'approveAll'])->name('imports.user-training-paths.approvals.approve-all');
         Route::get('/imports/job-task-risk-associations', [JobTaskRiskAssociationImportController::class, 'index'])->name('imports.job-task-risk-associations');
         Route::get('/imports/job-task-risk-associations/template', [JobTaskRiskAssociationImportController::class, 'downloadTemplate'])->name('imports.job-task-risk-associations.template');
         Route::get('/imports/job-task-risk-associations/status-card', [JobTaskRiskAssociationImportController::class, 'statusCard'])->name('imports.job-task-risk-associations.status-card');
@@ -97,6 +101,7 @@ Route::middleware(['auth', 'active.role:admin|superadmin', 'active.company_divis
 
         Route::middleware('active.role:superadmin')->group(function () {
             Route::resource('company-divisions', CompanyDivisionController::class)->except(['show']);
+            Route::get('/tools/training-path-approvals', [TrainingPathApprovalLogController::class, 'index'])->name('tools.training-path-approvals.index');
         });
 
         Route::middleware(['env.development', 'active.role:superadmin'])->group(function () {

@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Importazione;
 use App\Models\TrainingPath;
-use App\Models\TrainingPathEnrollment;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -27,7 +26,7 @@ class TrainingPathImportService
     private ?array $trainingPathsByCode = null;
 
     public function __construct(
-        private readonly TrainingPathEnrollmentSyncService $trainingPathEnrollmentSyncService,
+        private readonly TrainingPathEnrollmentApprovalService $trainingPathEnrollmentApprovalService,
     ) {}
 
     public function import(Importazione $importazione, string $localFilePath): void
@@ -35,7 +34,7 @@ class TrainingPathImportService
         $rows = $this->rowsFromSpreadsheet($localFilePath);
         $seenAssociations = [];
 
-        DB::transaction(function () use ($rows, &$seenAssociations): void {
+        DB::transaction(function () use ($importazione, $rows, &$seenAssociations): void {
             foreach ($rows as $rowNumber => $row) {
                 if ($this->rowIsEmpty($row)) {
                     continue;
@@ -50,7 +49,7 @@ class TrainingPathImportService
 
                 $seenAssociations[$associationKey] = true;
 
-                $this->enroll($payload, $rowNumber);
+                $this->enroll($importazione, $payload, $rowNumber);
             }
         });
     }
@@ -142,7 +141,7 @@ class TrainingPathImportService
     /**
      * @param  array{fiscal_code: string, training_path_id: int}  $payload
      */
-    private function enroll(array $payload, int $rowNumber): void
+    private function enroll(Importazione $importazione, array $payload, int $rowNumber): void
     {
         $user = User::query()
             ->where('fiscal_code', $payload['fiscal_code'])
@@ -162,34 +161,26 @@ class TrainingPathImportService
             $this->fail($rowNumber, __('percorso formativo :code non pubblicato.', ['code' => $trainingPath->code]));
         }
 
-        $visibilityErrors = $trainingPath->enrollmentVisibilityErrorsFor($user);
-
-        if ($visibilityErrors !== []) {
-            $this->fail($rowNumber, collect($visibilityErrors)->implode(' '));
+        if (! $trainingPath->isVisibleTo($user)) {
+            $this->fail($rowNumber, __('L\'utente non rientra tra i destinatari del percorso formativo ":title".', [
+                'title' => $trainingPath->title,
+            ]));
         }
 
-        $existingEnrollment = TrainingPathEnrollment::withTrashed()
-            ->whereBelongsTo($trainingPath, 'trainingPath')
-            ->where('user_id', $user->getKey())
-            ->orderByDesc('id')
-            ->first();
+        $issues = $this->trainingPathEnrollmentApprovalService->courseIssuesFor($user, $trainingPath);
 
-        if ($existingEnrollment !== null && $existingEnrollment->trashed()) {
-            $existingEnrollment->restore();
-            $existingEnrollment->refresh();
-            $this->trainingPathEnrollmentSyncService->syncEnrollment($existingEnrollment);
+        if ($issues !== []) {
+            $this->trainingPathEnrollmentApprovalService->queueImportApprovals(
+                $importazione,
+                $user,
+                $trainingPath,
+                $issues,
+            );
 
             return;
         }
 
-        if ($existingEnrollment !== null) {
-            $this->trainingPathEnrollmentSyncService->syncEnrollment($existingEnrollment);
-
-            return;
-        }
-
-        $enrollment = TrainingPathEnrollment::enroll($user, $trainingPath);
-        $this->trainingPathEnrollmentSyncService->syncEnrollment($enrollment);
+        $this->trainingPathEnrollmentApprovalService->enrollEligible($user, $trainingPath);
     }
 
     /**

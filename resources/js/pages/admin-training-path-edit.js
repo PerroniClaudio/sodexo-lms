@@ -651,9 +651,10 @@ function initializeEnrollments(scope) {
     const userRowTemplate = container.querySelector('[data-training-path-enrollment-user-row-template]');
     const confirmModal = container.querySelector('[data-confirm-training-path-enrollment-modal]');
     const confirmMessage = container.querySelector('[data-confirm-training-path-enrollment-message]');
+    const confirmIssues = container.querySelector('[data-confirm-training-path-enrollment-issues]');
     const confirmSubmitButton = container.querySelector('[data-confirm-training-path-enrollment-submit]');
 
-    if (!apiUrl || !searchUsersApiUrl || !storeApiUrl || !tbody || !template || !emptyState || !tableContainer || !tableLoader || !searchInput || !searchButton || !showTrashedCheckbox || !paginationContainer || !summaryElement || !openCreateModalButton || !(createModal instanceof HTMLDialogElement) || !closeCreateModalButton || !userSearchInput || !userSearchButton || !userResultsBody || !userResultsEmptyState || !userRowTemplate || !(confirmModal instanceof HTMLDialogElement) || !confirmMessage || !confirmSubmitButton) {
+    if (!apiUrl || !searchUsersApiUrl || !storeApiUrl || !tbody || !template || !emptyState || !tableContainer || !tableLoader || !searchInput || !searchButton || !showTrashedCheckbox || !paginationContainer || !summaryElement || !openCreateModalButton || !(createModal instanceof HTMLDialogElement) || !closeCreateModalButton || !userSearchInput || !userSearchButton || !userResultsBody || !userResultsEmptyState || !userRowTemplate || !(confirmModal instanceof HTMLDialogElement) || !confirmMessage || !confirmIssues || !confirmSubmitButton) {
         return;
     }
 
@@ -667,6 +668,7 @@ function initializeEnrollments(scope) {
         selectedUser: null,
         confirmAction: 'create',
         restoreUrl: null,
+        approveIneligibleCourses: false,
     };
 
     const buildQueryString = () => {
@@ -830,6 +832,9 @@ function initializeEnrollments(scope) {
                 state.selectedUser = user;
                 state.confirmAction = 'create';
                 state.restoreUrl = null;
+                state.approveIneligibleCourses = false;
+                confirmIssues.innerHTML = '';
+                confirmIssues.classList.add('hidden');
                 confirmMessage.textContent = `Confermi l'iscrizione di ${user.surname || ''} ${user.name || ''} (ID ${user.id}) al percorso formativo?`.trim();
                 confirmModal.showModal();
             });
@@ -968,13 +973,16 @@ function initializeEnrollments(scope) {
 
                 await window.axios.post(
                     state.restoreUrl,
-                    {},
+                    { approve_ineligible_courses: state.approveIneligibleCourses },
                     { headers: { Accept: 'application/json' } },
                 );
             } else {
                 await window.axios.post(
                     storeApiUrl,
-                    { user_id: state.selectedUser.id },
+                    {
+                        user_id: state.selectedUser.id,
+                        approve_ineligible_courses: state.approveIneligibleCourses,
+                    },
                     { headers: { Accept: 'application/json' } },
                 );
             }
@@ -983,6 +991,7 @@ function initializeEnrollments(scope) {
             createModal.close();
             state.confirmAction = 'create';
             state.restoreUrl = null;
+            state.approveIneligibleCourses = false;
             await loadEnrollments();
         } catch (error) {
             const responseData = error.response?.data;
@@ -991,6 +1000,29 @@ function initializeEnrollments(scope) {
                 state.confirmAction = 'restore';
                 state.restoreUrl = responseData.restore_url;
                 confirmMessage.textContent = responseData.message || 'Esiste gia una iscrizione eliminata. Vuoi ripristinarla?';
+            } else if (responseData?.requires_approval && Array.isArray(responseData.issues)) {
+                state.approveIneligibleCourses = true;
+                confirmMessage.textContent = responseData.message || 'Confermi l\'iscrizione con corsi saltati?';
+                confirmIssues.innerHTML = '';
+
+                responseData.issues.forEach((issue) => {
+                    const block = document.createElement('div');
+                    block.className = 'mb-3 last:mb-0';
+                    const title = document.createElement('p');
+                    title.className = 'font-semibold';
+                    title.textContent = issue.course_title || `Corso #${issue.course_id}`;
+                    const reasons = document.createElement('ul');
+                    reasons.className = 'mt-1 list-disc space-y-1 pl-5 text-xs';
+                    (issue.reasons || []).forEach((reason) => {
+                        const item = document.createElement('li');
+                        item.textContent = reason;
+                        reasons.appendChild(item);
+                    });
+                    block.append(title, reasons);
+                    confirmIssues.appendChild(block);
+                });
+
+                confirmIssues.classList.remove('hidden');
             } else {
                 window.alert(responseData?.message || 'Errore durante l\'iscrizione al percorso.');
             }

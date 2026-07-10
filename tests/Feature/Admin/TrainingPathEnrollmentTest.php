@@ -5,6 +5,7 @@ use App\Models\CourseEnrollment;
 use App\Models\JobRole;
 use App\Models\Module;
 use App\Models\TrainingPath;
+use App\Models\TrainingPathCourseApproval;
 use App\Models\TrainingPathEnrollment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,7 +18,7 @@ beforeEach(function () {
 });
 
 it('lists training path enrollments with computed progress', function () {
-    $trainingPath = TrainingPath::factory()->create();
+    $trainingPath = TrainingPath::factory()->create(['status' => 'published']);
     $courseA = Course::factory()->create();
     $courseB = Course::factory()->create();
     Module::factory()->create([
@@ -53,7 +54,7 @@ it('lists training path enrollments with computed progress', function () {
 });
 
 it('creates soft deletes and restores training path enrollments', function () {
-    $trainingPath = TrainingPath::factory()->create();
+    $trainingPath = TrainingPath::factory()->create(['status' => 'published']);
     $user = User::factory()->create();
 
     $this->postJson(route('admin.api.training-paths.enrollments.store', $trainingPath), [
@@ -74,7 +75,7 @@ it('creates soft deletes and restores training path enrollments', function () {
 });
 
 it('asks for restore when a deleted enrollment already exists', function () {
-    $trainingPath = TrainingPath::factory()->create();
+    $trainingPath = TrainingPath::factory()->create(['status' => 'published']);
     $user = User::factory()->create();
     $enrollment = TrainingPathEnrollment::factory()->create([
         'training_path_id' => $trainingPath->getKey(),
@@ -111,21 +112,37 @@ it('blocks training path enrollment creation when the user is outside the config
     expect(TrainingPathEnrollment::query()->count())->toBe(0);
 });
 
-it('blocks training path enrollment creation when a linked published course is not assignable to the user', function () {
+it('requires approval then enrolls every course while skipping the ineligible course in the path', function () {
     $trainingPath = TrainingPath::factory()->create([
         'status' => 'published',
         'visible_to_all' => true,
         'title' => 'Percorso onboarding',
     ]);
     $course = Course::factory()->create([
-        'status' => 'published',
+        'status' => 'draft',
         'visible_to_all' => false,
         'title' => 'Corso riservato',
     ]);
     $allowedRole = JobRole::factory()->create();
     $otherRole = JobRole::factory()->create();
     $course->jobRoles()->attach($allowedRole);
+    Module::factory()->create([
+        'belongsTo' => (string) $course->getKey(),
+        'order' => 1,
+    ]);
+    Course::withoutEvents(fn () => $course->update(['status' => 'published']));
     $trainingPath->courses()->attach($course->getKey(), ['sort_order' => 1]);
+    $eligibleCourse = Course::factory()->create([
+        'status' => 'draft',
+        'title' => 'Corso successivo',
+        'visible_to_all' => true,
+    ]);
+    Module::factory()->create([
+        'belongsTo' => (string) $eligibleCourse->getKey(),
+        'order' => 1,
+    ]);
+    Course::withoutEvents(fn () => $eligibleCourse->update(['status' => 'published']));
+    $trainingPath->courses()->attach($eligibleCourse->getKey(), ['sort_order' => 2]);
 
     $user = User::factory()->create([
         'job_role_id' => $otherRole->getKey(),
@@ -134,8 +151,46 @@ it('blocks training path enrollment creation when a linked published course is n
     $this->postJson(route('admin.api.training-paths.enrollments.store', $trainingPath), [
         'user_id' => $user->getKey(),
     ])->assertUnprocessable()
-        ->assertJsonPath('errors.0', 'Il percorso contiene un corso non assegnabile: L\'utente non rientra tra i destinatari del corso "Corso riservato", quindi l\'iscrizione non è stata creata.');
+        ->assertJsonPath('requires_approval', true)
+        ->assertJsonPath('issues.0.course_id', $course->getKey());
 
     expect(TrainingPathEnrollment::query()->count())->toBe(0)
         ->and(CourseEnrollment::query()->count())->toBe(0);
+
+    $this->postJson(route('admin.api.training-paths.enrollments.store', $trainingPath), [
+        'user_id' => $user->getKey(),
+        'approve_ineligible_courses' => true,
+    ])->assertCreated();
+
+    expect(CourseEnrollment::query()->where('user_id', $user->getKey())->count())->toBe(2)
+        ->and(TrainingPathCourseApproval::query()->where('status', TrainingPathCourseApproval::STATUS_APPROVED)->count())->toBe(1)
+        ->and(TrainingPathEnrollment::query()->sole()->current_course_id)->toBe($eligibleCourse->getKey());
+
+    $this->getJson(route('admin.api.training-paths.enrollments.index', $trainingPath))
+        ->assertOk()
+        ->assertJsonPath('data.0.completed_courses', 0)
+        ->assertJsonPath('data.0.total_courses', 1);
+
+    $this->actingAs($user)->withSession(['active_role' => 'user']);
+
+    $this->get(route('user.training-paths.show', TrainingPathEnrollment::query()->sole()))
+        ->assertOk()
+        ->assertSeeText('Saltato per approvazione')
+        ->assertSeeText('0/1 corsi completati');
+});
+
+it('shows approval logs only to superadmins in tools', function () {
+    $approval = TrainingPathCourseApproval::factory()->create([
+        'reasons' => ['Destinatari del corso non compatibili.'],
+    ]);
+
+    $this->get(route('admin.tools.training-path-approvals.index'))->assertRedirect();
+
+    auth()->user()->assignRole('superadmin');
+    $this->withSession(['active_role' => 'superadmin']);
+
+    $this->get(route('admin.tools.training-path-approvals.index'))
+        ->assertOk()
+        ->assertSeeText($approval->course->title)
+        ->assertSeeText('Destinatari del corso non compatibili.');
 });

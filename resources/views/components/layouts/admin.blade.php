@@ -91,6 +91,7 @@
                         'admin.document-conversion-jobs.*',
                         'admin.live-stream-logs.*',
                         'admin.importazioni-monitor.*',
+                        'admin.tools.training-path-approvals.*',
                     ];
 
                     $formationMenuOpen = $matchesRoutePatterns($formationMenuPatterns);
@@ -534,6 +535,15 @@
                                         >
                                             <x-lucide-file-search class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Monitor importazioni') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.tools.training-path-approvals.index') }}"
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.tools.training-path-approvals.*'])])
+                                        >
+                                            <x-lucide-shield-check class="mr-2 inline-block h-5 w-5" />
+                                            {{ __('Approvazioni percorsi') }}
                                         </a>
                                     </li>
                                     <li>

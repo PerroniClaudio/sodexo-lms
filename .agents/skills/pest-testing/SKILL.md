@@ -1,6 +1,6 @@
 ---
 name: pest-testing
-description: "Use this skill for Pest PHP testing in Laravel projects only. Trigger whenever any test is being written, edited, fixed, or refactored — including fixing tests that broke after a code change, adding assertions, converting PHPUnit to Pest, adding datasets, and TDD workflows. Always activate when the user asks how to write something in Pest, mentions test files or directories (tests/Feature, tests/Unit, tests/Browser), or needs browser testing, smoke testing multiple pages for JS errors, or architecture tests. Covers: test()/it()/expect() syntax, datasets, mocking, browser testing (visit/click/fill), smoke testing, arch(), Livewire component tests, RefreshDatabase, and all Pest 4 features. Do not use for factories, seeders, migrations, controllers, models, or non-test PHP code."
+description: "Use this skill for Pest PHP testing in Laravel projects only. Trigger whenever any test is being written, edited, fixed, or refactored — including fixing tests that broke after a code change, adding assertions, converting PHPUnit to Pest, adding datasets, and TDD workflows. Always activate when the user asks how to write something in Pest, mentions test files or directories (tests/Feature, tests/Unit, tests/Browser), or needs browser testing, smoke testing multiple pages for JS errors, or architecture tests. Covers: test()/it()/expect() syntax, datasets, mocking, browser testing (visit/click/fill), smoke testing, arch(), Livewire component tests, database reset strategies, and all Pest 4 features. Do not add RefreshDatabase or LazilyRefreshDatabase automatically: first follow the existing file or suite pattern, and if no pattern exists ask the user before introducing one unless database isolation is clearly required by the test. Do not use for factories, seeders, migrations, controllers, models, or non-test PHP code."
 license: MIT
 metadata:
   author: laravel
@@ -11,6 +11,13 @@ metadata:
 ## Documentation
 
 Use `search-docs` for detailed Pest 4 patterns and documentation.
+
+## Database Reset Policy
+
+- Do not add `RefreshDatabase` or `LazilyRefreshDatabase` automatically in new or edited tests.
+- First inspect the existing file or neighboring suite and preserve that pattern when one already exists.
+- If no pattern exists, ask the user before introducing a database reset trait unless the test clearly writes to the database and would be unreliable without isolation.
+- When a new reset trait is actually needed and the user has not requested otherwise, prefer `LazilyRefreshDatabase` over `RefreshDatabase`.
 
 ## Basic Usage
 
@@ -92,7 +99,7 @@ Browser tests run in real browsers for full integration testing:
 
 - Browser tests live in `tests/Browser/`.
 - Use Laravel features like `Event::fake()`, `assertAuthenticated()`, and model factories.
-- Use `RefreshDatabase` for clean state per test.
+- Use an explicit database reset trait only when the browser test really needs persisted database state isolation, following the policy above.
 - Interact with page: click, type, scroll, select, submit, drag-and-drop, touch gestures.
 - Test on multiple browsers (Chrome, Firefox, Safari) if requested.
 - Test on different devices/viewports (iPhone 14 Pro, tablets) if requested.

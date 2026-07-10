@@ -50,9 +50,11 @@ class TrainingPathEnrollment extends Model
         });
     }
 
-    public static function enroll(User $user, TrainingPath $trainingPath): self
+    public static function enroll(User $user, TrainingPath $trainingPath, bool $allowIneligibleCourses = false): self
     {
-        $visibilityErrors = $trainingPath->enrollmentVisibilityErrorsFor($user);
+        $visibilityErrors = $allowIneligibleCourses
+            ? ($trainingPath->isVisibleTo($user) ? [] : [__('L\'utente non rientra tra i destinatari del percorso formativo ":title".', ['title' => $trainingPath->title])])
+            : $trainingPath->enrollmentVisibilityErrorsFor($user);
 
         if ($visibilityErrors !== []) {
             throw new DomainException(implode(' ', $visibilityErrors));

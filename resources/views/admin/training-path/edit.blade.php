@@ -799,6 +799,7 @@
                                         <div class="space-y-2">
                                             <h3 class="text-lg font-semibold">{{ __('Conferma iscrizione') }}</h3>
                                             <p class="text-sm text-base-content/70" data-confirm-training-path-enrollment-message></p>
+                                            <div class="hidden rounded-box border border-warning/30 bg-warning/10 p-4 text-sm" data-confirm-training-path-enrollment-issues></div>
                                         </div>
 
                                         <div class="modal-action mt-6">

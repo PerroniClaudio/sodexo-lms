@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Course;
 use App\Models\CourseEnrollment;
+use App\Models\TrainingPathCourseApproval;
 use App\Models\TrainingPathEnrollment;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -33,17 +34,29 @@ class TrainingPathCourseOrderService
             ->map(fn (mixed $courseId): int => (int) $courseId)
             ->flip();
 
+        $skippedCourseIdsByTrainingPathId = TrainingPathCourseApproval::query()
+            ->where('user_id', $user->getKey())
+            ->where('status', TrainingPathCourseApproval::STATUS_APPROVED)
+            ->get(['training_path_id', 'course_id'])
+            ->groupBy('training_path_id')
+            ->map(fn (Collection $approvals): Collection => $approvals
+                ->pluck('course_id')
+                ->map(fn (mixed $courseId): int => (int) $courseId)
+                ->flip());
+
         $locks = [];
 
-        $enrollments->each(function (TrainingPathEnrollment $enrollment) use (&$locks, $directOriginCourseIds): void {
+        $enrollments->each(function (TrainingPathEnrollment $enrollment) use (&$locks, $directOriginCourseIds, $skippedCourseIdsByTrainingPathId): void {
             $trainingPath = $enrollment->trainingPath;
 
             if ($trainingPath === null || ! $trainingPath->enforce_course_order || $trainingPath->status !== 'published') {
                 return;
             }
 
+            $skippedCourseIds = $skippedCourseIdsByTrainingPathId->get((int) $trainingPath->getKey(), collect());
             $orderedCourses = $trainingPath->courses
                 ->where('status', 'published')
+                ->reject(fn (Course $course): bool => $skippedCourseIds->has((int) $course->getKey()))
                 ->values();
             $currentCourseId = $enrollment->current_course_id;
 
