@@ -45,6 +45,8 @@ class StoreUserCertificateRequest extends FormRequest
             'is_internal' => ['nullable', 'boolean'],
             'risk_based_requirement_ids' => ['nullable', 'array'],
             'risk_based_requirement_ids.*' => ['integer', 'exists:risk_based_requirements,id'],
+            'job_based_requirement_ids' => ['nullable', 'array'],
+            'job_based_requirement_ids.*' => ['integer', 'exists:job_based_requirements,id'],
             'files' => ['nullable', 'array'],
             'files.*' => ['file', 'max:51200', 'mimes:pdf,jpg,jpeg,png,webp,doc,docx'],
         ];
@@ -63,6 +65,7 @@ class StoreUserCertificateRequest extends FormRequest
             'expires_at' => __('data scadenza'),
             'internal_course_id' => __('corso interno'),
             'risk_based_requirement_ids' => __('requisiti di rischio'),
+            'job_based_requirement_ids' => __('requisiti ruolo/mansione'),
             'files' => __('file allegati'),
             'files.*' => __('file allegato'),
         ];

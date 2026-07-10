@@ -443,6 +443,68 @@
                                 </div>
                             </div>
                         </section>
+
+                        <section
+                            class="mt-6 card border border-base-300 bg-base-100 shadow-sm"
+                            data-job-based-requirements-summary
+                            data-summary-url="{{ route('admin.api.users.job-based-requirements.summary', $user) }}"
+                            data-refresh-url="{{ route('admin.api.users.job-based-requirements.refresh', $user) }}"
+                        >
+                            <div class="card-body gap-6">
+                                <div class="flex flex-col gap-4 border-b border-base-300 pb-6 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                        <h2 class="text-2xl font-semibold text-base-content">{{ __('Requisiti ruolo / mansione') }}</h2>
+                                        <p class="mt-2 text-sm text-base-content/65">
+                                            {{ __('Ultimo ricalcolo: :date', ['date' => $jobBasedRequirementSummary['last_calculated_at_label'] ?? __('mai eseguito')]) }}
+                                        </p>
+                                    </div>
+
+                                    <button type="button" class="btn btn-primary btn-outline" data-job-based-requirements-refresh-button>
+                                        {{ __('Ricalcola ora') }}
+                                    </button>
+                                </div>
+
+                                <div class="grid gap-6 lg:grid-cols-2">
+                                    <div class="space-y-3">
+                                        <div class="flex items-center gap-2">
+                                            <span class="badge badge-success badge-soft">{{ __('Attivi ora') }}</span>
+                                        </div>
+                                        <div class="grid gap-3" data-job-based-active-items>
+                                            @forelse ($jobBasedRequirementSummary['active_requirements'] as $requirement)
+                                                <div class="rounded-2xl border border-base-300 bg-base-200/40 p-4">
+                                                    <div class="font-semibold text-base-content">{{ $requirement['name'] }}</div>
+                                                    @if ($requirement['description'])
+                                                        <p class="mt-1 text-sm text-base-content/70">{{ $requirement['description'] }}</p>
+                                                    @endif
+                                                    <p class="mt-2 text-sm text-base-content/70">{{ __('Attivo dal :date', ['date' => $requirement['valid_from_label']]) }}</p>
+                                                </div>
+                                            @empty
+                                                <p class="text-sm text-base-content/70">{{ __('Nessun requisito attivo al momento.') }}</p>
+                                            @endforelse
+                                        </div>
+                                    </div>
+
+                                    <div class="space-y-3">
+                                        <div class="flex items-center gap-2">
+                                            <span class="badge badge-warning badge-soft">{{ __('Futuri') }}</span>
+                                        </div>
+                                        <div class="grid gap-3" data-job-based-future-items>
+                                            @forelse ($jobBasedRequirementSummary['future_requirements'] as $requirement)
+                                                <div class="rounded-2xl border border-warning/30 bg-warning/5 p-4">
+                                                    <div class="font-semibold text-base-content">{{ $requirement['name'] }}</div>
+                                                    @if ($requirement['description'])
+                                                        <p class="mt-1 text-sm text-base-content/70">{{ $requirement['description'] }}</p>
+                                                    @endif
+                                                    <p class="mt-2 text-sm text-base-content/70">{{ __('Richiesto dal :date', ['date' => $requirement['valid_from_label']]) }}</p>
+                                                </div>
+                                            @empty
+                                                <p class="text-sm text-base-content/70">{{ __('Nessun requisito futuro pianificato.') }}</p>
+                                            @endforelse
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
                     @endif
 
                     @if ($activeUserEditSection === 'certificates')
@@ -493,7 +555,7 @@
                                                 <th><button type="button" class="inline-flex items-center gap-2 text-left" data-sort-key="is_internal">{{ __('Tipo') }}</button></th>
                                                 <th>{{ __('Tipologia documento') }}</th>
                                                 <th>{{ __('File') }}</th>
-                                                <th>{{ __('Requisiti di rischio') }}</th>
+                                                <th>{{ __('Requisiti') }}</th>
                                                 <th class="text-right">{{ __('Azioni') }}</th>
                                             </tr>
                                         </thead>
@@ -610,6 +672,17 @@
                                                 <select id="certificate_risk_based_requirement_ids" name="risk_based_requirement_ids[]" class="select select-bordered min-h-48 w-full" multiple data-risk-based-requirements-select>
                                                     @foreach ($allRiskBasedRequirements as $riskBasedRequirement)
                                                         <option value="{{ $riskBasedRequirement->id }}">{{ $riskBasedRequirement->name }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+
+                                            <div class="form-control flex flex-col gap-2 md:col-span-2">
+                                                <label class="label p-0" for="certificate_job_based_requirement_ids">
+                                                    <span class="label-text font-medium">{{ __('Requisiti ruolo / mansione soddisfatti') }}</span>
+                                                </label>
+                                                <select id="certificate_job_based_requirement_ids" name="job_based_requirement_ids[]" class="select select-bordered min-h-48 w-full" multiple data-job-based-requirements-select>
+                                                    @foreach ($allJobBasedRequirements as $jobBasedRequirement)
+                                                        <option value="{{ $jobBasedRequirement->id }}">{{ $jobBasedRequirement->name }}</option>
                                                     @endforeach
                                                 </select>
                                             </div>
@@ -732,6 +805,7 @@
                             </td>
                             <td class="max-w-md">
                                 <div class="flex flex-wrap gap-1" data-certificate-risk-requirements></div>
+                                <div class="mt-2 flex flex-wrap gap-1" data-certificate-job-based-requirements></div>
                             </td>
                             <td>
                                 <div class="ml-auto inline-grid grid-cols-[max-content_max-content] gap-2">
@@ -755,6 +829,10 @@
                     </template>
 
                     <template data-certificate-risk-requirement-empty-template>
+                        <span class="text-sm text-base-content/50">-</span>
+                    </template>
+
+                    <template data-job-based-requirement-empty-template>
                         <span class="text-sm text-base-content/50">-</span>
                     </template>
 

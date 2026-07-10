@@ -9,6 +9,7 @@ use App\Http\Requests\UserRequest;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\DocumentType;
+use App\Models\JobBasedRequirement;
 use App\Models\JobCategory;
 use App\Models\JobLevel;
 use App\Models\JobRole;
@@ -25,6 +26,7 @@ use App\Models\WorldCity;
 use App\Models\WorldCountry;
 use App\Models\WorldDivision;
 use App\Services\CourseRiskRequirementService;
+use App\Services\JobBasedRequirementEngineService;
 use App\Services\RiskCalculationService;
 use App\Services\UserJobAssignmentService;
 use App\Support\NeedsLanguageLevelVerificationResolver;
@@ -55,6 +57,7 @@ class UserController extends Controller
         private readonly UserJobAssignmentService $userJobAssignmentService,
         private readonly CourseRiskRequirementService $courseRiskRequirementService,
         private readonly NeedsLanguageLevelVerificationResolver $needsLanguageLevelVerificationResolver,
+        private readonly JobBasedRequirementEngineService $jobBasedRequirementEngineService,
     ) {}
 
     public function index(Request $request): View
@@ -127,7 +130,17 @@ class UserController extends Controller
             $users = $query->paginate(20)->appends($request->only(['search', 'sort', 'direction', 'show_trashed']));
         }
 
-        return view('admin.users.index', compact('users', 'sort', 'direction', 'search', 'showTrashed', 'userRiskOverview'));
+        $jobBasedRequirementStatus = $this->jobBasedRequirementEngineService->globalStatus();
+
+        return view('admin.users.index', compact(
+            'users',
+            'sort',
+            'direction',
+            'search',
+            'showTrashed',
+            'userRiskOverview',
+            'jobBasedRequirementStatus',
+        ));
     }
 
     public function create(): View
@@ -184,6 +197,8 @@ class UserController extends Controller
             return $user;
         });
 
+        $this->jobBasedRequirementEngineService->recalculateUser($user->fresh(['jobRole', 'jobTasks']));
+
         return redirect()->route('admin.users.index')->with('success', 'Utente creato con successo');
     }
 
@@ -198,6 +213,7 @@ class UserController extends Controller
         $jobUnits = JobUnit::all();
         $languageLevels = LanguageLevel::query()->ordered()->get();
         $allRiskBasedRequirements = RiskBasedRequirement::query()->orderBy('name')->get(['id', 'name']);
+        $allJobBasedRequirements = JobBasedRequirement::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
         $documentTypes = DocumentType::query()->orderBy('name')->get(['id', 'name']);
         $availableCourses = $user->courseEnrollments()
             ->where('status', CourseEnrollment::STATUS_COMPLETED)
@@ -216,6 +232,13 @@ class UserController extends Controller
             ->values();
 
         $riskSummary = $this->buildRiskSummary($user);
+        if ($user->requirements_last_calculated_at === null) {
+            $this->jobBasedRequirementEngineService->recalculateUser($user);
+            $user->refresh()->load('jobBasedRequirements');
+        }
+        $jobBasedRequirementSummary = $this->jobBasedRequirementEngineService->cachedSummaryForUser(
+            $user->fresh(['jobBasedRequirements'])
+        );
 
         $trainingPathEnrollments = TrainingPathEnrollment::withTrashed()
             ->where('user_id', $user->getKey())
@@ -282,9 +305,11 @@ class UserController extends Controller
             'jobUnits',
             'languageLevels',
             'allRiskBasedRequirements',
+            'allJobBasedRequirements',
             'documentTypes',
             'availableCourses',
             'riskSummary',
+            'jobBasedRequirementSummary',
             'trainingPathEnrollments',
             'courseEnrollments',
             'courseEnrollmentPathMembership',
@@ -333,6 +358,7 @@ class UserController extends Controller
             $user->syncRoles($roles);
             $this->userJobAssignmentService->syncAssignments($user, $jobTaskAssignments, $isWorkerAccount);
         });
+        $this->jobBasedRequirementEngineService->recalculateUser($user->fresh(['jobRole', 'jobTasks']));
 
         $afterRiskSnapshot = $this->captureRiskSnapshot($user->fresh(['jobSector', 'jobTasks', 'roles']));
         $riskWarnings = $this->buildRiskChangeWarnings($beforeRiskSnapshot, $afterRiskSnapshot, $user);

@@ -465,12 +465,21 @@
                                                         {{ __('ATECO') }}
                                                     </a>
                                                 </li>
-                                                <li>
-                                                    <a
-                                                        href="{{ route('admin.risk-based-requirements.index') }}"
-                                                        @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.risk-based-requirements.*'])])
-                                                    >
-                                                        <x-lucide-shield-alert class="mr-2 inline-block h-4 w-4" />
+                                                  <li>
+                                                      <a
+                                                          href="{{ route('admin.job-based-requirements.index') }}"
+                                                          @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.job-based-requirements.*'])])
+                                                      >
+                                                          <x-lucide-briefcase-business class="mr-2 inline-block h-4 w-4" />
+                                                          {{ __('Requisiti (Lavoro)') }}
+                                                      </a>
+                                                  </li>
+                                                  <li>
+                                                      <a
+                                                          href="{{ route('admin.risk-based-requirements.index') }}"
+                                                          @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.risk-based-requirements.*'])])
+                                                      >
+                                                          <x-lucide-shield-alert class="mr-2 inline-block h-4 w-4" />
                                                         {{ __('Requisiti (Rischio)') }}
                                                     </a>
                                                 </li>

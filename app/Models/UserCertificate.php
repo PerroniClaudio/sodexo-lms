@@ -66,6 +66,16 @@ class UserCertificate extends Model
         );
     }
 
+    public function jobBasedRequirements(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            JobBasedRequirement::class,
+            'job_based_requirement_user_certificate',
+            'user_certificate_id',
+            'job_based_requirement_id'
+        );
+    }
+
     public function files(): HasMany
     {
         return $this->hasMany(UserCertificateFile::class);

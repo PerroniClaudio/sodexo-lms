@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeSectionNavigation(page);
     initializeEnrollmentsVisibility(page);
     initializeRiskSummary(page);
+    initializeJobBasedRequirementSummary(page);
     initializeUserEditForm(page);
     initializeCertificatesTable(page);
 });
@@ -278,6 +279,97 @@ function initializeRiskSummary(page) {
     };
 }
 
+function initializeJobBasedRequirementSummary(page) {
+    const container = page.querySelector('[data-job-based-requirements-summary]');
+
+    if (!container) {
+        return;
+    }
+
+    const summaryUrl = container.dataset.summaryUrl;
+    const refreshUrl = container.dataset.refreshUrl;
+    const activeItemsContainer = container.querySelector('[data-job-based-active-items]');
+    const futureItemsContainer = container.querySelector('[data-job-based-future-items]');
+    const refreshButton = container.querySelector('[data-job-based-requirements-refresh-button]');
+    const subtitle = container.querySelector('.text-sm.text-base-content\\/65');
+
+    if (!summaryUrl || !refreshUrl || !activeItemsContainer || !futureItemsContainer || !refreshButton || !subtitle) {
+        return;
+    }
+
+    const renderItems = (target, items, emptyText, tone) => {
+        target.replaceChildren();
+
+        if (!Array.isArray(items) || items.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'text-sm text-base-content/70';
+            empty.textContent = emptyText;
+            target.appendChild(empty);
+
+            return;
+        }
+
+        items.forEach((item) => {
+            const card = document.createElement('div');
+            card.className = tone === 'future'
+                ? 'rounded-2xl border border-warning/30 bg-warning/5 p-4'
+                : 'rounded-2xl border border-base-300 bg-base-200/40 p-4';
+
+            const name = document.createElement('div');
+            name.className = 'font-semibold text-base-content';
+            name.textContent = item.name || '';
+            card.appendChild(name);
+
+            if (item.description) {
+                const description = document.createElement('p');
+                description.className = 'mt-1 text-sm text-base-content/70';
+                description.textContent = item.description;
+                card.appendChild(description);
+            }
+
+            const meta = document.createElement('p');
+            meta.className = 'mt-2 text-sm text-base-content/70';
+            meta.textContent = tone === 'future'
+                ? `Richiesto dal ${item.valid_from_label || item.valid_from || ''}`
+                : `Attivo dal ${item.valid_from_label || item.valid_from || ''}`;
+            card.appendChild(meta);
+
+            target.appendChild(card);
+        });
+    };
+
+    const render = (summary) => {
+        subtitle.textContent = `Ultimo ricalcolo: ${summary.last_calculated_at_label || 'mai eseguito'}`;
+        renderItems(activeItemsContainer, summary.active_requirements, 'Nessun requisito attivo al momento.', 'active');
+        renderItems(futureItemsContainer, summary.future_requirements, 'Nessun requisito futuro pianificato.', 'future');
+    };
+
+    page.refreshJobBasedRequirementSummary = async () => {
+        const response = await window.axios.get(summaryUrl, {
+            headers: { Accept: 'application/json' },
+        });
+
+        render(response.data.data);
+    };
+
+    refreshButton.addEventListener('click', async () => {
+        refreshButton.disabled = true;
+
+        try {
+            const response = await window.axios.post(refreshUrl, {}, {
+                headers: { Accept: 'application/json' },
+            });
+
+            render(response.data.data);
+            window.showFlash?.('success', response.data.message || 'Requisiti ricalcolati con successo');
+        } catch (error) {
+            window.showFlash?.('error', error.response?.data?.message || 'Errore durante il ricalcolo dei requisiti.');
+        } finally {
+            refreshButton.disabled = false;
+        }
+    });
+}
+
 function initializeUserEditForm(page) {
     const form = page.querySelector('[data-user-edit-form]');
 
@@ -297,6 +389,17 @@ function initializeUserEditForm(page) {
             console.error('Unable to refresh risk summary after user update.', error);
         }
     };
+    const refreshJobBasedRequirementSummarySafely = async () => {
+        if (typeof page.refreshJobBasedRequirementSummary !== 'function') {
+            return;
+        }
+
+        try {
+            await page.refreshJobBasedRequirementSummary();
+        } catch (error) {
+            console.error('Unable to refresh job-based requirement summary after user update.', error);
+        }
+    };
 
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -313,6 +416,7 @@ function initializeUserEditForm(page) {
 
             window.showFlash?.('success', response.data.message || 'Utente aggiornato con successo');
             await refreshRiskSummarySafely();
+            await refreshJobBasedRequirementSummarySafely();
         } catch (error) {
             const message = error.response?.data?.message
                 || Object.values(error.response?.data?.errors || {}).flat().join(' ')
@@ -348,6 +452,7 @@ function initializeCertificatesTable(page) {
     const form = container.querySelector('[data-certificate-form]');
     const submitButton = form?.querySelector('button[type="submit"]');
     const riskBasedRequirementsSelect = form?.querySelector('[data-risk-based-requirements-select]');
+    const jobBasedRequirementsSelect = form?.querySelector('[data-job-based-requirements-select]');
     const certificateIdInput = form?.elements.namedItem('certificate_id');
     const modalTitle = container.querySelector('[data-certificate-modal] h3');
     const documentTypeSelect = form?.elements.namedItem('document_type_id');
@@ -367,7 +472,7 @@ function initializeCertificatesTable(page) {
     const certificateFileRowTemplate = page.querySelector('[data-certificate-file-row-template]');
     const certificatePaginationButtonTemplate = page.querySelector('[data-certificate-pagination-button-template]');
 
-    if (!apiUrl || !storeUrl || !tableBody || !emptyState || !summary || !pagination || !searchInput || !searchButton || !loadingIndicator || !modal || !openModalButton || closeButtons.length === 0 || !form || !submitButton || !riskBasedRequirementsSelect || !certificateIdInput || !modalTitle || !documentTypeSelect || !filesSelection || !filesInput || !filesDropzone || !filesCreateHint || !existingFilesContainer || !filesSummary || !filesLoading || !filesTableBody || !filesEmptyState || !showDeletedFilesCheckbox || !(certificateRowTemplate instanceof HTMLTemplateElement) || !(certificateRiskRequirementBadgeTemplate instanceof HTMLTemplateElement) || !(certificateRiskRequirementEmptyTemplate instanceof HTMLTemplateElement) || !(certificateFileRowTemplate instanceof HTMLTemplateElement) || !(certificatePaginationButtonTemplate instanceof HTMLTemplateElement)) {
+    if (!apiUrl || !storeUrl || !tableBody || !emptyState || !summary || !pagination || !searchInput || !searchButton || !loadingIndicator || !modal || !openModalButton || closeButtons.length === 0 || !form || !submitButton || !riskBasedRequirementsSelect || !jobBasedRequirementsSelect || !certificateIdInput || !modalTitle || !documentTypeSelect || !filesSelection || !filesInput || !filesDropzone || !filesCreateHint || !existingFilesContainer || !filesSummary || !filesLoading || !filesTableBody || !filesEmptyState || !showDeletedFilesCheckbox || !(certificateRowTemplate instanceof HTMLTemplateElement) || !(certificateRiskRequirementBadgeTemplate instanceof HTMLTemplateElement) || !(certificateRiskRequirementEmptyTemplate instanceof HTMLTemplateElement) || !(certificateFileRowTemplate instanceof HTMLTemplateElement) || !(certificatePaginationButtonTemplate instanceof HTMLTemplateElement)) {
         return;
     }
 
@@ -559,6 +664,7 @@ function initializeCertificatesTable(page) {
             const documentTypeEmptyElement = tableRow.querySelector('[data-certificate-document-type-empty]');
             const documentTypeBadgeElement = tableRow.querySelector('[data-certificate-document-type-badge]');
             const riskRequirementsElement = tableRow.querySelector('[data-certificate-risk-requirements]');
+            const jobBasedRequirementsElement = tableRow.querySelector('[data-certificate-job-based-requirements]');
             const previewDisabledElement = tableRow.querySelector('[data-certificate-preview-disabled]');
             const downloadDisabledElement = tableRow.querySelector('[data-certificate-download-disabled]');
             const previewLatestButton = tableRow.querySelector('[data-action="preview-latest"]');
@@ -581,6 +687,7 @@ function initializeCertificatesTable(page) {
 
             renderLatestFile(row, tableRow);
             renderRiskBasedRequirements(riskRequirementsElement, row.risk_based_requirements);
+            renderRiskBasedRequirements(jobBasedRequirementsElement, row.job_based_requirements);
 
             if (row.latest_active_file?.actions?.preview_url) {
                 previewLatestButton.classList.remove('hidden');
@@ -798,6 +905,9 @@ function initializeCertificatesTable(page) {
         Array.from(riskBasedRequirementsSelect.options).forEach((option) => {
             option.selected = false;
         });
+        Array.from(jobBasedRequirementsSelect.options).forEach((option) => {
+            option.selected = false;
+        });
         updateSelectedFilesLabel();
         toggleExistingFilesVisibility(false);
     };
@@ -819,6 +929,10 @@ function initializeCertificatesTable(page) {
         const riskBasedRequirementIds = new Set((certificate.risk_based_requirements || []).map((riskBasedRequirement) => Number(riskBasedRequirement.id)));
         Array.from(riskBasedRequirementsSelect.options).forEach((option) => {
             option.selected = riskBasedRequirementIds.has(Number(option.value));
+        });
+        const jobBasedRequirementIds = new Set((certificate.job_based_requirements || []).map((jobBasedRequirement) => Number(jobBasedRequirement.id)));
+        Array.from(jobBasedRequirementsSelect.options).forEach((option) => {
+            option.selected = jobBasedRequirementIds.has(Number(option.value));
         });
 
         toggleExistingFilesVisibility(true);
@@ -902,6 +1016,9 @@ function initializeCertificatesTable(page) {
 
         Array.from(riskBasedRequirementsSelect.selectedOptions).forEach((option) => {
             formData.append('risk_based_requirement_ids[]', option.value);
+        });
+        Array.from(jobBasedRequirementsSelect.selectedOptions).forEach((option) => {
+            formData.append('job_based_requirement_ids[]', option.value);
         });
 
         Array.from(filesInput.files || []).forEach((file) => {

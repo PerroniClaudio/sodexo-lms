@@ -42,6 +42,7 @@ class UserCertificateController extends Controller
             ->whereBelongsTo($user)
             ->with([
                 'riskBasedRequirements:id,name',
+                'jobBasedRequirements:id,name',
                 'internalCourse:id,title',
                 'documentType',
                 'latestActiveFile',
@@ -90,6 +91,13 @@ class UserCertificateController extends Controller
                         ->map(fn ($riskBasedRequirement): array => [
                             'id' => $riskBasedRequirement->getKey(),
                             'name' => $riskBasedRequirement->name,
+                        ])
+                        ->values()
+                        ->all(),
+                    'job_based_requirements' => $certificate->jobBasedRequirements
+                        ->map(fn ($jobBasedRequirement): array => [
+                            'id' => $jobBasedRequirement->getKey(),
+                            'name' => $jobBasedRequirement->name,
                         ])
                         ->values()
                         ->all(),
@@ -266,12 +274,19 @@ class UserCertificateController extends Controller
         ]);
         $certificate->save();
         $certificate->riskBasedRequirements()->sync($validated['risk_based_requirement_ids'] ?? []);
+        $certificate->jobBasedRequirements()->sync($validated['job_based_requirement_ids'] ?? []);
 
         if (! empty($validated['files']) && is_array($validated['files'])) {
             $this->replaceCertificateFiles($certificate, $validated['files'], $uploadedByUserId);
         }
 
-        return $certificate->load(['riskBasedRequirements:id,name', 'internalCourse:id,title', 'documentType', 'latestActiveFile']);
+        return $certificate->load([
+            'riskBasedRequirements:id,name',
+            'jobBasedRequirements:id,name',
+            'internalCourse:id,title',
+            'documentType',
+            'latestActiveFile',
+        ]);
     }
 
     /**

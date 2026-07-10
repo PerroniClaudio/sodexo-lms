@@ -93,6 +93,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'needs_language_level_verification' => 'boolean',
             'account_state' => UserStatus::class,
             'onboarding_step' => OnboardingStep::class,
+            'requirements_last_calculated_at' => 'datetime',
         ];
     }
 
@@ -172,6 +173,13 @@ class User extends Authenticatable implements MustVerifyEmail
     public function userCertificates(): HasMany
     {
         return $this->hasMany(UserCertificate::class);
+    }
+
+    public function jobBasedRequirements(): BelongsToMany
+    {
+        return $this->belongsToMany(JobBasedRequirement::class, 'job_based_requirement_user')
+            ->withPivot(['is_active', 'valid_from', 'calculated_at'])
+            ->withTimestamps();
     }
 
     public function courseFacultyMembers(): HasMany

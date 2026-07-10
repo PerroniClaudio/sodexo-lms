@@ -21,6 +21,35 @@
 
         <div class="card border border-base-300 bg-base-100 shadow-sm">
             <div class="card-body gap-5">
+                <div
+                    class="flex flex-col gap-3 rounded-2xl border border-base-300 bg-base-200/40 p-4 lg:flex-row lg:items-center lg:justify-between"
+                    data-job-based-requirements-status
+                    data-status-url="{{ route('admin.api.job-based-requirements.status') }}"
+                    data-refresh-url="{{ route('admin.api.job-based-requirements.refresh') }}"
+                >
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="badge {{ $jobBasedRequirementStatus['status'] === 'running' ? 'badge-warning badge-soft' : 'badge-success badge-soft' }}" data-job-based-status-badge>
+                                {{ $jobBasedRequirementStatus['status'] === 'running' ? __('Ricalcolo in corso') : __('Cache aggiornata') }}
+                            </span>
+                            <span class="text-sm text-base-content/70" data-job-based-status-text>
+                                @if ($jobBasedRequirementStatus['last_completed_at_human'])
+                                    {{ __('Ultimo ricalcolo: :time', ['time' => $jobBasedRequirementStatus['last_completed_at_human']]) }}
+                                @else
+                                    {{ __('Ultimo ricalcolo: mai eseguito') }}
+                                @endif
+                            </span>
+                        </div>
+                        <p class="mt-2 text-sm text-base-content/65">
+                            {{ __('Aggiornamento completo notturno e promozione oraria dei requisiti futuri già calcolati.') }}
+                        </p>
+                    </div>
+
+                    <button type="button" class="btn btn-primary" data-job-based-refresh-button>
+                        {{ __('Forza ricalcolo totale') }}
+                    </button>
+                </div>
+
                 <div class="flex flex-col gap-1">
                     <h2 class="card-title">
                         <x-lucide-chart-column class="h-5 w-5" />
@@ -147,4 +176,57 @@
         </div>
         </x-data-table>
     </div>
+
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const container = document.querySelector('[data-job-based-requirements-status]');
+
+                if (!container) {
+                    return;
+                }
+
+                const statusUrl = container.dataset.statusUrl;
+                const refreshUrl = container.dataset.refreshUrl;
+                const badge = container.querySelector('[data-job-based-status-badge]');
+                const text = container.querySelector('[data-job-based-status-text]');
+                const button = container.querySelector('[data-job-based-refresh-button]');
+
+                const render = (payload) => {
+                    const isRunning = payload.status === 'running';
+
+                    badge.className = `badge ${isRunning ? 'badge-warning badge-soft' : 'badge-success badge-soft'}`;
+                    badge.textContent = isRunning ? 'Ricalcolo in corso' : 'Cache aggiornata';
+                    text.textContent = payload.last_completed_at_human
+                        ? `Ultimo ricalcolo: ${payload.last_completed_at_human}`
+                        : 'Ultimo ricalcolo: mai eseguito';
+                };
+
+                const refreshStatus = async () => {
+                    const response = await window.axios.get(statusUrl, {
+                        headers: { Accept: 'application/json' },
+                    });
+
+                    render(response.data.data);
+                };
+
+                button.addEventListener('click', async () => {
+                    button.disabled = true;
+
+                    try {
+                        const response = await window.axios.post(refreshUrl, {}, {
+                            headers: { Accept: 'application/json' },
+                        });
+
+                        window.showFlash?.('success', response.data.message || 'Ricalcolo totale accodato');
+                        await refreshStatus();
+                    } catch (error) {
+                        window.showFlash?.('error', error.response?.data?.message || 'Errore durante l\'avvio del ricalcolo totale.');
+                    } finally {
+                        button.disabled = false;
+                    }
+                });
+            });
+        </script>
+    @endpush
 </x-layouts.admin>

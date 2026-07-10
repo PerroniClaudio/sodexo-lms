@@ -19,6 +19,8 @@ use App\Http\Controllers\Admin\DocumentTypeController;
 use App\Http\Controllers\Admin\FundingEntityController;
 use App\Http\Controllers\Admin\HomepageCustomizationController;
 use App\Http\Controllers\Admin\ImportazioneMonitorController;
+use App\Http\Controllers\Admin\JobBasedRequirementController;
+use App\Http\Controllers\Admin\JobBasedRequirementStatusController;
 use App\Http\Controllers\Admin\JobCategoryController;
 use App\Http\Controllers\Admin\JobLevelController;
 use App\Http\Controllers\Admin\JobRoleController;
@@ -294,6 +296,8 @@ Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
             // Risk-based requirements
             Route::resource('risk-based-requirements', RiskBasedRequirementController::class)->except(['show']);
             Route::post('risk-based-requirements/{id}/restore', [RiskBasedRequirementController::class, 'restore'])->name('risk-based-requirements.restore');
+            Route::resource('job-based-requirements', JobBasedRequirementController::class)->except(['show']);
+            Route::post('job-based-requirements/{id}/restore', [JobBasedRequirementController::class, 'restore'])->name('job-based-requirements.restore');
 
             // Restore routes for soft deleted items
             Route::post('job-categories/{id}/restore', [JobCategoryController::class, 'restore'])->name('job-categories.restore');
@@ -398,7 +402,11 @@ Route::middleware(['auth', 'active.role:admin|superadmin'])->group(function () {
             Route::get('/users/{user}/certificates/{userCertificate}/files/{userCertificateFile}/preview', [UserCertificateController::class, 'previewFileApi'])->name('users.certificates.files.preview');
             Route::get('/users/{user}/certificates/{userCertificate}/files/{userCertificateFile}/download', [UserCertificateController::class, 'downloadFileApi'])->name('users.certificates.files.download');
             Route::get('/users/{user}/risk-summary', [UserController::class, 'riskSummaryApi'])->name('users.risk-summary');
+            Route::get('/users/{user}/job-based-requirements', [JobBasedRequirementStatusController::class, 'userSummary'])->name('users.job-based-requirements.summary');
+            Route::post('/users/{user}/job-based-requirements/refresh', [JobBasedRequirementStatusController::class, 'refreshUser'])->name('users.job-based-requirements.refresh');
             Route::get('/users/{user}/recommended-courses', [UserController::class, 'recommendedCoursesApi'])->name('users.recommended-courses');
+            Route::get('/job-based-requirements/status', [JobBasedRequirementStatusController::class, 'status'])->name('job-based-requirements.status');
+            Route::post('/job-based-requirements/refresh', [JobBasedRequirementStatusController::class, 'refreshAll'])->name('job-based-requirements.refresh');
             Route::get('/document-types', [DocumentTypeController::class, 'indexApi'])
                 ->middleware('permission:manage job data')
                 ->name('document-types.index');

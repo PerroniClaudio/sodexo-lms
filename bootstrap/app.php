@@ -28,6 +28,14 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('videos:sync-mux-status')->everyThirtyMinutes();
         $schedule->command(StartPendingDocumentConversionJobs::class)->everyMinute()->withoutOverlapping();
+        $schedule->command('requirements:refresh-job-based --mode=promote')
+            ->hourly()
+            ->withoutOverlapping()
+            ->onOneServer();
+        $schedule->command('requirements:refresh-job-based --mode=full')
+            ->dailyAt('02:15')
+            ->withoutOverlapping()
+            ->onOneServer();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
