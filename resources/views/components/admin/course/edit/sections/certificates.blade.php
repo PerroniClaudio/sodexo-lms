@@ -10,7 +10,7 @@
 ])
 
 <div class="flex flex-col gap-6" data-course-risk-requirements>
-    @include('admin.course.partials.course-edit-badge-bar')
+    <x-admin.course.edit-badge-bar :data="get_defined_vars()" />
 
     <div class="card border border-base-300 bg-base-100 shadow-sm">
         <div class="card-body gap-6">

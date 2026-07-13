@@ -7,7 +7,7 @@
                 <form method="POST" action="{{ route('admin.job-based-requirements.store') }}" class="flex flex-col gap-6" data-job-based-requirement-form>
                     @csrf
 
-                    @include('admin.job-based-requirement.partials.form')
+                    <x-admin.job-based-requirement.form :data="get_defined_vars()" />
 
                     <div class="flex justify-end gap-3">
                         <a href="{{ route('admin.job-based-requirements.index') }}" class="btn btn-ghost">

@@ -89,27 +89,27 @@
                 <div id="module-player">
                     @switch($module->type)
                         @case('video')
-                            @include('user.courses.modules.video')
+                            <x-user.courses.modules.video :data="get_defined_vars()" />
                             @break
 
                         @case('learning_quiz')
-                            @include('user.courses.modules.learning-quiz')
+                            <x-user.courses.modules.learning-quiz :data="get_defined_vars()" />
                             @break
 
                         @case('satisfaction_quiz')
-                            @include('user.courses.modules.satisfaction-quiz')
+                            <x-user.courses.modules.satisfaction-quiz :data="get_defined_vars()" />
                             @break
 
                         @case('live')
-                            @include('user.courses.modules.live')
+                            <x-user.courses.modules.live :data="get_defined_vars()" />
                             @break
 
                         @case('scorm')
-                            @include('user.courses.modules.scorm')
+                            <x-user.courses.modules.scorm :data="get_defined_vars()" />
                             @break
 
                         @case('res')
-                            @include('user.courses.modules.res')
+                            <x-user.courses.modules.res :data="get_defined_vars()" />
                             @break
 
                         @default

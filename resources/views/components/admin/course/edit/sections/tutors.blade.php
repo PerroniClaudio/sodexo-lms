@@ -4,6 +4,6 @@
 ])
 
 <section class="flex flex-col gap-6">
-    @include('admin.course.partials.course-edit-badge-bar')
-    @include('admin.course.partials.tutor-assignments-card')
+    <x-admin.course.edit-badge-bar :data="get_defined_vars()" />
+    <x-admin.course.tutor-assignments-card :data="get_defined_vars()" />
 </section>

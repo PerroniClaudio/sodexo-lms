@@ -7,9 +7,7 @@
                 <form method="POST" action="{{ route('admin.certificates.store') }}" enctype="multipart/form-data" class="flex flex-col gap-6">
                     @csrf
 
-                    @include('admin.certificates.partials.form', [
-                        'requireTemplateUpload' => true,
-                    ])
+                    <x-admin.certificates.form :data="array_merge(get_defined_vars(), ['requireTemplateUpload' => true])" />
 
                     <div class="flex justify-end gap-3">
                         <a href="{{ route('admin.certificates.index') }}" class="btn btn-ghost">

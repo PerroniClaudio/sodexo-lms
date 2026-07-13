@@ -86,7 +86,7 @@ class TrainingPathImportController extends Controller
 
     public function statusCard(): ViewContract
     {
-        return view('admin.imports.partials.user-training-paths-status-card', [
+        return view('components.admin.imports.user-training-paths-status-card', [
             'recentImports' => $this->recentImports(),
         ]);
     }

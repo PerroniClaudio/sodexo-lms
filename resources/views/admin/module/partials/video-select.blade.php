@@ -50,6 +50,5 @@
     <div class="bg-base-100 p-6 rounded-lg shadow-lg w-full max-w-md relative">
         <button class="absolute top-2 right-2 btn btn-sm btn-circle" onclick="document.getElementById('upload-video-form-modal').classList.add('hidden');">✕</button>
         <h2 class="font-bold text-lg mb-4">Carica nuovo video</h2>
-        @include('admin.videos.partials.upload-form')
+        <x-admin.videos.upload-form :data="get_defined_vars()" />
     </div>
-

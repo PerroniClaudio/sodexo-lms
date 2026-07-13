@@ -7,7 +7,7 @@
                 <form method="POST" action="{{ route('admin.language-levels.update', $languageLevel) }}" class="flex flex-col gap-6">
                     @csrf
                     @method('PUT')
-                    @include('admin.language-level.partials.form-fields', ['languageLevel' => $languageLevel])
+                    <x-admin.language-level.form-fields :data="array_merge(get_defined_vars(), ['languageLevel' => $languageLevel])" />
 
                     <div class="flex justify-end gap-3">
                         <a href="{{ route('admin.language-levels.index') }}" class="btn btn-ghost">{{ __('Annulla') }}</a>

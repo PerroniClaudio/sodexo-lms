@@ -33,7 +33,7 @@
                     @method('PUT')
 
                     <div class="grid gap-6">
-                        @includeFirst([$moduleEditView, 'admin.module.types.video'])
+                        <x-dynamic-component :component="$moduleEditView" :data="get_defined_vars()" />
                     </div>
 
                     <div class="flex justify-end">
@@ -49,32 +49,32 @@
         </div>
 
         @if ($appointmentControlledByClasses)
-            @include('admin.module.partials.classes-card')
+            <x-admin.module.classes-card :data="get_defined_vars()" />
         @endif
 
         @if ($module->type === 'live')
-            @include('admin.module.partials.live-attendance-card')
+            <x-admin.module.live-attendance-card :data="get_defined_vars()" />
         @endif
 
         {{-- @if ($course->type === 'res' && $module->type === 'learning_quiz')
-            @include('admin.module.partials.quiz-documents', ['course' => $course, 'module' => $module])
+            <x-admin.module.quiz-documents :data="array_merge(get_defined_vars(), ['course' => $course, 'module' => $module])" />
         @endif --}}
 
         @if ($module->type === 'learning_quiz')
-            @include('admin.module.partials.quiz-questions', ['course' => $course, 'module' => $module])
+            <x-admin.module.quiz-questions :data="array_merge(get_defined_vars(), ['course' => $course, 'module' => $module])" />
             @if (in_array($module->permitted_submission, ['upload', 'all']))
-                @include('admin.module.partials.quiz-documents', ['course' => $course, 'module' => $module])
+                <x-admin.module.quiz-documents :data="array_merge(get_defined_vars(), ['course' => $course, 'module' => $module])" />
             @endif
-            @include('admin.module.partials.quiz-recent-submissions', ['course' => $course, 'module' => $module])
+            <x-admin.module.quiz-recent-submissions :data="array_merge(get_defined_vars(), ['course' => $course, 'module' => $module])" />
         @endif
 
         @if ($module->type === 'video')
-            @include('admin.module.partials.teaching-materials', ['course' => $course, 'module' => $module])
-            @include('admin.module.partials.video-exercises', ['course' => $course, 'module' => $module])
-            @include('admin.module.partials.video-table', ['course' => $course, 'module' => $module])
+            <x-admin.module.teaching-materials :data="array_merge(get_defined_vars(), ['course' => $course, 'module' => $module])" />
+            <x-admin.module.video-exercises :data="array_merge(get_defined_vars(), ['course' => $course, 'module' => $module])" />
+            <x-admin.module.video-table :data="array_merge(get_defined_vars(), ['course' => $course, 'module' => $module])" />
         @endif
 
-        @include('admin.module.partials.module-enrollments-card')
+        <x-admin.module.enrollments-card :data="get_defined_vars()" />
     </div>
 
     @vite(['resources/js/pages/admin-module-edit.js', 'resources/js/pages/admin-course-edit.js'])

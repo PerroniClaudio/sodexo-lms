@@ -74,7 +74,7 @@
                             </thead>
                             <tbody>
                                 @foreach($tree as $node)
-                                    @include('admin.nace-ateco.partials.table-row', ['node' => $node, 'level' => 1, 'search' => $search])
+                                    <x-admin.nace-ateco.table-row :data="array_merge(get_defined_vars(), ['node' => $node, 'level' => 1, 'search' => $search])" />
                                 @endforeach
                             </tbody>
                         </table>

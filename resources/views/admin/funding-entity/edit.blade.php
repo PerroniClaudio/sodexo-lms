@@ -23,7 +23,7 @@
                     @csrf
                     @method('PUT')
 
-                    @include('admin.funding-entity.partials.form-fields', ['fundingEntity' => $fundingEntity])
+                    <x-admin.funding-entity.form-fields :data="array_merge(get_defined_vars(), ['fundingEntity' => $fundingEntity])" />
 
                     <div class="flex justify-end gap-3">
                         <a href="{{ route('admin.funding-entities.index') }}" class="btn btn-ghost">{{ __('Annulla') }}</a>

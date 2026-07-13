@@ -10,7 +10,7 @@
             : null;
     @endphp
 
-    @include('admin.course.partials.course-edit-badge-bar')
+    <x-admin.course.edit-badge-bar :data="get_defined_vars()" />
 
     <div class="card border border-base-300 bg-base-100 shadow-sm">
         <div

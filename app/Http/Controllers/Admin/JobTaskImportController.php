@@ -64,7 +64,7 @@ class JobTaskImportController extends Controller
 
     public function statusCard(): ViewContract
     {
-        return view('admin.imports.partials.job-tasks-status-card', [
+        return view('components.admin.imports.job-tasks-status-card', [
             'recentImports' => $this->recentImports(),
         ]);
     }

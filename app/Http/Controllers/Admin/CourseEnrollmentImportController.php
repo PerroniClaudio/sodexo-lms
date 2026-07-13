@@ -78,7 +78,7 @@ class CourseEnrollmentImportController extends Controller
 
     public function statusCard(): ViewContract
     {
-        return view('admin.imports.partials.user-courses-status-card', [
+        return view('components.admin.imports.user-courses-status-card', [
             'recentImports' => $this->recentImports(),
         ]);
     }

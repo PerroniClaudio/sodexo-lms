@@ -6,7 +6,7 @@
             <div class="card-body">
                 <form method="POST" action="{{ route('admin.language-levels.store') }}" class="flex flex-col gap-6">
                     @csrf
-                    @include('admin.language-level.partials.form-fields')
+                    <x-admin.language-level.form-fields :data="get_defined_vars()" />
 
                     <div class="flex justify-end gap-3">
                         <a href="{{ route('admin.language-levels.index') }}" class="btn btn-ghost">{{ __('Annulla') }}</a>

@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('homepage.index');
+    return view('welcome');
 });
 
 Route::get('/privacy-policy', function () {

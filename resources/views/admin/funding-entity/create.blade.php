@@ -7,7 +7,7 @@
                 <form method="POST" action="{{ route('admin.funding-entities.store') }}" class="flex flex-col gap-6">
                     @csrf
 
-                    @include('admin.funding-entity.partials.form-fields')
+                    <x-admin.funding-entity.form-fields :data="get_defined_vars()" />
 
                     <div class="flex justify-end gap-3">
                         <a href="{{ route('admin.funding-entities.index') }}" class="btn btn-ghost">{{ __('Annulla') }}</a>

@@ -93,7 +93,7 @@ class JobTaskRiskAssociationImportController extends Controller
 
     public function statusCard(): ViewContract
     {
-        return view('admin.imports.partials.job-task-risk-associations-status-card', [
+        return view('components.admin.imports.job-task-risk-associations-status-card', [
             'recentImports' => $this->recentImports(),
         ]);
     }

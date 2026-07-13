@@ -36,9 +36,7 @@
                         @csrf
                         @method('PUT')
 
-                        @include('admin.certificates.partials.form', [
-                            'requireTemplateUpload' => false,
-                        ])
+                        <x-admin.certificates.form :data="array_merge(get_defined_vars(), ['requireTemplateUpload' => false])" />
 
                         <div class="flex justify-end gap-3">
                             <a href="{{ route('admin.certificates.index') }}" class="btn btn-ghost">

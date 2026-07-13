@@ -174,7 +174,7 @@ class UserImportController extends Controller
 
     public function statusCard(Request $request): ViewContract
     {
-        return view('admin.imports.partials.users-status-card', [
+        return view('components.admin.imports.users-status-card', [
             'recentImports' => $this->recentImports(),
         ]);
     }

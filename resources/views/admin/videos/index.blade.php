@@ -40,7 +40,7 @@
                         <button onclick="closeVideoUploadModal()" class="btn btn-sm btn-circle ml-2">x</button>
                     </div>
                     <div class="mt-2">
-                        @include('admin.videos.partials.upload-form')
+                        <x-admin.videos.upload-form :data="get_defined_vars()" />
                     </div>
                 </div>
             </div>

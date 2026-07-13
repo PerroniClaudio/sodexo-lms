@@ -5,7 +5,7 @@
 ])
 
 <div class="flex flex-col gap-6">
-    @include('admin.course.partials.course-edit-badge-bar')
+    <x-admin.course.edit-badge-bar :data="get_defined_vars()" />
 
     <form method="POST" action="{{ $updateUrl }}" enctype="multipart/form-data">
         @csrf

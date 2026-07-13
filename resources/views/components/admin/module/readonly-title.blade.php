@@ -1,0 +1,17 @@
+@props(['data' => []])
+
+@php
+    extract($data);
+@endphp
+
+<div class="form-control flex flex-col gap-2">
+    <label class="label p-0">
+        <span class="label-text font-medium">{{ __('modules.fields.title') }}</span>
+    </label>
+    <input
+        type="text"
+        value="{{ $module->title }}"
+        class="input input-bordered w-full"
+        disabled
+    >
+</div>

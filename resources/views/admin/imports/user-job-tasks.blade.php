@@ -73,7 +73,7 @@
             data-user-job-task-import-status-card
             data-status-url="{{ route('admin.imports.user-job-tasks.status-card') }}"
         >
-            @include('admin.imports.partials.user-job-tasks-status-card', ['recentImports' => $recentImports])
+            <x-admin.imports.user-job-tasks-status-card :data="array_merge(get_defined_vars(), ['recentImports' => $recentImports])" />
         </div>
     </div>
 

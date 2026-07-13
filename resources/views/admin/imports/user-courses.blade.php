@@ -74,7 +74,7 @@
             data-user-course-import-status-card
             data-status-url="{{ route('admin.imports.user-courses.status-card') }}"
         >
-            @include('admin.imports.partials.user-courses-status-card', ['recentImports' => $recentImports])
+            <x-admin.imports.user-courses-status-card :data="array_merge(get_defined_vars(), ['recentImports' => $recentImports])" />
         </div>
     </div>
 

@@ -73,7 +73,7 @@
             data-user-training-path-import-status-card
             data-status-url="{{ route('admin.imports.user-training-paths.status-card') }}"
         >
-            @include('admin.imports.partials.user-training-paths-status-card', ['recentImports' => $recentImports])
+            <x-admin.imports.user-training-paths-status-card :data="array_merge(get_defined_vars(), ['recentImports' => $recentImports])" />
         </div>
 
         <dialog class="modal" data-training-path-import-approvals-modal>
