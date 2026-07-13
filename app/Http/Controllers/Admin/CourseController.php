@@ -43,6 +43,7 @@ use App\Models\WorldCity;
 use App\Models\WorldCountry;
 use App\Models\WorldDivision;
 use App\Services\AsyncLiveAuditAttendanceService;
+use App\Services\AuditTrail;
 use App\Services\Certificates\CustomCertificateResolver;
 use App\Services\CourseValidation\CourseValidatorService;
 use App\Services\ResCourseAttendanceService;
@@ -65,6 +66,7 @@ class CourseController extends Controller
     public function __construct(
         private readonly CourseValidatorService $courseValidator,
         private readonly TrainingPathEnrollmentSyncService $trainingPathEnrollmentSyncService,
+        private readonly AuditTrail $auditTrail,
     ) {}
 
     public function create(): View
@@ -159,6 +161,8 @@ class CourseController extends Controller
         if ($activeDivisionId !== null) {
             $course->companyDivisions()->syncWithoutDetaching([$activeDivisionId]);
         }
+
+        $this->auditTrail->recordModel('created', $course, metadata: ['company_division_id' => $activeDivisionId]);
 
         return redirect()
             ->route('admin.courses.edit', $course)
@@ -453,6 +457,7 @@ class CourseController extends Controller
         SyncCourseSatisfactionSurvey $syncCourseSatisfactionSurvey,
     ): RedirectResponse {
         try {
+            $before = $course->getAttributes();
             $validated = $request->validated();
             $venueAttributes = $this->resolveCourseVenueAttributes($course, $validated);
             $attributes = [
@@ -530,6 +535,8 @@ class CourseController extends Controller
                 ]);
             }
 
+            $this->auditTrail->recordModel('updated', $course->fresh(), $before, ['section' => $request->input('update_section', 'details')]);
+
             $section = $request->input('update_section') === 'venue' ? 'venue' : 'details';
 
             return $this->redirectToSection($course, $section, __('Corso aggiornato con successo.'));
@@ -543,7 +550,9 @@ class CourseController extends Controller
 
     public function updateDuration(UpdateCourseDurationRequest $request, Course $course): RedirectResponse
     {
+        $before = $course->getAttributes();
         $course->update($request->validated());
+        $this->auditTrail->recordModel('updated', $course->fresh(), $before, ['section' => 'duration']);
 
         return $this->redirectToSection($course, 'duration', __('Durata del corso aggiornata con successo.'));
     }
@@ -953,6 +962,7 @@ class CourseController extends Controller
 
     public function destroy(Course $course): RedirectResponse
     {
+        $before = $course->getAttributes();
         $hasActiveEnrollments = $course->enrollments()->whereNull('deleted_at')->exists();
         $shouldCascadeDeleteEnrollments = request()->boolean('cascade_delete_enrollments');
 
@@ -969,6 +979,7 @@ class CourseController extends Controller
         }
 
         $course->delete();
+        $this->auditTrail->recordModel('deleted', $course, $before);
 
         return redirect()
             ->route('admin.courses.index')

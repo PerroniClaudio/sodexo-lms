@@ -47,7 +47,6 @@ return [
             'report' => false,
         ],
 
-
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
@@ -61,6 +60,18 @@ return [
             'report' => false,
         ],
 
+        'audit' => [
+            'driver' => env('AUDIT_FILESYSTEM_DRIVER', 's3'),
+            'key' => env('AUDIT_AWS_ACCESS_KEY_ID', env('AWS_ACCESS_KEY_ID')),
+            'secret' => env('AUDIT_AWS_SECRET_ACCESS_KEY', env('AWS_SECRET_ACCESS_KEY')),
+            'region' => env('AUDIT_AWS_DEFAULT_REGION', env('AWS_DEFAULT_REGION', 'auto')),
+            'bucket' => env('AUDIT_AWS_BUCKET', env('AWS_BUCKET')),
+            'endpoint' => env('AUDIT_AWS_ENDPOINT', env('AWS_ENDPOINT')),
+            'use_path_style_endpoint' => env('AUDIT_AWS_USE_PATH_STYLE_ENDPOINT', env('AWS_USE_PATH_STYLE_ENDPOINT', false)),
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => true,
+        ],
 
     ],
 

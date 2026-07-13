@@ -26,6 +26,7 @@ use App\Models\UserCertificate;
 use App\Models\WorldCity;
 use App\Models\WorldCountry;
 use App\Models\WorldDivision;
+use App\Services\AuditTrail;
 use App\Services\CourseRiskRequirementService;
 use App\Services\JobBasedRequirementEngineService;
 use App\Services\RiskCalculationService;
@@ -59,6 +60,7 @@ class UserController extends Controller
         private readonly CourseRiskRequirementService $courseRiskRequirementService,
         private readonly NeedsLanguageLevelVerificationResolver $needsLanguageLevelVerificationResolver,
         private readonly JobBasedRequirementEngineService $jobBasedRequirementEngineService,
+        private readonly AuditTrail $auditTrail,
     ) {}
 
     public function index(Request $request): View
@@ -205,6 +207,7 @@ class UserController extends Controller
             $user = User::create($data);
             $user->syncRoles($roles);
             $this->userJobAssignmentService->syncAssignments($user, $jobTaskAssignments, $isWorkerAccount);
+            $this->auditTrail->recordModel('created', $user, metadata: ['roles' => $roles, 'job_task_ids' => $jobTaskAssignments]);
 
             return $user;
         });
@@ -368,10 +371,16 @@ class UserController extends Controller
         } else {
             unset($data['password']);
         }
-        DB::transaction(function () use ($data, $isWorkerAccount, $jobTaskAssignments, $roles, $user): void {
+        $before = $user->getAttributes();
+        $beforeRoles = $user->getRoleNames()->values()->all();
+        DB::transaction(function () use ($data, $isWorkerAccount, $jobTaskAssignments, $roles, $user, $before, $beforeRoles): void {
             $user->update($data);
             $user->syncRoles($roles);
             $this->userJobAssignmentService->syncAssignments($user, $jobTaskAssignments, $isWorkerAccount);
+            $this->auditTrail->recordModel('updated', $user->fresh(), $before, [
+                'roles' => ['old' => $beforeRoles, 'new' => $roles],
+                'job_task_ids' => $jobTaskAssignments,
+            ]);
         });
         $this->jobBasedRequirementEngineService->recalculateUser($user->fresh(['jobRole', 'jobTasks']));
 

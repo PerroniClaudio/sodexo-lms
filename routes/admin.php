@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AuditEventController;
 use App\Http\Controllers\Admin\CompanyDivisionController;
 use App\Http\Controllers\Admin\CourseCategoryController;
 use App\Http\Controllers\Admin\CourseClassController;
@@ -62,7 +63,7 @@ use App\Models\Module;
 use App\Services\ModuleValidation\ModuleValidatorService;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'active.role:admin|superadmin', 'active.company_division'])->group(function () {
+Route::middleware(['auth', 'active.role:admin|superadmin', 'active.company_division', 'audit.context'])->group(function () {
     Route::group(['prefix' => 'admin', 'as' => 'admin.'], function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/dashboard/calendar-events', [DashboardController::class, 'calendarEvents'])->name('dashboard.calendar-events');
@@ -100,6 +101,10 @@ Route::middleware(['auth', 'active.role:admin|superadmin', 'active.company_divis
         Route::post('/imports/job-task-risk-associations', [JobTaskRiskAssociationImportController::class, 'store'])->name('imports.job-task-risk-associations.store');
 
         Route::middleware('active.role:superadmin')->group(function () {
+            Route::get('/audit-events', [AuditEventController::class, 'index'])->name('audit-events.index');
+            Route::post('/audit-events/exports', [AuditEventController::class, 'storeExport'])->name('audit-events.exports.store');
+            Route::get('/audit-events/exports/{auditExport}', [AuditEventController::class, 'showExport'])->name('audit-events.exports.show');
+            Route::get('/audit-events/exports/{auditExport}/download', [AuditEventController::class, 'downloadExport'])->name('audit-events.exports.download');
             Route::resource('company-divisions', CompanyDivisionController::class)->except(['show']);
             Route::get('/tools/training-path-approvals', [TrainingPathApprovalLogController::class, 'index'])->name('tools.training-path-approvals.index');
         });

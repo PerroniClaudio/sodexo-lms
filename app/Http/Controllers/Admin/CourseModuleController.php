@@ -21,6 +21,7 @@ use App\Models\ModuleTutorEnrollment;
 use App\Models\ScormTrackingArchive;
 use App\Models\User;
 use App\Models\Video;
+use App\Services\AuditTrail;
 use App\Services\LiveModuleAttendanceService;
 use App\Services\ModuleValidation\ModuleValidatorService;
 use App\Services\SyncCourseModuleProgresses;
@@ -39,6 +40,7 @@ class CourseModuleController extends Controller
         private readonly ModuleValidatorService $moduleValidator,
         private readonly SyncCourseModuleProgresses $syncCourseModuleProgresses,
         private readonly SyncCourseSatisfactionSurvey $syncCourseSatisfactionSurvey,
+        private readonly AuditTrail $auditTrail,
     ) {}
 
     /**
@@ -134,6 +136,8 @@ class CourseModuleController extends Controller
                 ->withInput()
                 ->with('error', $exception->getMessage());
         }
+
+        $this->auditTrail->recordModel('created', $module, metadata: ['course_id' => $course->getKey()]);
 
         return redirect()
             ->route('admin.courses.modules.edit', [$course, $module])
@@ -478,6 +482,7 @@ class CourseModuleController extends Controller
     public function update(UpdateModuleRequest $request, Course $course, Module $module): RedirectResponse
     {
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
+        $before = $module->getAttributes();
 
         $validated = $request->validated();
 
@@ -517,6 +522,7 @@ class CourseModuleController extends Controller
 
         try {
             $module->update($moduleAttributes);
+            $this->auditTrail->recordModel('updated', $module->fresh(), $before, ['course_id' => $course->getKey()]);
 
             if ($module->isLearningQuiz()) {
                 $module->updateQuizMaxScore();
@@ -558,8 +564,10 @@ class CourseModuleController extends Controller
     public function destroy(Course $course, Module $module): RedirectResponse
     {
         abort_unless($module->belongsTo === (string) $course->getKey(), 404);
+        $before = $module->getAttributes();
         try {
             $module->delete();
+            $this->auditTrail->recordModel('deleted', $module, $before, ['course_id' => $course->getKey()]);
         } catch (RuntimeException $exception) {
             return redirect()
                 ->route('admin.courses.edit', $course)

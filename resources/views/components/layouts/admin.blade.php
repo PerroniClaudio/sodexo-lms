@@ -46,6 +46,7 @@
                     $exportsMenuPatterns = [
                         'admin.video-reports.*',
                         'admin.user-accesses.*',
+                        'admin.audit-events.*',
                     ];
 
                     $registryMenuPatterns = [
@@ -207,6 +208,17 @@
                                             {{ __('Audit trail') }}
                                         </a>
                                     </li>
+                                    @if($canAccessSuperadminMenu)
+                                        <li>
+                                            <a
+                                                href="{{ route('admin.audit-events.index') }}"
+                                                @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.audit-events.*'])])
+                                            >
+                                                <x-lucide-shield-check class="mr-2 inline-block h-5 w-5" />
+                                                {{ __('Audit amministrativo') }}
+                                            </a>
+                                        </li>
+                                    @endif
                                     <li>
                                         <a
                                             href="{{ route('admin.user-accesses.index') }}"

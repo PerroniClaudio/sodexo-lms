@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\StartPendingDocumentConversionJobs;
+use App\Http\Middleware\AssignAuditContext;
 use App\Http\Middleware\EnsureActiveCompanyDivision;
 use App\Http\Middleware\EnsureActiveRole;
 use App\Http\Middleware\EnsureCourseVisibleToUser;
@@ -37,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ->dailyAt('02:15')
             ->withoutOverlapping()
             ->onOneServer();
+        $schedule->command('audit:archive')->monthly()->withoutOverlapping()->onOneServer();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
@@ -71,6 +73,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'course.visible' => EnsureCourseVisibleToUser::class,
             'desktop.video.player' => EnsureDesktopVideoPlayerAccess::class,
             'env.development' => EnsureDevelopmentEnvironment::class,
+            'audit.context' => AssignAuditContext::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
