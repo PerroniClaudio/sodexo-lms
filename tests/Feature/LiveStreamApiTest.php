@@ -17,14 +17,11 @@ use App\Models\ModuleTutorEnrollment;
 use App\Models\User;
 use App\Services\TwilioVideoService;
 use Database\Seeders\RoleAndPermissionSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
-
-uses(RefreshDatabase::class);
 
 function createLiveModuleWithCourse(): Module
 {

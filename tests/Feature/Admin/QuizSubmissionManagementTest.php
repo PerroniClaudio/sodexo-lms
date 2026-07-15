@@ -10,14 +10,11 @@ use App\Models\ModuleQuizDocumentUpload;
 use App\Models\ModuleQuizQuestion;
 use App\Models\ModuleQuizSubmission;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Middleware\RoleMiddleware;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->withoutMiddleware(RoleMiddleware::class);

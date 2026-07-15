@@ -72,6 +72,10 @@ Route::middleware(['auth', 'active.role:admin|superadmin', 'active.company_divis
         Route::get('/imports/users/template', [UserImportController::class, 'downloadTemplate'])->name('imports.users.template');
         Route::get('/imports/users/status-card', [UserImportController::class, 'statusCard'])->name('imports.users.status-card');
         Route::post('/imports/users', [UserImportController::class, 'store'])->name('imports.users.store');
+        Route::get('/imports/users/quick', [UserImportController::class, 'quick'])->name('imports.users.quick');
+        Route::get('/imports/users/quick/template', [UserImportController::class, 'downloadQuickTemplate'])->name('imports.users.quick.template');
+        Route::get('/imports/users/quick/status-card', [UserImportController::class, 'quickStatusCard'])->name('imports.users.quick.status-card');
+        Route::post('/imports/users/quick', [UserImportController::class, 'storeQuick'])->name('imports.users.quick.store');
         Route::get('/imports/job-units', [JobUnitImportController::class, 'index'])->name('imports.job-units');
         Route::get('/imports/job-units/template', [JobUnitImportController::class, 'downloadTemplate'])->name('imports.job-units.template');
         Route::get('/imports/job-units/status-card', [JobUnitImportController::class, 'statusCard'])->name('imports.job-units.status-card');

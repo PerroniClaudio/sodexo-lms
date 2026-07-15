@@ -2,9 +2,6 @@
 
 use App\Models\SatisfactionSurveyQuestion;
 use App\Models\SatisfactionSurveyTemplate;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 it('allows superadmin to manage the global satisfaction survey through api endpoints', function () {
     actingAsRole('superadmin');

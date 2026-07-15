@@ -11,13 +11,10 @@ use App\Models\Module;
 use App\Models\User;
 use App\Models\VideoReportRequest;
 use App\Services\LiveAuditTrailExporter;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Spatie\Permission\Models\Role;
-
-uses(RefreshDatabase::class);
 
 it('builds a live audit workbook filtered by date range', function () {
     config(['filesystems.default' => 's3']);

@@ -63,6 +63,7 @@
 
                     $importsMenuPatterns = [
                         'admin.imports.users',
+                        'admin.imports.users.quick',
                         'admin.imports.job-units',
                         'admin.imports.job-tasks',
                         'admin.imports.user-job-tasks',
@@ -303,7 +304,16 @@
                                             @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.users'])])
                                         >
                                             <x-lucide-user-round class="mr-2 inline-block h-4 w-4" />
-                                            {{ __('Utenti') }}
+                                            {{ __('Import utenti completo') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.imports.users.quick') }}"
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.users.quick'])])
+                                        >
+                                            <x-lucide-user-round class="mr-2 inline-block h-4 w-4" />
+                                            {{ __('Import utenti rapido') }}
                                         </a>
                                     </li>
                                     <li>

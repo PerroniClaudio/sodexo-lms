@@ -1,6 +1,6 @@
 ---
 name: pest-testing
-description: "Use this skill for Pest PHP testing in Laravel projects only. Trigger whenever any test is being written, edited, fixed, or refactored — including fixing tests that broke after a code change, adding assertions, converting PHPUnit to Pest, adding datasets, and TDD workflows. Always activate when the user asks how to write something in Pest, mentions test files or directories (tests/Feature, tests/Unit, tests/Browser), or needs browser testing, smoke testing multiple pages for JS errors, or architecture tests. Covers: test()/it()/expect() syntax, datasets, mocking, browser testing (visit/click/fill), smoke testing, arch(), Livewire component tests, database reset strategies, and all Pest 4 features. Do not add RefreshDatabase or LazilyRefreshDatabase automatically: first follow the existing file or suite pattern, and if no pattern exists ask the user before introducing one unless database isolation is clearly required by the test. Do not use for factories, seeders, migrations, controllers, models, or non-test PHP code."
+description: "Use this skill for Pest PHP testing in Laravel projects only. Trigger whenever any test is being written, edited, fixed, or refactored — including fixing tests that broke after a code change, adding assertions, converting PHPUnit to Pest, adding datasets, and TDD workflows. Always activate when the user asks how to write something in Pest, mentions test files or directories (tests/Feature, tests/Unit, tests/Browser), or needs browser testing, smoke testing multiple pages for JS errors, or architecture tests. Covers: test()/it()/expect() syntax, datasets, mocking, browser testing (visit/click/fill), smoke testing, arch(), Livewire component tests, database reset strategies, and all Pest 4 features. In this repository, do not introduce or reintroduce RefreshDatabase, LazilyRefreshDatabase, DatabaseMigrations, or global database reset hooks unless the user explicitly asks for that behavior. Prefer idempotent tests that can run against the persistent testing database. Do not use for factories, seeders, migrations, controllers, models, or non-test PHP code."
 license: MIT
 metadata:
   author: laravel
@@ -14,10 +14,11 @@ Use `search-docs` for detailed Pest 4 patterns and documentation.
 
 ## Database Reset Policy
 
-- Do not add `RefreshDatabase` or `LazilyRefreshDatabase` automatically in new or edited tests.
-- First inspect the existing file or neighboring suite and preserve that pattern when one already exists.
-- If no pattern exists, ask the user before introducing a database reset trait unless the test clearly writes to the database and would be unreliable without isolation.
-- When a new reset trait is actually needed and the user has not requested otherwise, prefer `LazilyRefreshDatabase` over `RefreshDatabase`.
+- Repository-specific rule: this project intentionally avoids automatic database resets during tests.
+- Do not add or reintroduce `RefreshDatabase`, `LazilyRefreshDatabase`, `DatabaseMigrations`, `DatabaseTruncation`, or global `migrate:fresh` / `db:wipe` style hooks in Pest bootstrap or individual tests unless the user explicitly requests that behavior.
+- Prefer tests that are idempotent against the persistent testing database, for example by using unique factory data, `firstOrCreate`, `updateOrCreate`, `findOrCreate`, or assertions that do not depend on an empty database.
+- If a test fails because prior data exists, fix the test setup to tolerate persisted records instead of resetting the whole database.
+- If true isolation is genuinely required and the user explicitly asks for it, ask first whether they want per-test transactions, a dedicated disposable database, or a one-off manual cleanup strategy.
 
 ## Basic Usage
 

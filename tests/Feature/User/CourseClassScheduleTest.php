@@ -7,11 +7,8 @@ use App\Models\CourseEnrollment;
 use App\Models\LiveStreamSession;
 use App\Models\Module;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->withoutVite();

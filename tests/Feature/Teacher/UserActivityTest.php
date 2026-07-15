@@ -8,11 +8,8 @@ use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\ModuleTeacherEnrollment;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Testing\Fluent\AssertableJson;
-
-uses(RefreshDatabase::class);
 
 test('teacher user activity endpoint returns latest module and course completions', function () {
     $teacher = actingAsRole('teacher');

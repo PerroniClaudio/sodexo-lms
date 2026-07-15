@@ -7,9 +7,6 @@ use App\Models\ModuleTeacherEnrollment;
 use App\Models\User;
 use Database\Seeders\AsyncLiveCourseDemoSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 test('it seeds an async course with one live module, one enrolled learner, and one teacher assigned to that module', function () {
     $this->seed([

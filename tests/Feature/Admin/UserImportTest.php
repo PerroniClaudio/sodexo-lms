@@ -55,6 +55,85 @@ it('queues a user import from excel upload', function () {
     Queue::assertPushed(ImportUsersJob::class, fn (ImportUsersJob $job): bool => $job->importazioneId === $importazione->getKey());
 });
 
+it('queues a quick user import from excel upload', function () {
+    config(['filesystems.default' => 's3']);
+    Storage::fake('s3');
+    Queue::fake();
+
+    actingAsRole('admin');
+
+    $response = $this->post(route('admin.imports.users.quick.store'), [
+        'file' => userImportFile([
+            ['RSSMRA80A01H501Z', 'Mario', 'Rossi', 'User', 'M', 'Scuole', 'Operatore', 'Mansione uno', 'Unità uno', 'NO', '01/01/2024'],
+        ], [
+            'Codice fiscale',
+            'Nome',
+            'Cognome',
+            'Tipo di account',
+            'Genere',
+            'Settore',
+            'Ruolo',
+            'Mansione (nome; separa con ;)',
+            'Unità lavorativa (nome)',
+            'Straniero',
+            'Data di assunzione',
+        ]),
+    ]);
+
+    $response
+        ->assertRedirect(route('admin.imports.users.quick'))
+        ->assertSessionHas('status');
+
+    expect(Importazione::query()->sole()->import_type)->toBe(Importazione::TYPE_USERS_QUICK);
+});
+
+it('requires profile completion when a quick import updates a worker', function () {
+    config(['filesystems.default' => 's3']);
+    Storage::fake('s3');
+    Notification::fake();
+
+    test()->seed(RoleAndPermissionSeeder::class);
+
+    $worker = User::factory()->asUser()->create([
+        'fiscal_code' => 'RSSMRA80A01H501Z',
+        'account_state' => 'active',
+        'profile_completed_at' => now(),
+    ]);
+    JobRole::factory()->create(['name' => 'Operatore']);
+    JobSector::factory()->create(['name' => 'Scuole']);
+    JobTask::factory()->create(['name' => 'Mansione uno', 'code' => 'TASK-001']);
+    JobUnit::factory()->create(['name' => 'Unità uno', 'unit_code' => 'UNIT-001']);
+
+    Storage::disk('s3')->put('imports/users/quick-users.xlsx', file_get_contents(
+        userImportFile([
+            ['RSSMRA80A01H501Z', 'Mario', 'Rossi', 'User', 'M', 'Scuole', 'Operatore', 'Mansione uno', 'Unità uno', 'NO', '01/01/2024'],
+        ], [
+            'Codice fiscale',
+            'Nome',
+            'Cognome',
+            'Tipo di account',
+            'Genere',
+            'Settore',
+            'Ruolo',
+            'Mansione (nome; separa con ;)',
+            'Unità lavorativa (nome)',
+            'Straniero',
+            'Data di assunzione',
+        ])->getRealPath()
+    ));
+
+    $importazione = Importazione::query()->create([
+        'import_type' => Importazione::TYPE_USERS_QUICK,
+        'file_path' => 'imports/users/quick-users.xlsx',
+        'original_file_name' => 'utenti-rapido.xlsx',
+    ]);
+
+    app(ImportUsersJob::class, ['importazioneId' => $importazione->getKey()])->handle(app(UserImportService::class));
+
+    expect($worker->fresh()->account_state->value)->toBe('onboarding')
+        ->and($worker->fresh()->profile_completed_at)->toBeNull();
+});
+
 it('downloads user import template', function () {
     actingAsRole('admin');
 
@@ -62,9 +141,9 @@ it('downloads user import template', function () {
     JobLevel::factory()->create(['name' => 'Quadro']);
     JobRole::factory()->create(['name' => 'Operatore']);
     JobSector::factory()->create(['name' => 'Scuole']);
-    JobTask::factory()->create(['code' => 'TASK-001']);
-    JobTask::factory()->create(['code' => 'TASK-002']);
-    JobUnit::factory()->create(['unit_code' => 'UNIT-001']);
+    JobTask::factory()->create(['name' => 'Mansione uno', 'code' => 'TASK-001']);
+    JobTask::factory()->create(['name' => 'Mansione due', 'code' => 'TASK-002']);
+    JobUnit::factory()->create(['name' => 'Unità uno', 'unit_code' => 'UNIT-001']);
     $firstLanguageLevel = LanguageLevel::query()->orderBy('sort_order')->orderBy('name')->value('name');
     $languageLevelRows = LanguageLevel::query()->count();
 
@@ -84,16 +163,16 @@ it('downloads user import template', function () {
     expect($importSheet?->getCell('Q2')->getValue())->toBe('Impiegati')
         ->and($importSheet?->getCell('R2')->getValue())->toBe('Quadro')
         ->and($importSheet?->getCell('S2')->getValue())->toBe('Operatore')
-        ->and($importSheet?->getCell('T2')->getValue())->toBe('TASK-001;TASK-002')
-        ->and($importSheet?->getCell('U2')->getValue())->toBe('UNIT-001')
+        ->and($importSheet?->getCell('T2')->getValue())->toBe('Mansione due;Mansione uno')
+        ->and($importSheet?->getCell('U2')->getValue())->toBe('Unità uno')
         ->and($lookupSheet?->getCell('A2')->getValue())->toBe('IT')
         ->and($lookupSheet?->getCell('B2')->getValue())->toBe('M')
         ->and($lookupSheet?->getCell('C2')->getValue())->toBe('Scuole')
         ->and($lookupSheet?->getCell('D2')->getValue())->toBe('Impiegati')
         ->and($lookupSheet?->getCell('E2')->getValue())->toBe('Quadro')
         ->and($lookupSheet?->getCell('F2')->getValue())->toBe('Operatore')
-        ->and($lookupSheet?->getCell('G2')->getValue())->toBe('TASK-001')
-        ->and($lookupSheet?->getCell('H2')->getValue())->toBe('UNIT-001')
+        ->and($lookupSheet?->getCell('G2')->getValue())->toBe('Mansione due')
+        ->and($lookupSheet?->getCell('H2')->getValue())->toBe('Unità uno')
         ->and($lookupSheet?->getCell('I2')->getValue())->toBe('SI')
         ->and($lookupSheet?->getCell('J2')->getValue())->toBe($firstLanguageLevel)
         ->and($importSheet?->getCell('H2')->getDataValidation()->getFormula1())->toBe("'Valori disponibili'!\$A\$2:\$A\$2")
@@ -105,6 +184,38 @@ it('downloads user import template', function () {
         ->and($importSheet?->getCell('U2')->getDataValidation()->getFormula1())->toBe("'Valori disponibili'!\$H\$2:\$H\$2")
         ->and($importSheet?->getCell('V2')->getDataValidation()->getFormula1())->toBe("'Valori disponibili'!\$I\$2:\$I\$3")
         ->and($importSheet?->getCell('Y2')->getDataValidation()->getFormula1())->toBe("'Valori disponibili'!\$J\$2:\$J\$".($languageLevelRows + 1));
+
+    $spreadsheet->disconnectWorksheets();
+    @unlink($temporaryFile);
+});
+
+it('downloads quick user import template', function () {
+    actingAsRole('admin');
+
+    JobRole::factory()->create(['name' => 'Operatore']);
+    JobSector::factory()->create(['name' => 'Scuole']);
+    JobTask::factory()->create(['name' => 'Mansione uno', 'code' => 'TASK-001']);
+    JobUnit::factory()->create(['name' => 'Unità uno', 'unit_code' => 'UNIT-001']);
+
+    $response = $this->get(route('admin.imports.users.quick.template'));
+
+    $response->assertOk()
+        ->assertHeader('content-disposition', 'attachment; filename=template-import-utenti-rapido.xlsx');
+
+    $temporaryFile = tempnam(sys_get_temp_dir(), 'quick-template-import-test-');
+    file_put_contents($temporaryFile, $response->streamedContent());
+
+    $spreadsheet = IOFactory::load($temporaryFile);
+    $importSheet = $spreadsheet->getSheetByName('Import utenti rapido');
+    $lookupSheet = $spreadsheet->getSheetByName('Valori disponibili');
+
+    expect($importSheet?->getCell('A1')->getValue())->toBe('Codice fiscale')
+        ->and($importSheet?->getCell('K1')->getValue())->toBe('Data di assunzione')
+        ->and($lookupSheet?->getCell('C1')->getValue())->toBe('Mansione (nome)')
+        ->and($lookupSheet?->getHighestRow())->toBeGreaterThan(1)
+        ->and($importSheet?->getCell('F2')->getDataValidation()->getFormula1())->toContain("'Valori disponibili'!\$A\$2:\$A\$")
+        ->and($importSheet?->getCell('G2')->getDataValidation()->getFormula1())->toContain("'Valori disponibili'!\$B\$2:\$B\$")
+        ->and($importSheet?->getCell('I2')->getDataValidation()->getFormula1())->toContain("'Valori disponibili'!\$D\$2:\$D\$");
 
     $spreadsheet->disconnectWorksheets();
     @unlink($temporaryFile);
@@ -123,7 +234,7 @@ it('returns user import status card payload', function () {
 
     $this->get(route('admin.imports.users.status-card'))
         ->assertOk()
-        ->assertSeeText('Import utenti recenti')
+        ->assertSeeText('Import utenti completo recenti')
         ->assertSeeText('In lavorazione')
         ->assertSeeText('progress-originale.xlsx');
 });
@@ -150,9 +261,9 @@ it('imports workers and staff from excel', function () {
     $jobLevel = JobLevel::factory()->create(['name' => 'Quadro']);
     $jobRole = JobRole::factory()->create(['name' => 'Operatore']);
     $jobSector = JobSector::factory()->create(['name' => 'Scuole']);
-    $jobTask = JobTask::factory()->create(['code' => 'TASK-001']);
-    $secondJobTask = JobTask::factory()->create(['code' => 'TASK-002']);
-    $jobUnit = JobUnit::factory()->create(['unit_code' => 'UNIT-001']);
+    $jobTask = JobTask::factory()->create(['name' => 'Mansione uno', 'code' => 'TASK-001']);
+    $secondJobTask = JobTask::factory()->create(['name' => 'Mansione due', 'code' => 'TASK-002']);
+    $jobUnit = JobUnit::factory()->create(['name' => 'Unità uno', 'unit_code' => 'UNIT-001']);
 
     $countryId = DB::table('world_countries')->where('code', 'it')->value('id');
     $regionId = DB::table('world_divisions')->where('name', 'Lazio')->value('id');
@@ -180,8 +291,8 @@ it('imports workers and staff from excel', function () {
                 'Impiegati',
                 'Quadro',
                 'Operatore',
-                'TASK-001;TASK-002',
-                'UNIT-001',
+                'Mansione uno;Mansione due',
+                'Unità uno',
                 'NO',
                 '01/01/2024',
                 null,
@@ -313,8 +424,8 @@ function userImportFile(array $rows, ?array $headers = null): UploadedFile
         'Categoria di lavoro',
         'Livello di inquadramento',
         'Ruolo',
-        'Mansione (codice o ID; separa con ;)',
-        'Unità lavorativa (codice)',
+        'Mansione (nome; separa con ;)',
+        'Unità lavorativa (nome)',
         'Straniero',
         'Data di assunzione',
         'Data di cessazione',

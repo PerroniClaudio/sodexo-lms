@@ -12,10 +12,7 @@ use App\Models\Module;
 use App\Models\ModuleTeacherEnrollment;
 use App\Models\ModuleTutorEnrollment;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     actingAsRole('admin');

@@ -1,8 +1,8 @@
 <x-layouts.admin>
     <div class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
-        <x-page-header :title="__('Import utenti')">
+        <x-page-header :title="$title">
             <x-slot:actions>
-                <a href="{{ route('admin.imports.users.template') }}" class="btn btn-outline">
+                <a href="{{ route($templateRoute) }}" class="btn btn-outline">
                     <x-lucide-download class="h-4 w-4" />
                     <span>{{ __('Scarica template') }}</span>
                 </a>
@@ -28,7 +28,7 @@
                    
                 </div>
 
-                <form method="POST" action="{{ route('admin.imports.users.store') }}" enctype="multipart/form-data" class="space-y-6">
+                <form method="POST" action="{{ route($storeRoute) }}" enctype="multipart/form-data" class="space-y-6">
                     @csrf
 
                     <div>
@@ -53,11 +53,9 @@
                     <div class="rounded-box border border-base-300 bg-base-200/40 p-4 text-sm text-base-content/80">
                         <p class="font-medium">{{ __('Regole applicate') }}</p>
                         <ul class="mt-3 list-disc space-y-2 pl-5">
-                            <li>{{ __('Obbligatori sempre: tipo di account, nome, cognome, codice fiscale.') }}</li>
-                            <li>{{ __('Obbligatori se tra i ruoli c’è User: settore, ruolo, mansione, unità lavorativa, straniero, data assunzione, livello lingua.') }}</li>
-                            <li>{{ __('Tipo di account multiplo separato da punto e virgola (;). Valori attesi: User, Docente, Tutor, Admin.') }}</li>
-                            <li>{{ __('Categoria lavoro, settore, livello e ruolo devono esistere.') }}</li>
-                            <li>{{ __('Mansione accetta più codici o ID separati da ;. Unità lavorativa è risolta per codice.') }}</li>
+                            @foreach ($rules as $rule)
+                                <li>{{ $rule }}</li>
+                            @endforeach
                         </ul>
                     </div>
 
@@ -73,9 +71,9 @@
 
         <div
             data-user-import-status-card
-            data-status-url="{{ route('admin.imports.users.status-card') }}"
+            data-status-url="{{ route($statusCardRoute) }}"
         >
-            <x-admin.imports.users-status-card :data="array_merge(get_defined_vars(), ['recentImports' => $recentImports])" />
+            <x-admin.imports.users-status-card :data="array_merge(get_defined_vars(), ['recentImports' => $recentImports, 'title' => $statusTitle])" />
         </div>
     </div>
 

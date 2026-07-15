@@ -2,9 +2,6 @@
 
 use App\Models\RiskBasedRequirement;
 use Database\Seeders\RiskBasedRequirementSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 it('seeds the expected default risk based requirements', function () {
     $this->seed(RiskBasedRequirementSeeder::class);

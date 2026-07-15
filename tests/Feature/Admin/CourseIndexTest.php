@@ -1,9 +1,6 @@
 <?php
 
 use App\Models\Course;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->adminUser = actingAsRole('admin');

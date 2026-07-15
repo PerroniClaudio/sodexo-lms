@@ -4,9 +4,6 @@ use App\Enums\CourseRiskRequirementValidityType;
 use App\Enums\RiskLevel;
 use App\Models\Course;
 use App\Models\RiskBasedRequirement;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     actingAsRole('admin');

@@ -7,10 +7,7 @@ use App\Models\User;
 use App\Models\Venue;
 use App\Models\Video;
 use Database\Seeders\RoleAndPermissionSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->withoutVite();

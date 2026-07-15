@@ -6,15 +6,12 @@ use App\Models\CourseClassSchedule;
 use App\Models\CourseClassUser;
 use App\Models\Module;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     actingAsRole('admin');

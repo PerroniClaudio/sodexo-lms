@@ -10,10 +10,7 @@ use App\Models\TrainingPath;
 use App\Models\TrainingPathEnrollment;
 use App\Models\User;
 use App\Services\ScormService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     actingAsRole('superadmin');

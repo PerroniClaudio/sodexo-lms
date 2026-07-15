@@ -4,10 +4,7 @@ use App\Models\Course;
 use App\Models\CourseClass;
 use App\Models\CourseClassTutor;
 use App\Models\Module;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\Fluent\AssertableJson;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->withoutVite();

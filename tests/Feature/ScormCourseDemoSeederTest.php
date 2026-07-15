@@ -7,9 +7,6 @@ use App\Models\ModuleProgress;
 use App\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Database\Seeders\ScormCourseDemoSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 test('it seeds a demo user enrolled in a course with a scorm module', function () {
     $this->seed([

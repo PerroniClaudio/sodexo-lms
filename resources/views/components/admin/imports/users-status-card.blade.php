@@ -8,7 +8,7 @@
     <div class="card-body gap-4">
         <div>
             <div>
-                <h2 class="card-title">{{ __('Import utenti recenti') }}</h2>
+                <h2 class="card-title">{{ $title ?? __('Import utenti completo recenti') }}</h2>
             </div>
         </div>
 

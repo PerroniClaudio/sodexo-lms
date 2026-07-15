@@ -6,10 +6,7 @@ use App\Models\WorldCountry;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     $this->withoutVite();
@@ -167,4 +164,16 @@ it('offers password recovery for active accounts found by fiscal code', function
         ->assertRedirect();
 
     Notification::assertSentTo($user, ResetPassword::class);
+});
+
+it('blocks platform access until a worker completes the profile', function () {
+    $user = User::factory()->asUser()->create([
+        'account_state' => UserStatus::ACTIVE,
+        'profile_completed_at' => null,
+    ]);
+
+    $this->actingAs($user)
+        ->withSession(['active_role' => 'user'])
+        ->get(route('user.dashboard'))
+        ->assertRedirect(route('onboarding.profile.show'));
 });

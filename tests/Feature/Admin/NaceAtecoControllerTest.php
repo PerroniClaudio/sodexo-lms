@@ -5,10 +5,7 @@ use App\Enums\RiskLevel;
 use App\Enums\UserStatus;
 use App\Models\NaceAteco;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     // Crea un utente admin semplice senza factory

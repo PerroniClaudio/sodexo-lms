@@ -4,10 +4,7 @@ use App\Models\Course;
 use App\Models\CourseClass;
 use App\Models\CourseClassUser;
 use App\Models\Module;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\Fluent\AssertableJson;
-
-uses(RefreshDatabase::class);
 
 test('user dashboard calendar events endpoint returns live and residential class schedules', function () {
     $user = actingAsRole('user');

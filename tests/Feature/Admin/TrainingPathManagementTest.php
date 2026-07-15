@@ -11,13 +11,10 @@ use App\Models\Partner;
 use App\Models\RiskBasedRequirement;
 use App\Models\TrainingPath;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Spatie\LaravelPdf\Facades\Pdf;
 use Spatie\LaravelPdf\PdfBuilder;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     actingAsRole('admin');

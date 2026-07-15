@@ -3,9 +3,6 @@
 use App\Models\Course;
 use App\Models\Module;
 use Database\Seeders\ResCourseDemoSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 test('it seeds a res course with a residential module, a learning quiz with 20 questions, and a satisfaction quiz', function () {
     $this->seed(ResCourseDemoSeeder::class);

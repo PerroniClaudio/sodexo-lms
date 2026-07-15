@@ -10,9 +10,6 @@ use App\Models\RiskBasedRequirement;
 use App\Models\TrainingPath;
 use App\Models\TrainingPathEnrollment;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     actingAsRole('admin');

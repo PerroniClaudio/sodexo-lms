@@ -4,11 +4,8 @@ use App\Jobs\GenerateVideoReport;
 use App\Models\Course;
 use App\Models\JobSector;
 use App\Models\VideoReportRequest;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
-
-uses(RefreshDatabase::class);
 
 it('allows admins to access video reports index', function () {
     actingAsRole('admin');

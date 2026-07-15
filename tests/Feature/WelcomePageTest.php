@@ -1,9 +1,5 @@
 <?php
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
-
 test('welcome page shows the public homepage to guests', function () {
     $response = $this->get('/');
 

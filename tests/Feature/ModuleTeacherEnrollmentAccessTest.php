@@ -3,9 +3,6 @@
 use App\Models\Course;
 use App\Models\Module;
 use App\Models\ModuleTeacherEnrollment;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 test('teacher module enrollment stores only the module assignment without learner progress fields', function () {
     $teacher = actingAsRole('teacher');

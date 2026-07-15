@@ -3,9 +3,6 @@
 use App\Models\Course;
 use App\Models\Module;
 use App\Models\Video;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     actingAsRole('admin');

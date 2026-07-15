@@ -1,9 +1,6 @@
 <?php
 
 use App\Models\LanguageLevel;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     actingAsRole('admin');

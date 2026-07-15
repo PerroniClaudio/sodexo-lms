@@ -13,10 +13,7 @@ use App\Models\User;
 use App\Models\Video;
 use App\Models\VideoTrackingEvent;
 use Database\Seeders\RoleAndPermissionSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-
-uses(RefreshDatabase::class);
 
 function enrollUserInCourseWithModule(string $moduleType = 'video', array $moduleAttributes = []): array
 {

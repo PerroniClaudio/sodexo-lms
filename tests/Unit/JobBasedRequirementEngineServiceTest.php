@@ -7,10 +7,7 @@ use App\Models\User;
 use App\Services\JobBasedRequirementEngineService;
 use Carbon\CarbonImmutable;
 use Database\Seeders\RoleAndPermissionSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-
-uses(RefreshDatabase::class);
 
 it('stores active and future job-based requirements for a user', function () {
     $this->seed(RoleAndPermissionSeeder::class);

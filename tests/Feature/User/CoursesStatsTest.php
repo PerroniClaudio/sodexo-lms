@@ -4,9 +4,6 @@ use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleProgress;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 test('user dashboard courses stats endpoint returns aggregated data', function () {
     $user = actingAsRole('user');

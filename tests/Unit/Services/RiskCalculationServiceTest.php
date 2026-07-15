@@ -7,9 +7,6 @@ use App\Models\JobSector;
 use App\Models\JobTask;
 use App\Models\NaceAteco;
 use App\Services\RiskCalculationService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->service = new RiskCalculationService;

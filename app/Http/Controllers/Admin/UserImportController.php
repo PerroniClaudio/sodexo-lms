@@ -52,18 +52,64 @@ class UserImportController extends Controller
         'Categoria di lavoro',
         'Livello di inquadramento',
         'Ruolo',
-        'Mansione (codice o ID; separa con ;)',
-        'Unità lavorativa (codice)',
+        'Mansione (nome; separa con ;)',
+        'Unità lavorativa (nome)',
         'Straniero',
         'Data di assunzione',
         'Data di cessazione',
         'Livello conoscenza lingua di lavoro',
     ];
 
+    /**
+     * @var array<int, string>
+     */
+    private const QUICK_TEMPLATE_HEADERS = [
+        'Codice fiscale',
+        'Nome',
+        'Cognome',
+        'Tipo di account',
+        'Genere',
+        'Settore',
+        'Ruolo',
+        'Mansione (nome; separa con ;)',
+        'Unità lavorativa (nome)',
+        'Straniero',
+        'Data di assunzione',
+    ];
+
     public function index(): View
     {
         return view('admin.imports.users', [
             'recentImports' => $this->recentImports(),
+            'title' => __('Import utenti completo'),
+            'templateRoute' => 'admin.imports.users.template',
+            'storeRoute' => 'admin.imports.users.store',
+            'statusCardRoute' => 'admin.imports.users.status-card',
+            'statusTitle' => __('Import utenti completo recenti'),
+            'rules' => [
+                __('Obbligatori sempre: tipo di account, nome, cognome, codice fiscale.'),
+                __('Obbligatori se tra i ruoli c’è User: settore, ruolo, mansione, unità lavorativa, straniero, data assunzione, livello lingua.'),
+                __('Tipo di account multiplo separato da punto e virgola (;). Valori attesi: User, Docente, Tutor, Admin.'),
+                __('Categoria lavoro, settore, livello e ruolo devono esistere.'),
+                __('Mansione accetta più nomi separati da ;. Unità lavorativa è risolta per nome.'),
+            ],
+        ]);
+    }
+
+    public function quick(): View
+    {
+        return view('admin.imports.users', [
+            'recentImports' => $this->recentImports(Importazione::TYPE_USERS_QUICK),
+            'title' => __('Import utenti rapido'),
+            'templateRoute' => 'admin.imports.users.quick.template',
+            'storeRoute' => 'admin.imports.users.quick.store',
+            'statusCardRoute' => 'admin.imports.users.quick.status-card',
+            'statusTitle' => __('Import utenti rapido recenti'),
+            'rules' => [
+                __('Colonne incluse: codice fiscale, nome, cognome, tipo di account, genere, settore, ruolo, mansione, unità lavorativa, straniero e data di assunzione.'),
+                __('Settore, ruolo e unità lavorativa sono disponibili come menu a tendina nel template.'),
+                __('Tipo di account multiplo separato da punto e virgola (;). Valori attesi: User, Docente, Tutor, Admin.'),
+            ],
         ]);
     }
 
@@ -111,8 +157,8 @@ class UserImportController extends Controller
             'Categoria di lavoro',
             'Livello di inquadramento',
             'Ruolo',
-            'Mansione (codice o ID; separa con ;)',
-            'Unità lavorativa (codice)',
+            'Mansione (nome; separa con ;)',
+            'Unità lavorativa (nome)',
             'Straniero',
             'Livello conoscenza lingua di lavoro',
         ]]);
@@ -156,51 +202,101 @@ class UserImportController extends Controller
         $this->addListValidation($sheet, 'V', "'Valori disponibili'!\$I\$2:\$I\$".($exampleData['foreigner_values']->count() + 1));
         $this->addListValidation($sheet, 'Y', "'Valori disponibili'!\$J\$2:\$J\$".($exampleData['language_levels']->count() + 1));
 
-        $temporaryFile = tempnam(sys_get_temp_dir(), 'user-import-template-');
+        return $this->downloadSpreadsheet($spreadsheet, 'template-import-utenti.xlsx');
+    }
 
-        if ($temporaryFile === false) {
-            abort(500, 'Impossibile generare template import utenti.');
+    public function downloadQuickTemplate(): BinaryFileResponse
+    {
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Import utenti rapido');
+        $exampleData = $this->templateExampleData();
+        $sheet->fromArray([self::QUICK_TEMPLATE_HEADERS]);
+        $sheet->fromArray([[
+            'RSSMRA80A01H501Z',
+            'Mario',
+            'Rossi',
+            'User',
+            'M',
+            $exampleData['job_sector'],
+            $exampleData['job_role'],
+            $exampleData['job_task_codes']->take(2)->implode(';'),
+            $exampleData['job_unit_code'],
+            'NO',
+            '01/01/2024',
+        ]], null, 'A2');
+
+        $lookupSheet = $spreadsheet->createSheet();
+        $lookupSheet->setTitle('Valori disponibili');
+        $lookupSheet->fromArray([['Settore', 'Ruolo', 'Mansione (nome)', 'Unità lavorativa (nome)']]);
+
+        $lookupRows = max(1, $exampleData['job_sectors']->count(), $exampleData['job_roles']->count(), $exampleData['job_tasks']->count(), $exampleData['job_units']->count());
+
+        for ($index = 0; $index < $lookupRows; $index++) {
+            $lookupSheet->fromArray([[
+                $exampleData['job_sectors']->get($index),
+                $exampleData['job_roles']->get($index),
+                $exampleData['job_tasks']->get($index),
+                $exampleData['job_units']->get($index),
+            ]], null, 'A'.($index + 2));
         }
 
-        (new Xlsx($spreadsheet))->save($temporaryFile);
-        $spreadsheet->disconnectWorksheets();
+        $this->addListValidation($sheet, 'F', "'Valori disponibili'!\$A\$2:\$A\$".($exampleData['job_sectors']->count() + 1));
+        $this->addListValidation($sheet, 'G', "'Valori disponibili'!\$B\$2:\$B\$".($exampleData['job_roles']->count() + 1));
+        $this->addListValidation($sheet, 'I', "'Valori disponibili'!\$D\$2:\$D\$".($exampleData['job_units']->count() + 1));
 
-        return Response::download(
-            $temporaryFile,
-            'template-import-utenti.xlsx',
-            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
-        )->deleteFileAfterSend(true);
+        return $this->downloadSpreadsheet($spreadsheet, 'template-import-utenti-rapido.xlsx');
     }
 
     public function statusCard(Request $request): ViewContract
     {
         return view('components.admin.imports.users-status-card', [
             'recentImports' => $this->recentImports(),
+            'title' => __('Import utenti completo recenti'),
+        ]);
+    }
+
+    public function quickStatusCard(Request $request): ViewContract
+    {
+        return view('components.admin.imports.users-status-card', [
+            'recentImports' => $this->recentImports(Importazione::TYPE_USERS_QUICK),
+            'title' => __('Import utenti rapido recenti'),
         ]);
     }
 
     public function store(StoreUserImportRequest $request): RedirectResponse
     {
-        $storedPath = $request->file('file')->store('imports/users');
+        return $this->storeImport($request, Importazione::TYPE_USERS, 'admin.imports.users', __('Import utenti completo'));
+    }
+
+    public function storeQuick(StoreUserImportRequest $request): RedirectResponse
+    {
+        return $this->storeImport($request, Importazione::TYPE_USERS_QUICK, 'admin.imports.users.quick', __('Import utenti rapido'));
+    }
+
+    private function storeImport(StoreUserImportRequest $request, string $importType, string $route, string $label): RedirectResponse
+    {
+        $file = $request->file('file');
+        $storedPath = $file->store('imports/users');
 
         $importazione = Importazione::query()->create([
-            'import_type' => Importazione::TYPE_USERS,
+            'import_type' => $importType,
             'created_by' => Auth::id(),
             'file_path' => $storedPath,
-            'original_file_name' => $request->file('file')->getClientOriginalName(),
+            'original_file_name' => $file->getClientOriginalName(),
         ]);
 
         ImportUsersJob::dispatch($importazione->getKey());
 
         return redirect()
-            ->route('admin.imports.users')
-            ->with('status', __('Import utenti accodato. Controlla il monitor importazioni per l\'esito.'));
+            ->route($route)
+            ->with('status', __(':label accodato. Controlla il monitor importazioni per l\'esito.', ['label' => $label]));
     }
 
-    private function recentImports(): Collection
+    private function recentImports(string $type = Importazione::TYPE_USERS): Collection
     {
         return Importazione::query()
-            ->where('import_type', Importazione::TYPE_USERS)
+            ->where('import_type', $type)
             ->where('created_by', Auth::id())
             ->latest()
             ->limit(8)
@@ -259,13 +355,13 @@ class UserImportController extends Controller
             ->filter()
             ->values();
         $jobTasks = JobTask::query()
-            ->orderBy('code')
-            ->pluck('code')
+            ->orderBy('name')
+            ->pluck('name')
             ->filter()
             ->values();
         $jobUnits = JobUnit::query()
-            ->orderBy('unit_code')
-            ->pluck('unit_code')
+            ->orderBy('name')
+            ->pluck('name')
             ->filter()
             ->values();
         $languageLevels = LanguageLevel::query()
@@ -285,9 +381,9 @@ class UserImportController extends Controller
             'job_category' => $jobCategories->first() ?? 'Categoria esistente',
             'job_level' => $jobLevels->first() ?? 'Livello esistente',
             'job_role' => $jobRoles->first() ?? 'Ruolo esistente',
-            'job_task_code' => $jobTasks->first() ?? 'MANSIONE-CODICE',
+            'job_task_code' => $jobTasks->first() ?? 'Mansione esistente',
             'job_task_codes' => $jobTasks,
-            'job_unit_code' => $jobUnits->first() ?? 'UNITA-CODICE',
+            'job_unit_code' => $jobUnits->first() ?? 'Unità lavorativa esistente',
             'job_categories' => $jobCategories,
             'job_levels' => $jobLevels,
             'job_roles' => $jobRoles,
@@ -306,5 +402,23 @@ class UserImportController extends Controller
             $validation->setShowDropDown(true);
             $validation->setFormula1($formula);
         }
+    }
+
+    private function downloadSpreadsheet(Spreadsheet $spreadsheet, string $filename): BinaryFileResponse
+    {
+        $temporaryFile = tempnam(sys_get_temp_dir(), 'user-import-template-');
+
+        if ($temporaryFile === false) {
+            abort(500, 'Impossibile generare template import utenti.');
+        }
+
+        (new Xlsx($spreadsheet))->save($temporaryFile);
+        $spreadsheet->disconnectWorksheets();
+
+        return Response::download(
+            $temporaryFile,
+            $filename,
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+        )->deleteFileAfterSend(true);
     }
 }

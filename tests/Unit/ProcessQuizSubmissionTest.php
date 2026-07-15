@@ -10,12 +10,9 @@ use App\Models\ModuleQuizQuestion;
 use App\Models\ModuleQuizSubmission;
 use App\Models\User;
 use App\Services\GoogleDocumentAiQuizService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     config()->set('services.google_document_ai.access_token', 'test-token');

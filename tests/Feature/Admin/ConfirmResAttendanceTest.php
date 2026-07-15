@@ -7,12 +7,9 @@ use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     actingAsRole('admin');

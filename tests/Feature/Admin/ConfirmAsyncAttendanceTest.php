@@ -7,9 +7,6 @@ use App\Models\LiveStreamSession;
 use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     actingAsRole('admin');

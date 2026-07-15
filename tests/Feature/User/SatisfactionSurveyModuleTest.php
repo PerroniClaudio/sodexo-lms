@@ -9,10 +9,7 @@ use App\Models\SatisfactionSurveySubmission;
 use App\Models\SatisfactionSurveyTemplate;
 use App\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-
-uses(RefreshDatabase::class);
 
 function createSatisfactionTemplate(): SatisfactionSurveyTemplate
 {

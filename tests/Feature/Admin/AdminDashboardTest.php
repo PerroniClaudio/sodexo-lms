@@ -15,11 +15,8 @@ use App\Models\SatisfactionSurveyTemplate;
 use App\Models\User;
 use App\Models\UserCertificate;
 use Database\Seeders\RoleAndPermissionSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
-
-uses(RefreshDatabase::class);
 
 function dashboardUser(string $role, array $attributes = []): User
 {

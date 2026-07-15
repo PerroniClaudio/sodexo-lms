@@ -10,6 +10,8 @@ class Importazione extends Model
 {
     public const TYPE_USERS = 'utenti';
 
+    public const TYPE_USERS_QUICK = 'utenti_rapido';
+
     public const TYPE_JOB_UNITS = 'unita_lavorative';
 
     public const TYPE_JOB_TASKS = 'mansioni';
@@ -73,6 +75,7 @@ class Importazione extends Model
     {
         return [
             self::TYPE_USERS,
+            self::TYPE_USERS_QUICK,
             self::TYPE_JOB_UNITS,
             self::TYPE_JOB_TASKS,
             self::TYPE_USER_JOB_TASKS,
@@ -85,7 +88,8 @@ class Importazione extends Model
     public static function typeLabelFor(string $type): string
     {
         return match ($type) {
-            self::TYPE_USERS => __('Utenti'),
+            self::TYPE_USERS => __('Import utenti completo'),
+            self::TYPE_USERS_QUICK => __('Import utenti rapido'),
             self::TYPE_JOB_UNITS => __('Unità lavorative'),
             self::TYPE_JOB_TASKS => __('Mansioni'),
             self::TYPE_USER_JOB_TASKS => __('Associazione utenti mansioni'),

@@ -5,10 +5,7 @@ use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-
-uses(RefreshDatabase::class);
 
 it('creates a single active enrollment and initializes sequential module progress', function () {
     $user = User::factory()->create();

@@ -10,13 +10,10 @@ use App\Models\ModuleProgress;
 use App\Models\User;
 use App\Services\Certificates\CourseCertificateGenerator;
 use App\Services\CloudRunJobClient;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-
-uses(RefreshDatabase::class);
 
 it('creates document conversion job when enrollment completes on final module without required satisfaction survey', function () {
     config(['filesystems.default' => 's3']);

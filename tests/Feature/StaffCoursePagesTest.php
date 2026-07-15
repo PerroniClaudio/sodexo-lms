@@ -11,11 +11,8 @@ use App\Models\ModuleTeacherEnrollment;
 use App\Models\ModuleTutorEnrollment;
 use App\Models\User;
 use Carbon\CarbonImmutable;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->withoutVite();

@@ -4,12 +4,9 @@ use App\Models\Course;
 use App\Models\Module;
 use App\Models\ModuleQuizQuestion;
 use Illuminate\Auth\Middleware\Authenticate;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\LaravelPdf\Facades\Pdf;
 use Spatie\LaravelPdf\PdfBuilder;
 use Spatie\Permission\Middleware\RoleMiddleware;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->withoutMiddleware([

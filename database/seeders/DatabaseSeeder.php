@@ -11,9 +11,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call([
+        $seeders = [
             WorldDataSeeder::class,
-            NaceAtecoSeeder::class,
             JobDataSeeder::class,
             LanguageLevelSeeder::class,
             DocumentTypeSeeder::class,
@@ -22,6 +21,12 @@ class DatabaseSeeder extends Seeder
             SatisfactionSurveySeeder::class,
             CourseSeeder::class,
             TestUserSeeder::class,
-        ]);
+        ];
+
+        if (config('app.use_default_sectors')) {
+            array_splice($seeders, 1, 0, NaceAtecoSeeder::class);
+        }
+
+        $this->call($seeders);
     }
 }

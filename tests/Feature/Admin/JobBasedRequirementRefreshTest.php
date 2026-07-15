@@ -5,10 +5,7 @@ use App\Models\JobBasedRequirement;
 use App\Models\JobRole;
 use App\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
-
-uses(RefreshDatabase::class);
 
 it('refreshes one user job-based requirements from admin api', function () {
     $this->seed(RoleAndPermissionSeeder::class);

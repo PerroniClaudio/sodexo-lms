@@ -5,9 +5,7 @@ use App\Enums\RiskLevel;
 use App\Models\JobSector;
 use App\Models\JobTask;
 use App\Models\NaceAteco;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(RefreshDatabase::class);
 uses()->group('job-task-sector-association');
 
 beforeEach(function () {
@@ -41,9 +39,10 @@ test('job task edit page uses searchable selector for sector association', funct
 test('job sector edit page uses searchable selector for ateco association', function () {
     $sector = JobSector::factory()->create(['name' => 'Logistica']);
 
-    NaceAteco::create([
-        'section' => 'H',
+    NaceAteco::updateOrCreate([
         'code' => 'H',
+    ], [
+        'section' => 'H',
         'order' => 1,
         'hierarchy' => 1,
         'title_it' => 'Trasporto e magazzinaggio',
@@ -128,9 +127,10 @@ test('can update sector risk level for job task', function () {
 });
 
 test('effective risk is calculated correctly for task-sector association', function () {
-    $sectionQ = NaceAteco::create([
-        'section' => 'Q',
+    $sectionQ = NaceAteco::updateOrCreate([
         'code' => 'Q',
+    ], [
+        'section' => 'Q',
         'order' => 1,
         'hierarchy' => 1,
         'title_it' => 'Sanita',
@@ -149,9 +149,10 @@ test('effective risk is calculated correctly for task-sector association', funct
 });
 
 test('effective risk uses sector risk when task risk is lower', function () {
-    $sectionR = NaceAteco::create([
-        'section' => 'R',
+    $sectionR = NaceAteco::updateOrCreate([
         'code' => 'R',
+    ], [
+        'section' => 'R',
         'order' => 1,
         'hierarchy' => 1,
         'title_it' => 'Attivita artistiche',
@@ -181,6 +182,6 @@ test('job task edit page shows override controls for sector associations', funct
     $response = $this->get(route('admin.job-tasks.edit', $task));
 
     $response->assertOk()
-        ->assertSee('Sovrascrive il rischio del settore anche se inferiore')
+        ->assertSee('Selezionare per consentire la sovrascrittura del rischio del settore')
         ->assertSee('Override settore');
 });

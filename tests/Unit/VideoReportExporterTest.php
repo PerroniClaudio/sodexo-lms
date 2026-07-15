@@ -11,13 +11,10 @@ use App\Models\Video;
 use App\Models\VideoReportRequest;
 use App\Models\VideoTrackingEvent;
 use App\Services\VideoReportExporter;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Spatie\Permission\Models\Role;
-
-uses(RefreshDatabase::class);
 
 it('builds a workbook with progress and audit sheets filtered by date range', function () {
     config(['filesystems.default' => 's3']);

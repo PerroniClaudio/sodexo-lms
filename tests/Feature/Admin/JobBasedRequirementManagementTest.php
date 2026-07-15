@@ -4,9 +4,6 @@ use App\Models\JobBasedRequirement;
 use App\Models\JobRole;
 use App\Models\JobTask;
 use Database\Seeders\RoleAndPermissionSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 it('stores a job-based requirement from admin area', function () {
     $this->seed(RoleAndPermissionSeeder::class);

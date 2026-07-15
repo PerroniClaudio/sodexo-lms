@@ -5,10 +5,7 @@ use App\Models\CourseClass;
 use App\Models\CourseClassTeacher;
 use App\Models\Module;
 use App\Models\ModuleTeacherEnrollment;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\Fluent\AssertableJson;
-
-uses(RefreshDatabase::class);
 
 test('teacher dashboard calendar events endpoint returns residential and async module events', function () {
     $teacher = actingAsRole('teacher');

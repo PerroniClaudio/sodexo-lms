@@ -8,9 +8,6 @@ use App\Models\ModuleTeacherEnrollment;
 use App\Models\User;
 use Database\Seeders\CourseEnrollmentDemoSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 test('it seeds a demo course with a teacher module assignment and a learner enrollment with expected roles', function () {
     $this->seed([

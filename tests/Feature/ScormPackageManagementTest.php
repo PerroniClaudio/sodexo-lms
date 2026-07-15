@@ -3,10 +3,7 @@
 use App\Models\Course;
 use App\Models\Module;
 use App\Models\ScormPackage;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-
-uses(RefreshDatabase::class);
 
 it('uploads a valid SCORM package from the admin area', function () {
     Storage::fake('local');

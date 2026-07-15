@@ -47,8 +47,8 @@ class UserImportService
         'job_category' => ['categoria_di_lavoro'],
         'job_level' => ['livello_di_inquadramento'],
         'job_role' => ['ruolo'],
-        'job_task_code' => ['mansione_codice', 'mansione', 'mansione_codice_o_id_separa_con'],
-        'job_unit_code' => ['unita_lavorativa_codice', 'unita_lavorativa'],
+        'job_task_code' => ['mansione_nome_separa_con', 'mansione_nome', 'mansione'],
+        'job_unit_code' => ['unita_lavorativa_nome', 'unita_lavorativa'],
         'is_foreigner' => ['straniero'],
         'employment_start_date' => ['data_di_assunzione'],
         'employment_end_date' => ['data_di_cessazione'],
@@ -113,14 +113,15 @@ class UserImportService
     {
         $rows = $this->rowsFromSpreadsheet($localFilePath);
         $seenFiscalCodes = [];
+        $requiresProfileCompletion = $importazione->import_type === Importazione::TYPE_USERS_QUICK;
 
-        DB::transaction(function () use ($rows, &$seenFiscalCodes): void {
+        DB::transaction(function () use ($rows, &$seenFiscalCodes, $requiresProfileCompletion): void {
             foreach ($rows as $rowNumber => $row) {
                 if ($this->rowIsEmpty($row)) {
                     continue;
                 }
 
-                $payload = $this->buildUserPayload($row, $rowNumber);
+                $payload = $this->buildUserPayload($row, $rowNumber, $requiresProfileCompletion);
 
                 if (isset($seenFiscalCodes[$payload['fiscal_code']])) {
                     $this->fail($rowNumber, __('codice fiscale duplicato nel file.'));
@@ -128,7 +129,7 @@ class UserImportService
 
                 $seenFiscalCodes[$payload['fiscal_code']] = true;
 
-                $this->upsertUser($payload, $rowNumber);
+                $this->upsertUser($payload, $rowNumber, $requiresProfileCompletion);
             }
         });
     }
@@ -203,7 +204,7 @@ class UserImportService
      * @param  array<string, string|null>  $row
      * @return array<string, mixed>
      */
-    private function buildUserPayload(array $row, int $rowNumber): array
+    private function buildUserPayload(array $row, int $rowNumber, bool $isQuickImport = false): array
     {
         $roles = $this->resolveRoles($row['account_types'] ?? null, $rowNumber);
         $isWorker = in_array('user', $roles, true);
@@ -235,7 +236,7 @@ class UserImportService
             'employment_start_date' => $this->parseDate($row['employment_start_date'] ?? null, $rowNumber, 'data di assunzione', $isWorker),
             'employment_end_date' => $this->parseDate($row['employment_end_date'] ?? null, $rowNumber, 'data di cessazione'),
             'is_foreigner_or_immigrant' => $this->parseBoolean($row['is_foreigner'] ?? null, $rowNumber, 'straniero', $isWorker) ?? false,
-            'declared_language_level_id' => $this->resolveLookupId($this->languageLevels(), $row['language_level'] ?? null, $rowNumber, 'livello conoscenza lingua di lavoro', $isWorker),
+            'declared_language_level_id' => $this->resolveLookupId($this->languageLevels(), $row['language_level'] ?? null, $rowNumber, 'livello conoscenza lingua di lavoro', $isWorker && ! $isQuickImport),
         ];
 
         $jobTaskIds = $this->resolveLookupIds($this->jobTasks(), $row['job_task_code'] ?? null, $rowNumber, 'mansione', $isWorker);
@@ -260,7 +261,7 @@ class UserImportService
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function upsertUser(array $payload, int $rowNumber): void
+    private function upsertUser(array $payload, int $rowNumber, bool $requiresProfileCompletion): void
     {
         $roles = $payload['roles'];
         $isWorker = in_array('user', $roles, true);
@@ -290,6 +291,11 @@ class UserImportService
             if (! $isWorker) {
                 $userData['account_state'] = UserStatus::ACTIVE;
                 $userData['profile_completed_at'] = $existingUser->profile_completed_at ?? now();
+            }
+
+            if ($isWorker && $requiresProfileCompletion) {
+                $userData['account_state'] = UserStatus::ONBOARDING;
+                $userData['profile_completed_at'] = null;
             }
 
             $existingUser->fill($userData);
@@ -623,23 +629,7 @@ class UserImportService
      */
     private function jobTasks(): array
     {
-        if ($this->jobTasks !== null) {
-            return $this->jobTasks;
-        }
-
-        $lookup = [];
-
-        foreach (JobTask::query()->get(['id', 'code']) as $jobTask) {
-            $lookup[(string) $jobTask->getKey()] = $jobTask->getKey();
-
-            $code = $this->nullableString($jobTask->code);
-
-            if ($code !== null) {
-                $lookup[$this->normalizeKey($code)] = $jobTask->getKey();
-            }
-        }
-
-        return $this->jobTasks = $lookup;
+        return $this->jobTasks ??= $this->nameLookup(JobTask::query()->get(['id', 'name'])->all());
     }
 
     /**
@@ -647,10 +637,7 @@ class UserImportService
      */
     private function jobUnits(): array
     {
-        return $this->jobUnits ??= collect(JobUnit::query()->get(['id', 'unit_code']))
-            ->filter(fn (JobUnit $jobUnit): bool => $this->nullableString($jobUnit->unit_code) !== null)
-            ->mapWithKeys(fn (JobUnit $jobUnit): array => [$this->normalizeKey((string) $jobUnit->unit_code) => $jobUnit->getKey()])
-            ->all();
+        return $this->jobUnits ??= $this->nameLookup(JobUnit::query()->get(['id', 'name'])->all());
     }
 
     /**

@@ -10,11 +10,8 @@ use App\Models\RiskBasedRequirement;
 use App\Models\User;
 use App\Models\UserCertificate;
 use App\Services\CourseRiskRequirementService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-
-uses(RefreshDatabase::class);
 
 function makeTestUser(): User
 {

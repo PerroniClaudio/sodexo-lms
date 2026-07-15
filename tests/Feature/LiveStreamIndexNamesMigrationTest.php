@@ -1,9 +1,6 @@
 <?php
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
-
-uses(RefreshDatabase::class);
 
 test('live stream migrations define mysql safe index names', function () {
     $participantIndexes = collect(Schema::getIndexes('live_stream_participants'))->pluck('name');

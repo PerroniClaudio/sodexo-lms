@@ -5,9 +5,6 @@ use App\Enums\InclusionType;
 use App\Enums\RiskLevel;
 use App\Models\JobSector;
 use App\Models\NaceAteco;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 test('nace ateco can be created with all required fields', function () {
     $naceAteco = NaceAteco::create([

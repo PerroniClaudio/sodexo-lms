@@ -6,13 +6,10 @@ use App\Models\Module;
 use App\Models\ModuleQuizQuestion;
 use App\Models\User;
 use Illuminate\Auth\Middleware\Authenticate;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\LaravelPdf\Facades\Pdf;
 use Spatie\LaravelPdf\PdfBuilder;
 use Spatie\Permission\Middleware\RoleMiddleware;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->withoutMiddleware([

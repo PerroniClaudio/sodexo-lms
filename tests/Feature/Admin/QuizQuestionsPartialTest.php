@@ -4,9 +4,6 @@ use App\Models\Course;
 use App\Models\Module;
 use App\Models\ModuleQuizAnswer;
 use App\Models\ModuleQuizQuestion;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 it('renders quiz question update and delete forms without nesting forms', function () {
     $course = Course::factory()->create([

@@ -3,10 +3,7 @@
 use App\Enums\RiskLevel;
 use App\Http\Requests\StoreJobUnitRequest;
 use App\Models\RiskBasedRequirement;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Validator;
-
-uses(RefreshDatabase::class);
 
 test('admin can create a risk based requirement without limited validity', function () {
     actingAsRole('admin');

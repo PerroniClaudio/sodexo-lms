@@ -1,9 +1,6 @@
 <?php
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
-
-uses(RefreshDatabase::class);
 
 test('online quiz submission migration may run on an already adapted schema', function () {
     $migration = include base_path('database/migrations/2026_05_08_111407_adapt_module_quiz_submissions_for_online_quizzes.php');

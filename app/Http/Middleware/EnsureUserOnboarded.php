@@ -32,7 +32,7 @@ class EnsureUserOnboarded
         }
 
         // Se l'utente ha bisogno di onboarding e non è già sulla route di onboarding
-        if ($user->needsOnboarding() && ! $request->routeIs('onboarding.profile.*')) {
+        if (($user->needsOnboarding() || ($user->hasRole('user') && ! $user->hasCompletedProfile())) && ! $request->routeIs('onboarding.profile.*')) {
             return redirect()->route('onboarding.profile.show');
         }
 

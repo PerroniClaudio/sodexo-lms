@@ -9,10 +9,7 @@ use App\Models\User;
 use App\Services\Certificates\CertificateEligibilityService;
 use App\Services\Certificates\CertificateVariableResolver;
 use App\Services\Certificates\CustomCertificateResolver;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
-
-uses(RefreshDatabase::class);
 
 it('resolves a course-specific template before the generic fallback', function () {
     $course = Course::factory()->create();

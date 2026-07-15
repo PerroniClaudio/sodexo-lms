@@ -3,10 +3,7 @@
 use App\Models\Course;
 use App\Models\Module;
 use Illuminate\Auth\Middleware\Authenticate;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Middleware\RoleMiddleware;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->withoutMiddleware([

@@ -4,9 +4,6 @@ use App\Models\Course;
 use App\Models\Module;
 use App\Models\ModuleTutorEnrollment;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     actingAsRole('admin');

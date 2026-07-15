@@ -1,9 +1,6 @@
 <?php
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
-
-uses(RefreshDatabase::class);
 
 test('live stream tables define the session foreign keys after migrations', function () {
     $handRaisesForeignKeys = collect(Schema::getForeignKeys('live_stream_hand_raises'))

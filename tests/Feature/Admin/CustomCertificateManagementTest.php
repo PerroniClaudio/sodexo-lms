@@ -5,12 +5,9 @@ use App\Models\Course;
 use App\Models\CustomCertificate;
 use App\Models\DocumentConversionJob;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
-
-uses(RefreshDatabase::class);
 
 it('allows admins to access the certificates index', function () {
     actingAsRole('admin');

@@ -14,6 +14,8 @@ class RoleAndPermissionSeeder extends Seeder
      */
     public function run(): void
     {
+        $guardName = 'web';
+
         // Reset cached roles and permissions
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
@@ -65,15 +67,15 @@ class RoleAndPermissionSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::create(['name' => $permission]);
+            Permission::findOrCreate($permission, $guardName);
         }
 
         // Creazione dei ruoli
-        $superadmin = Role::create(['name' => 'superadmin']);
-        $superadmin->givePermissionTo(Permission::all());
+        $superadmin = Role::findOrCreate('superadmin', $guardName);
+        $superadmin->syncPermissions(Permission::query()->where('guard_name', $guardName)->get());
 
-        $admin = Role::create(['name' => 'admin']);
-        $admin->givePermissionTo([
+        $admin = Role::findOrCreate('admin', $guardName);
+        $admin->syncPermissions([
             'view users', 'create users', 'edit users', 'import users',
             'view courses', 'create courses', 'edit courses', 'duplicate courses', 'manage course content',
             'view modules', 'create modules', 'edit modules',
@@ -83,8 +85,8 @@ class RoleAndPermissionSeeder extends Seeder
             'manage job data',
         ]);
 
-        $teacher = Role::create(['name' => 'teacher']);
-        $teacher->givePermissionTo([
+        $teacher = Role::findOrCreate('teacher', $guardName);
+        $teacher->syncPermissions([
             'view courses',
             'view modules',
             'view documents', 'upload documents',
@@ -92,8 +94,8 @@ class RoleAndPermissionSeeder extends Seeder
             'view reports',
         ]);
 
-        $tutor = Role::create(['name' => 'tutor']);
-        $tutor->givePermissionTo([
+        $tutor = Role::findOrCreate('tutor', $guardName);
+        $tutor->syncPermissions([
             'view courses',
             'view modules',
             'view documents',
@@ -101,10 +103,12 @@ class RoleAndPermissionSeeder extends Seeder
             'view reports',
         ]);
 
-        $user = Role::create(['name' => 'user']);
-        $user->givePermissionTo([
+        $user = Role::findOrCreate('user', $guardName);
+        $user->syncPermissions([
             'view courses',
             'view modules',
         ]);
+
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
     }
 }

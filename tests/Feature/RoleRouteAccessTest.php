@@ -5,9 +5,6 @@ use App\Models\CourseEnrollment;
 use App\Models\Module;
 use App\Models\ModuleTeacherEnrollment;
 use App\Models\ModuleTutorEnrollment;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 function liveStreamModule(): Module
 {

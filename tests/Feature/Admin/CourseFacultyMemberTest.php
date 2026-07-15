@@ -3,10 +3,7 @@
 use App\Models\Course;
 use App\Models\CourseFacultyMember;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     actingAsRole('admin');

@@ -7,11 +7,8 @@ use App\Models\JobTask;
 use App\Models\JobUnit;
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->withoutVite();

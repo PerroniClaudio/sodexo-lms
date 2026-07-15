@@ -9,9 +9,6 @@ use App\Models\Module;
 use App\Models\ModuleTeacherEnrollment;
 use App\Models\ModuleTutorEnrollment;
 use Database\Seeders\RoleAndPermissionSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 test('live stream player route renders module data for the requested live module', function () {
     JobUnit::query()->create(['name' => 'Sede test']);

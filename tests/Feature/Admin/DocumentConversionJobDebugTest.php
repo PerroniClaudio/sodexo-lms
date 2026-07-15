@@ -2,10 +2,7 @@
 
 use App\Enums\DocumentConversionJobStatus;
 use App\Models\DocumentConversionJob;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-
-uses(RefreshDatabase::class);
 
 it('allows superadmins to monitor document conversion jobs', function () {
     actingAsRole('superadmin');

@@ -5,10 +5,7 @@ use App\Models\User;
 use Database\Seeders\MultiRoleUserSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Database\Seeders\TestUserSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
-
-uses(RefreshDatabase::class);
 
 test('it creates one test user for each configured role', function () {
     $this->seed([

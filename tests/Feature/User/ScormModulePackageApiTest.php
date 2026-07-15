@@ -6,10 +6,7 @@ use App\Models\Module;
 use App\Models\User;
 use App\Services\ScormService;
 use Database\Seeders\RoleAndPermissionSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-
-uses(RefreshDatabase::class);
 
 function createScormLearnerContext(): array
 {
