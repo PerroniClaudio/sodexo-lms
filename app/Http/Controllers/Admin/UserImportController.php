@@ -69,6 +69,7 @@ class UserImportController extends Controller
         'Cognome',
         'Tipo di account',
         'Genere',
+        'Nazionalità',
         'Settore',
         'Ruolo',
         'Mansione (nome; separa con ;)',
@@ -218,6 +219,7 @@ class UserImportController extends Controller
             'Rossi',
             'User',
             'M',
+            'IT',
             $exampleData['job_sector'],
             $exampleData['job_role'],
             $exampleData['job_task_codes']->take(2)->implode(';'),
@@ -228,22 +230,26 @@ class UserImportController extends Controller
 
         $lookupSheet = $spreadsheet->createSheet();
         $lookupSheet->setTitle('Valori disponibili');
-        $lookupSheet->fromArray([['Settore', 'Ruolo', 'Mansione (nome)', 'Unità lavorativa (nome)']]);
+        $lookupSheet->fromArray([['Nazionalità', 'Settore', 'Ruolo', 'Mansione (nome)', 'Unità lavorativa (nome)', 'Straniero']]);
 
-        $lookupRows = max(1, $exampleData['job_sectors']->count(), $exampleData['job_roles']->count(), $exampleData['job_tasks']->count(), $exampleData['job_units']->count());
+        $lookupRows = max(1, $exampleData['countries']->count(), $exampleData['job_sectors']->count(), $exampleData['job_roles']->count(), $exampleData['job_tasks']->count(), $exampleData['job_units']->count(), $exampleData['foreigner_values']->count());
 
         for ($index = 0; $index < $lookupRows; $index++) {
             $lookupSheet->fromArray([[
+                $exampleData['countries']->get($index),
                 $exampleData['job_sectors']->get($index),
                 $exampleData['job_roles']->get($index),
                 $exampleData['job_tasks']->get($index),
                 $exampleData['job_units']->get($index),
+                $exampleData['foreigner_values']->get($index),
             ]], null, 'A'.($index + 2));
         }
 
-        $this->addListValidation($sheet, 'F', "'Valori disponibili'!\$A\$2:\$A\$".($exampleData['job_sectors']->count() + 1));
-        $this->addListValidation($sheet, 'G', "'Valori disponibili'!\$B\$2:\$B\$".($exampleData['job_roles']->count() + 1));
-        $this->addListValidation($sheet, 'I', "'Valori disponibili'!\$D\$2:\$D\$".($exampleData['job_units']->count() + 1));
+        $this->addListValidation($sheet, 'F', "'Valori disponibili'!\$A\$2:\$A\$".($exampleData['countries']->count() + 1));
+        $this->addListValidation($sheet, 'G', "'Valori disponibili'!\$B\$2:\$B\$".($exampleData['job_sectors']->count() + 1));
+        $this->addListValidation($sheet, 'H', "'Valori disponibili'!\$C\$2:\$C\$".($exampleData['job_roles']->count() + 1));
+        $this->addListValidation($sheet, 'J', "'Valori disponibili'!\$E\$2:\$E\$".($exampleData['job_units']->count() + 1));
+        $this->addListValidation($sheet, 'K', "'Valori disponibili'!\$F\$2:\$F\$".($exampleData['foreigner_values']->count() + 1));
 
         return $this->downloadSpreadsheet($spreadsheet, 'template-import-utenti-rapido.xlsx');
     }

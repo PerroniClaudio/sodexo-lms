@@ -47,6 +47,7 @@
                         'admin.video-reports.*',
                         'admin.user-accesses.*',
                         'admin.audit-events.*',
+                        'admin.reports.registry-anomalies.*',
                     ];
 
                     $registryMenuPatterns = [
@@ -220,6 +221,15 @@
                                             </a>
                                         </li>
                                     @endif
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.reports.registry-anomalies.download') }}"
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.reports.registry-anomalies.*'])])
+                                        >
+                                            <x-lucide-file-warning class="mr-2 inline-block h-5 w-5" />
+                                            {{ __('Anomalie Anagrafica') }}
+                                        </a>
+                                    </li>
                                     <li>
                                         <a
                                             href="{{ route('admin.user-accesses.index') }}"

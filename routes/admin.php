@@ -41,6 +41,7 @@ use App\Http\Controllers\Admin\ModuleTeachingMaterialController;
 use App\Http\Controllers\Admin\NaceAtecoController;
 use App\Http\Controllers\Admin\PartnerController;
 use App\Http\Controllers\Admin\RegiaController;
+use App\Http\Controllers\Admin\RegistryAnomaliesReportController;
 use App\Http\Controllers\Admin\RiskBasedRequirementController;
 use App\Http\Controllers\Admin\SatisfactionSurveyController;
 use App\Http\Controllers\Admin\ScormPackageController;
@@ -68,6 +69,7 @@ Route::middleware(['auth', 'active.role:admin|superadmin', 'active.company_divis
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/dashboard/calendar-events', [DashboardController::class, 'calendarEvents'])->name('dashboard.calendar-events');
         Route::get('/dashboard/follow-up-users/export', [DashboardController::class, 'exportFollowUpUsers'])->name('dashboard.follow-up-users.export');
+        Route::get('/reports/registry-anomalies', [RegistryAnomaliesReportController::class, 'download'])->name('reports.registry-anomalies.download');
         Route::get('/imports/users', [UserImportController::class, 'index'])->name('imports.users');
         Route::get('/imports/users/template', [UserImportController::class, 'downloadTemplate'])->name('imports.users.template');
         Route::get('/imports/users/status-card', [UserImportController::class, 'statusCard'])->name('imports.users.status-card');

@@ -64,13 +64,14 @@ it('queues a quick user import from excel upload', function () {
 
     $response = $this->post(route('admin.imports.users.quick.store'), [
         'file' => userImportFile([
-            ['RSSMRA80A01H501Z', 'Mario', 'Rossi', 'User', 'M', 'Scuole', 'Operatore', 'Mansione uno', 'Unità uno', 'NO', '01/01/2024'],
+            ['RSSMRA80A01H501Z', 'Mario', 'Rossi', 'User', 'M', 'IT', 'Scuole', 'Operatore', 'Mansione uno', 'Unità uno', 'NO', '01/01/2024'],
         ], [
             'Codice fiscale',
             'Nome',
             'Cognome',
             'Tipo di account',
             'Genere',
+            'Nazionalità',
             'Settore',
             'Ruolo',
             'Mansione (nome; separa con ;)',
@@ -106,13 +107,14 @@ it('requires profile completion when a quick import updates a worker', function 
 
     Storage::disk('s3')->put('imports/users/quick-users.xlsx', file_get_contents(
         userImportFile([
-            ['RSSMRA80A01H501Z', 'Mario', 'Rossi', 'User', 'M', 'Scuole', 'Operatore', 'Mansione uno', 'Unità uno', 'NO', '01/01/2024'],
+            ['RSSMRA80A01H501Z', 'Mario', 'Rossi', 'User', 'M', 'IT', 'Scuole', 'Operatore', 'Mansione uno', 'Unità uno', 'NO', '01/01/2024'],
         ], [
             'Codice fiscale',
             'Nome',
             'Cognome',
             'Tipo di account',
             'Genere',
+            'Nazionalità',
             'Settore',
             'Ruolo',
             'Mansione (nome; separa con ;)',
@@ -210,12 +212,10 @@ it('downloads quick user import template', function () {
     $lookupSheet = $spreadsheet->getSheetByName('Valori disponibili');
 
     expect($importSheet?->getCell('A1')->getValue())->toBe('Codice fiscale')
-        ->and($importSheet?->getCell('K1')->getValue())->toBe('Data di assunzione')
-        ->and($lookupSheet?->getCell('C1')->getValue())->toBe('Mansione (nome)')
+        ->and($importSheet?->getCell('L1')->getValue())->toBe('Data di assunzione')
+        ->and($lookupSheet?->getCell('D1')->getValue())->toBe('Mansione (nome)')
         ->and($lookupSheet?->getHighestRow())->toBeGreaterThan(1)
-        ->and($importSheet?->getCell('F2')->getDataValidation()->getFormula1())->toContain("'Valori disponibili'!\$A\$2:\$A\$")
-        ->and($importSheet?->getCell('G2')->getDataValidation()->getFormula1())->toContain("'Valori disponibili'!\$B\$2:\$B\$")
-        ->and($importSheet?->getCell('I2')->getDataValidation()->getFormula1())->toContain("'Valori disponibili'!\$D\$2:\$D\$");
+        ->and($importSheet?->getCell('K2')->getDataValidation()->getFormula1())->toContain("'Valori disponibili'!\$F\$2:\$F\$");
 
     $spreadsheet->disconnectWorksheets();
     @unlink($temporaryFile);
