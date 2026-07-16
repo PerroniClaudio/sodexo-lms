@@ -117,7 +117,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = `join-item btn ${active ? 'btn-active' : ''}`;
-            button.textContent = label;
+            if (label === 'Precedente' || label === 'Successiva') {
+                button.setAttribute('aria-label', label);
+                button.innerHTML = label === 'Precedente'
+                    ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>'
+                    : '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>';
+            } else {
+                button.textContent = label;
+            }
 
             if (disabled) {
                 button.classList.add('btn-disabled', 'pointer-events-none');
@@ -135,9 +142,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
         pagination.appendChild(createButton('Precedente', Math.max(meta.current_page - 1, 1), false, meta.current_page <= 1));
 
-        for (let pageNumber = 1; pageNumber <= meta.last_page; pageNumber += 1) {
+        const pages = meta.last_page > 6
+            ? [1, 2, 3, null, meta.last_page - 2, meta.last_page - 1, meta.last_page]
+            : Array.from({ length: meta.last_page }, (_, index) => index + 1);
+
+        pages.forEach((pageNumber) => {
+            if (pageNumber === null) {
+                const jumpButton = document.createElement('button');
+                jumpButton.type = 'button';
+                jumpButton.className = 'join-item btn';
+                jumpButton.textContent = '…';
+                jumpButton.addEventListener('click', () => {
+                    const requestedPage = Number(window.prompt('Vai alla pagina', String(meta.current_page)));
+
+                    if (Number.isInteger(requestedPage) && requestedPage >= 1 && requestedPage <= meta.last_page) {
+                        state.page = requestedPage;
+                        void loadDocumentTypes();
+                    }
+                });
+                pagination.appendChild(jumpButton);
+
+                return;
+            }
+
             pagination.appendChild(createButton(String(pageNumber), pageNumber, pageNumber === meta.current_page));
-        }
+        });
 
         pagination.appendChild(createButton('Successiva', Math.min(meta.current_page + 1, meta.last_page), false, meta.current_page >= meta.last_page));
     };

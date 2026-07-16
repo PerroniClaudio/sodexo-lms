@@ -7,6 +7,7 @@
     'searchPlaceholder' => __('Cerca'),
     'emptyMessage' => __('Nessun elemento disponibile.'),
     'showSearch' => true,
+    'compactPagination' => true,
 ])
 
 @php
@@ -128,34 +129,80 @@
                 <div class="join self-start lg:self-auto">
                     <a
                         href="{{ $rows->previousPageUrl() ?? '#' }}"
+                        aria-label="{{ __('Precedente') }}"
                         @class([
                             'join-item btn',
                             'btn-disabled pointer-events-none' => $rows->onFirstPage(),
                         ])
                     >
-                        {{ __('Precedente') }}
+                        <x-lucide-chevron-left class="h-4 w-4" aria-hidden="true" />
+                        <span class="sr-only">{{ __('Precedente') }}</span>
                     </a>
 
-                    @foreach ($rows->getUrlRange(1, $rows->lastPage()) as $page => $url)
-                        <a
-                            href="{{ $url }}"
-                            @class([
-                                'join-item btn',
-                                'btn-active' => $page === $rows->currentPage(),
-                            ])
-                        >
-                            {{ $page }}
-                        </a>
-                    @endforeach
+                    @if ($compactPagination && $rows->lastPage() > 6)
+                        @foreach (range(1, min(3, $rows->lastPage())) as $page)
+                            <a
+                                href="{{ $rows->url($page) }}"
+                                @class([
+                                    'join-item btn',
+                                    'btn-active' => $page === $rows->currentPage(),
+                                ])
+                            >
+                                {{ $page }}
+                            </a>
+                        @endforeach
+
+                        <details class="dropdown">
+                            <summary class="join-item btn" aria-label="{{ __('Vai alla pagina') }}">&hellip;</summary>
+                            <div class="dropdown-content z-10 mt-2 rounded-box bg-base-100 p-2 shadow">
+                                <form method="GET" action="{{ request()->url() }}" class="flex items-center gap-2">
+                                    @foreach (request()->query() as $key => $value)
+                                        @continue($key === 'page')
+                                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                                    @endforeach
+
+                                    <label class="sr-only" for="pagination-page">{{ __('Vai alla pagina') }}</label>
+                                    <input id="pagination-page" type="number" name="page" min="1" max="{{ $rows->lastPage() }}" value="{{ $rows->currentPage() }}" class="input input-bordered input-sm w-20" required>
+                                    <button type="submit" class="btn btn-primary btn-sm">{{ __('Vai') }}</button>
+                                </form>
+                            </div>
+                        </details>
+
+                        @foreach (range(max(4, $rows->lastPage() - 2), $rows->lastPage()) as $page)
+                            <a
+                                href="{{ $rows->url($page) }}"
+                                @class([
+                                    'join-item btn',
+                                    'btn-active' => $page === $rows->currentPage(),
+                                ])
+                            >
+                                {{ $page }}
+                            </a>
+                        @endforeach
+                    @else
+                        @foreach ($rows->getUrlRange(1, $rows->lastPage()) as $page => $url)
+                            <a
+                                href="{{ $url }}"
+                                @class([
+                                    'join-item btn',
+                                    'btn-active' => $page === $rows->currentPage(),
+                                ])
+                            >
+                                {{ $page }}
+                            </a>
+                        @endforeach
+                    @endif
 
                     <a
                         href="{{ $rows->nextPageUrl() ?? '#' }}"
+                        aria-label="{{ __('Successiva') }}"
                         @class([
                             'join-item btn',
                             'btn-disabled pointer-events-none' => ! $rows->hasMorePages(),
                         ])
                     >
-                        {{ __('Successiva') }}
+                        <x-lucide-chevron-right class="h-4 w-4" aria-hidden="true" />
+                        <span class="sr-only">{{ __('Successiva') }}</span>
                     </a>
                 </div>
             </div>

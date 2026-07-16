@@ -808,7 +808,32 @@ function initializeCertificatesTable(page) {
             return;
         }
 
-        for (let pageNumber = 1; pageNumber <= meta.last_page; pageNumber += 1) {
+        const pages = meta.last_page > 6
+            ? [1, 2, 3, null, meta.last_page - 2, meta.last_page - 1, meta.last_page]
+            : Array.from({ length: meta.last_page }, (_, index) => index + 1);
+
+        pages.forEach((pageNumber) => {
+            if (pageNumber === null) {
+                const jumpButton = cloneTemplateElement(page, '[data-certificate-pagination-button-template]');
+
+                if (!jumpButton) {
+                    return;
+                }
+
+                jumpButton.textContent = '…';
+                jumpButton.addEventListener('click', () => {
+                    const requestedPage = Number(window.prompt('Vai alla pagina', String(meta.current_page)));
+
+                    if (Number.isInteger(requestedPage) && requestedPage >= 1 && requestedPage <= meta.last_page) {
+                        state.page = requestedPage;
+                        void loadCertificates();
+                    }
+                });
+                pagination.appendChild(jumpButton);
+
+                return;
+            }
+
             const button = cloneTemplateElement(page, '[data-certificate-pagination-button-template]');
 
             if (!button) {
@@ -830,7 +855,7 @@ function initializeCertificatesTable(page) {
                 void loadCertificates();
             });
             pagination.appendChild(button);
-        }
+        });
     };
 
     const loadCertificates = async () => {
