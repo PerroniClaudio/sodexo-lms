@@ -17,6 +17,6 @@
             </section>
         </main>
 
-        <x-homepage.footer />
+        <x-homepage.footer :logo-url="$navbarLogoUrl" />
     </div>
 </x-layouts.app>

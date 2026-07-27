@@ -99,11 +99,15 @@ it('allows admins to upload the public homepage navigation logo', function () {
 
     Storage::disk()->assertExists($logoPath);
 
-    $this->get('/')
+    $response = $this->get('/');
+
+    $response
         ->assertOk()
         ->assertSee($logoPath, escape: false)
         ->assertSee('?expiration=', escape: false)
         ->assertSee('alt="Logo"', escape: false);
+
+    expect(substr_count($response->getContent(), $logoPath))->toBe(2);
 });
 
 it('allows admins to customize the public homepage hero', function () {
