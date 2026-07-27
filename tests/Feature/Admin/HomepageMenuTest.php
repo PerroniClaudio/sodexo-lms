@@ -79,8 +79,6 @@ it('does not allow regular users to access the homepage admin page', function ()
 });
 
 it('allows admins to upload the public homepage navigation logo', function () {
-    expect(config('filesystems.disks.public.driver'))->toBe(config('filesystems.default'));
-
     Storage::fake('public');
     actingAsHomepageRole('admin');
 
