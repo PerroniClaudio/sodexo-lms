@@ -837,7 +837,7 @@ function initializeCertificatesTable(page) {
             const button = cloneTemplateElement(page, '[data-certificate-pagination-button-template]');
 
             if (!button) {
-                continue;
+                return;
             }
 
             button.textContent = String(pageNumber);
