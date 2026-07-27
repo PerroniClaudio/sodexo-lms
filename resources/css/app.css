@@ -13,6 +13,54 @@
 }
 
 @layer components {
+    .homepage-wysiwyg .tiptap > * + * {
+        @apply mt-3;
+    }
+
+    .homepage-wysiwyg .tiptap h1 {
+        @apply text-3xl font-extrabold leading-tight;
+    }
+
+    .homepage-wysiwyg .tiptap h2 {
+        @apply text-2xl font-bold leading-tight;
+    }
+
+    .homepage-wysiwyg .tiptap h3 {
+        @apply text-xl font-semibold leading-snug;
+    }
+
+    .homepage-wysiwyg .tiptap ul {
+        @apply list-disc pl-6;
+    }
+
+    .homepage-wysiwyg .tiptap ol {
+        @apply list-decimal pl-6;
+    }
+
+    .homepage-wysiwyg .tiptap li + li {
+        @apply mt-1;
+    }
+
+    .homepage-wysiwyg .tiptap blockquote {
+        @apply border-l-4 border-primary/40 pl-4 italic;
+    }
+
+    .homepage-wysiwyg .tiptap pre {
+        @apply overflow-x-auto rounded-box bg-base-300 p-4;
+    }
+
+    .homepage-wysiwyg .tiptap code {
+        @apply rounded bg-base-300 px-1.5 py-0.5;
+    }
+
+    .homepage-wysiwyg .tiptap a {
+        @apply text-primary underline;
+    }
+
+    .homepage-wysiwyg .tiptap hr {
+        @apply my-4 border-t border-base-300;
+    }
+
     .admin-sidenav > li > a.menu-active,
     .admin-sidenav > li > details > summary.menu-active,
     .admin-sidenav > li > details > ul > li > details > summary.menu-active {

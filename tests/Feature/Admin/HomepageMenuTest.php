@@ -57,6 +57,7 @@ it('shows the homepage menu item to admins', function () {
     $response->assertSee('<input type="checkbox" data-homepage-card-toggle="services">', escape: false);
     $response->assertSee('<input type="checkbox" data-homepage-card-toggle="about">', escape: false);
     $response->assertDontSee('checked data-homepage-card-toggle', escape: false);
+    expect(substr_count($response->getContent(), 'homepage-wysiwyg'))->toBe(4);
 });
 
 it('shows the homepage menu item to superadmins', function () {

@@ -175,7 +175,7 @@
                                 <div
                                     data-tiptap-editor
                                     data-target="hero-content"
-                                    class="min-h-52 rounded-b-box border border-base-300 bg-base-100 p-4 focus-within:border-primary"
+                                    class="homepage-wysiwyg min-h-52 rounded-b-box border border-base-300 bg-base-100 p-4 focus-within:border-primary"
                                 ></div>
                                 @error('content')
                                     <p class="mt-2 text-sm text-error">{{ $message }}</p>
@@ -327,7 +327,7 @@
                                 <button type="button" class="btn btn-xs btn-ghost btn-square" data-command="align" data-align="right" aria-label="{{ __('Allinea a destra') }}" title="{{ __('Allinea a destra') }}"><x-lucide-align-right class="h-4 w-4" /></button>
                                 <button type="button" class="btn btn-xs btn-ghost btn-square" data-command="horizontalRule" aria-label="{{ __('Separatore') }}" title="{{ __('Separatore') }}"><x-lucide-minus class="h-4 w-4" /></button>
                             </div>
-                            <div data-tiptap-editor data-target="services-left-content" class="min-h-52 rounded-b-box border border-base-300 bg-base-100 p-4 focus-within:border-primary"></div>
+                            <div data-tiptap-editor data-target="services-left-content" class="homepage-wysiwyg min-h-52 rounded-b-box border border-base-300 bg-base-100 p-4 focus-within:border-primary"></div>
                             @error('left_content_html')
                                 <p class="mt-2 text-sm text-error">{{ $message }}</p>
                             @enderror
@@ -363,7 +363,7 @@
                                 <button type="button" class="btn btn-xs btn-ghost btn-square" data-command="align" data-align="right" aria-label="{{ __('Allinea a destra') }}" title="{{ __('Allinea a destra') }}"><x-lucide-align-right class="h-4 w-4" /></button>
                                 <button type="button" class="btn btn-xs btn-ghost btn-square" data-command="horizontalRule" aria-label="{{ __('Separatore') }}" title="{{ __('Separatore') }}"><x-lucide-minus class="h-4 w-4" /></button>
                             </div>
-                            <div data-tiptap-editor data-target="services-overlay-content" class="min-h-52 rounded-b-box border border-base-300 bg-base-100 p-4 focus-within:border-primary"></div>
+                            <div data-tiptap-editor data-target="services-overlay-content" class="homepage-wysiwyg min-h-52 rounded-b-box border border-base-300 bg-base-100 p-4 focus-within:border-primary"></div>
                             <p class="mt-2 text-xs text-base-content/60">{{ __('L\'overlay viene mostrato solo se questo contenuto non è vuoto.') }}</p>
                             @error('overlay_content_html')
                                 <p class="mt-2 text-sm text-error">{{ $message }}</p>
@@ -501,7 +501,7 @@
                                 <button type="button" class="btn btn-xs btn-ghost btn-square" data-command="align" data-align="right" aria-label="{{ __('Allinea a destra') }}" title="{{ __('Allinea a destra') }}"><x-lucide-align-right class="h-4 w-4" /></button>
                                 <button type="button" class="btn btn-xs btn-ghost btn-square" data-command="horizontalRule" aria-label="{{ __('Separatore') }}" title="{{ __('Separatore') }}"><x-lucide-minus class="h-4 w-4" /></button>
                             </div>
-                            <div data-tiptap-editor data-target="about-content" class="min-h-52 rounded-b-box border border-base-300 bg-base-100 p-4 focus-within:border-primary"></div>
+                            <div data-tiptap-editor data-target="about-content" class="homepage-wysiwyg min-h-52 rounded-b-box border border-base-300 bg-base-100 p-4 focus-within:border-primary"></div>
                             @error('content_html')
                                 <p class="mt-2 text-sm text-error">{{ $message }}</p>
                             @enderror
