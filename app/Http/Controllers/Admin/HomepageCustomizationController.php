@@ -24,9 +24,9 @@ class HomepageCustomizationController extends Controller
 
         return view('admin.homepage.index', [
             'logoPath' => $logoPath,
-            'logoUrl' => $logoPath ? Storage::disk('public')->url($logoPath) : null,
+            'logoUrl' => $logoPath ? Storage::url($logoPath) : null,
             'heroBackgroundImagePath' => $heroBackgroundImagePath,
-            'heroBackgroundImageUrl' => $heroBackgroundImagePath ? Storage::disk('public')->url($heroBackgroundImagePath) : null,
+            'heroBackgroundImageUrl' => $heroBackgroundImagePath ? Storage::url($heroBackgroundImagePath) : null,
             'heroContent' => HomepageSetting::value('hero_content', $this->defaultHeroContent()),
             'heroButtonEnabled' => HomepageSetting::value('hero_button_enabled', '1') === '1',
             'heroButtonColor' => HomepageSetting::value('hero_button_color', 'secondary'),
@@ -34,7 +34,7 @@ class HomepageCustomizationController extends Controller
             'heroButtonUrl' => HomepageSetting::value('hero_button_url', '#'),
             'servicesLabel' => HomepageSetting::value('services_label', 'Servizi'),
             'servicesVisualImagePath' => $servicesVisualImagePath,
-            'servicesVisualImageUrl' => $servicesVisualImagePath ? Storage::disk('public')->url($servicesVisualImagePath) : null,
+            'servicesVisualImageUrl' => $servicesVisualImagePath ? Storage::url($servicesVisualImagePath) : null,
             'servicesLeftContentHtml' => HomepageSetting::value('services_left_content_html', $this->defaultServicesLeftContent()),
             'servicesOverlayContentHtml' => HomepageSetting::value('services_overlay_content_html'),
             'servicesButtonEnabled' => HomepageSetting::value('services_button_enabled', '1') === '1',
@@ -42,7 +42,7 @@ class HomepageCustomizationController extends Controller
             'servicesButtonText' => HomepageSetting::value('services_button_text', 'Esplora il nostro catalogo'),
             'servicesButtonUrl' => HomepageSetting::value('services_button_url', '#catalogo'),
             'aboutVisualImagePath' => $aboutVisualImagePath,
-            'aboutVisualImageUrl' => $aboutVisualImagePath ? Storage::disk('public')->url($aboutVisualImagePath) : null,
+            'aboutVisualImageUrl' => $aboutVisualImagePath ? Storage::url($aboutVisualImagePath) : null,
             'aboutContentHtml' => HomepageSetting::value('about_content_html', $this->defaultAboutContent()),
             'aboutButtonEnabled' => HomepageSetting::value('about_button_enabled', '1') === '1',
             'aboutButtonColor' => HomepageSetting::value('about_button_color', 'primary'),
@@ -79,12 +79,12 @@ class HomepageCustomizationController extends Controller
     {
         $currentLogoPath = HomepageSetting::value('navbar_logo_path');
 
-        $logoPath = $request->file('logo')->store('homepage/navigation', 'public');
+        $logoPath = $request->file('logo')->store('homepage/navigation');
 
         HomepageSetting::put('navbar_logo_path', $logoPath);
 
         if ($currentLogoPath !== null && $currentLogoPath !== $logoPath) {
-            Storage::disk('public')->delete($currentLogoPath);
+            Storage::delete($currentLogoPath);
         }
 
         return redirect()
@@ -97,11 +97,11 @@ class HomepageCustomizationController extends Controller
         $currentBackgroundImagePath = HomepageSetting::value('hero_background_image_path');
 
         if ($request->hasFile('background_image')) {
-            $backgroundImagePath = $request->file('background_image')->store('homepage/hero', 'public');
+            $backgroundImagePath = $request->file('background_image')->store('homepage/hero');
             HomepageSetting::put('hero_background_image_path', $backgroundImagePath);
 
             if ($currentBackgroundImagePath !== null && $currentBackgroundImagePath !== $backgroundImagePath) {
-                Storage::disk('public')->delete($currentBackgroundImagePath);
+                Storage::delete($currentBackgroundImagePath);
             }
         }
 
@@ -121,11 +121,11 @@ class HomepageCustomizationController extends Controller
         $currentVisualImagePath = HomepageSetting::value('services_visual_image_path');
 
         if ($request->hasFile('visual_image')) {
-            $visualImagePath = $request->file('visual_image')->store('homepage/services', 'public');
+            $visualImagePath = $request->file('visual_image')->store('homepage/services');
             HomepageSetting::put('services_visual_image_path', $visualImagePath);
 
             if ($currentVisualImagePath !== null && $currentVisualImagePath !== $visualImagePath) {
-                Storage::disk('public')->delete($currentVisualImagePath);
+                Storage::delete($currentVisualImagePath);
             }
         }
 
@@ -147,11 +147,11 @@ class HomepageCustomizationController extends Controller
         $currentVisualImagePath = HomepageSetting::value('about_visual_image_path');
 
         if ($request->hasFile('visual_image')) {
-            $visualImagePath = $request->file('visual_image')->store('homepage/about', 'public');
+            $visualImagePath = $request->file('visual_image')->store('homepage/about');
             HomepageSetting::put('about_visual_image_path', $visualImagePath);
 
             if ($currentVisualImagePath !== null && $currentVisualImagePath !== $visualImagePath) {
-                Storage::disk('public')->delete($currentVisualImagePath);
+                Storage::delete($currentVisualImagePath);
             }
         }
 

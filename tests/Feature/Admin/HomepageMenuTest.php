@@ -79,7 +79,8 @@ it('does not allow regular users to access the homepage admin page', function ()
 });
 
 it('allows admins to upload the public homepage navigation logo', function () {
-    Storage::fake('public');
+    config(['filesystems.default' => 's3']);
+    Storage::fake();
     actingAsHomepageRole('admin');
 
     $logo = UploadedFile::fake()->create('logo.png', 24, 'image/png');
@@ -95,16 +96,16 @@ it('allows admins to upload the public homepage navigation logo', function () {
     expect($logoPath)->toBeString()
         ->and($logoPath)->toStartWith('homepage/navigation/');
 
-    Storage::disk('public')->assertExists($logoPath);
+    Storage::disk()->assertExists($logoPath);
 
     $this->get('/')
         ->assertOk()
-        ->assertSee(Storage::disk('public')->url($logoPath), escape: false)
+        ->assertSee(Storage::disk()->url($logoPath), escape: false)
         ->assertSee('alt="Logo"', escape: false);
 });
 
 it('allows admins to customize the public homepage hero', function () {
-    Storage::fake('public');
+    Storage::fake();
     actingAsHomepageRole('admin');
 
     $backgroundImage = UploadedFile::fake()->create('hero.jpg', 128, 'image/jpeg');
@@ -132,11 +133,11 @@ it('allows admins to customize the public homepage hero', function () {
         ->and(HomepageSetting::value('hero_button_text'))->toBe('Scopri ora')
         ->and(HomepageSetting::value('hero_button_url'))->toBe('/catalogo');
 
-    Storage::disk('public')->assertExists($backgroundImagePath);
+    Storage::disk()->assertExists($backgroundImagePath);
 
     $this->get('/')
         ->assertOk()
-        ->assertSee(Storage::disk('public')->url($backgroundImagePath), escape: false)
+        ->assertSee(Storage::disk()->url($backgroundImagePath), escape: false)
         ->assertSee('<h1>Nuova hero <strong>ECM</strong></h1>', escape: false)
         ->assertSee('<h2>Sottotitolo hero</h2>', escape: false)
         ->assertSee('<p>Testo centrale aggiornato</p>', escape: false)
@@ -166,7 +167,7 @@ it('allows admins to disable the public homepage hero button', function () {
 });
 
 it('allows admins to customize homepage services settings', function () {
-    Storage::fake('public');
+    Storage::fake();
     actingAsHomepageRole('admin');
 
     $visualImage = UploadedFile::fake()->create('services.jpg', 128, 'image/jpeg');
@@ -198,7 +199,7 @@ it('allows admins to customize homepage services settings', function () {
         ->and($visualImagePath)->toBeString()
         ->and($visualImagePath)->toStartWith('homepage/services/');
 
-    Storage::disk('public')->assertExists($visualImagePath);
+    Storage::disk()->assertExists($visualImagePath);
 
     $this->get('/')
         ->assertOk()
@@ -208,11 +209,11 @@ it('allows admins to customize homepage services settings', function () {
         ->assertSee('Apri catalogo')
         ->assertSee('href="/catalogo-servizi"', escape: false)
         ->assertSee('bg-secondary', escape: false)
-        ->assertSee(Storage::disk('public')->url($visualImagePath), escape: false);
+        ->assertSee(Storage::disk()->url($visualImagePath), escape: false);
 });
 
 it('deletes the previous homepage services image when replacing it', function () {
-    Storage::fake('public');
+    Storage::fake();
     actingAsHomepageRole('admin');
 
     $firstImage = UploadedFile::fake()->create('services-first.jpg', 64, 'image/jpeg');
@@ -246,8 +247,8 @@ it('deletes the previous homepage services image when replacing it', function ()
 
     expect($secondImagePath)->not->toBe($firstImagePath);
 
-    Storage::disk('public')->assertMissing($firstImagePath);
-    Storage::disk('public')->assertExists($secondImagePath);
+    Storage::disk()->assertMissing($firstImagePath);
+    Storage::disk()->assertExists($secondImagePath);
 });
 
 it('renders homepage services fallback when no settings exist', function () {
@@ -305,7 +306,7 @@ it('renders homepage services cta with configured color text and link', function
 });
 
 it('allows admins to customize homepage about settings', function () {
-    Storage::fake('public');
+    Storage::fake();
     actingAsHomepageRole('admin');
 
     $visualImage = UploadedFile::fake()->create('about.jpg', 128, 'image/jpeg');
@@ -332,7 +333,7 @@ it('allows admins to customize homepage about settings', function () {
         ->and($visualImagePath)->toBeString()
         ->and($visualImagePath)->toStartWith('homepage/about/');
 
-    Storage::disk('public')->assertExists($visualImagePath);
+    Storage::disk()->assertExists($visualImagePath);
 
     $this->get('/')
         ->assertOk()
@@ -341,11 +342,11 @@ it('allows admins to customize homepage about settings', function () {
         ->assertSee('Scopri i servizi')
         ->assertSee('href="/servizi"', escape: false)
         ->assertSee('bg-neutral', escape: false)
-        ->assertSee(Storage::disk('public')->url($visualImagePath), escape: false);
+        ->assertSee(Storage::disk()->url($visualImagePath), escape: false);
 });
 
 it('deletes the previous homepage about image when replacing it', function () {
-    Storage::fake('public');
+    Storage::fake();
     actingAsHomepageRole('admin');
 
     $firstImage = UploadedFile::fake()->create('about-first.jpg', 64, 'image/jpeg');
@@ -375,8 +376,8 @@ it('deletes the previous homepage about image when replacing it', function () {
 
     expect($secondImagePath)->not->toBe($firstImagePath);
 
-    Storage::disk('public')->assertMissing($firstImagePath);
-    Storage::disk('public')->assertExists($secondImagePath);
+    Storage::disk()->assertMissing($firstImagePath);
+    Storage::disk()->assertExists($secondImagePath);
 });
 
 it('renders homepage about fallback when no settings exist', function () {

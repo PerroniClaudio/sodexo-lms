@@ -7,13 +7,13 @@
 <x-layouts.app>
     @php
         $navbarLogoPath = \App\Models\HomepageSetting::value('navbar_logo_path');
-        $navbarLogoUrl = $navbarLogoPath ? \Illuminate\Support\Facades\Storage::disk('public')->url($navbarLogoPath) : null;
+        $navbarLogoUrl = $navbarLogoPath ? \Illuminate\Support\Facades\Storage::url($navbarLogoPath) : null;
         $heroBackgroundImagePath = \App\Models\HomepageSetting::value('hero_background_image_path');
-        $heroBackgroundImageUrl = $heroBackgroundImagePath ? \Illuminate\Support\Facades\Storage::disk('public')->url($heroBackgroundImagePath) : null;
+        $heroBackgroundImageUrl = $heroBackgroundImagePath ? \Illuminate\Support\Facades\Storage::url($heroBackgroundImagePath) : null;
         $servicesVisualImagePath = \App\Models\HomepageSetting::value('services_visual_image_path');
-        $servicesVisualImageUrl = $servicesVisualImagePath ? \Illuminate\Support\Facades\Storage::disk('public')->url($servicesVisualImagePath) : null;
+        $servicesVisualImageUrl = $servicesVisualImagePath ? \Illuminate\Support\Facades\Storage::url($servicesVisualImagePath) : null;
         $aboutVisualImagePath = \App\Models\HomepageSetting::value('about_visual_image_path');
-        $aboutVisualImageUrl = $aboutVisualImagePath ? \Illuminate\Support\Facades\Storage::disk('public')->url($aboutVisualImagePath) : null;
+        $aboutVisualImageUrl = $aboutVisualImagePath ? \Illuminate\Support\Facades\Storage::url($aboutVisualImagePath) : null;
     @endphp
 
     <div class="min-h-screen bg-base-200 text-base-content">
