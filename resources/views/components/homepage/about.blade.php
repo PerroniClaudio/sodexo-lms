@@ -36,7 +36,7 @@
         </div>
 
         <div>
-            <div class="space-y-5 text-base-content [&_a]:font-semibold [&_a]:text-secondary [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-secondary/40 [&_blockquote]:pl-4 [&_code]:rounded [&_code]:bg-base-300 [&_code]:px-1.5 [&_code]:py-0.5 [&_h1]:text-4xl [&_h1]:font-extrabold [&_h1]:leading-tight [&_h2]:text-4xl [&_h2]:font-extrabold [&_h2]:leading-tight [&_h3]:text-2xl [&_h3]:font-bold [&_li]:text-lg [&_li]:leading-relaxed [&_ol]:space-y-3 [&_ol]:pl-6 [&_p]:text-base [&_p]:font-bold [&_p]:leading-relaxed [&_pre]:overflow-x-auto [&_pre]:rounded-box [&_pre]:bg-base-300 [&_pre]:p-4 [&_strong]:text-secondary [&_ul]:space-y-3 [&_ul]:pl-6">
+            <div class="space-y-5 text-base-content [&_a]:font-semibold [&_a]:text-secondary [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-secondary/40 [&_blockquote]:pl-4 [&_code]:rounded [&_code]:bg-base-300 [&_code]:px-1.5 [&_code]:py-0.5 [&_h1]:text-4xl [&_h1]:font-extrabold [&_h1]:leading-tight [&_h2]:text-4xl [&_h2]:font-extrabold [&_h2]:leading-tight [&_h3]:text-2xl [&_h3]:font-bold [&_li]:text-lg [&_li]:leading-relaxed [&_ol]:list-decimal [&_ol]:space-y-3 [&_ol]:pl-6 [&_p]:text-base [&_p]:leading-relaxed [&_pre]:overflow-x-auto [&_pre]:rounded-box [&_pre]:bg-base-300 [&_pre]:p-4 [&_strong]:text-secondary [&_ul]:list-disc [&_ul]:space-y-3 [&_ul]:pl-6">
                 {!! $resolvedContentHtml !!}
             </div>
 

@@ -29,7 +29,7 @@
                 <p class="text-sm font-semibold text-secondary">{{ $resolvedLabel }}</p>
             @endif
 
-            <div class="mt-3 space-y-5 text-base-content [&_a]:font-semibold [&_a]:text-secondary [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-secondary/40 [&_blockquote]:pl-4 [&_code]:rounded [&_code]:bg-base-300 [&_code]:px-1.5 [&_code]:py-0.5 [&_h1]:text-4xl [&_h1]:font-extrabold [&_h1]:leading-tight [&_h2]:text-4xl [&_h2]:font-extrabold [&_h2]:leading-tight [&_h3]:text-2xl [&_h3]:font-bold [&_li]:text-xl [&_li]:font-bold [&_ol]:space-y-4 [&_ol]:pl-6 [&_p]:text-lg [&_p]:leading-relaxed [&_pre]:overflow-x-auto [&_pre]:rounded-box [&_pre]:bg-base-300 [&_pre]:p-4 [&_strong]:text-secondary [&_ul]:space-y-4 [&_ul]:pl-0 [&_ul]:list-none">
+            <div class="mt-3 space-y-5 text-base-content [&_a]:font-semibold [&_a]:text-secondary [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-secondary/40 [&_blockquote]:pl-4 [&_code]:rounded [&_code]:bg-base-300 [&_code]:px-1.5 [&_code]:py-0.5 [&_h1]:text-4xl [&_h1]:font-extrabold [&_h1]:leading-tight [&_h2]:text-4xl [&_h2]:font-extrabold [&_h2]:leading-tight [&_h3]:text-2xl [&_h3]:font-bold [&_li]:text-xl [&_li]:font-bold [&_ol]:list-decimal [&_ol]:space-y-4 [&_ol]:pl-6 [&_p]:text-lg [&_p]:leading-relaxed [&_pre]:overflow-x-auto [&_pre]:rounded-box [&_pre]:bg-base-300 [&_pre]:p-4 [&_strong]:text-secondary [&_ul]:list-disc [&_ul]:space-y-4 [&_ul]:pl-6">
                 {!! $resolvedLeftContentHtml !!}
             </div>
 
@@ -54,7 +54,7 @@
 
                 @if (filled($overlayContentHtml))
                     <div class="absolute bottom-0 right-0 z-10 w-full max-w-xs rounded-tl-[2rem] bg-primary p-5 text-primary-content shadow-xl sm:right-6 sm:bottom-6">
-                        <div class="space-y-3 text-sm [&_a]:font-semibold [&_a]:text-primary-content [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-primary-content/40 [&_blockquote]:pl-3 [&_code]:rounded [&_code]:bg-primary-content/15 [&_code]:px-1.5 [&_code]:py-0.5 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-bold [&_h3]:text-lg [&_h3]:font-semibold [&_ol]:space-y-2 [&_ol]:pl-5 [&_p]:leading-relaxed [&_pre]:overflow-x-auto [&_pre]:rounded-box [&_pre]:bg-primary-content/10 [&_pre]:p-3 [&_ul]:space-y-2 [&_ul]:pl-5">
+                        <div class="space-y-3 text-sm [&_a]:font-semibold [&_a]:text-primary-content [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-primary-content/40 [&_blockquote]:pl-3 [&_code]:rounded [&_code]:bg-primary-content/15 [&_code]:px-1.5 [&_code]:py-0.5 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-bold [&_h3]:text-lg [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_p]:leading-relaxed [&_pre]:overflow-x-auto [&_pre]:rounded-box [&_pre]:bg-primary-content/10 [&_pre]:p-3 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5">
                             {!! $overlayContentHtml !!}
                         </div>
                     </div>
