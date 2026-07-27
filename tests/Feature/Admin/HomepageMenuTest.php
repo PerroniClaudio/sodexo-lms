@@ -100,7 +100,8 @@ it('allows admins to upload the public homepage navigation logo', function () {
 
     $this->get('/')
         ->assertOk()
-        ->assertSee(Storage::disk()->url($logoPath), escape: false)
+        ->assertSee($logoPath, escape: false)
+        ->assertSee('?expiration=', escape: false)
         ->assertSee('alt="Logo"', escape: false);
 });
 
@@ -137,7 +138,7 @@ it('allows admins to customize the public homepage hero', function () {
 
     $this->get('/')
         ->assertOk()
-        ->assertSee(Storage::disk()->url($backgroundImagePath), escape: false)
+        ->assertSee($backgroundImagePath, escape: false)
         ->assertSee('<h1>Nuova hero <strong>ECM</strong></h1>', escape: false)
         ->assertSee('<h2>Sottotitolo hero</h2>', escape: false)
         ->assertSee('<p>Testo centrale aggiornato</p>', escape: false)
@@ -209,7 +210,7 @@ it('allows admins to customize homepage services settings', function () {
         ->assertSee('Apri catalogo')
         ->assertSee('href="/catalogo-servizi"', escape: false)
         ->assertSee('bg-secondary', escape: false)
-        ->assertSee(Storage::disk()->url($visualImagePath), escape: false);
+        ->assertSee($visualImagePath, escape: false);
 });
 
 it('deletes the previous homepage services image when replacing it', function () {
@@ -342,7 +343,7 @@ it('allows admins to customize homepage about settings', function () {
         ->assertSee('Scopri i servizi')
         ->assertSee('href="/servizi"', escape: false)
         ->assertSee('bg-neutral', escape: false)
-        ->assertSee(Storage::disk()->url($visualImagePath), escape: false);
+        ->assertSee($visualImagePath, escape: false);
 });
 
 it('deletes the previous homepage about image when replacing it', function () {

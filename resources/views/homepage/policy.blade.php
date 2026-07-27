@@ -1,7 +1,7 @@
 <x-layouts.app>
     @php
         $navbarLogoPath = \App\Models\HomepageSetting::value('navbar_logo_path');
-        $navbarLogoUrl = $navbarLogoPath ? \Illuminate\Support\Facades\Storage::url($navbarLogoPath) : null;
+        $navbarLogoUrl = $navbarLogoPath ? \Illuminate\Support\Facades\Storage::temporaryUrl($navbarLogoPath, now()->addHour()) : null;
     @endphp
 
     <div class="min-h-screen bg-base-200 text-base-content">
