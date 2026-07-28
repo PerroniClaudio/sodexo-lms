@@ -13,7 +13,7 @@
             @endif
             <span class="flex items-center gap-1 text-sm">
                 <x-lucide-copyright class="h-4 w-4" />
-                {{ now()->year }} {{ $appName }}
+                {{ now()->year }} Labor Evolution SRL
             </span>
         </div>
 
