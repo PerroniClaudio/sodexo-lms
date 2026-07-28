@@ -17,9 +17,9 @@
             </span>
         </div>
 
-        <div class="flex gap-4 text-sm font-semibold">
+        {{-- <div class="flex gap-4 text-sm font-semibold">
             <a href="{{ url('/cookie-policy') }}" class="hover:text-primary">Cookie</a>
             <a href="{{ url('/privacy-policy') }}" class="hover:text-primary">Privacy policy</a>
-        </div>
+        </div> --}}
     </div>
 </footer>
