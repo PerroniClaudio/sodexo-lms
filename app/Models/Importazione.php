@@ -41,6 +41,7 @@ class Importazione extends Model
         'finished_at',
         'status',
         'error_message',
+        'summary',
         'file_path',
         'original_file_name',
     ];
@@ -55,6 +56,7 @@ class Importazione extends Model
             'created_by' => 'integer',
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
+            'summary' => 'array',
         ];
     }
 
@@ -130,5 +132,32 @@ class Importazione extends Model
     public function fileName(): string
     {
         return $this->original_file_name ?: basename((string) $this->file_path);
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    public function summaryItems(): array
+    {
+        $summary = $this->summary ?? [];
+
+        $items = collect([
+            'created_users' => __('Utenze create'),
+            'updated_users' => __('Utenze aggiornate'),
+            'processed_records' => __('Record elaborati'),
+        ])
+            ->mapWithKeys(fn (string $label, string $key): array => [$label => (int) ($summary[$key] ?? 0)])
+            ->filter(fn (int $value): bool => $value > 0)
+            ->all();
+
+        if (in_array($this->import_type, [self::TYPE_USERS, self::TYPE_USERS_QUICK], true)) {
+            $items = array_merge($items, [
+                __('Rischio basso') => (int) ($summary['risk_low'] ?? 0),
+                __('Rischio medio') => (int) ($summary['risk_medium'] ?? 0),
+                __('Rischio alto') => (int) ($summary['risk_high'] ?? 0),
+            ]);
+        }
+
+        return $items;
     }
 }

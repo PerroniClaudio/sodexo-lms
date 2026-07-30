@@ -62,8 +62,11 @@
         ],
         "dev:windows": [
             "Composer\\Config::disableProcessTimeout",
-            "pnpm concurrently -c \"#c4b5fd,#fdba74\" \"php artisan queue:work --tries=1 --timeout=0\" \"pnpm dev\" --names=queue,vite --kill-others"
+            "docker compose -f docker-compose.dev.yml up -d",
+            "@php -r \"echo PHP_EOL.'App: https://sodexo-lms.test'.PHP_EOL.'Monitor importazioni: https://sodexo-lms.test/admin/importazioni-monitor'.PHP_EOL.'Mailpit: http://127.0.0.1:8025'.PHP_EOL.'MinIO: http://127.0.0.1:9090'.PHP_EOL.PHP_EOL;\"",
+            "pnpm concurrently -c \"#c4b5fd,#fdba74\" \"php artisan queue:work --verbose --tries=1 --timeout=0\" \"pnpm dev\" --names=queue,vite --kill-others"
         ],
+        "dev:windows:stop": "docker compose -f docker-compose.dev.yml down",
         "test": [
             "@php artisan config:clear --ansi",
             "@php artisan test"

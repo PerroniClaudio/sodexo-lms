@@ -1,7 +1,7 @@
 <x-layouts.app>
-    <div class="drawer lg:drawer-open">
+    <div class="drawer lg:drawer-open lg:h-screen lg:overflow-hidden">
         <input id="my-drawer-3" type="checkbox" class="drawer-toggle" />
-        <div class="drawer-content flex min-h-screen flex-col bg-base-100">
+        <div class="drawer-content flex min-h-screen flex-col bg-base-100 lg:h-screen lg:min-h-0">
             <div class="navbar border-b border-base-300 bg-base-200 px-4 shadow-sm lg:hidden">
                 <div class="navbar-start">
                     <label for="my-drawer-3" class="btn btn-ghost drawer-button">
@@ -10,13 +10,13 @@
                 </div>
             </div>
 
-            <main class="flex-1">
+            <main class="flex-1 lg:min-h-0 lg:overflow-y-auto">
                 {{ $slot }}
             </main>
         </div>
         <div class="drawer-side">
             <label for="my-drawer-3" aria-label="{{ __('layout.close_sidebar') }}" class="drawer-overlay"></label>
-            <div class="flex min-h-full w-80 flex-col bg-base-300 p-4">
+            <div class="flex min-h-full w-80 flex-col bg-base-300 p-4 lg:h-screen lg:overflow-y-auto">
                 @php
                     $matchesRoutePatterns = static function (array $include, array $exclude = []): bool {
                         foreach ($exclude as $pattern) {
@@ -80,6 +80,7 @@
                         'admin.job-roles.*',
                         'admin.job-tasks.*',
                         'admin.nace-ateco.*',
+                        'admin.job-based-requirements.*',
                         'admin.risk-based-requirements.*',
                         'admin.document-types.*',
                     ];
@@ -136,6 +137,15 @@
                                     {{ __('Formazione') }}
                                 </summary>
                                 <ul>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.development-tools.queue.index') }}"
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.development-tools.queue.*'])])
+                                        >
+                                            <x-lucide-list-checks class="mr-2 inline-block h-4 w-4" />
+                                            {{ __('Monitor coda') }}
+                                        </a>
+                                    </li>
                                     <li>
                                         <a
                                             href="{{ route('admin.training-paths.index') }}"
@@ -600,6 +610,15 @@
                                     {{ __('Strumenti sviluppo') }}
                                 </summary>
                                 <ul>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.development-tools.queue.index') }}"
+                                            @class(['menu-active' => $matchesRoutePatterns(['admin.development-tools.queue.*'])])
+                                        >
+                                            <x-lucide-list-indent-increase class="mr-2 inline-block h-4 w-4" />
+                                            {{ __('Queue') }}
+                                        </a>
+                                    </li>
                                     <li>
                                         <a
                                             href="{{ route('admin.development-tools.reset-enrollments.index') }}"

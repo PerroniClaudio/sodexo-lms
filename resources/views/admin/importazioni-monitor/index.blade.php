@@ -70,8 +70,6 @@
                         <th>{{ __('Creata da') }}</th>
                         <th>{{ __('Date') }}</th>
                         <th>{{ __('Stato') }}</th>
-                        <th>{{ __('File') }}</th>
-                        <th>{{ __('Errore') }}</th>
                         <th>{{ __('Azioni') }}</th>
                     </tr>
                 </thead>
@@ -94,31 +92,11 @@
                                     {{ $importazione->statusLabel() }}
                                 </span>
                             </td>
-                            <td class="max-w-md">
-                                <div class="truncate font-medium">{{ $importazione->fileName() }}</div>
-                                @if ($importazione->original_file_name)
-                                    <div class="truncate text-xs text-base-content/60">{{ __('Originale: :name', ['name' => $importazione->original_file_name]) }}</div>
-                                @endif
-                                <div class="break-all text-xs text-base-content/60">{{ $importazione->file_path }}</div>
-                            </td>
-                            <td class="max-w-md">
-                                @if ($importazione->error_message)
-                                    <div class="rounded-box border border-error/30 bg-error/10 p-3 text-sm text-base-content">
-                                        {{ $importazione->error_message }}
-                                    </div>
-                                @else
-                                    <span class="text-base-content/50">-</span>
-                                @endif
-                            </td>
-                            <td>
-                                <a href="{{ route('admin.importazioni-monitor.download', $importazione) }}" class="btn btn-sm btn-outline">
-                                    {{ __('Scarica file') }}
-                                </a>
-                            </td>
+                            <td><x-admin.imports.import-summary-actions :importazione="$importazione" /></td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="py-10 text-center text-base-content/60">
+                            <td colspan="6" class="py-10 text-center text-base-content/60">
                                 {{ __('Nessuna importazione disponibile.') }}
                             </td>
                         </tr>

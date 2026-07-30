@@ -46,17 +46,19 @@ class ImportUsersJob implements ShouldQueue
             'started_at' => now(),
             'finished_at' => null,
             'error_message' => null,
+            'summary' => null,
         ]);
 
         file_put_contents($temporaryFile, Storage::get($importazione->file_path));
 
         try {
-            $userImportService->import($importazione, $temporaryFile);
+            $summary = $userImportService->import($importazione, $temporaryFile);
 
             $importazione->update([
                 'status' => Importazione::STATUS_FINISHED,
                 'finished_at' => now(),
                 'error_message' => null,
+                'summary' => $summary,
             ]);
         } catch (\Throwable $throwable) {
             $importazione->update([
@@ -69,6 +71,18 @@ class ImportUsersJob implements ShouldQueue
         } finally {
             @unlink($temporaryFile);
         }
+    }
+
+    public function failed(?\Throwable $throwable): void
+    {
+        $importazione = Importazione::query()->find($this->importazioneId);
+
+        $importazione?->update([
+            'status' => Importazione::STATUS_FAILED,
+            'started_at' => $importazione->started_at ?? now(),
+            'finished_at' => now(),
+            'error_message' => $this->formatError($throwable ?? new \RuntimeException('Import non completato.')),
+        ]);
     }
 
     private function formatError(\Throwable $throwable): string

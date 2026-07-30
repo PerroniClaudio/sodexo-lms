@@ -18,6 +18,25 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
+it('shows the uploaded file name without its storage path in the status card', function () {
+    $reviewer = actingAsRole('admin');
+
+    Importazione::query()->create([
+        'import_type' => Importazione::TYPE_USER_TRAINING_PATHS,
+        'created_by' => $reviewer->getKey(),
+        'file_path' => 'imports/user-training-paths/internal-file.xlsx',
+        'original_file_name' => 'associazioni-percorsi.xlsx',
+    ]);
+
+    $this->get(route('admin.imports.user-training-paths.status-card'))
+        ->assertOk()
+        ->assertSeeText('associazioni-percorsi.xlsx')
+        ->assertSee('aria-label="Scarica file utilizzato"', false)
+        ->assertSee('data-tip="Scarica file associazioni-percorsi.xlsx"', false)
+        ->assertSee('data-tip="Informazioni e log importazione"', false)
+        ->assertSeeText('imports/user-training-paths/internal-file.xlsx');
+});
+
 it('queues a training path import from excel upload', function () {
     config(['filesystems.default' => 's3']);
     Storage::fake('s3');

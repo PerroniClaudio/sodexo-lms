@@ -71,6 +71,18 @@ class ImportJobUnitsJob implements ShouldQueue
         }
     }
 
+    public function failed(?\Throwable $throwable): void
+    {
+        $importazione = Importazione::query()->find($this->importazioneId);
+
+        $importazione?->update([
+            'status' => Importazione::STATUS_FAILED,
+            'started_at' => $importazione->started_at ?? now(),
+            'finished_at' => now(),
+            'error_message' => $this->formatError($throwable ?? new \RuntimeException('Import non completato.')),
+        ]);
+    }
+
     private function formatError(\Throwable $throwable): string
     {
         if ($throwable instanceof ValidationException) {

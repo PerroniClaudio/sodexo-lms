@@ -88,6 +88,22 @@ it('queues a quick user import from excel upload', function () {
     expect(Importazione::query()->sole()->import_type)->toBe(Importazione::TYPE_USERS_QUICK);
 });
 
+it('marks the import as failed when the job fails before processing', function () {
+    $importazione = Importazione::query()->create([
+        'import_type' => Importazione::TYPE_USERS,
+        'status' => Importazione::STATUS_PENDING,
+        'file_path' => 'imports/users/missing.xlsx',
+        'original_file_name' => 'missing.xlsx',
+    ]);
+
+    (new ImportUsersJob($importazione->getKey()))->failed(new RuntimeException('Preparazione import non riuscita.'));
+
+    expect($importazione->fresh())
+        ->status->toBe(Importazione::STATUS_FAILED)
+        ->error_message->toBe('Preparazione import non riuscita.')
+        ->finished_at->not->toBeNull();
+});
+
 it('requires profile completion when a quick import updates a worker', function () {
     config(['filesystems.default' => 's3']);
     Storage::fake('s3');
@@ -336,8 +352,13 @@ it('imports workers and staff from excel', function () {
 
     app(ImportUsersJob::class, ['importazioneId' => $importazione->getKey()])->handle(app(UserImportService::class));
 
+    $summary = $importazione->fresh()->summary;
+
     expect($importazione->fresh()->status)->toBe(Importazione::STATUS_FINISHED)
-        ->and($importazione->fresh()->error_message)->toBeNull();
+        ->and($importazione->fresh()->error_message)->toBeNull()
+        ->and($summary['processed_records'])->toBe(2)
+        ->and($summary['created_users'] + $summary['updated_users'])->toBe(2)
+        ->and($summary)->toHaveKeys(['risk_low', 'risk_medium', 'risk_high']);
 
     $worker = User::query()->where('fiscal_code', 'RSSMRA80A01H501Z')->firstOrFail();
     $admin = User::query()->where('fiscal_code', 'BNCNNA80A01H501Z')->firstOrFail();

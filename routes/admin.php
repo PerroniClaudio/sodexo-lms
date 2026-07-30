@@ -40,6 +40,7 @@ use App\Http\Controllers\Admin\ModuleQuizSubmissionController;
 use App\Http\Controllers\Admin\ModuleTeachingMaterialController;
 use App\Http\Controllers\Admin\NaceAtecoController;
 use App\Http\Controllers\Admin\PartnerController;
+use App\Http\Controllers\Admin\QueueMonitorController;
 use App\Http\Controllers\Admin\RegiaController;
 use App\Http\Controllers\Admin\RegistryAnomaliesReportController;
 use App\Http\Controllers\Admin\RiskBasedRequirementController;
@@ -105,6 +106,8 @@ Route::middleware(['auth', 'active.role:admin|superadmin', 'active.company_divis
         Route::get('/imports/job-task-risk-associations/template', [JobTaskRiskAssociationImportController::class, 'downloadTemplate'])->name('imports.job-task-risk-associations.template');
         Route::get('/imports/job-task-risk-associations/status-card', [JobTaskRiskAssociationImportController::class, 'statusCard'])->name('imports.job-task-risk-associations.status-card');
         Route::post('/imports/job-task-risk-associations', [JobTaskRiskAssociationImportController::class, 'store'])->name('imports.job-task-risk-associations.store');
+        Route::get('/imports/{importazione}/download', [ImportazioneMonitorController::class, 'download'])
+            ->name('imports.download');
 
         Route::middleware('active.role:superadmin')->group(function () {
             Route::get('/audit-events', [AuditEventController::class, 'index'])->name('audit-events.index');
@@ -116,6 +119,7 @@ Route::middleware(['auth', 'active.role:admin|superadmin', 'active.company_divis
         });
 
         Route::middleware(['env.development', 'active.role:superadmin'])->group(function () {
+            Route::get('/development-tools/queue', [QueueMonitorController::class, 'index'])->name('development-tools.queue.index');
             Route::get('/development-tools/reset-enrollments', [DevelopmentToolController::class, 'resetEnrollments'])->name('development-tools.reset-enrollments.index');
             Route::post('/development-tools/reset-enrollments', [DevelopmentToolController::class, 'performReset'])->name('development-tools.reset-enrollments.store');
             Route::get('/development-tools/force-delete-enrollments', [DevelopmentToolController::class, 'forceDeleteEnrollments'])->name('development-tools.force-delete-enrollments.index');

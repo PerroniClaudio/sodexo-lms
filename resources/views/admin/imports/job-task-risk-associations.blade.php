@@ -88,6 +88,10 @@
                 const statusUrl = statusCard.dataset.statusUrl;
 
                 const refreshStatusCard = async function () {
+                    if (statusCard.querySelector('dialog[open]')) {
+                        return;
+                    }
+
                     try {
                         const response = await fetch(statusUrl, {
                             headers: {
@@ -99,7 +103,10 @@
                             return;
                         }
 
-                        statusCard.innerHTML = await response.text();
+                        const markup = await response.text();
+                        if (! statusCard.querySelector('dialog[open]')) {
+                            statusCard.innerHTML = markup;
+                        }
                     } catch (error) {
                         console.error(error);
                     }

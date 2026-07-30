@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\RiskLevel;
 use App\Enums\UserStatus;
 use App\Models\Importazione;
 use App\Models\JobCategory;
@@ -110,13 +111,19 @@ class UserImportService
         private readonly UserJobAssignmentService $userJobAssignmentService,
     ) {}
 
-    public function import(Importazione $importazione, string $localFilePath): void
+    /**
+     * @return array<string, int>
+     */
+    public function import(Importazione $importazione, string $localFilePath): array
     {
         $rows = $this->rowsFromSpreadsheet($localFilePath);
         $seenFiscalCodes = [];
         $requiresProfileCompletion = $importazione->import_type === Importazione::TYPE_USERS_QUICK;
 
-        DB::transaction(function () use ($rows, &$seenFiscalCodes, $requiresProfileCompletion): void {
+        $createdUsers = [];
+        $updatedUsers = 0;
+
+        DB::transaction(function () use ($rows, &$seenFiscalCodes, $requiresProfileCompletion, &$createdUsers, &$updatedUsers): void {
             foreach ($rows as $rowNumber => $row) {
                 if ($this->rowIsEmpty($row)) {
                     continue;
@@ -130,9 +137,46 @@ class UserImportService
 
                 $seenFiscalCodes[$payload['fiscal_code']] = true;
 
-                $this->upsertUser($payload, $rowNumber, $requiresProfileCompletion);
+                $result = $this->upsertUser($payload, $rowNumber, $requiresProfileCompletion);
+
+                if ($result['created']) {
+                    $createdUsers[] = $result['user'];
+                } else {
+                    $updatedUsers++;
+                }
             }
         });
+
+        $riskCounts = collect(RiskLevel::cases())
+            ->mapWithKeys(fn (RiskLevel $riskLevel): array => [$riskLevel->value => 0]);
+
+        foreach ($createdUsers as $user) {
+            if (! $user->hasRole('user')) {
+                continue;
+            }
+
+            try {
+                $riskLevel = $user->fresh(['jobSector', 'jobTasks', 'roles'])?->getEffectiveWorkerRisk();
+            } catch (\LogicException) {
+                continue;
+            }
+
+            if ($riskLevel instanceof RiskLevel) {
+                $riskCounts->put(
+                    $riskLevel->value,
+                    $riskCounts->get($riskLevel->value, 0) + 1,
+                );
+            }
+        }
+
+        return [
+            'processed_records' => count($createdUsers) + $updatedUsers,
+            'created_users' => count($createdUsers),
+            'updated_users' => $updatedUsers,
+            'risk_low' => $riskCounts[RiskLevel::LOW->value],
+            'risk_medium' => $riskCounts[RiskLevel::MEDIUM->value],
+            'risk_high' => $riskCounts[RiskLevel::HIGH->value],
+        ];
     }
 
     /**
@@ -263,7 +307,10 @@ class UserImportService
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function upsertUser(array $payload, int $rowNumber, bool $requiresProfileCompletion): void
+    /**
+     * @return array{user: User, created: bool}
+     */
+    private function upsertUser(array $payload, int $rowNumber, bool $requiresProfileCompletion): array
     {
         $roles = $payload['roles'];
         $isWorker = in_array('user', $roles, true);
@@ -310,7 +357,7 @@ class UserImportService
 
             $this->syncAssignments($existingUser, $payload['job_task_assignments'], $isWorker);
 
-            return;
+            return ['user' => $existingUser, 'created' => false];
         }
 
         $userData['account_state'] = $isWorker ? UserStatus::PENDING : UserStatus::ACTIVE;
@@ -322,6 +369,8 @@ class UserImportService
         $user = User::query()->create($userData);
         $user->syncRoles($roles);
         $this->syncAssignments($user, $payload['job_task_assignments'], $isWorker);
+
+        return ['user' => $user, 'created' => true];
     }
 
     /**

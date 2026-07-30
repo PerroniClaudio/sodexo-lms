@@ -56,7 +56,10 @@ class ImportazioneMonitorController extends Controller
 
     public function download(Importazione $importazione): StreamedResponse
     {
-
+        abort_unless(
+            $importazione->created_by === auth()->id() || auth()->user()?->hasRole('superadmin'),
+            403,
+        );
         abort_unless(Storage::exists($importazione->file_path), 404);
 
         return Storage::download(
