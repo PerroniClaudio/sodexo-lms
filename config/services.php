@@ -56,6 +56,7 @@ return [
         'api_secret' => env('TWILIO_API_SECRET'),
         'auth_token' => env('TWILIO_AUTH_TOKEN'),
         'video' => [
+            'media_region' => env('TWILIO_VIDEO_MEDIA_REGION', 'ie1'),
             'room_type' => env('TWILIO_VIDEO_ROOM_TYPE', 'group'),
             'token_ttl' => (int) env('TWILIO_VIDEO_TOKEN_TTL', 21600),
         ],

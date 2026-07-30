@@ -107,6 +107,7 @@ export function buildTwilioConnectOptions({
 } = {}) {
     const options = {
         name: roomName,
+        region: 'ie1',
         dominantSpeaker: true,
         preferredVideoCodecs: 'auto',
         bandwidthProfile: {
