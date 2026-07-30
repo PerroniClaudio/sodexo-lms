@@ -39,6 +39,7 @@ use App\Http\Controllers\Admin\ModuleQuizDocumentUploadController;
 use App\Http\Controllers\Admin\ModuleQuizSubmissionController;
 use App\Http\Controllers\Admin\ModuleTeachingMaterialController;
 use App\Http\Controllers\Admin\NaceAtecoController;
+use App\Http\Controllers\Admin\OtherConfigurationController;
 use App\Http\Controllers\Admin\PartnerController;
 use App\Http\Controllers\Admin\QueueMonitorController;
 use App\Http\Controllers\Admin\RegiaController;
@@ -149,6 +150,8 @@ Route::middleware(['auth', 'active.role:admin|superadmin', 'active.company_divis
         Route::post('/homepage/about', [HomepageCustomizationController::class, 'updateAbout'])->name('homepage.about.update');
         Route::post('/homepage/privacy-policy', [HomepageCustomizationController::class, 'updatePrivacyPolicy'])->name('homepage.privacy-policy.update');
         Route::post('/homepage/cookie-policy', [HomepageCustomizationController::class, 'updateCookiePolicy'])->name('homepage.cookie-policy.update');
+        Route::get('/other-configurations', [OtherConfigurationController::class, 'index'])->name('other-configurations.index');
+        Route::post('/other-configurations/favicon', [OtherConfigurationController::class, 'storeFavicon'])->name('other-configurations.favicon.store');
         Route::get('/certificates', [CustomCertificateController::class, 'index'])->name('certificates.index');
         Route::get('/certificates/create', [CustomCertificateController::class, 'create'])->name('certificates.create');
         Route::post('/certificates', [CustomCertificateController::class, 'store'])->name('certificates.store');

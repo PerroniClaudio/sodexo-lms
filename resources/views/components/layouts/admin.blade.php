@@ -60,6 +60,7 @@
 
                     $portalMenuPatterns = [
                         'admin.homepage.*',
+                        'admin.other-configurations.*',
                     ];
 
                     $importsMenuPatterns = [
@@ -426,6 +427,15 @@
                                         >
                                             <x-lucide-cookie class="mr-2 inline-block h-5 w-5" />
                                             {{ __('Cookie policy') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a
+                                            href="{{ route('admin.other-configurations.index') }}"
+                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.other-configurations.*'])])
+                                        >
+                                            <x-lucide-settings class="mr-2 inline-block h-5 w-5" />
+                                            {{ __('Altre configurazioni') }}
                                         </a>
                                     </li>
                                 </ul>
