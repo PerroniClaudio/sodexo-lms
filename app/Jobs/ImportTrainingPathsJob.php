@@ -47,12 +47,13 @@ class ImportTrainingPathsJob implements ShouldQueue
             'started_at' => now(),
             'finished_at' => null,
             'error_message' => null,
+            'summary' => null,
         ]);
 
         file_put_contents($temporaryFile, Storage::get($importazione->file_path));
 
         try {
-            $trainingPathImportService->import($importazione, $temporaryFile);
+            $summary = $trainingPathImportService->import($importazione, $temporaryFile);
 
             $hasPendingApprovals = TrainingPathCourseApproval::query()
                 ->whereBelongsTo($importazione)
@@ -65,6 +66,7 @@ class ImportTrainingPathsJob implements ShouldQueue
                     : Importazione::STATUS_FINISHED,
                 'finished_at' => $hasPendingApprovals ? null : now(),
                 'error_message' => null,
+                'summary' => $summary,
             ]);
         } catch (\Throwable $throwable) {
             $importazione->update([

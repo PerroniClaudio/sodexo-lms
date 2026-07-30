@@ -46,17 +46,19 @@ class ImportUserJobTasksJob implements ShouldQueue
             'started_at' => now(),
             'finished_at' => null,
             'error_message' => null,
+            'summary' => null,
         ]);
 
         file_put_contents($temporaryFile, Storage::get($importazione->file_path));
 
         try {
-            $userJobTaskImportService->import($importazione, $temporaryFile);
+            $summary = $userJobTaskImportService->import($importazione, $temporaryFile);
 
             $importazione->update([
                 'status' => Importazione::STATUS_FINISHED,
                 'finished_at' => now(),
                 'error_message' => null,
+                'summary' => $summary,
             ]);
         } catch (\Throwable $throwable) {
             $importazione->update([

@@ -47,17 +47,19 @@ class ImportCourseEnrollmentsJob implements ShouldQueue
             'started_at' => now(),
             'finished_at' => null,
             'error_message' => null,
+            'summary' => null,
         ]);
 
         file_put_contents($temporaryFile, $disk->get($importazione->file_path));
 
         try {
-            $courseEnrollmentImportService->import($importazione, $temporaryFile);
+            $summary = $courseEnrollmentImportService->import($importazione, $temporaryFile);
 
             $importazione->update([
                 'status' => Importazione::STATUS_FINISHED,
                 'finished_at' => now(),
                 'error_message' => null,
+                'summary' => $summary,
             ]);
         } catch (\Throwable $throwable) {
             $importazione->update([

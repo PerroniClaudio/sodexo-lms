@@ -23,7 +23,10 @@ class JobTaskRiskAssociationImportService
         'sector_risk_override' => ['sovrascrivi_rischio_settore', 'override_rischio_settore', 'sector_risk_override'],
     ];
 
-    public function import(Importazione $importazione, string $localFilePath): void
+    /**
+     * @return array{processed_records: int}
+     */
+    public function import(Importazione $importazione, string $localFilePath): array
     {
         $rows = $this->rowsFromSpreadsheet($localFilePath);
         $seenAssociations = [];
@@ -46,6 +49,8 @@ class JobTaskRiskAssociationImportService
                 $this->upsertAssociation($payload);
             }
         });
+
+        return ['processed_records' => collect($rows)->reject(fn (array $row): bool => $this->rowIsEmpty($row))->count()];
     }
 
     /**

@@ -30,7 +30,10 @@ class JobUnitImportService
         'description' => ['breve_descrizione', 'descrizione', 'description'],
     ];
 
-    public function import(Importazione $importazione, string $localFilePath): void
+    /**
+     * @return array{processed_records: int}
+     */
+    public function import(Importazione $importazione, string $localFilePath): array
     {
         $rows = $this->rowsFromSpreadsheet($localFilePath);
         $seenUnitCodes = [];
@@ -52,6 +55,8 @@ class JobUnitImportService
                 $this->upsertJobUnit($payload);
             }
         });
+
+        return ['processed_records' => collect($rows)->reject(fn (array $row): bool => $this->rowIsEmpty($row))->count()];
     }
 
     /**

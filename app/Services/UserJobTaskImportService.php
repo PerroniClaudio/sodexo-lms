@@ -28,7 +28,10 @@ class UserJobTaskImportService
         private readonly UserJobAssignmentService $userJobAssignmentService,
     ) {}
 
-    public function import(Importazione $importazione, string $localFilePath): void
+    /**
+     * @return array{processed_records: int}
+     */
+    public function import(Importazione $importazione, string $localFilePath): array
     {
         $sheetData = $this->rowsFromSpreadsheet($localFilePath);
         $seenFiscalCodes = [];
@@ -50,6 +53,8 @@ class UserJobTaskImportService
                 $this->assignTasks($payload, $rowNumber);
             }
         });
+
+        return ['processed_records' => collect($sheetData['rows'])->reject(fn (array $row): bool => $this->rowIsEmpty($row))->count()];
     }
 
     /**

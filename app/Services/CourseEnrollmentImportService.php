@@ -31,7 +31,10 @@ class CourseEnrollmentImportService
         private readonly SyncCourseModuleProgresses $syncCourseModuleProgresses,
     ) {}
 
-    public function import(Importazione $importazione, string $localFilePath): void
+    /**
+     * @return array{processed_records: int}
+     */
+    public function import(Importazione $importazione, string $localFilePath): array
     {
         $rows = $this->rowsFromSpreadsheet($localFilePath);
         $seenAssociations = [];
@@ -54,6 +57,8 @@ class CourseEnrollmentImportService
                 $this->enroll($payload, $rowNumber);
             }
         });
+
+        return ['processed_records' => collect($rows)->reject(fn (array $row): bool => $this->rowIsEmpty($row))->count()];
     }
 
     /**

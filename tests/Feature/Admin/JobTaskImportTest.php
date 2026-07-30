@@ -28,7 +28,7 @@ it('queues a job task import from excel upload', function () {
         ->assertRedirect(route('admin.imports.job-tasks'))
         ->assertSessionHas('status');
 
-    $importazione = Importazione::query()->sole();
+    $importazione = Importazione::query()->latest('id')->firstOrFail();
 
     expect($importazione->import_type)->toBe(Importazione::TYPE_JOB_TASKS)
         ->and($importazione->status)->toBe(Importazione::STATUS_PENDING)
@@ -84,10 +84,11 @@ it('returns job task import status card payload', function () {
 it('imports job tasks from excel', function () {
     config(['filesystems.default' => 's3']);
     Storage::fake('s3');
+    $jobTaskCode = fake()->unique()->regexify('TASK-[A-Z0-9]{12}');
 
     Storage::disk('s3')->put('imports/job-tasks/job-tasks.xlsx', file_get_contents(
         jobTaskImportFile([
-            ['Addetto magazzino', 'Gestione merce', 'task-001'],
+            ['Addetto magazzino', 'Gestione merce', $jobTaskCode],
         ])->getRealPath()
     ));
 
@@ -100,9 +101,10 @@ it('imports job tasks from excel', function () {
     app(ImportJobTasksJob::class, ['importazioneId' => $importazione->getKey()])->handle(app(JobTaskImportService::class));
 
     expect($importazione->fresh()->status)->toBe(Importazione::STATUS_FINISHED)
-        ->and($importazione->fresh()->error_message)->toBeNull();
+        ->and($importazione->fresh()->error_message)->toBeNull()
+        ->and($importazione->fresh()->summary)->toMatchArray(['processed_records' => 1]);
 
-    $jobTask = JobTask::query()->where('code', 'TASK-001')->firstOrFail();
+    $jobTask = JobTask::query()->where('code', $jobTaskCode)->firstOrFail();
 
     expect($jobTask->name)->toBe('Addetto magazzino')
         ->and($jobTask->description)->toBe('Gestione merce');
@@ -111,10 +113,11 @@ it('imports job tasks from excel', function () {
 it('fails job task import when required data is missing', function () {
     config(['filesystems.default' => 's3']);
     Storage::fake('s3');
+    $jobTaskCode = fake()->unique()->regexify('TASK-[A-Z0-9]{12}');
 
     Storage::disk('s3')->put('imports/job-tasks/invalid-job-tasks.xlsx', file_get_contents(
         jobTaskImportFile([
-            [null, 'Gestione merce', 'TASK-001'],
+            [null, 'Gestione merce', $jobTaskCode],
         ])->getRealPath()
     ));
 
@@ -128,7 +131,7 @@ it('fails job task import when required data is missing', function () {
 
     expect($importazione->fresh()->status)->toBe(Importazione::STATUS_FAILED)
         ->and($importazione->fresh()->error_message)->toContain('Riga 2')
-        ->and(JobTask::query()->where('code', 'TASK-001')->exists())->toBeFalse();
+        ->and(JobTask::query()->where('code', $jobTaskCode)->exists())->toBeFalse();
 });
 
 function jobTaskImportFile(array $rows): UploadedFile
