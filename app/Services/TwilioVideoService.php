@@ -18,7 +18,6 @@ class TwilioVideoService
         private readonly ?string $accountSid = null,
         private readonly ?string $apiKey = null,
         private readonly ?string $apiSecret = null,
-        private readonly ?string $authToken = null,
     ) {}
 
     public function createRoom(Module $module): array
@@ -30,6 +29,7 @@ class TwilioVideoService
                 'type' => config('services.twilio.video.room_type', 'group'),
                 'uniqueName' => $roomName,
                 'maxParticipantDuration' => 86_400,
+                'mediaRegion' => config('services.twilio.video.media_region', 'ie1'),
             ]);
         } catch (Throwable $exception) {
             Log::error('Twilio live stream room creation failed.', [
@@ -126,8 +126,9 @@ class TwilioVideoService
     private function client(): Client
     {
         return new Client(
+            $this->requireValue($this->apiKey ?? config('services.twilio.api_key'), 'services.twilio.api_key'),
+            $this->requireValue($this->apiSecret ?? config('services.twilio.api_secret'), 'services.twilio.api_secret'),
             $this->requireValue($this->accountSid ?? config('services.twilio.account_sid'), 'services.twilio.account_sid'),
-            $this->requireValue($this->authToken ?? config('services.twilio.auth_token'), 'services.twilio.auth_token'),
         );
     }
 

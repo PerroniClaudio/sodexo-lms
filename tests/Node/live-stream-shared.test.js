@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+    buildTwilioConnectOptions,
     filterAudioOutputDevices,
     formatAudioOutputDeviceLabel,
     getLiveStreamIconButtonContent,
@@ -16,6 +17,10 @@ import {
     getParticipantInitialsBadgeClassNames,
     shouldRetryLiveStreamConnectWithoutCamera,
 } from '../../resources/js/live-stream/shared.js';
+
+test('live stream connections use the Ireland signaling region', () => {
+    assert.equal(buildTwilioConnectOptions({ roomName: 'test-room' }).region, 'ie1');
+});
 
 test('participant initials badge uses a green border when highlighted', () => {
     const classNames = getParticipantInitialsBadgeClassNames(true);
