@@ -57,11 +57,8 @@
 
                     <div class="text-sm text-base-content/70">
                         @role('superadmin')
-                            @if ($activeSatisfactionSurveyTemplate)
-                                <a href="{{ route('admin.satisfaction-survey.edit') }}" class="link link-primary">
-                                    {{ __('Configura domande e risposte globali del questionario') }}
-                                </a>
-                            @else
+                            {{-- Prima il link era presente in ogni caso (con testi diversi). Adesso solo se non è statyo configurato il gradimento. --}}
+                            @if (!$activeSatisfactionSurveyTemplate)
                                 <a href="{{ route('admin.satisfaction-survey.edit') }}" class="link link-error">
                                     {{ __('Configura prima il questionario globale di gradimento') }}
                                 </a>

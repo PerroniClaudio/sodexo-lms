@@ -158,7 +158,7 @@
                             {{ __('Select a type, then confirm to create the module.') }}
                         </p>
                         <p class="text-sm text-base-content/70">
-                            {{ __('Nota SCORM: per ogni corso Ã¨ consentito un solo modulo SCORM.') }}
+                            {{ __('Nota SCORM: per ogni corso è consentito un solo modulo SCORM.') }}
                         </p>
                     </div>
 
