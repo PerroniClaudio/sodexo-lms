@@ -63,7 +63,7 @@ class StoreVideoReportRequest extends FormRequest
                         ->exists();
 
                     if (! $isExportableCourse) {
-                        $validator->errors()->add('course_id', __('Puoi esportare audit trail solo per corsi FAD o FAD Asincrona.'));
+                        $validator->errors()->add('course_id', __('Puoi esportare audit trail solo per corsi FAD Sincrona o FAD Asincrona.'));
                     }
 
                     return;

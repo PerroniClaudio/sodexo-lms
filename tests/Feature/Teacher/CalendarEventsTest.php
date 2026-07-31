@@ -18,7 +18,7 @@ test('teacher dashboard calendar events endpoint returns residential and async m
     ]);
     $fadCourse = Course::factory()->create([
         'type' => 'fad',
-        'title' => 'Corso FAD da ignorare',
+        'title' => 'Corso FAD Sincrona da ignorare',
     ]);
 
     $residentialModule = Module::factory()->create([

@@ -20,6 +20,8 @@ it('allows admins to access video reports index', function () {
         ->assertSeeText('Richiedi export')
         ->assertSeeText('Corso FAD')
         ->assertSeeText('Corso Async')
+        ->assertSeeText('FAD Sincrona')
+        ->assertSeeText('FAD Asincrona')
         ->assertDontSeeText('Corso RES');
 });
 

@@ -1,6 +1,6 @@
 @php
     $calendarLegendItems = [
-        ['label' => __('FAD'), 'color' => '--calendar-course-type-fad'],
+        ['label' => __('FAD Sincrona'), 'color' => '--calendar-course-type-fad'],
         ['label' => __('RES'), 'color' => '--calendar-course-type-res'],
         ['label' => __('BLENDED'), 'color' => '--calendar-course-type-blended'],
         ['label' => __('FSC'), 'color' => '--calendar-course-type-fsc'],

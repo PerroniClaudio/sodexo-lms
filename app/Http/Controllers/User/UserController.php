@@ -1024,7 +1024,7 @@ class UserController extends Controller
             [
                 'title' => 'React Avanzato',
                 'type' => 'fad',
-                'type_label' => 'FAD',
+                'type_label' => 'FAD Sincrona',
                 'class_name' => 'Frontend Pro - Edizione Mattina',
                 'participants_count' => 18,
                 'participants_label' => '18 partecipanti',
@@ -1044,7 +1044,7 @@ class UserController extends Controller
             [
                 'title' => 'Onboarding Store Manager',
                 'type' => 'async',
-                'type_label' => 'FAD ASINCRONA',
+                'type_label' => 'FAD Asincrona',
                 'class_name' => 'Percorso Nazionale Giugno',
                 'participants_count' => 12,
                 'participants_label' => '12 partecipanti',

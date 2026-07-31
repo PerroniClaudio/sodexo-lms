@@ -191,7 +191,7 @@ class HomepageCustomizationController extends Controller
 
     private function defaultServicesLeftContent(): string
     {
-        return '<h2>I nostri <strong>servizi</strong><br>comprendono</h2><ul><li>Corsi <strong>FAD</strong></li><li>Corsi <strong>RES</strong></li><li>Corsi <strong>FSC</strong></li></ul>';
+        return '<h2>I nostri <strong>servizi</strong><br>comprendono</h2><ul><li>Corsi <strong>FAD Sincrona</strong></li><li>Corsi <strong>RES</strong></li><li>Corsi <strong>FSC</strong></li></ul>';
     }
 
     private function defaultAboutContent(): string

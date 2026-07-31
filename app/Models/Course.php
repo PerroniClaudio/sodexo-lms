@@ -172,11 +172,11 @@ class Course extends Model
     public static function availableTypeLabels(): array
     {
         return [
-            'fad' => __('FAD'),
-            'res' => __('RES'),
             'blended' => __('BLENDED'),
-            'fsc' => __('FSC'),
             'async' => __('FAD Asincrona'),
+            'fad' => __('FAD Sincrona'),
+            'fsc' => __('FSC'),
+            'res' => __('RES'),
         ];
     }
 

@@ -779,7 +779,7 @@ class UserController extends Controller
                 'description' => $course->description,
                 'course_type' => $course->course_type,
                 'course_type_label' => match ($course->course_type) {
-                    'fad' => 'FAD',
+                    'fad' => __('FAD Sincrona'),
                     'res' => 'RES',
                     'webinar' => 'Webinar',
                     'blended' => 'Blended',

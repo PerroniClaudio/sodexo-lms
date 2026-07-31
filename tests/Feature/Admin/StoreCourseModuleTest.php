@@ -152,7 +152,7 @@ it('rejects module types that are not allowed for the course type', function () 
     $response
         ->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'modules']))
         ->assertSessionHasErrors([
-            'type' => 'Il corso con tipologia FAD non può contenere un modulo Video.',
+            'type' => 'Il corso con tipologia FAD Sincrona non può contenere un modulo Video.',
         ]);
 
     expect(Module::query()->count())->toBe(0);
@@ -166,7 +166,7 @@ it('shows restricted module types in the creation modal with an explanatory tool
     $response = $this->get(route('admin.courses.edit', [$course, 'section' => 'modules']));
 
     $response->assertOk()
-        ->assertSee('data-tip="Il corso con tipologia FAD non può contenere un modulo Video."', false)
+        ->assertSee('data-tip="Il corso con tipologia FAD Sincrona non può contenere un modulo Video."', false)
         ->assertSee('tooltip tooltip-bottom', false)
         ->assertSee('border-error/60 bg-error/10 text-error', false);
 });

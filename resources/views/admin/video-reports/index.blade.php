@@ -118,7 +118,7 @@
                 <div class="space-y-2">
                     <h2 class="text-xl font-semibold">{{ __('Richiedi audit trail') }}</h2>
                     <p class="text-sm text-base-content/70">
-                        {{ __('Scegli se esportare l’audit trail video o live per corsi FAD e FAD Asincrona.') }}
+                        {{ __('Scegli se esportare l’audit trail video o live per corsi FAD Sincrona e FAD Asincrona.') }}
                     </p>
                 </div>
 
@@ -179,7 +179,7 @@
                             <label for="course_id" class="label p-0">
                                 <span class="label-text font-medium">{{ __('Corso') }}</span>
                             </label>
-                            <p class="mt-2 text-xs text-base-content/60">{{ __('Sono selezionabili solo corsi FAD e FAD Asincrona.') }}</p>
+                            <p class="mt-2 text-xs text-base-content/60">{{ __('Sono selezionabili solo corsi FAD Sincrona e FAD Asincrona.') }}</p>
                             <select id="course_id" name="course_id" class="select select-bordered mt-2 w-full @error('course_id') select-error @enderror">
                                 <option value="">{{ __('Seleziona corso') }}</option>
                                 @foreach ($courses as $course)

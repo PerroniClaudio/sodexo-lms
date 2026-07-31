@@ -44,7 +44,7 @@
                         $typeLabel = match ($event['course_type']) {
                             'res' => __('RES'),
                             'async' => __('FAD Asincrona'),
-                            'fad' => __('FAD Asincrona'),
+                            'fad' => __('FAD Sincrona'),
                             'blended' => __('Blended'),
                             'fsc' => __('FSC'),
                             default => strtoupper((string) $event['course_type']),

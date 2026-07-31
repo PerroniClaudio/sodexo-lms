@@ -104,5 +104,5 @@ it('shows the translated course type in the list', function () {
 
     $response->assertSuccessful()
         ->assertSeeText('Corso FAD')
-        ->assertSeeText('FAD');
+        ->assertSeeText('FAD Sincrona');
 });
