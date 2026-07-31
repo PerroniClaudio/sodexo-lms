@@ -36,6 +36,14 @@ it('shows the risk requirement association section on the course edit page', fun
         ->assertSeeText('Integrativo');
 });
 
+it('shows the job role qualification label on its course edit section', function () {
+    $course = Course::factory()->create();
+
+    $this->get(route('admin.courses.edit', [$course, 'section' => 'job-based-requirements']))
+        ->assertOk()
+        ->assertSeeText('Abilitazioni ruolo / mansione soddisfatte');
+});
+
 it('updates the risk requirement associations for a course', function () {
     $course = Course::factory()->create([
         'title' => 'Corso multi requisito',

@@ -19,7 +19,7 @@
             ['key' => 'program', 'label' => __('Programma corso'), 'icon' => 'lucide-calendar-clock', 'group' => 'planning'],
             ['key' => 'survey', 'label' => __('Gradimento'), 'icon' => 'lucide-message-square-heart', 'group' => 'planning'],
             ['key' => 'certificates', 'label' => __('Abilitazioni di rischio'), 'icon' => 'lucide-file-badge', 'group' => 'certificates'],
-            ['key' => 'job-based-requirements', 'label' => __('Requisiti ruolo / mansione'), 'icon' => 'lucide-list-checks', 'group' => 'certificates'],
+            ['key' => 'job-based-requirements', 'label' => __('Abilitazioni ruolo / mansione'), 'icon' => 'lucide-list-checks', 'group' => 'certificates'],
             ['key' => 'certificate-templates', 'label' => __('Template attestati'), 'icon' => 'lucide-file-text', 'group' => 'certificates'],
             ['key' => 'categorization', 'label' => __('Categorizzazione'), 'icon' => 'lucide-tags', 'group' => 'audience'],
             ['key' => 'partners', 'label' => __('Partner'), 'icon' => 'lucide-handshake', 'group' => 'audience'],

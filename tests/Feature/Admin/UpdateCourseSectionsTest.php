@@ -66,6 +66,23 @@ it('updates only the course details through the dedicated endpoint', function ()
         ->and($course->course_duration_hours)->toBe(8);
 });
 
+it('updates course details with a description longer than 255 characters', function () {
+    $course = Course::factory()->create();
+    $description = str_repeat('Descrizione corso. ', 19).'fine';
+
+    $response = $this->put(route('admin.courses.details.update', $course), [
+        'title' => $course->title,
+        'code' => $course->code,
+        'description' => $description,
+        'year' => $course->year,
+        'status' => $course->status,
+    ]);
+
+    $response->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'details']));
+
+    expect($course->fresh()->description)->toBe($description);
+});
+
 it('clears funding entity when course is not financed', function () {
     $fundingEntity = FundingEntity::factory()->create();
     $course = Course::factory()->create([

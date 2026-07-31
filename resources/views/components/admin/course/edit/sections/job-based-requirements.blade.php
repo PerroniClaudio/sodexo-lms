@@ -7,7 +7,7 @@
         <div class="card-body gap-6">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                    <h2 class="card-title">{{ __('Requisiti ruolo / mansione soddisfatti') }}</h2>
+                    <h2 class="card-title">{{ __('Abilitazioni ruolo / mansione acquisite') }}</h2>
                     <p class="text-sm text-base-content/70">
                         {{ __('Quando l’utente completa il corso, l’attestato interno soddisfa i requisiti selezionati.') }}
                     </p>
