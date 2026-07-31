@@ -34,6 +34,11 @@
             'icon' => 'lucide-message-square-heart',
             'badge' => 'badge-success',
         ],
+        'dispense' => [
+            'label' => __('Dispense'),
+            'icon' => 'lucide-files',
+            'badge' => 'badge-warning',
+        ],
     ];
 
     $currentModuleMeta = $moduleTypeMeta[$module->type] ?? [
@@ -77,6 +82,9 @@
         data-next-module-id="{{ $nextModule?->id ?? '' }}"
         data-next-module-title="{{ $nextModule->title ?? '' }}"
         data-module-access-states-url="{{ route('user.courses.module-access-states', $course) }}"
+        data-dispense-status-url="{{ route('user.courses.modules.dispense.status', [$course, $module]) }}"
+        data-dispense-complete-url="{{ route('user.courses.modules.dispense.complete', [$course, $module]) }}"
+        data-dispense-redirect-url="{{ $nextModule ? route($modulePlayerRouteName, $trainingPathEnrollment ? [$trainingPathEnrollment, $course, $nextModule] : [$course, $nextModule]) : route($courseShowRouteName, $trainingPathEnrollment ? [$trainingPathEnrollment, $course] : [$course]) }}"
         data-quiz-access-gate-active="{{ ($quizAccessGate['active'] ?? false) ? 'true' : 'false' }}"
         data-quiz-access-gate-remaining-seconds="{{ $quizAccessGate['remaining_seconds'] ?? 0 }}"
         data-quiz-access-gate-available-at="{{ $quizAccessGate['available_at'] ?? '' }}"
@@ -125,6 +133,10 @@
 
                         @case('res')
                             <x-user.courses.modules.res :data="get_defined_vars()" />
+                            @break
+
+                        @case('dispense')
+                            <x-user.courses.modules.dispense :data="get_defined_vars()" />
                             @break
 
                         @default

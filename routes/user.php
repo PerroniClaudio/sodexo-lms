@@ -4,6 +4,7 @@ use App\Http\Controllers\LiveStreamController;
 use App\Http\Controllers\ScormPlayerController;
 use App\Http\Controllers\ScormRuntimeController;
 use App\Http\Controllers\User\CourseController;
+use App\Http\Controllers\User\DispenseModuleController;
 use App\Http\Controllers\User\QuizModuleController;
 use App\Http\Controllers\User\SatisfactionSurveyController;
 use App\Http\Controllers\User\ScormModulePackageController;
@@ -64,6 +65,9 @@ Route::middleware(['auth', 'active.role:user|superadmin'])->group(function () {
             // Modulo video: segna completato
             Route::post('/courses/{course}/modules/{module}/video/complete', [VideoModuleController::class, 'complete'])->name('courses.modules.video.complete');
             Route::get('/courses/{course}/modules/{module}/video/teaching-materials/{moduleTeachingMaterial}/download', [VideoModuleController::class, 'downloadTeachingMaterial'])->name('courses.modules.video.teaching-materials.download');
+            Route::get('/courses/{course}/modules/{module}/dispense/status', [DispenseModuleController::class, 'status'])->name('courses.modules.dispense.status');
+            Route::get('/courses/{course}/modules/{module}/dispense/{moduleTeachingMaterial}/download', [DispenseModuleController::class, 'download'])->name('courses.modules.dispense.download');
+            Route::post('/courses/{course}/modules/{module}/dispense/complete', [DispenseModuleController::class, 'complete'])->name('courses.modules.dispense.complete');
             Route::get('/courses/{course}/modules/{module}/video/exercises', [VideoModuleController::class, 'exercises'])->name('courses.modules.video.exercises.index');
             Route::post('/courses/{course}/modules/{module}/video/exercises/{videoExercise}/autosave', [VideoModuleController::class, 'autosaveExercise'])->name('courses.modules.video.exercises.autosave');
             Route::post('/courses/{course}/modules/{module}/video/exercises/{videoExercise}/submit', [VideoModuleController::class, 'submitExercise'])->name('courses.modules.video.exercises.submit');

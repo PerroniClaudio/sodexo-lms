@@ -103,7 +103,7 @@ test('teacher dashboard calendar events endpoint returns residential and async m
                 ->where('extendedProps.type', 'async')
                 ->where('extendedProps.course_title', 'Corso FAD Asincrona Docente')
                 ->where('extendedProps.course_type', 'async')
-                ->where('extendedProps.class_name', 'FAD Asincrona')
+                ->where('extendedProps.class_name', 'FAD')
                 ->where('extendedProps.module_id', $asyncModule->getKey())
                 ->where('extendedProps.course_class_id', null)
                 ->etc()
@@ -126,10 +126,10 @@ test('teacher fake calendar events endpoint keeps asynchronous events consistent
         ->assertJsonCount(5, 'events')
         ->assertJsonPath('events.0.extendedProps.type', 'async')
         ->assertJsonPath('events.0.extendedProps.course_type', 'async')
-        ->assertJsonPath('events.0.extendedProps.class_name', 'FAD Asincrona')
+        ->assertJsonPath('events.0.extendedProps.class_name', 'FAD')
         ->assertJsonPath('events.1.extendedProps.type', 'async')
         ->assertJsonPath('events.1.extendedProps.course_type', 'async')
-        ->assertJsonPath('events.1.extendedProps.class_name', 'FAD Asincrona')
+        ->assertJsonPath('events.1.extendedProps.class_name', 'FAD')
         ->assertJsonMissingPath('events.0.extendedProps.type.live')
         ->assertJsonMissing(['extendedProps' => ['type' => Module::TYPE_LIVE]]);
 });

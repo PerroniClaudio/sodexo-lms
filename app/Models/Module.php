@@ -27,6 +27,8 @@ class Module extends Model
 
     public const TYPE_SATISFACTION_QUIZ = 'satisfaction_quiz';
 
+    public const TYPE_DISPENSE = 'dispense';
+
     public const TYPES_WITH_APPOINTMENT = [
         self::TYPE_RESIDENTIAL,
         self::TYPE_LIVE,
@@ -51,6 +53,7 @@ class Module extends Model
         self::TYPE_SCORM,
         self::TYPE_LEARNING_QUIZ,
         self::TYPE_SATISFACTION_QUIZ,
+        self::TYPE_DISPENSE,
     ];
 
     public const STATUSES = [
@@ -95,8 +98,13 @@ class Module extends Model
         'max_attempts',
         'permitted_submission',
         'access_delay_minutes',
+        'minimum_duration_seconds',
         'belongsTo',
         'video_id', // ID del video associato dalla libreria video Mux
+    ];
+
+    protected $attributes = [
+        'minimum_duration_seconds' => 0,
     ];
 
     /**
@@ -124,6 +132,7 @@ class Module extends Model
             'max_score' => 'integer',
             'max_attempts' => 'integer',
             'access_delay_minutes' => 'integer',
+            'minimum_duration_seconds' => 'integer',
         ];
     }
 
@@ -271,6 +280,7 @@ class Module extends Model
             self::TYPE_SCORM => __('modules.types.scorm'),
             self::TYPE_LEARNING_QUIZ => __('modules.types.learning_quiz'),
             self::TYPE_SATISFACTION_QUIZ => __('modules.types.satisfaction_quiz'),
+            self::TYPE_DISPENSE => __('modules.types.dispense'),
         ];
     }
 
@@ -388,6 +398,11 @@ class Module extends Model
     public function isScorm(): bool
     {
         return $this->type === self::TYPE_SCORM;
+    }
+
+    public function isDispense(): bool
+    {
+        return $this->type === self::TYPE_DISPENSE;
     }
 
     public function supportsStaffAssignments(): bool

@@ -62,6 +62,12 @@ if (root) {
             });
             break;
 
+        case 'dispense':
+            import('./module-dispense.js').then(({ initDispenseModule }) => {
+                initDispenseModule();
+            });
+            break;
+
         case 'residential':
             // TODO: Implementare quando disponibile
             console.info('[module-loader] Modulo residential non ancora implementato');

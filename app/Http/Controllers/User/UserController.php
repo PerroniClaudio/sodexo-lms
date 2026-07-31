@@ -1044,7 +1044,7 @@ class UserController extends Controller
             [
                 'title' => 'Onboarding Store Manager',
                 'type' => 'async',
-                'type_label' => 'FAD Asincrona',
+                'type_label' => 'FAD',
                 'class_name' => 'Percorso Nazionale Giugno',
                 'participants_count' => 12,
                 'participants_label' => '12 partecipanti',

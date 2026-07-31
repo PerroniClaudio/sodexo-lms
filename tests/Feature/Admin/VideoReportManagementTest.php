@@ -21,7 +21,7 @@ it('allows admins to access video reports index', function () {
         ->assertSeeText('Corso FAD')
         ->assertSeeText('Corso Async')
         ->assertSeeText('FAD Sincrona')
-        ->assertSeeText('FAD Asincrona')
+        ->assertSeeText('FAD')
         ->assertDontSeeText('Corso RES');
 });
 

@@ -28,7 +28,7 @@ class AuditTrail
         );
     }
 
-    public function record(string $action, string $subjectType, ?int $subjectId = null, ?string $subjectLabel = null, array $changes = [], array $metadata = []): AuditEvent
+    public function record(string $action, string $subjectType, ?int $subjectId = null, ?string $subjectLabel = null, array $changes = [], array $metadata = [], ?string $origin = null): AuditEvent
     {
         /** @var Request|null $request */
         $request = app()->bound('request') ? request() : null;
@@ -40,7 +40,7 @@ class AuditTrail
             'actor_user_id' => $actor?->getKey(),
             'actor_label' => $actor ? trim($actor->name.' '.$actor->surname) : null,
             'company_division_id' => $this->activeCompanyDivisionId($request, $actor),
-            'origin' => Context::get('audit_origin', 'admin_ui'),
+            'origin' => $origin ?? Context::get('audit_origin', 'admin_ui'),
             'action' => $action,
             'subject_type' => $subjectType,
             'subject_id' => $subjectId,

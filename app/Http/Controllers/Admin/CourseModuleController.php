@@ -153,6 +153,7 @@ class CourseModuleController extends Controller
             ->get(['id', 'title']);
         $module->loadMissing([
             'video:id',
+            'teachingMaterials',
             'videoExercises.materials',
             'videoExercises.questions',
         ]);
@@ -496,6 +497,11 @@ class CourseModuleController extends Controller
             'max_attempts' => $module->isLearningQuiz() ? $validated['max_attempts'] : null,
             'permitted_submission' => $module->isLearningQuiz() ? ($validated['permitted_submission'] ?? 'online') : null,
             'access_delay_minutes' => $module->isSatisfactionQuiz() ? null : ($validated['access_delay_minutes'] ?? null),
+            'minimum_duration_seconds' => $module->isDispense()
+                ? ($validated['minimum_duration_hours'] * 3600)
+                    + ($validated['minimum_duration_minutes'] * 60)
+                    + $validated['minimum_duration_seconds']
+                : 0,
             // 'max_score' => $module->isQuiz() ? $validated['max_score'] : null, --- IGNORE ---
         ];
 

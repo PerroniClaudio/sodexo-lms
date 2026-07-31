@@ -4,6 +4,7 @@ namespace App\Services\ModuleValidation;
 
 use App\Models\Module;
 use App\Services\ModuleValidation\Contracts\ModuleValidatorInterface;
+use App\Services\ModuleValidation\Validators\DispenseValidator;
 use App\Services\ModuleValidation\Validators\LearningQuizValidator;
 use App\Services\ModuleValidation\Validators\LiveValidator;
 use App\Services\ModuleValidation\Validators\ResourceValidator;
@@ -24,6 +25,7 @@ class ModuleValidatorService
         'satisfaction_quiz' => SatisfactionQuizValidator::class,
         'res' => ResourceValidator::class,
         'scorm' => ScormValidator::class,
+        'dispense' => DispenseValidator::class,
     ];
 
     /**

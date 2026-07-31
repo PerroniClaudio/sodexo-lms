@@ -8,6 +8,7 @@ return [
         'scorm' => 'SCORM',
         'learning_quiz' => 'Quiz di apprendimento',
         'satisfaction_quiz' => 'Questionario di gradimento',
+        'dispense' => 'Dispense',
     ],
     'statuses' => [
         'draft' => 'Bozza',

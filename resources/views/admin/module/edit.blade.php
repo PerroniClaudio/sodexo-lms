@@ -71,8 +71,11 @@
             <x-admin.module.quiz-recent-submissions :data="array_merge(get_defined_vars(), ['course' => $course, 'module' => $module])" />
         @endif
 
-        @if ($module->type === 'video')
+        @if ($module->type === 'video' || $module->type === 'dispense')
             <x-admin.module.teaching-materials :data="array_merge(get_defined_vars(), ['course' => $course, 'module' => $module])" />
+        @endif
+
+        @if ($module->type === 'video')
             <x-admin.module.video-exercises :data="array_merge(get_defined_vars(), ['course' => $course, 'module' => $module])" />
             <x-admin.module.video-table :data="array_merge(get_defined_vars(), ['course' => $course, 'module' => $module])" />
         @endif

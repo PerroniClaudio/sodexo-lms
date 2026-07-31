@@ -8,6 +8,7 @@ return [
         'scorm' => 'SCORM',
         'learning_quiz' => 'Learning quiz',
         'satisfaction_quiz' => 'Satisfaction survey',
+        'dispense' => 'Handouts',
     ],
     'statuses' => [
         'draft' => 'Draft',

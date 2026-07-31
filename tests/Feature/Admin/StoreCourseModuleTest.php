@@ -179,7 +179,7 @@ it('shows translated course type in the badge instead of raw database value', fu
     $response = $this->get(route('admin.courses.edit', [$course, 'section' => 'modules']));
 
     $response->assertOk()
-        ->assertSeeText('Tipologia: FAD Asincrona')
+        ->assertSeeText('Tipologia: FAD')
         ->assertDontSeeText('Tipologia: async');
 });
 

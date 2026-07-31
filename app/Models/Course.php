@@ -29,12 +29,14 @@ class Course extends Model
             Module::TYPE_VIDEO,
             Module::TYPE_LIVE,
             Module::TYPE_SCORM,
+            Module::TYPE_DISPENSE,
         ],
         'blended' => [],
         'fsc' => [
             Module::TYPE_VIDEO,
             Module::TYPE_LIVE,
             Module::TYPE_SCORM,
+            Module::TYPE_DISPENSE,
         ],
         'async' => [
             Module::TYPE_LIVE,

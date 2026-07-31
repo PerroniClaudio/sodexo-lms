@@ -19,7 +19,7 @@ class ModuleTeachingMaterialController extends Controller
 {
     public function store(Request $request, Course $course, Module $module): RedirectResponse
     {
-        $this->ensureVideoModule($course, $module);
+        $this->ensureSupportedModule($course, $module);
         try {
             $module->ensureContentIsEditable();
         } catch (RuntimeException $exception) {
@@ -33,7 +33,9 @@ class ModuleTeachingMaterialController extends Controller
             'materials.*' => [
                 'required',
                 'file',
-                File::types(['jpg', 'jpeg', 'png', 'webp', 'gif', 'pdf', 'pptx'])->max(1024 * 20),
+                File::types($module->isDispense()
+                    ? ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'webp', 'zip']
+                    : ['jpg', 'jpeg', 'png', 'webp', 'gif', 'pdf', 'pptx'])->max(1024 * 20),
             ],
         ]);
 
@@ -62,7 +64,7 @@ class ModuleTeachingMaterialController extends Controller
 
     public function download(Course $course, Module $module, ModuleTeachingMaterial $moduleTeachingMaterial): StreamedResponse
     {
-        $this->ensureVideoModule($course, $module);
+        $this->ensureSupportedModule($course, $module);
         $this->ensureMaterialBelongsToModule($module, $moduleTeachingMaterial);
 
         $disk = Storage::disk($moduleTeachingMaterial->disk);
@@ -77,7 +79,7 @@ class ModuleTeachingMaterialController extends Controller
 
     public function destroy(Course $course, Module $module, ModuleTeachingMaterial $moduleTeachingMaterial): RedirectResponse
     {
-        $this->ensureVideoModule($course, $module);
+        $this->ensureSupportedModule($course, $module);
         $this->ensureMaterialBelongsToModule($module, $moduleTeachingMaterial);
         try {
             $module->ensureContentIsEditable();
@@ -95,10 +97,10 @@ class ModuleTeachingMaterialController extends Controller
             ->with('status', __('Materiale didattico eliminato con successo.'));
     }
 
-    private function ensureVideoModule(Course $course, Module $module): void
+    private function ensureSupportedModule(Course $course, Module $module): void
     {
         abort_unless((string) $module->belongsTo === (string) $course->getKey(), Response::HTTP_NOT_FOUND);
-        abort_unless($module->isVideo(), Response::HTTP_NOT_FOUND);
+        abort_unless($module->isVideo() || $module->isDispense(), Response::HTTP_NOT_FOUND);
     }
 
     private function ensureMaterialBelongsToModule(Module $module, ModuleTeachingMaterial $material): void

@@ -9,7 +9,11 @@
         <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
                 <h2 class="text-lg font-semibold">{{ __('Materiale didattico') }}</h2>
-                <p class="text-sm text-base-content/60">{{ __('Carica immagini, PDF o presentazioni PPTX disponibili per gli utenti del modulo.') }}</p>
+                <p class="text-sm text-base-content/60">
+                    {{ $module->isDispense()
+                        ? __('Carica documenti, immagini o archivi ZIP disponibili per gli utenti del modulo.')
+                        : __('Carica immagini, PDF o presentazioni PPTX disponibili per gli utenti del modulo.') }}
+                </p>
             </div>
         </div>
 
@@ -19,7 +23,13 @@
                 <span class="label">
                     <span class="label-text">{{ __('File') }}</span>
                 </span>
-                <input type="file" name="materials[]" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.pptx,image/*,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation" class="file-input file-input-bordered w-full" />
+                <input
+                    type="file"
+                    name="materials[]"
+                    multiple
+                    accept="{{ $module->isDispense() ? '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.webp,.zip' : '.jpg,.jpeg,.png,.webp,.gif,.pdf,.pptx,image/*,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation' }}"
+                    class="file-input file-input-bordered w-full"
+                />
                 @error('materials')
                     <span class="mt-1 text-sm text-error">{{ $message }}</span>
                 @enderror

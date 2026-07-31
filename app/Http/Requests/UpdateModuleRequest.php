@@ -32,6 +32,7 @@ class UpdateModuleRequest extends FormRequest
             && ! $this->appointmentControlledByClasses($module);
         $requiresQuizScores = $module?->isLearningQuiz() ?? false;
         $isLearningQuiz = $module?->isLearningQuiz() ?? false;
+        $isDispense = $module?->isDispense() ?? false;
 
         return [
             'title' => [
@@ -86,6 +87,9 @@ class UpdateModuleRequest extends FormRequest
                 'integer',
                 'min:0',
             ],
+            'minimum_duration_hours' => [Rule::excludeIf(! $isDispense), 'required', 'integer', 'between:0,1193045'],
+            'minimum_duration_minutes' => [Rule::excludeIf(! $isDispense), 'required', 'integer', 'between:0,59'],
+            'minimum_duration_seconds' => [Rule::excludeIf(! $isDispense), 'required', 'integer', 'between:0,59'],
             // max_score viene gestito in automatico con la modifica delle domande, quindi non è richiesto in input e non può essere modificato manualmente
             // 'max_score' => [
             //     Rule::requiredIf($requiresQuizScores),
@@ -129,6 +133,9 @@ class UpdateModuleRequest extends FormRequest
             'max_attempts' => __('Tentativi massimi'),
             'permitted_submission' => __('Modalità'),
             'access_delay_minutes' => __('Tempo di attesa'),
+            'minimum_duration_hours' => __('Ore'),
+            'minimum_duration_minutes' => __('Minuti'),
+            'minimum_duration_seconds' => __('Secondi'),
             'max_score' => __('Maximum score'),
         ];
     }
