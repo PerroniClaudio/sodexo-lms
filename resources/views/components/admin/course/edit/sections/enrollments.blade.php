@@ -34,25 +34,32 @@
                     @endif
                 </div>
 
-                <span
-                    @class([
-                        'inline-flex',
-                        'tooltip tooltip-left' => $cannotAddEnrollmentMessage !== null,
-                    ])
-                    @if ($cannotAddEnrollmentMessage !== null)
-                        data-tip="{{ $cannotAddEnrollmentMessage }}"
-                    @endif
-                >
-                    <button
-                        type="button"
-                        class="btn btn-primary"
-                        data-open-iscritto-modal
-                        @disabled($cannotAddEnrollmentMessage !== null)
+                <div class="flex flex-wrap items-center gap-2">
+                    <a href="{{ route('admin.imports.user-courses') }}" class="btn btn-outline">
+                        <span>{{ __('Importa Excel') }}</span>
+                        <x-lucide-file-up class="h-4 w-4" />
+                    </a>
+
+                    <span
+                        @class([
+                            'inline-flex',
+                            'tooltip tooltip-left' => $cannotAddEnrollmentMessage !== null,
+                        ])
+                        @if ($cannotAddEnrollmentMessage !== null)
+                            data-tip="{{ $cannotAddEnrollmentMessage }}"
+                        @endif
                     >
-                        <span>{{ __('Nuovo iscritto') }}</span>
-                        <x-lucide-plus class="h-4 w-4" />
-                    </button>
-                </span>
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            data-open-iscritto-modal
+                            @disabled($cannotAddEnrollmentMessage !== null)
+                        >
+                            <span>{{ __('Nuovo iscritto') }}</span>
+                            <x-lucide-plus class="h-4 w-4" />
+                        </button>
+                    </span>
+                </div>
             </div>
 
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

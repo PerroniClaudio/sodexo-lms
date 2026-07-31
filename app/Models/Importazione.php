@@ -20,6 +20,8 @@ class Importazione extends Model
 
     public const TYPE_USER_COURSES = 'associazione_utenti_corsi';
 
+    public const TYPE_COURSE_STAFF = 'associazione_docenti_tutor_corsi';
+
     public const TYPE_USER_TRAINING_PATHS = 'associazione_utenti_percorsi_formativi';
 
     public const TYPE_JOB_TASK_RISK_ASSOCIATIONS = 'associazione_mansioni_rischio';
@@ -82,6 +84,7 @@ class Importazione extends Model
             self::TYPE_JOB_TASKS,
             self::TYPE_USER_JOB_TASKS,
             self::TYPE_USER_COURSES,
+            self::TYPE_COURSE_STAFF,
             self::TYPE_USER_TRAINING_PATHS,
             self::TYPE_JOB_TASK_RISK_ASSOCIATIONS,
         ];
@@ -96,6 +99,7 @@ class Importazione extends Model
             self::TYPE_JOB_TASKS => __('Mansioni'),
             self::TYPE_USER_JOB_TASKS => __('Associazione utenti mansioni'),
             self::TYPE_USER_COURSES => __('Associazione utenti corsi'),
+            self::TYPE_COURSE_STAFF => __('Docenti e tutor corsi'),
             self::TYPE_USER_TRAINING_PATHS => __('Associazione utenti percorsi formativi'),
             self::TYPE_JOB_TASK_RISK_ASSOCIATIONS => __('Associazione mansioni rischio'),
             default => $type,

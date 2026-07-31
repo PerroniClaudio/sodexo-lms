@@ -19,6 +19,18 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
+it('links to the excel import from the course enrollments section', function () {
+    actingAsRole('admin');
+    $this->withoutVite();
+
+    $course = Course::factory()->create(['status' => 'draft']);
+
+    $this->get(route('admin.courses.edit', [$course, 'section' => 'enrollments']))
+        ->assertOk()
+        ->assertSeeText('Importa Excel')
+        ->assertSee(route('admin.imports.user-courses'), escape: false);
+});
+
 it('shows the user courses import page and navigation entry', function () {
     actingAsRole('admin');
 

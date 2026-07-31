@@ -20,10 +20,16 @@
                 </p>
             </div>
 
-            <button type="button" class="btn btn-primary" data-open-course-tutor-modal>
-                <span>{{ __('Nuovo tutor') }}</span>
-                <x-lucide-plus class="h-4 w-4" />
-            </button>
+            <div class="flex flex-wrap items-center gap-2">
+                <a href="{{ route('admin.imports.course-staff') }}" class="btn btn-outline">
+                    <span>{{ __('Importa Excel') }}</span>
+                    <x-lucide-file-up class="h-4 w-4" />
+                </a>
+                <button type="button" class="btn btn-primary" data-open-course-tutor-modal>
+                    <span>{{ __('Nuovo tutor') }}</span>
+                    <x-lucide-plus class="h-4 w-4" />
+                </button>
+            </div>
         </div>
 
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

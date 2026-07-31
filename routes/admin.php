@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\CourseEnrollmentDetailController;
 use App\Http\Controllers\Admin\CourseEnrollmentImportController;
 use App\Http\Controllers\Admin\CourseFacultyMemberController;
 use App\Http\Controllers\Admin\CourseModuleController;
+use App\Http\Controllers\Admin\CourseStaffImportController;
 use App\Http\Controllers\Admin\CourseTeacherEnrollmentController;
 use App\Http\Controllers\Admin\CourseTutorEnrollmentController;
 use App\Http\Controllers\Admin\CustomCertificateController;
@@ -96,6 +97,10 @@ Route::middleware(['auth', 'active.role:admin|superadmin', 'active.company_divis
         Route::get('/imports/user-courses/template', [CourseEnrollmentImportController::class, 'downloadTemplate'])->name('imports.user-courses.template');
         Route::get('/imports/user-courses/status-card', [CourseEnrollmentImportController::class, 'statusCard'])->name('imports.user-courses.status-card');
         Route::post('/imports/user-courses', [CourseEnrollmentImportController::class, 'store'])->name('imports.user-courses.store');
+        Route::get('/imports/course-staff', [CourseStaffImportController::class, 'index'])->name('imports.course-staff');
+        Route::get('/imports/course-staff/template', [CourseStaffImportController::class, 'downloadTemplate'])->name('imports.course-staff.template');
+        Route::get('/imports/course-staff/status-card', [CourseStaffImportController::class, 'statusCard'])->name('imports.course-staff.status-card');
+        Route::post('/imports/course-staff', [CourseStaffImportController::class, 'store'])->name('imports.course-staff.store');
         Route::get('/imports/user-training-paths', [TrainingPathImportController::class, 'index'])->name('imports.user-training-paths');
         Route::get('/imports/user-training-paths/template', [TrainingPathImportController::class, 'downloadTemplate'])->name('imports.user-training-paths.template');
         Route::get('/imports/user-training-paths/status-card', [TrainingPathImportController::class, 'statusCard'])->name('imports.user-training-paths.status-card');

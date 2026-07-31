@@ -63,15 +63,28 @@
                         'admin.other-configurations.*',
                     ];
 
-                    $importsMenuPatterns = [
+                    $userImportsMenuPatterns = [
                         'admin.imports.users',
                         'admin.imports.users.quick',
+                    ];
+
+                    $organizationalImportsMenuPatterns = [
                         'admin.imports.job-units',
                         'admin.imports.job-tasks',
+                    ];
+
+                    $associationImportsMenuPatterns = [
                         'admin.imports.user-job-tasks',
                         'admin.imports.user-courses',
+                        'admin.imports.course-staff',
                         'admin.imports.user-training-paths',
                         'admin.imports.job-task-risk-associations',
+                    ];
+
+                    $importsMenuPatterns = [
+                        ...$userImportsMenuPatterns,
+                        ...$organizationalImportsMenuPatterns,
+                        ...$associationImportsMenuPatterns,
                     ];
 
                     $jobConfigurationMenuPatterns = [
@@ -104,6 +117,9 @@
                     $registryMenuOpen = $matchesRoutePatterns($registryMenuPatterns);
                     $portalMenuOpen = $matchesRoutePatterns($portalMenuPatterns);
                     $importsMenuOpen = $matchesRoutePatterns($importsMenuPatterns);
+                    $userImportsMenuOpen = $matchesRoutePatterns($userImportsMenuPatterns);
+                    $organizationalImportsMenuOpen = $matchesRoutePatterns($organizationalImportsMenuPatterns);
+                    $associationImportsMenuOpen = $matchesRoutePatterns($associationImportsMenuPatterns);
                     $jobConfigurationMenuOpen = $matchesRoutePatterns($jobConfigurationMenuPatterns);
                     $configurationMenuOpen = $matchesRoutePatterns($configurationMenuPatterns);
                     $toolsMenuOpen = $matchesRoutePatterns($toolsMenuPatterns);
@@ -320,76 +336,79 @@
                                 </summary>
                                 <ul>
                                     <li>
-                                        <a
-                                            href="{{ route('admin.imports.users') }}"
-                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.users'])])
-                                        >
-                                            <x-lucide-user-round class="mr-2 inline-block h-4 w-4" />
-                                            {{ __('Import utenti completo') }}
-                                        </a>
+                                        <details @if($userImportsMenuOpen) open @endif>
+                                            <summary>
+                                                <x-lucide-user-round class="mr-2 inline-block h-4 w-4" />
+                                                {{ __('Utenti') }}
+                                            </summary>
+                                            <ul>
+                                                <li>
+                                                    <a href="{{ route('admin.imports.users') }}" @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.users'])])>
+                                                        {{ __('Import utenti completo') }}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{{ route('admin.imports.users.quick') }}" @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.users.quick'])])>
+                                                        {{ __('Import utenti rapido') }}
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </details>
                                     </li>
                                     <li>
-                                        <a
-                                            href="{{ route('admin.imports.users.quick') }}"
-                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.users.quick'])])
-                                        >
-                                            <x-lucide-user-round class="mr-2 inline-block h-4 w-4" />
-                                            {{ __('Import utenti rapido') }}
-                                        </a>
+                                        <details @if($organizationalImportsMenuOpen) open @endif>
+                                            <summary>
+                                                <x-lucide-building-2 class="mr-2 inline-block h-4 w-4" />
+                                                {{ __('Anagrafiche organizzative') }}
+                                            </summary>
+                                            <ul>
+                                                <li>
+                                                    <a href="{{ route('admin.imports.job-units') }}" @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.job-units'])])>
+                                                        {{ __('Unità Lavorative') }}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{{ route('admin.imports.job-tasks') }}" @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.job-tasks'])])>
+                                                        {{ __('Mansioni') }}
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </details>
                                     </li>
                                     <li>
-                                        <a
-                                            href="{{ route('admin.imports.job-units') }}"
-                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.job-units'])])
-                                        >
-                                            <x-lucide-map-pin class="mr-2 inline-block h-4 w-4" />
-                                            {{ __('Unità Lavorative') }}
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a
-                                            href="{{ route('admin.imports.job-tasks') }}"
-                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.job-tasks'])])
-                                        >
-                                            <x-lucide-clipboard-check class="mr-2 inline-block h-4 w-4" />
-                                            {{ __('Mansioni') }}
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a
-                                            href="{{ route('admin.imports.user-job-tasks') }}"
-                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.user-job-tasks'])])
-                                        >
-                                            <x-lucide-link class="mr-2 inline-block h-4 w-4" />
-                                            {{ __('Utenti mansioni') }}
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a
-                                            href="{{ route('admin.imports.user-training-paths') }}"
-                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.user-training-paths'])])
-                                        >
-                                            <x-lucide-route class="mr-2 inline-block h-4 w-4" />
-                                            {{ __('Utenti percorsi') }}
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a
-                                            href="{{ route('admin.imports.user-courses') }}"
-                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.user-courses'])])
-                                        >
-                                            <x-lucide-graduation-cap class="mr-2 inline-block h-4 w-4" />
-                                            {{ __('Utenti corsi') }}
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a
-                                            href="{{ route('admin.imports.job-task-risk-associations') }}"
-                                            @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.job-task-risk-associations'])])
-                                        >
-                                            <x-lucide-shield-alert class="mr-2 inline-block h-4 w-4" />
-                                            {{ __('Mansioni rischio') }}
-                                        </a>
+                                        <details @if($associationImportsMenuOpen) open @endif>
+                                            <summary>
+                                                <x-lucide-link class="mr-2 inline-block h-4 w-4" />
+                                                {{ __('Associazioni') }}
+                                            </summary>
+                                            <ul>
+                                                <li>
+                                                    <a href="{{ route('admin.imports.user-job-tasks') }}" @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.user-job-tasks'])])>
+                                                        {{ __('Utenti mansioni') }}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{{ route('admin.imports.user-training-paths') }}" @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.user-training-paths'])])>
+                                                        {{ __('Utenti percorsi') }}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{{ route('admin.imports.user-courses') }}" @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.user-courses'])])>
+                                                        {{ __('Utenti corsi') }}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{{ route('admin.imports.course-staff') }}" @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.course-staff'])])>
+                                                        {{ __('Docenti e tutor corsi') }}
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="{{ route('admin.imports.job-task-risk-associations') }}" @class(['sidenav-submenu-active' => $matchesRoutePatterns(['admin.imports.job-task-risk-associations'])])>
+                                                        {{ __('Mansioni rischio') }}
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </details>
                                     </li>
                                 </ul>
                             </details>
