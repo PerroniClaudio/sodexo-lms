@@ -26,10 +26,10 @@ class LearningQuizValidator implements ModuleValidatorInterface
             $this->errors[] = 'Il quiz deve avere almeno una domanda valida.';
         }
 
-        // Validate each question has 4 answers and exactly 1 correct answer
+        // Validate each question has at least 2 answers and exactly 1 correct answer
         foreach ($module->quizQuestions as $question) {
-            if ($question->answers()->count() !== 4) {
-                $this->errors[] = "La domanda \"{$question->text}\" deve avere esattamente 4 risposte.";
+            if ($question->answers()->count() < 2) {
+                $this->errors[] = "La domanda \"{$question->text}\" deve avere almeno 2 risposte.";
             }
 
             if (! $question->correctAnswer()->exists()) {

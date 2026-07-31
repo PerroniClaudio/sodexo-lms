@@ -11,18 +11,46 @@
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <div class="card-body gap-6">
-        <div class="flex justify-between items-center">
-                <h2 class="text-lg font-semibold">{{ __('Quiz questions') }}</h2>
-                <button type="button" class="btn btn-primary" onclick="document.getElementById('add-question-modal').showModal()">
-                        <span>{{ __('New question') }}</span>
-                        <x-lucide-plus class="h-4 w-4" />
+        <div class="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+            <h2 class="text-lg font-semibold">{{ __('Quiz questions') }}</h2>
+            <div class="flex flex-wrap gap-2">
+                <a class="btn btn-outline" href="{{ route('admin.courses.modules.quiz.questions.import-template', [$course, $module]) }}">
+                    <x-lucide-download class="h-4 w-4" />
+                    <span>{{ __('Scarica template') }}</span>
+                </a>
+                <button type="button" class="btn btn-outline" @disabled(!$quizIsEditable) onclick="document.getElementById('import-questions-modal').showModal()">
+                    <x-lucide-file-up class="h-4 w-4" />
+                    <span>{{ __('Importa domande') }}</span>
                 </button>
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('add-question-modal').showModal()">
+                    <span>{{ __('New question') }}</span>
+                    <x-lucide-plus class="h-4 w-4" />
+                </button>
+            </div>
         </div>
         {{-- @unless($quizIsEditable)
             <div class="alert alert-warning">
                 <span>{{ __('Le domande e le risposte non possono essere modificate quando il quiz è pubblicato.') }}</span>
             </div>
         @endunless --}}
+
+        <dialog id="import-questions-modal" class="modal">
+            <div class="modal-box w-full max-w-xl">
+                <h3 class="font-bold text-lg mb-2">{{ __('Importa domande') }}</h3>
+                <p class="text-sm text-base-content/70 mb-4">{{ __('Compila il template Excel. Puoi aggiungere altre risposte nelle colonne successive senza limiti.') }}</p>
+                <form method="POST" action="{{ route('admin.courses.modules.quiz.questions.import', [$course, $module]) }}" enctype="multipart/form-data" class="flex flex-col gap-4">
+                    @csrf
+                    <input type="file" name="file" class="file-input file-input-bordered w-full" accept=".xlsx,.xls" required>
+                    <div class="flex flex-wrap justify-end gap-2">
+                        <button type="button" class="btn btn-ghost" onclick="document.getElementById('import-questions-modal').close()">{{ __('Cancel') }}</button>
+                        <button type="submit" class="btn btn-primary">{{ __('Importa domande') }}</button>
+                    </div>
+                </form>
+            </div>
+            <form method="dialog" class="modal-backdrop">
+                <button>{{ __('Close') }}</button>
+            </form>
+        </dialog>
 
         <dialog id="add-question-modal" class="modal">
             <div class="modal-box w-full max-w-xl">
@@ -90,7 +118,7 @@
                 <span class="badge badge-sm badge-success whitespace-nowrap h-fit" data-valid-badge-valid hidden>{{ __('Valid') }}</span>
                 <span class="badge badge-sm badge-error whitespace-nowrap h-fit" data-valid-badge-invalid hidden>{{ __('Not valid') }}</span>
                 <span class="text-xs text-error" data-invalid-reason-empty style="display:none"></span>
-                <span class="text-xs text-error" data-invalid-reason-answers style="display:none">{{ __('A quiz question must have 4 answers and one correct answer.') }}</span>
+                <span class="text-xs text-error" data-invalid-reason-answers style="display:none">{{ __('A quiz question must have at least 2 answers and one correct answer.') }}</span>
             </div>
             <div class="flex flex-col md:flex-row md:items-end gap-2 mb-2">
                 <div class="flex-1 flex flex-col">

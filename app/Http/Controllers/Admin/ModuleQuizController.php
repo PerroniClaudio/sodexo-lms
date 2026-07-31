@@ -4,17 +4,53 @@ namespace App\Http\Controllers\Admin;
 
 use App\Actions\BuildLearningQuizPdfPayload;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ImportModuleQuizQuestionsRequest;
 use App\Models\Course;
 use App\Models\Module;
 use App\Models\ModuleQuizAnswer;
 use App\Models\ModuleQuizQuestion;
+use App\Services\ModuleQuizQuestionImportService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use RuntimeException;
 use Spatie\LaravelPdf\Facades\Pdf;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ModuleQuizController extends Controller
 {
+    public function downloadImportTemplate(Course $course, Module $module): BinaryFileResponse
+    {
+        abort_unless($module->belongsTo === (string) $course->getKey(), 404);
+        abort_unless($module->type === Module::TYPE_LEARNING_QUIZ, 404);
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Domande quiz');
+        $sheet->fromArray([['Testo della domanda', 'Punti che da la domanda', 'Testo risposta corretta', 'Risposta alternativa 1', 'Risposta alternativa 2', 'Risposta alternativa 3']]);
+        $sheet->fromArray([['Qual è la capitale d’Italia?', 2, 'Roma', 'Milano', 'Napoli', 'Torino']], null, 'A2');
+        $temporaryFile = tempnam(sys_get_temp_dir(), 'quiz-questions-template-');
+
+        abort_if($temporaryFile === false, 500, 'Impossibile generare il template.');
+        (new Xlsx($spreadsheet))->save($temporaryFile);
+        $spreadsheet->disconnectWorksheets();
+
+        return Response::download($temporaryFile, 'template-import-domande-quiz.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    public function importQuestions(ImportModuleQuizQuestionsRequest $request, Course $course, Module $module, ModuleQuizQuestionImportService $importer): RedirectResponse
+    {
+        $this->ensureLearningQuizIsEditable($course, $module);
+        $count = $importer->import($module, $request->file('file')->getRealPath());
+
+        return back()->with('status', trans_choice('{1} :count domanda importata.|[2,*] :count domande importate.', $count, ['count' => $count]));
+    }
+
     /**
      * API: restituisce tutte le domande e risposte del quiz di un modulo. solo admin e superadmin (risposta JSON)
      */

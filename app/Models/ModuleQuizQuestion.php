@@ -37,6 +37,6 @@ class ModuleQuizQuestion extends Model
 
     public function isValid(): bool
     {
-        return $this->answers()->count() === 4 && $this->correctAnswer()->exists();
+        return $this->answers()->count() >= 2 && $this->correctAnswer()->exists();
     }
 }
