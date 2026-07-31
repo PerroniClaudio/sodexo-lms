@@ -7,6 +7,7 @@ import { escapeHtml, fetchJSON, getModuleData, getModuleRoot, refreshModulePlaye
 import { applyMuxPlayerRestrictions } from '../mux-player.js';
 
 const HEARTBEAT_INTERVAL_MS = 60_000;
+const PLAYER_LOAD_TIMEOUT_MS = 15_000;
 const SEEK_GRACE_SECONDS = 3;
 const INTERRUPTION_MESSAGES = {
     hidden: 'Hai cambiato scheda o finestra. Il video è stato messo in pausa.',
@@ -55,8 +56,8 @@ export function initVideoModule() {
 async function loadVideoPlayer(moduleData, elements) {
     try {
         const [playbackData, trackingData] = await Promise.all([
-            fetchJSON(moduleData.signedPlaybackUrl),
-            fetchJSON(moduleData.videoTrackingUrl),
+            fetchJSON(moduleData.signedPlaybackUrl, { signal: AbortSignal.timeout(PLAYER_LOAD_TIMEOUT_MS) }),
+            fetchJSON(moduleData.videoTrackingUrl, { signal: AbortSignal.timeout(PLAYER_LOAD_TIMEOUT_MS) }),
         ]);
 
         createMuxPlayer({

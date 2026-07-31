@@ -20,6 +20,8 @@ class MuxService
     {
         $this->client = new Client([
             'base_uri' => 'https://api.mux.com/video/v1/',
+            'connect_timeout' => (int) config('services.mux.timeout.connect', 5),
+            'timeout' => (int) config('services.mux.timeout.request', 10),
             'auth' => [
                 config('services.mux.token_id'),
                 config('services.mux.token_secret'),
