@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Video;
 use App\Models\VideoReportRequest;
 use App\Models\VideoTrackingEvent;
+use App\Models\WorldDivision;
 use App\Services\VideoReportExporter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -22,7 +23,7 @@ it('builds a workbook with progress and audit sheets filtered by date range', fu
     actingAsRole('admin');
     app()->setLocale('it');
 
-    [$videoReportRequest, $moduleProgress] = seedVideoReportFixture();
+    [$videoReportRequest, $moduleProgress, , $homeRegion] = seedVideoReportFixture();
 
     $exporter = app(VideoReportExporter::class);
     $bytes = $exporter->buildWorkbookContents($videoReportRequest);
@@ -37,10 +38,12 @@ it('builds a workbook with progress and audit sheets filtered by date range', fu
         ->and($spreadsheet->getSheet(0)->getTitle())->toBe('Avanzamenti')
         ->and($spreadsheet->getSheet(1)->getTitle())->toBe('Audit Trail')
         ->and($spreadsheet->getSheet(0)->getCell('A1')->getValue())->toBe('ID corso')
-        ->and($spreadsheet->getSheet(0)->getCell('R1')->getValue())->toBe('Stato modulo')
+        ->and($spreadsheet->getSheet(0)->getCell('L1')->getValue())->toBe('Regione di residenza/domicilio')
+        ->and($spreadsheet->getSheet(0)->getCell('L2')->getValue())->toBe($homeRegion->name)
+        ->and($spreadsheet->getSheet(0)->getCell('S1')->getValue())->toBe('Stato modulo')
         ->and($spreadsheet->getSheet(1)->getCell('N1')->getValue())->toBe('Tipo evento')
         ->and($spreadsheet->getSheet(0)->getCell('B2')->getValue())->toBe('Corso report video')
-        ->and($spreadsheet->getSheet(0)->getCell('R2')->getValue())->toBe(ModuleProgress::STATUS_COMPLETED)
+        ->and($spreadsheet->getSheet(0)->getCell('S2')->getValue())->toBe(ModuleProgress::STATUS_COMPLETED)
         ->and($spreadsheet->getSheet(1)->getCell('N2')->getValue())->toBe(VideoTrackingEvent::TYPE_PLAY)
         ->and($spreadsheet->getSheet(1)->getHighestDataRow())->toBe(2);
 
@@ -75,7 +78,7 @@ it('filters workbook rows by selected job dimension', function () {
     $spreadsheet = IOFactory::load($temporaryFile);
 
     expect($spreadsheet->getSheet(0)->getHighestDataRow())->toBe(2)
-        ->and($spreadsheet->getSheet(0)->getCell('L2')->getValue())->toBe('Settore incluso')
+        ->and($spreadsheet->getSheet(0)->getCell('M2')->getValue())->toBe('Settore incluso')
         ->and($spreadsheet->getSheet(1)->getHighestDataRow())->toBe(2);
 
     @unlink($temporaryFile);
@@ -168,6 +171,7 @@ function seedVideoReportFixture(?JobSector $jobSector = null, string $courseTitl
         'surname' => fake()->lastName(),
         'fiscal_code' => fake()->unique()->regexify('[A-Z0-9]{16}'),
         'is_foreigner_or_immigrant' => false,
+        'home_region_id' => $homeRegion = WorldDivision::query()->firstOrFail()->getKey(),
     ]);
     $user->assignRole(Role::findByName('user'));
 
@@ -242,5 +246,5 @@ function seedVideoReportFixture(?JobSector $jobSector = null, string $courseTitl
         'output_disk' => 's3',
     ]);
 
-    return [$videoReportRequest, $moduleProgress, $jobSector];
+    return [$videoReportRequest, $moduleProgress, $jobSector, WorldDivision::query()->findOrFail($homeRegion)];
 }

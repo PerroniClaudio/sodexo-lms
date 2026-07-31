@@ -30,6 +30,7 @@ class VideoReportExporter
         'user_surname',
         'user_email',
         'user_fiscal_code',
+        'home_region',
         'job_sector',
         'job_category',
         'job_level',
@@ -167,6 +168,7 @@ class VideoReportExporter
                 'users.surname as user_surname',
                 'users.email as user_email',
                 'users.fiscal_code as user_fiscal_code',
+                'home_regions.name as home_region',
                 'job_sectors.name as job_sector',
                 'job_categories.name as job_category',
                 'job_levels.name as job_level',
@@ -199,6 +201,7 @@ class VideoReportExporter
                 $row->user_surname,
                 $row->user_email,
                 $row->user_fiscal_code,
+                $row->home_region,
                 $row->job_sector,
                 $row->job_category,
                 $row->job_level,
@@ -288,6 +291,7 @@ class VideoReportExporter
             ->join('modules', 'modules.id', '=', 'video_tracking_events.module_id')
             ->join('videos', 'videos.id', '=', 'video_tracking_events.video_id')
             ->join('users', 'users.id', '=', 'video_tracking_events.user_id')
+            ->leftJoin('world_divisions as home_regions', 'home_regions.id', '=', 'users.home_region_id')
             ->leftJoin('job_sectors', 'job_sectors.id', '=', 'users.job_sector_id')
             ->leftJoin('job_categories', 'job_categories.id', '=', 'users.job_category_id')
             ->leftJoin('job_levels', 'job_levels.id', '=', 'users.job_level_id')

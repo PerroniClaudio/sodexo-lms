@@ -14,6 +14,7 @@ return [
             'user_surname' => 'Last name',
             'user_email' => 'Email',
             'user_fiscal_code' => 'Fiscal code',
+            'home_region' => 'Region of residence/domicile',
             'job_sector' => 'Job sector',
             'job_category' => 'Job category',
             'job_level' => 'Job level',
