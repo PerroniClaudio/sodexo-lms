@@ -46,7 +46,7 @@ class ModuleQuizSubmissionController extends Controller
         return view('admin.module.quiz-submissions.show', [
             'course' => $course,
             'module' => $module,
-            'submission' => $submission->load(['answers.question', 'answers.answer', 'user', 'uploadedBy', 'documentUpload']),
+            'submission' => $submission->load(['answers.question.correctAnswer', 'answers.answer', 'user', 'uploadedBy', 'documentUpload']),
         ]);
     }
 

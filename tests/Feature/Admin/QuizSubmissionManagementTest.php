@@ -148,6 +148,8 @@ it('renders the OCR submissions list and review page', function () {
         'source_type' => ModuleQuizSubmission::SOURCE_UPLOAD,
         'uploaded_by' => auth()->id(),
         'status' => ModuleQuizSubmission::STATUS_NEEDS_REVIEW,
+        'score' => 2,
+        'total_score' => 3,
     ]);
 
     $submission->answers()->create([
@@ -166,7 +168,9 @@ it('renders the OCR submissions list and review page', function () {
     $this->get(route('admin.courses.modules.quiz.submissions.index', [$course, $module]))
         ->assertOk()
         ->assertSeeText('Mario Rossi')
-        ->assertSeeText('Upload');
+        ->assertSeeText('Upload')
+        ->assertSeeText('2 / 3')
+        ->assertSeeText('Superato');
 
     $this->get(route('admin.courses.modules.quiz.submissions.review', [$course, $module, $submission]))
         ->assertOk()
@@ -174,6 +178,73 @@ it('renders the OCR submissions list and review page', function () {
         ->assertSeeText('Seconda domanda')
         ->assertSee('value="A" selected', escape: false)
         ->assertSee('value="B" selected', escape: false);
+});
+
+it('shows the correct answer for incorrect online quiz responses', function () {
+    [$course, $module, $question] = createLearningQuizModule();
+    $participant = User::query()->create([
+        'email' => 'online@example.test',
+        'password' => Hash::make('password'),
+        'account_state' => 'active',
+        'name' => 'Online',
+        'surname' => 'Participant',
+        'fiscal_code' => 'ONLINEUSER000001',
+    ]);
+    $wrongAnswer = $question->answers()->orderBy('id')->skip(1)->firstOrFail();
+
+    $submission = ModuleQuizSubmission::query()->create([
+        'module_id' => $module->getKey(),
+        'user_id' => $participant->getKey(),
+        'source_type' => ModuleQuizSubmission::SOURCE_ONLINE,
+        'status' => ModuleQuizSubmission::STATUS_SUBMITTED,
+    ]);
+    $submission->answers()->create([
+        'module_quiz_question_id' => $question->getKey(),
+        'module_quiz_answer_id' => $wrongAnswer->getKey(),
+    ]);
+
+    $this->get(route('admin.courses.modules.quiz.submissions.show', [$course, $module, $submission]))
+        ->assertOk()
+        ->assertSeeText('Risposta data')
+        ->assertSeeText('Risposta B1')
+        ->assertSeeText('Sbagliata')
+        ->assertSeeText('Risposta corretta')
+        ->assertSeeText('Risposta A1');
+});
+
+it('shows correction for finalized uploaded quiz responses', function () {
+    [$course, $module, $question] = createLearningQuizModule();
+    $participant = User::query()->create([
+        'email' => 'uploaded@example.test',
+        'password' => Hash::make('password'),
+        'account_state' => 'active',
+        'name' => 'Uploaded',
+        'surname' => 'Participant',
+        'fiscal_code' => 'UPLOADEDUSER0001',
+    ]);
+    $wrongAnswer = $question->answers()->orderBy('id')->skip(1)->firstOrFail();
+
+    $submission = ModuleQuizSubmission::query()->create([
+        'module_id' => $module->getKey(),
+        'user_id' => $participant->getKey(),
+        'source_type' => ModuleQuizSubmission::SOURCE_UPLOAD,
+        'status' => ModuleQuizSubmission::STATUS_FINALIZED,
+        'score' => 0,
+        'total_score' => 2,
+    ]);
+    $submission->answers()->create([
+        'module_quiz_question_id' => $question->getKey(),
+        'module_quiz_answer_id' => $wrongAnswer->getKey(),
+        'question_number' => 1,
+        'selected_option_key' => 'B',
+    ]);
+
+    $this->get(route('admin.courses.modules.quiz.submissions.show', [$course, $module, $submission]))
+        ->assertOk()
+        ->assertSeeText('Opzione: B')
+        ->assertSeeText('Sbagliata')
+        ->assertSeeText('Risposta corretta')
+        ->assertSeeText('Risposta A1');
 });
 
 it('finalizes a reviewed submission and updates module progress', function () {

@@ -32,6 +32,7 @@
                                     <th>{{ __('Utente') }}</th>
                                     <th>{{ __('Modalità') }}</th>
                                     <th>{{ __('Stato') }}</th>
+                                    <th>{{ __('Punteggio') }}</th>
                                     <th>{{ __('Caricato il') }}</th>
                                     <th>{{ __('Azioni') }}</th>
                                 </tr>
@@ -50,6 +51,18 @@
                                             @endif
                                         </td>
                                         <td>{{ __(ucfirst($submission->status)) }}</td>
+                                        <td>
+                                            @if ($submission->score !== null)
+                                                {{ $submission->score }} / {{ $submission->total_score }}
+                                                @if ($submission->score >= $module->passing_score)
+                                                    <span class="badge badge-xs badge-success ml-1 h-fit">{{ __('Superato') }}</span>
+                                                @else
+                                                    <span class="badge badge-xs badge-error ml-1 h-fit">{{ __('Non superato') }}</span>
+                                                @endif
+                                            @else
+                                                <span class="text-base-content/50">—</span>
+                                            @endif
+                                        </td>
                                         <td>{{ $submission->created_at?->format('d/m/Y H:i') }}</td>
                                         <td class="flex flex-wrap gap-2">
                                             <a href="{{ route('admin.courses.modules.quiz.submissions.show', [$course, $module, $submission]) }}" class="btn btn-sm btn-outline">

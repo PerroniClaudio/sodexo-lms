@@ -184,12 +184,12 @@
                                     </div>
                                 </div>
 
+                                @php
+                                    $isCorrect = $answer->question && $answer->question->correct_answer_id === $answer->module_quiz_answer_id;
+                                @endphp
                                 <div class="mt-3 rounded bg-base-200 p-3">
                                     <div class="mb-1 text-xs font-medium text-base-content/70">{{ __('Risposta data') }}</div>
                                     @if ($submission->source_type === 'online')
-                                        @php
-                                            $isCorrect = $answer->question && $answer->question->correct_answer_id === $answer->module_quiz_answer_id;
-                                        @endphp
                                         <div class="flex items-start justify-between gap-4">
                                             <div class="flex-1">
                                                 @if ($answer->answer)
@@ -221,9 +221,25 @@
                                                     {{ __('Confidence') }}: {{ number_format((float) $answer->confidence, 2) }}
                                                 </span>
                                             @endif
+                                            @if ($submission->status === \App\Models\ModuleQuizSubmission::STATUS_FINALIZED)
+                                                @if ($answer->module_quiz_answer_id === null)
+                                                    <span class="badge badge-ghost h-fit">{{ __('Non risposta') }}</span>
+                                                @elseif ($isCorrect)
+                                                    <span class="badge badge-success h-fit">{{ __('Corretta') }}</span>
+                                                @else
+                                                    <span class="badge badge-error h-fit">{{ __('Sbagliata') }}</span>
+                                                @endif
+                                            @endif
                                         </div>
                                     @endif
                                 </div>
+
+                                @if (($submission->source_type === 'online' || $submission->status === \App\Models\ModuleQuizSubmission::STATUS_FINALIZED) && $answer->module_quiz_answer_id !== null && ! $isCorrect && $answer->question?->correctAnswer)
+                                    <div class="mt-3 rounded bg-success/10 p-3">
+                                        <div class="mb-1 text-xs font-medium text-base-content/70">{{ __('Risposta corretta') }}</div>
+                                        <p class="text-sm">{{ $answer->question->correctAnswer->text }}</p>
+                                    </div>
+                                @endif
                             </div>
                         @endforeach
                     </div>
