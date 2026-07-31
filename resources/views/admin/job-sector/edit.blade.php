@@ -90,6 +90,30 @@
                         @enderror
                     </div>
 
+                    <div class="form-control flex flex-col gap-2">
+                        <label for="employer_user_id" class="label p-0">
+                            <span class="label-text font-medium">{{ __('Datore di lavoro') }}</span>
+                        </label>
+                        <select
+                            id="employer_user_id"
+                            name="employer_user_id"
+                            class="select select-bordered w-full @error('employer_user_id') select-error @enderror"
+                        >
+                            <option value="">{{ __('Nessuno') }}</option>
+                            @foreach($employerCandidates as $candidate)
+                                <option value="{{ $candidate->id }}" @selected((string) old('employer_user_id', $sector->employer_user_id) === (string) $candidate->id)>
+                                    {{ $candidate->surname }} {{ $candidate->name }} — {{ $candidate->email }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="text-sm text-base-content/70">
+                            {{ __('Può essere selezionato solo un utente appartenente a questo settore.') }}
+                        </p>
+                        @error('employer_user_id')
+                            <p class="text-sm text-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     <div class="flex justify-end gap-3">
                         <a href="{{ route('admin.job-sectors.index') }}" class="btn btn-ghost">
                             {{ __('Cancel') }}
@@ -100,6 +124,63 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <div class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-6">
+                <div>
+                    <h2 class="card-title">{{ __('Template attestati') }}</h2>
+                    <p class="text-sm text-base-content/70">
+                        {{ __('Sono usati per gli utenti del settore quando il corso non ha un template specifico.') }}
+                    </p>
+                </div>
+
+                <div class="grid gap-6 lg:grid-cols-2">
+                    @foreach(\App\Models\CustomCertificate::availableTypes() as $type)
+                        @php
+                            $template = $certificateTemplates->get($type);
+                        @endphp
+                        <form
+                            method="POST"
+                            action="{{ route('admin.job-sectors.certificate-templates.update', $sector) }}"
+                            enctype="multipart/form-data"
+                            class="flex flex-col gap-4 rounded-lg border border-base-300 p-4"
+                        >
+                            @csrf
+                            @method('PUT')
+                            <input type="hidden" name="type" value="{{ $type }}">
+
+                            <div>
+                                <h3 class="font-semibold">{{ $certificateTypeLabels[$type] }}</h3>
+                                <p class="text-sm text-base-content/70">
+                                    {{ $template?->original_filename ?? __('Nessun template caricato') }}
+                                </p>
+                            </div>
+
+                            <div class="form-control flex flex-col gap-2">
+                                <label for="template_{{ $type }}" class="label p-0">
+                                    <span class="label-text font-medium">{{ __('Template DOCX') }}</span>
+                                </label>
+                                <input
+                                    id="template_{{ $type }}"
+                                    name="template"
+                                    type="file"
+                                    accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                    class="file-input file-input-bordered w-full"
+                                    required
+                                >
+                            </div>
+
+                            <div class="flex justify-end">
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <x-lucide-upload class="h-4 w-4" />
+                                    <span>{{ __('Carica template') }}</span>
+                                </button>
+                            </div>
+                        </form>
+                    @endforeach
+                </div>
             </div>
         </div>
 

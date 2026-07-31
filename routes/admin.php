@@ -339,6 +339,7 @@ Route::middleware(['auth', 'active.role:admin|superadmin', 'active.company_divis
             Route::post('job-tasks/{id}/restore', [JobTaskController::class, 'restore'])->name('job-tasks.restore');
             Route::post('job-roles/{id}/restore', [JobRoleController::class, 'restore'])->name('job-roles.restore');
             Route::post('job-sectors/{id}/restore', [JobSectorController::class, 'restore'])->name('job-sectors.restore');
+            Route::put('job-sectors/{job_sector}/certificate-templates', [JobSectorController::class, 'updateCertificateTemplate'])->name('job-sectors.certificate-templates.update');
             Route::post('job-units/{id}/restore', [JobUnitController::class, 'restore'])->name('job-units.restore');
             Route::post('document-types/{id}/restore', [DocumentTypeController::class, 'restore'])->name('document-types.restore');
             Route::post('funding-entities/{id}/restore', [FundingEntityController::class, 'restore'])->name('funding-entities.restore');

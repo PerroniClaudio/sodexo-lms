@@ -34,6 +34,7 @@ class CustomCertificateController extends Controller
     {
         $certificates = CustomCertificate::query()
             ->withTrashed()
+            ->whereNull('job_sector_id')
             ->orderByDesc('is_active')
             ->orderByDesc('activated_at')
             ->orderByDesc('id')
@@ -79,6 +80,8 @@ class CustomCertificateController extends Controller
 
     public function edit(CustomCertificate $customCertificate): View
     {
+        abort_if($customCertificate->job_sector_id !== null, 404);
+
         return view('admin.certificates.edit', [
             'certificate' => $customCertificate,
             'typeLabels' => CustomCertificate::availableTypeLabels(),
@@ -96,6 +99,8 @@ class CustomCertificateController extends Controller
 
     public function update(UpdateCustomCertificateRequest $request, CustomCertificate $customCertificate): RedirectResponse
     {
+        abort_if($customCertificate->job_sector_id !== null, 404);
+
         $validated = $request->validated();
 
         if ($request->hasFile('template')) {
@@ -130,10 +135,13 @@ class CustomCertificateController extends Controller
 
     public function restoreVersion(CustomCertificate $customCertificate): RedirectResponse
     {
+        abort_if($customCertificate->job_sector_id !== null, 404);
+
         DB::transaction(function () use ($customCertificate): void {
             CustomCertificate::query()
                 ->active()
                 ->ofType($customCertificate->type)
+                ->forTarget($customCertificate->course_ids, $customCertificate->job_sector_id)
                 ->whereKeyNot($customCertificate->getKey())
                 ->update([
                     'is_active' => false,
@@ -154,6 +162,8 @@ class CustomCertificateController extends Controller
 
     public function preview(CustomCertificate $customCertificate): View
     {
+        abort_if($customCertificate->job_sector_id !== null, 404);
+
         return view('admin.certificates.preview', [
             'certificate' => $customCertificate,
             'courses' => Course::query()->orderBy('title')->get(['id', 'title']),
@@ -166,6 +176,8 @@ class CustomCertificateController extends Controller
         PreviewCustomCertificateRequest $request,
         CustomCertificate $customCertificate
     ): RedirectResponse {
+        abort_if($customCertificate->job_sector_id !== null, 404);
+
         $validated = $request->validated();
 
         $course = Course::query()->findOrFail($validated['course_id']);
@@ -257,6 +269,7 @@ class CustomCertificateController extends Controller
             '${DATA_COMPLETAMENTO_CORSO}' => __('Data di completamento dell\'iscrizione'),
             '${DATA_CORSO}' => __('Campo Data inizio per moduli RES/live'),
             '${ORARIO_CORSO}' => __('Campo Orario del corso per moduli RES/live'),
+            '${NUMERO_PROGRESSIVO_ATTESTATO}' => __('Numero progressivo annuale dell\'attestato'),
         ];
     }
 }

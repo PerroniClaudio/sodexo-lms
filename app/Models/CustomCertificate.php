@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\CustomCertificateFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,6 +27,7 @@ class CustomCertificate extends Model
         'mime_type',
         'is_active',
         'course_ids',
+        'job_sector_id',
         'replaced_by_id',
         'activated_at',
         'archived_at',
@@ -68,18 +70,42 @@ class CustomCertificate extends Model
         return $query->where('type', $type);
     }
 
+    /**
+     * @param  array<int>|null  $courseIds
+     */
+    public function scopeForTarget(Builder $query, ?array $courseIds, ?int $jobSectorId): Builder
+    {
+        return $query
+            ->where('course_ids', $courseIds === null ? null : json_encode(array_values($courseIds)))
+            ->where('job_sector_id', $jobSectorId);
+    }
+
     public function replacedBy(): BelongsTo
     {
         return $this->belongsTo(self::class, 'replaced_by_id');
     }
 
+    public function jobSector(): BelongsTo
+    {
+        return $this->belongsTo(JobSector::class);
+    }
+
     public function isGeneric(): bool
     {
-        return blank($this->course_ids);
+        return blank($this->course_ids) && $this->job_sector_id === null;
+    }
+
+    public function isForSector(int $jobSectorId): bool
+    {
+        return $this->job_sector_id === $jobSectorId;
     }
 
     public function supportsCourse(int $courseId): bool
     {
+        if ($this->job_sector_id !== null) {
+            return false;
+        }
+
         if ($this->isGeneric()) {
             return true;
         }

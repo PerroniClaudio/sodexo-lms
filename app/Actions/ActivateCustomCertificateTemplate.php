@@ -12,15 +12,20 @@ class ActivateCustomCertificateTemplate
     /**
      * @param  array<int>|null  $courseIds
      */
-    public function handle(string $type, UploadedFile $uploadedFile, ?array $courseIds = null): CustomCertificate
-    {
-        return DB::transaction(function () use ($courseIds, $type, $uploadedFile): CustomCertificate {
+    public function handle(
+        string $type,
+        UploadedFile $uploadedFile,
+        ?array $courseIds = null,
+        ?int $jobSectorId = null,
+    ): CustomCertificate {
+        return DB::transaction(function () use ($courseIds, $jobSectorId, $type, $uploadedFile): CustomCertificate {
             $path = $uploadedFile->store(sprintf('custom-certificates/%s', $type));
 
             $currentActive = CustomCertificate::query()
                 ->active()
                 ->ofType($type)
                 ->whereNull('deleted_at')
+                ->forTarget($courseIds, $jobSectorId)
                 ->first();
 
             if ($currentActive !== null) {
@@ -39,6 +44,7 @@ class ActivateCustomCertificateTemplate
                 'mime_type' => $uploadedFile->getMimeType() ?? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                 'is_active' => true,
                 'course_ids' => $courseIds,
+                'job_sector_id' => $jobSectorId,
                 'replaced_by_id' => null,
                 'activated_at' => now(),
                 'archived_at' => null,

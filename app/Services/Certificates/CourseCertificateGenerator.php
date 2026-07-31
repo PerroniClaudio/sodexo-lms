@@ -32,21 +32,25 @@ class CourseCertificateGenerator
             return collect();
         }
 
-        $variables = $this->certificateVariableResolver->resolve($enrollment->course, $enrollment->user, $enrollment);
-
         return collect(CustomCertificate::availableTypes())
-            ->map(function (string $type) use ($enrollment, $variables): ?DocumentConversionJob {
+            ->map(function (string $type) use ($enrollment): ?DocumentConversionJob {
                 if (! $this->certificateEligibilityService->isEligible($enrollment, $type)) {
                     return null;
                 }
 
-                $certificate = $this->customCertificateResolver->resolve($type, $enrollment->course);
+                $certificate = $this->customCertificateResolver->resolve($type, $enrollment->course, $enrollment->user);
 
                 if ($certificate === null) {
                     return null;
                 }
 
-                return $this->createConversionJob($enrollment, $certificate, $variables);
+                $enrollment->assignCertificateNumber();
+
+                return $this->createConversionJob(
+                    $enrollment,
+                    $certificate,
+                    $this->certificateVariableResolver->resolve($enrollment->course, $enrollment->user, $enrollment),
+                );
             })
             ->filter()
             ->values();

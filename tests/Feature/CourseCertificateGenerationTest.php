@@ -128,7 +128,8 @@ it('creates participation and completion certificates when learning quiz is pass
         ->and($jobs->pluck('output_path')->all())->toBe([
             'certificates/word/'.$enrollment->course_id.'_'.Str::upper($enrollment->user->fiscal_code).'_'.$enrollment->completed_at?->format('Ymd').'_participation.pdf',
             'certificates/word/'.$enrollment->course_id.'_'.Str::upper($enrollment->user->fiscal_code).'_'.$enrollment->completed_at?->format('Ymd').'_completion.pdf',
-        ]);
+        ])
+        ->and($enrollment->fresh()->certificateNumber())->not->toBeNull();
 });
 
 it('starts cloud run only once when pending document conversion jobs exist', function () {

@@ -46,6 +46,8 @@ class CourseEnrollment extends Model
         'course_validity_type',
         'is_integrative_enrollment',
         'certificate_generation_error',
+        'certificate_sequence',
+        'certificate_sequence_year',
     ];
 
     protected function casts(): array
@@ -57,10 +59,49 @@ class CourseEnrollment extends Model
             'expires_at' => 'datetime',
             'last_accessed_at' => 'datetime',
             'completion_percentage' => 'integer',
+            'certificate_sequence' => 'integer',
+            'certificate_sequence_year' => 'integer',
             'is_integrative_enrollment' => 'boolean',
             'direct_origin' => 'boolean',
             'pathway_origin' => 'boolean',
         ];
+    }
+
+    public function certificateNumber(): ?string
+    {
+        if ($this->certificate_sequence === null || $this->certificate_sequence_year === null) {
+            return null;
+        }
+
+        return sprintf('%d/%d', $this->certificate_sequence, $this->certificate_sequence_year);
+    }
+
+    public function assignCertificateNumber(): string
+    {
+        if ($this->certificateNumber() !== null) {
+            return $this->certificateNumber();
+        }
+
+        return DB::transaction(function (): string {
+            $enrollment = self::query()->lockForUpdate()->findOrFail($this->getKey());
+
+            if ($enrollment->certificateNumber() === null) {
+                $year = (int) ($enrollment->completed_at?->year ?? now()->year);
+                $sequence = (int) self::withTrashed()
+                    ->where('certificate_sequence_year', $year)
+                    ->lockForUpdate()
+                    ->max('certificate_sequence') + 1;
+
+                $enrollment->forceFill([
+                    'certificate_sequence' => $sequence,
+                    'certificate_sequence_year' => $year,
+                ])->save();
+            }
+
+            $this->setRawAttributes($enrollment->getAttributes(), true);
+
+            return $enrollment->certificateNumber();
+        }, attempts: 5);
     }
 
     protected static function booted(): void

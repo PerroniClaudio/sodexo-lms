@@ -31,6 +31,7 @@ class CertificateVariableResolver
             '${DATA_COMPLETAMENTO_CORSO}' => $this->formatDate($enrollment?->completed_at ?? today()),
             '${DATA_CORSO}' => $this->formatDate($appointmentModule?->appointment_start_time ?? today()),
             '${ORARIO_CORSO}' => $this->resolveCourseTime($appointmentModule),
+            '${NUMERO_PROGRESSIVO_ATTESTATO}' => $enrollment?->certificateNumber() ?? '1/'.now()->year,
         ];
     }
 

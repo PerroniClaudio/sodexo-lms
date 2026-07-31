@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\ActivateCustomCertificateTemplate;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreJobSectorRequest;
+use App\Http\Requests\UpdateJobSectorCertificateTemplateRequest;
 use App\Http\Requests\UpdateJobSectorRequest;
+use App\Models\CustomCertificate;
 use App\Models\JobSector;
 use App\Models\NaceAteco;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -73,7 +77,7 @@ class JobSectorController extends Controller
 
     public function edit(JobSector $jobSector): View
     {
-        $jobSector->load('naceAtecoCodes');
+        $jobSector->load('naceAtecoCodes', 'employer');
 
         // Get all ATECO codes ordered by hierarchy (1-6), then by code
         $allAtecoCodes = NaceAteco::orderBy('hierarchy')->orderBy('code')->get()->groupBy('hierarchy');
@@ -81,6 +85,20 @@ class JobSectorController extends Controller
         return view('admin.job-sector.edit', [
             'sector' => $jobSector,
             'allAtecoCodes' => $allAtecoCodes,
+            'employerCandidates' => User::query()
+                ->whereBelongsTo($jobSector, 'jobSector')
+                ->orderBy('surname')
+                ->orderBy('name')
+                ->get(['id', 'name', 'surname', 'email']),
+            'certificateTemplates' => collect(CustomCertificate::availableTypes())
+                ->mapWithKeys(fn (string $type): array => [
+                    $type => CustomCertificate::query()
+                        ->active()
+                        ->ofType($type)
+                        ->where('job_sector_id', $jobSector->getKey())
+                        ->first(),
+                ]),
+            'certificateTypeLabels' => CustomCertificate::availableTypeLabels(),
         ]);
     }
 
@@ -91,6 +109,24 @@ class JobSectorController extends Controller
         return redirect()
             ->route('admin.job-sectors.edit', $jobSector)
             ->with('status', __('Settore aggiornato con successo.'));
+    }
+
+    public function updateCertificateTemplate(
+        UpdateJobSectorCertificateTemplateRequest $request,
+        JobSector $jobSector,
+        ActivateCustomCertificateTemplate $activateCustomCertificateTemplate,
+    ): RedirectResponse {
+        $validated = $request->validated();
+
+        $activateCustomCertificateTemplate->handle(
+            type: $validated['type'],
+            uploadedFile: $request->file('template'),
+            jobSectorId: (int) $jobSector->getKey(),
+        );
+
+        return redirect()
+            ->route('admin.job-sectors.edit', $jobSector)
+            ->with('status', __('Template attestato del settore aggiornato con successo.'));
     }
 
     public function destroy(JobSector $jobSector): RedirectResponse

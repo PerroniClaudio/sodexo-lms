@@ -27,6 +27,7 @@ class CustomCertificateFactory extends Factory
             'mime_type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'is_active' => true,
             'course_ids' => null,
+            'job_sector_id' => null,
             'replaced_by_id' => null,
             'activated_at' => now(),
             'archived_at' => null,

@@ -7,11 +7,12 @@ use App\Services\RiskCalculationService;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['name', 'description', 'manual_risk_level'])]
+#[Fillable(['name', 'description', 'manual_risk_level', 'employer_user_id'])]
 class JobSector extends Model
 {
     use HasFactory, SoftDeletes;
@@ -26,6 +27,16 @@ class JobSector extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function employer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'employer_user_id');
+    }
+
+    public function certificateTemplates(): HasMany
+    {
+        return $this->hasMany(CustomCertificate::class);
     }
 
     /**
