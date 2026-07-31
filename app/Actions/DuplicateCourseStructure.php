@@ -62,8 +62,8 @@ class DuplicateCourseStructure
             ->mapWithKeys(function (RiskBasedRequirement $riskBasedRequirement): array {
                 return [
                     $riskBasedRequirement->getKey() => [
-                        'course_validity_types' => $riskBasedRequirement->pivot->course_validity_types,
-                        'integrative_start_risk_levels' => $riskBasedRequirement->pivot->integrative_start_risk_levels,
+                        'course_validity_types' => $riskBasedRequirement->pivot->getRawOriginal('course_validity_types'),
+                        'integrative_start_risk_levels' => $riskBasedRequirement->pivot->getRawOriginal('integrative_start_risk_levels'),
                     ],
                 ];
             })
