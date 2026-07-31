@@ -364,7 +364,7 @@ class Module extends Model
 
     public function hasAccessDelay(): bool
     {
-        return ($this->access_delay_minutes ?? 0) > 0;
+        return ! $this->isSatisfactionQuiz() && ($this->access_delay_minutes ?? 0) > 0;
     }
 
     public function isSatisfactionQuiz(): bool

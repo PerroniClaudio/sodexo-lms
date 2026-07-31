@@ -12,6 +12,7 @@ use App\Models\TrainingPathEnrollment;
 use App\Models\User;
 use App\Models\Video;
 use App\Models\VideoTrackingEvent;
+use App\Services\SyncCourseModuleProgresses;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Str;
 
@@ -230,6 +231,119 @@ test('video progress endpoint updates module progress', function () {
             ->where('module_id', $module->getKey())
             ->value('video_current_second')
     )->toBe(30);
+});
+
+test('access delay blocks a non quiz module until the previous module wait expires', function () {
+    test()->seed(RoleAndPermissionSeeder::class);
+
+    $user = User::forceCreate([
+        'name' => 'Delay',
+        'surname' => 'Test',
+        'email' => Str::uuid().'@example.test',
+        'password' => bcrypt('password'),
+        'fiscal_code' => strtoupper(Str::random(16)),
+        'email_verified_at' => now(),
+        'profile_completed_at' => now(),
+        'account_state' => 'active',
+        'is_foreigner_or_immigrant' => false,
+    ]);
+    $user->assignRole('superadmin');
+    $course = Course::factory()->create(['status' => 'draft']);
+    $previousModule = Module::factory()->create([
+        'type' => Module::TYPE_VIDEO,
+        'order' => 1,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+    $enrollment = CourseEnrollment::enroll($user, $course);
+    $delayedModule = Module::factory()->create([
+        'type' => Module::TYPE_VIDEO,
+        'order' => 2,
+        'access_delay_minutes' => 15,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+    app(SyncCourseModuleProgresses::class)->handle($course);
+    $previousProgress = $enrollment->moduleProgresses()->where('module_id', $previousModule->getKey())->firstOrFail();
+    $previousProgress->markCompleted();
+    $courseResponse = $this->actingAs($user)
+        ->get(route('user.courses.show', $course))
+        ->assertOk()
+        ->assertSee('Disponibile dal');
+
+    expect(substr_count($courseResponse->getContent(), 'Disponibile dal'))->toBe(1);
+
+    $accessState = collect($this->getJson(route('user.courses.module-access-states', $course))
+        ->assertOk()
+        ->json('modules'))
+        ->firstWhere('id', $delayedModule->getKey());
+
+    expect($accessState)
+        ->toMatchArray(['access_gate_active' => true])
+        ->toHaveKey('available_at');
+
+    $this->get(route('user.courses.modules.player', [$course, $delayedModule]))
+        ->assertOk()
+        ->assertSee('Modulo temporaneamente non disponibile');
+
+    $this->getJson(route('user.courses.modules.video.tracking', [$course, $delayedModule]))
+        ->assertStatus(423);
+
+    $delayedModule->update(['type' => Module::TYPE_LEARNING_QUIZ]);
+
+    $this->get(route('user.courses.modules.player', [$course, $delayedModule]))
+        ->assertOk()
+        ->assertSee('Modulo temporaneamente non disponibile');
+
+    $this->getJson(route('user.courses.modules.quiz.status', [$course, $delayedModule]))
+        ->assertStatus(423);
+
+    $previousProgress->forceFill(['completed_at' => now()->subMinutes(16)])->save();
+
+    $this->get(route('user.courses.modules.player', [$course, $delayedModule]))
+        ->assertOk()
+        ->assertDontSee('Modulo temporaneamente non disponibile');
+});
+
+test('satisfaction surveys ignore access delays', function () {
+    test()->seed(RoleAndPermissionSeeder::class);
+
+    $user = User::forceCreate([
+        'name' => 'Survey',
+        'surname' => 'Delay',
+        'email' => Str::uuid().'@example.test',
+        'password' => bcrypt('password'),
+        'fiscal_code' => strtoupper(Str::random(16)),
+        'email_verified_at' => now(),
+        'profile_completed_at' => now(),
+        'account_state' => 'active',
+        'is_foreigner_or_immigrant' => false,
+    ]);
+    $user->assignRole('superadmin');
+    $course = Course::factory()->create(['status' => 'draft']);
+    $videoModule = Module::factory()->create([
+        'type' => Module::TYPE_VIDEO,
+        'order' => 1,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+    $surveyModule = Module::factory()->create([
+        'type' => Module::TYPE_SATISFACTION_QUIZ,
+        'order' => 2,
+        'access_delay_minutes' => 15,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+    $enrollment = CourseEnrollment::enroll($user, $course);
+    $videoProgress = $enrollment->moduleProgresses()->where('module_id', $videoModule->getKey())->firstOrFail();
+    $videoProgress->markCompleted();
+
+    $this->actingAs($user)
+        ->get(route('user.courses.modules.player', [$course, $surveyModule]))
+        ->assertOk()
+        ->assertDontSee('Modulo temporaneamente non disponibile');
+
+    $this->getJson(route('user.courses.modules.satisfaction-survey.show', [$course, $surveyModule]))
+        ->assertStatus(422);
+
+    $this->postJson(route('user.courses.modules.satisfaction-survey.submit', [$course, $surveyModule]), [])
+        ->assertStatus(422);
 });
 
 test('video tracking state returns resume, max allowed and duration', function () {

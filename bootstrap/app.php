@@ -7,6 +7,7 @@ use App\Http\Middleware\EnsureActiveRole;
 use App\Http\Middleware\EnsureCourseVisibleToUser;
 use App\Http\Middleware\EnsureDesktopVideoPlayerAccess;
 use App\Http\Middleware\EnsureDevelopmentEnvironment;
+use App\Http\Middleware\EnsureModuleAccessDelayElapsed;
 use App\Http\Middleware\EnsureUserOnboarded;
 use App\Http\Middleware\IncreaseVideoUploadLimitMiddleware;
 use Illuminate\Auth\AuthenticationException;
@@ -72,6 +73,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'uploadlimit' => IncreaseVideoUploadLimitMiddleware::class,
             'course.visible' => EnsureCourseVisibleToUser::class,
             'desktop.video.player' => EnsureDesktopVideoPlayerAccess::class,
+            'module.access-delay' => EnsureModuleAccessDelayElapsed::class,
             'env.development' => EnsureDevelopmentEnvironment::class,
             'audit.context' => AssignAuditContext::class,
         ]);

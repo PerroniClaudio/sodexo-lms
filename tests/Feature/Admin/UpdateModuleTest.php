@@ -82,6 +82,23 @@ it('clears quiz-only submission settings when updating a non quiz module', funct
     expect($module->permitted_submission)->toBeNull();
 });
 
+it('stores the access delay for every module type', function () {
+    $course = Course::factory()->create();
+    $module = Module::factory()->create([
+        'type' => Module::TYPE_VIDEO,
+        'belongsTo' => (string) $course->getKey(),
+    ]);
+
+    $this->put(route('admin.courses.modules.update', [$course, $module]), [
+        'title' => 'Video aggiornato',
+        'description' => '',
+        'status' => 'draft',
+        'access_delay_minutes' => 15,
+    ])->assertRedirect(route('admin.courses.modules.edit', [$course, $module]));
+
+    expect($module->fresh()->access_delay_minutes)->toBe(15);
+});
+
 it('updates appointment details for live modules', function () {
     $course = Course::factory()->create();
     $module = Module::factory()->create([

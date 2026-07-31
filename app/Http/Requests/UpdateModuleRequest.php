@@ -81,6 +81,7 @@ class UpdateModuleRequest extends FormRequest
                 Rule::in(Module::availablePermittedSubmissions()),
             ],
             'access_delay_minutes' => [
+                Rule::excludeIf(fn (): bool => $module?->isSatisfactionQuiz() ?? false),
                 'nullable',
                 'integer',
                 'min:0',
@@ -127,7 +128,7 @@ class UpdateModuleRequest extends FormRequest
             'passing_score' => __('Passing score'),
             'max_attempts' => __('Tentativi massimi'),
             'permitted_submission' => __('Modalità'),
-            'access_delay_minutes' => __('Accesso tempo finale'),
+            'access_delay_minutes' => __('Tempo di attesa'),
             'max_score' => __('Maximum score'),
         ];
     }

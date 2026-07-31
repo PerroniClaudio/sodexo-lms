@@ -132,6 +132,24 @@ class CourseController extends Controller
         return $this->showUserModule($user, $course, $module, null);
     }
 
+    public function moduleAccessStates(Course $course): JsonResponse
+    {
+        $user = $this->authUser();
+        $enrollment = $user->courseEnrollments()->where('course_id', $course->getKey())->first();
+
+        abort_unless($enrollment !== null, Response::HTTP_FORBIDDEN);
+
+        return response()->json([
+            'modules' => $this->loadCourseModulesForEnrollment($course, $enrollment, $user)
+                ->map(fn (Module $module): array => [
+                    'id' => $module->getKey(),
+                    'access_gate_active' => (bool) ($module->accessGate['active'] ?? false),
+                    'available_at' => $module->accessGate['available_at'] ?? null,
+                ])
+                ->values(),
+        ]);
+    }
+
     public function showModuleWithinTrainingPath(TrainingPathEnrollment $trainingPathEnrollment, Course $course, Module $module): View|RedirectResponse
     {
         $user = $this->authUser();
@@ -192,9 +210,14 @@ class CourseController extends Controller
 
         abort_unless($progress !== null, 404);
 
-        abort_if($progress->status === 'locked', 403);
+        $modules = $this->loadCourseModulesForEnrollment($course, $enrollment, $user);
+        $quizAccessGate = $modules
+            ->first(fn (Module $courseModule): bool => $courseModule->is($module))
+            ?->accessGate;
 
-        if ($module->isLearningQuiz()) {
+        abort_if($progress->status === ModuleProgress::STATUS_LOCKED && $quizAccessGate === null, 403);
+
+        if ($module->isLearningQuiz() && ! ($quizAccessGate['active'] ?? false)) {
             $activeSubmission = $module->quizSubmissions()
                 ->where('course_enrollment_id', $enrollment->getKey())
                 ->where('source_type', ModuleQuizSubmission::SOURCE_ONLINE)
@@ -215,14 +238,10 @@ class CourseController extends Controller
             }
         }
 
-        $modules = $this->loadCourseModulesForEnrollment($course, $enrollment, $user);
-
         $nextModule = $course->modules()
             ->where('order', '>', $module->order)
             ->orderBy('order')
             ->first();
-
-        $quizAccessGate = $this->quizAccessDelayService->resolve($enrollment, $module);
 
         $modulePlayerRouteName = $trainingPathEnrollment !== null
             ? 'user.training-paths.courses.modules.player'
@@ -588,7 +607,9 @@ class CourseController extends Controller
 
         $scheduleResolver = app(CourseClassScheduleResolver::class);
 
-        $modules->each(function (Module $module) use ($scheduleResolver, $user): void {
+        $previousModule = null;
+
+        $modules->each(function (Module $module) use ($scheduleResolver, $user, &$previousModule): void {
             /** @var ModuleProgress|null $moduleProgress */
             $moduleProgress = $module->progressRecords->first();
 
@@ -598,6 +619,14 @@ class CourseController extends Controller
             ];
             $module->effective_starts_at = $scheduleResolver->effectiveStartsAt($module, $user);
             $module->effective_ends_at = $scheduleResolver->effectiveEndsAt($module, $user);
+            $module->accessGate = $moduleProgress?->status === ModuleProgress::STATUS_COMPLETED
+                ? null
+                : $this->quizAccessDelayService->resolveForPreviousProgress(
+                    $module,
+                    $previousModule,
+                    $previousModule?->progressRecords->first(),
+                );
+            $previousModule = $module;
         });
 
         return $modules;

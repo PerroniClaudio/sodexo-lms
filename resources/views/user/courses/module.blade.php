@@ -74,12 +74,16 @@
         data-quiz-url="{{ $module->isSatisfactionQuiz() ? route('user.courses.modules.satisfaction-survey.show', [$course, $module]) : route('user.courses.modules.quiz.show', [$course, $module]) }}"
         data-quiz-submit-url="{{ $module->isSatisfactionQuiz() ? route('user.courses.modules.satisfaction-survey.submit', [$course, $module]) : route('user.courses.modules.quiz.submit', [$course, $module]) }}"
         data-next-module-url="{{ $nextModule ? route($modulePlayerRouteName, $trainingPathEnrollment ? [$trainingPathEnrollment, $course, $nextModule] : [$course, $nextModule]) : '' }}"
+        data-next-module-id="{{ $nextModule?->id ?? '' }}"
         data-next-module-title="{{ $nextModule->title ?? '' }}"
+        data-module-access-states-url="{{ route('user.courses.module-access-states', $course) }}"
         data-quiz-access-gate-active="{{ ($quizAccessGate['active'] ?? false) ? 'true' : 'false' }}"
         data-quiz-access-gate-remaining-seconds="{{ $quizAccessGate['remaining_seconds'] ?? 0 }}"
         data-quiz-access-gate-available-at="{{ $quizAccessGate['available_at'] ?? '' }}"
         data-quiz-access-gate-previous-module-title="{{ $quizAccessGate['previous_module_title'] ?? '' }}"
         data-quiz-access-gate-delay-minutes="{{ $quizAccessGate['delay_minutes'] ?? '' }}"
+        data-access-gate-active="{{ ($quizAccessGate['active'] ?? false) ? 'true' : 'false' }}"
+        data-access-gate-remaining-seconds="{{ $quizAccessGate['remaining_seconds'] ?? 0 }}"
         data-csrf="{{ csrf_token() }}"
     >
         <div class="card border border-base-300 bg-base-200/40 shadow-sm">
@@ -87,6 +91,17 @@
                 <p class="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-base-content/45">{{ __('Contenuto modulo') }}</p>
 
                 <div id="module-player">
+                    @if (($quizAccessGate['active'] ?? false) === true)
+                        <div class="card border border-warning/40 bg-warning/10 shadow-sm">
+                            <div class="card-body gap-4 text-center">
+                                <x-lucide-clock-3 class="mx-auto h-8 w-8 text-warning" />
+                                <h2 class="text-xl font-semibold">{{ __('Modulo temporaneamente non disponibile') }}</h2>
+                                <p class="text-base-content/75">{{ __('Potrai accedere dopo il tempo di attesa previsto dal completamento di :module.', ['module' => $quizAccessGate['previous_module_title']]) }}</p>
+                                <p class="text-2xl font-semibold text-warning" data-module-access-gate-timer>--:--:--</p>
+                                <p class="font-medium text-warning">{{ __('Disponibile dal :datetime', ['datetime' => \Carbon\Carbon::parse($quizAccessGate['available_at'])->format('d/m/Y H:i')]) }}</p>
+                            </div>
+                        </div>
+                    @else
                     @switch($module->type)
                         @case('video')
                             <x-user.courses.modules.video :data="get_defined_vars()" />
@@ -119,6 +134,7 @@
                                 </div>
                             </div>
                     @endswitch
+                    @endif
                 </div>
             </div>
         </div>

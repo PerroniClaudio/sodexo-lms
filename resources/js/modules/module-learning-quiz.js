@@ -3,7 +3,7 @@
  * Gestisce i quiz di apprendimento con flow step-by-step.
  */
 
-import { getModuleRoot, getModuleData, refreshModulePlayerState } from './module-base.js';
+import { formatAccessAvailableAt, getModuleRoot, getModuleData, pollModuleAccess, refreshModulePlayerState } from './module-base.js';
 
 function cloneTemplateElement(root, selector) {
     const template = root.querySelector(selector);
@@ -461,8 +461,24 @@ function showQuizResult(data) {
             const nextModuleLink = nextModuleAction.querySelector('[data-quiz-next-module-link]');
             const nextModuleTitle = nextModuleAction.querySelector('[data-quiz-next-module-title]');
 
-            nextModuleLink.href = moduleData.nextModuleUrl;
             nextModuleTitle.textContent = moduleData.nextModuleTitle || 'Modulo successivo';
+            nextModuleLink.classList.add('btn-disabled');
+            nextModuleLink.setAttribute('aria-disabled', 'true');
+            const waitingMessage = document.createElement('span');
+            waitingMessage.className = 'text-sm text-warning';
+            nextModuleAction.insertBefore(waitingMessage, nextModuleLink);
+            pollModuleAccess(moduleData, moduleData.nextModuleId, (module) => {
+                if (module.access_gate_active) {
+                    waitingMessage.textContent = `Il modulo successivo è disponibile dal ${formatAccessAvailableAt(module.available_at)}`;
+
+                    return;
+                }
+
+                nextModuleLink.href = moduleData.nextModuleUrl;
+                nextModuleLink.classList.remove('btn-disabled');
+                nextModuleLink.removeAttribute('aria-disabled');
+                waitingMessage.remove();
+            });
             resultContent.appendChild(nextModuleAction);
         }
     } else if (!data.passed) {

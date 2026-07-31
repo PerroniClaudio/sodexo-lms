@@ -56,7 +56,7 @@
         ];
     @endphp
 
-    <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:gap-8 sm:p-6 lg:p-8">
+    <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:gap-8 sm:p-6 lg:p-8" data-course-access-states-url="{{ route('user.courses.module-access-states', $course) }}">
         <x-page-header :title="$course->title" />
 
         @if(is_array($trainingPathContext))
@@ -193,8 +193,10 @@
                         $isRetryableQuiz = $status === 'failed'
                             && $module->type === 'learning_quiz'
                             && $module->pivot->quiz_attempts < $module->max_attempts;
+                        $accessGate = $module->accessGate ?? null;
                         $isAccessible = ! $hasLanguageVerificationBlock
-                            && (in_array($status, ['completed', 'available', 'in_progress'], true) || $isRetryableQuiz);
+                            && (in_array($status, ['completed', 'available', 'in_progress'], true) || $isRetryableQuiz)
+                            && ! ($accessGate['active'] ?? false);
                         $isCurrent = $isCurrentModule && $isAccessible;
                         $isLocked = ! $isAccessible;
                         $canReviewCompletedVideo = $isCompleted && $module->type === 'video';
@@ -216,7 +218,7 @@
                         }
                     @endphp
 
-                    <div @class([
+                    <div data-module-access-card="{{ $module->id }}" data-module-access-gate-active="{{ ($accessGate['active'] ?? false) ? 'true' : 'false' }}" data-module-player-url="{{ route($modulePlayerRouteName, $trainingPathEnrollment ? [$trainingPathEnrollment, $course, $module] : [$course, $module]) }}" data-module-is-current="{{ $isCurrentModule ? 'true' : 'false' }}" data-module-order="{{ $module->order }}" @class([
                         'card bg-base-100 shadow-sm transition-all',
                         'border border-base-300' => ! $isCurrent,
                         'border-2 border-primary shadow-[0_0_0_1px_color-mix(in_oklab,var(--color-primary)_30%,transparent)]' => $isCurrent,
@@ -224,7 +226,7 @@
                     ])>
                         <div class="card-body flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div class="flex min-w-0 items-start gap-4">
-                                <div @class([
+                                <div data-module-card-icon @class([
                                     'flex h-14 w-14 shrink-0 items-center justify-center rounded-full border text-base-content',
                                     'border-success/20 bg-success text-success-content' => $isCompleted,
                                     'border-primary/20 bg-primary text-primary-content' => $isCurrent && ! $isCompleted,
@@ -260,11 +262,12 @@
                                                 {{ $detail }}
                                             </span>
                                         @endif
+
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
+                            <div class="flex shrink-0 items-center justify-between gap-3 sm:justify-end" data-module-access-action>
                                 @if($isCompleted)
                                     <div class="flex flex-wrap items-center justify-end gap-3">
                                         @if($canReviewCompletedVideo)
@@ -295,6 +298,11 @@
                                             {{ __('Apri') }}
                                         </a>
                                     @endif
+                                @elseif($accessGate['active'] ?? false)
+                                    <span class="inline-flex items-center gap-2 text-sm font-medium text-warning">
+                                        <x-lucide-clock-3 class="h-5 w-5" />
+                                        {{ __('Disponibile dal :datetime', ['datetime' => \Carbon\Carbon::parse($accessGate['available_at'])->format('d/m/Y H:i')]) }}
+                                    </span>
                                 @else
                                     <span class="inline-flex items-center gap-2 text-base font-medium text-base-content/40">
                                         <x-lucide-lock class="h-5 w-5" />
@@ -332,4 +340,6 @@
             </form>
         </dialog>
     @endif
+
+    @vite('resources/js/pages/user-course-show.js')
 </x-layouts.user>

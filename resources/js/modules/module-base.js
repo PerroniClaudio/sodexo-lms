@@ -42,13 +42,50 @@ export function getModuleData(root) {
         quizUrl: root.dataset.quizUrl,
         quizSubmitUrl: root.dataset.quizSubmitUrl,
         nextModuleUrl: root.dataset.nextModuleUrl,
+        nextModuleId: parseInt(root.dataset.nextModuleId ?? '0', 10),
         nextModuleTitle: root.dataset.nextModuleTitle,
+        moduleAccessStatesUrl: root.dataset.moduleAccessStatesUrl,
         quizAccessGateActive: root.dataset.quizAccessGateActive === 'true',
         quizAccessGateRemainingSeconds: parseInt(root.dataset.quizAccessGateRemainingSeconds ?? '0', 10),
         quizAccessGateAvailableAt: root.dataset.quizAccessGateAvailableAt,
         quizAccessGatePreviousModuleTitle: root.dataset.quizAccessGatePreviousModuleTitle,
         quizAccessGateDelayMinutes: parseInt(root.dataset.quizAccessGateDelayMinutes ?? '0', 10),
     };
+}
+
+export function formatAccessAvailableAt(value) {
+    const date = new Date(value);
+
+    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+export function pollModuleAccess(moduleData, moduleId, onState) {
+    const check = async () => {
+        const response = await fetch(moduleData.moduleAccessStatesUrl, {
+            cache: 'no-store',
+            headers: { Accept: 'application/json' },
+        });
+
+        if (! response.ok) {
+            return;
+        }
+
+        const { modules } = await response.json();
+        const module = modules.find((item) => String(item.id) === String(moduleId));
+
+        if (module) {
+            onState(module);
+
+            if (module.access_gate_active) {
+                return;
+            }
+
+            window.clearInterval(interval);
+        }
+    };
+
+    const interval = window.setInterval(() => check().catch(() => {}), 30000);
+    check().catch(() => {});
 }
 
 /**

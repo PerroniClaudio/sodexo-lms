@@ -34,6 +34,9 @@
 
                     <div class="grid gap-6">
                         <x-dynamic-component :component="$moduleEditView" :data="get_defined_vars()" />
+                        @unless($module->isSatisfactionQuiz())
+                            <x-admin.module.access-delay :data="get_defined_vars()" />
+                        @endunless
                     </div>
 
                     <div class="flex justify-end">

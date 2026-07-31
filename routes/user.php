@@ -19,18 +19,20 @@ Route::middleware(['auth', 'active.role:user|superadmin'])->group(function () {
         Route::get('dashboard/calendar-events', [UserController::class, 'calendarEvents'])->name('dashboard.calendar-events');
         Route::get('dashboard/calendar-events/fake', [UserController::class, 'fakeCalendarEvents'])->name('dashboard.calendar-events.fake');
 
-        Route::get('/live-stream/{module}/player', [LiveStreamController::class, 'userPlayer'])->name('live-stream.player');
-        Route::post('/live-stream/{module}/join', [LiveStreamController::class, 'userJoin'])->name('live-stream.join');
-        Route::get('/live-stream/{module}/state', [LiveStreamController::class, 'userState'])->name('live-stream.state');
-        Route::get('/live-stream/{module}/backgrounds', [LiveStreamController::class, 'userBackgrounds'])->name('live-stream.backgrounds');
-        Route::post('/live-stream/{module}/presence', [LiveStreamController::class, 'userPresence'])->name('live-stream.presence');
-        Route::post('/live-stream/{module}/messages', [LiveStreamController::class, 'storeUserMessage'])->name('live-stream.messages.store');
-        Route::post('/live-stream/{module}/polls/{poll}/responses', [LiveStreamController::class, 'storeUserPollResponse'])->name('live-stream.polls.responses.store');
-        Route::get('/live-stream/{module}/documents/{document}', [LiveStreamController::class, 'downloadUserDocument'])->name('live-stream.documents.download');
-        Route::post('/live-stream/{module}/hand-raises', [LiveStreamController::class, 'storeHandRaise'])->name('live-stream.hand-raises.store');
-        Route::delete('/live-stream/{module}/hand-raises/current', [LiveStreamController::class, 'destroyHandRaise'])->name('live-stream.hand-raises.destroy');
+        Route::middleware('module.access-delay')->group(function () {
+            Route::get('/live-stream/{module}/player', [LiveStreamController::class, 'userPlayer'])->name('live-stream.player');
+            Route::post('/live-stream/{module}/join', [LiveStreamController::class, 'userJoin'])->name('live-stream.join');
+            Route::get('/live-stream/{module}/state', [LiveStreamController::class, 'userState'])->name('live-stream.state');
+            Route::get('/live-stream/{module}/backgrounds', [LiveStreamController::class, 'userBackgrounds'])->name('live-stream.backgrounds');
+            Route::post('/live-stream/{module}/presence', [LiveStreamController::class, 'userPresence'])->name('live-stream.presence');
+            Route::post('/live-stream/{module}/messages', [LiveStreamController::class, 'storeUserMessage'])->name('live-stream.messages.store');
+            Route::post('/live-stream/{module}/polls/{poll}/responses', [LiveStreamController::class, 'storeUserPollResponse'])->name('live-stream.polls.responses.store');
+            Route::get('/live-stream/{module}/documents/{document}', [LiveStreamController::class, 'downloadUserDocument'])->name('live-stream.documents.download');
+            Route::post('/live-stream/{module}/hand-raises', [LiveStreamController::class, 'storeHandRaise'])->name('live-stream.hand-raises.store');
+            Route::delete('/live-stream/{module}/hand-raises/current', [LiveStreamController::class, 'destroyHandRaise'])->name('live-stream.hand-raises.destroy');
+        });
 
-        Route::scopeBindings()->middleware('course.visible')->group(function () {
+        Route::scopeBindings()->middleware(['course.visible', 'module.access-delay'])->group(function () {
             Route::get('/courses/{course}/modules/{module}/scorm/packages', [ScormModulePackageController::class, 'index'])->name('courses.modules.scorm.packages.index');
             Route::post('/courses/{course}/modules/{module}/scorm/{scormPackage}/launch', [ScormPlayerController::class, 'launch'])->name('courses.modules.scorm.launch');
             Route::get('/courses/{course}/modules/{module}/scorm/{scormPackage}/player', [ScormPlayerController::class, 'player'])->name('courses.modules.scorm.player');
@@ -50,6 +52,7 @@ Route::middleware(['auth', 'active.role:user|superadmin'])->group(function () {
             // Modulo corrente: player
             Route::get('/courses/{course}/modules/{module}/player', [CourseController::class, 'showModule'])
                 ->middleware('desktop.video.player')
+                ->withoutMiddleware('module.access-delay')
                 ->name('courses.modules.player');
 
             // Modulo video: signed playback URL
@@ -109,6 +112,7 @@ Route::middleware(['auth', 'active.role:user|superadmin'])->group(function () {
         Route::middleware('course.visible')->group(function () {
             Route::get('courses/{course}/cover-image', [CourseController::class, 'showCoverImage'])->name('courses.cover-image.show');
             Route::get('courses/{course}/poster-pdf', [CourseController::class, 'downloadPosterPdf'])->name('courses.poster-pdf.download');
+            Route::get('courses/{course}/module-access-states', [CourseController::class, 'moduleAccessStates'])->name('courses.module-access-states');
             Route::get('courses/{course}', [CourseController::class, 'show'])->name('courses.show');
             Route::get('training-paths/{trainingPathEnrollment}/courses/{course}', [CourseController::class, 'showWithinTrainingPath'])->name('training-paths.courses.show');
             Route::get('training-paths/{trainingPathEnrollment}/courses/{course}/modules/{module}/player', [CourseController::class, 'showModuleWithinTrainingPath'])

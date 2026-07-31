@@ -3,7 +3,7 @@
  * Gestisce resume, anti-skip e completamento moduli video Mux.
  */
 
-import { escapeHtml, fetchJSON, getModuleData, getModuleRoot, refreshModulePlayerState, showError } from './module-base.js';
+import { escapeHtml, fetchJSON, formatAccessAvailableAt, getModuleData, getModuleRoot, pollModuleAccess, refreshModulePlayerState, showError } from './module-base.js';
 import { applyMuxPlayerRestrictions } from '../mux-player.js';
 
 const HEARTBEAT_INTERVAL_MS = 60_000;
@@ -741,15 +741,29 @@ function appendNextModuleButton(moduleData) {
     }
 
     const nextModuleBtn = document.createElement('div');
-    nextModuleBtn.className = 'mt-4 flex justify-end';
+    nextModuleBtn.className = 'mt-4 flex items-center justify-end gap-3';
     nextModuleBtn.dataset.nextModuleButton = 'true';
     nextModuleBtn.innerHTML = `
-        <a href="${moduleData.nextModuleUrl}" class="btn btn-primary">
+        <span class="text-sm text-warning" data-next-module-waiting></span>
+        <a class="btn btn-primary btn-disabled" aria-disabled="true" data-next-module-link>
             ${moduleData.nextModuleTitle || 'Modulo successivo'}
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
         </a>
     `;
     playerCardBody?.appendChild(nextModuleBtn);
+    pollModuleAccess(moduleData, moduleData.nextModuleId, (module) => {
+        if (module.access_gate_active) {
+            nextModuleBtn.querySelector('[data-next-module-waiting]').textContent = `Il modulo successivo è disponibile dal ${formatAccessAvailableAt(module.available_at)}`;
+
+            return;
+        }
+
+        const link = nextModuleBtn.querySelector('[data-next-module-link]');
+        link.href = moduleData.nextModuleUrl;
+        link.classList.remove('btn-disabled');
+        link.removeAttribute('aria-disabled');
+        nextModuleBtn.querySelector('[data-next-module-waiting]')?.remove();
+    });
 }
 
 export function resolveVideoInterruptionReason({

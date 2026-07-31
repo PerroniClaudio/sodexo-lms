@@ -22,7 +22,7 @@ class QuizAccessDelayService
      */
     public function resolve(CourseEnrollment $enrollment, Module $module): ?array
     {
-        if (! $module->isQuiz() || ! $module->hasAccessDelay()) {
+        if (! $module->hasAccessDelay()) {
             return null;
         }
 
@@ -40,6 +40,26 @@ class QuizAccessDelayService
         $previousProgress = $enrollment->moduleProgresses()
             ->where('module_id', $previousModule->getKey())
             ->first();
+
+        return $this->resolveForPreviousProgress($module, $previousModule, $previousProgress);
+    }
+
+    /**
+     * @return array{
+     *     active: bool,
+     *     delay_minutes: int,
+     *     previous_module_id: int,
+     *     previous_module_title: string,
+     *     previous_completed_at: string,
+     *     available_at: string,
+     *     remaining_seconds: int
+     * }|null
+     */
+    public function resolveForPreviousProgress(Module $module, ?Module $previousModule, ?ModuleProgress $previousProgress): ?array
+    {
+        if (! $module->hasAccessDelay() || ! $previousModule instanceof Module) {
+            return null;
+        }
 
         $completedAt = $previousProgress?->completed_at;
 
