@@ -15,7 +15,10 @@ return new class extends Migration
             $table->timestamp('downloaded_at');
             $table->timestamps();
 
-            $table->unique(['course_enrollment_id', 'module_teaching_material_id']);
+            $table->unique(
+                ['course_enrollment_id', 'module_teaching_material_id'],
+                'dispense_download_uq',
+            );
         });
     }
 
