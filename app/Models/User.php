@@ -40,6 +40,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'name',
         'surname',
         'fiscal_code',
+        'affiliation',
         'birth_date',
         'employment_start_date',
         'employment_end_date',

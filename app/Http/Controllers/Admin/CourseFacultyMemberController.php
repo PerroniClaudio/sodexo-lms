@@ -88,7 +88,7 @@ class CourseFacultyMemberController extends Controller
             ->orderBy('name')
             ->orderBy('id')
             ->limit(20)
-            ->get(['id', 'name', 'surname', 'fiscal_code', 'email', 'deleted_at']);
+            ->get(['id', 'name', 'surname', 'fiscal_code', 'email', 'affiliation', 'deleted_at']);
 
         return response()->json([
             'data' => $users->map(fn (User $user): array => [
@@ -97,6 +97,7 @@ class CourseFacultyMemberController extends Controller
                 'surname' => $user->surname,
                 'fiscal_code' => $user->fiscal_code,
                 'email' => $user->email,
+                'affiliation' => $user->affiliation,
                 'is_deleted' => $user->trashed(),
             ])->values(),
         ]);
@@ -222,7 +223,7 @@ class CourseFacultyMemberController extends Controller
             'surname' => $user?->surname ?? $validated['surname'],
             'fiscal_code' => $user?->fiscal_code ?? $validated['fiscal_code'],
             'role' => $validated['role'],
-            'affiliation' => $validated['affiliation'] ?? null,
+            'affiliation' => array_key_exists('affiliation', $validated) ? $validated['affiliation'] : $user?->affiliation,
             'has_compensation' => $hasCompensation,
             'compensation_amount' => $hasCompensation ? $validated['compensation_amount'] : null,
         ];

@@ -179,6 +179,39 @@ it('creates a worker user even when the email is not provided', function () {
     expect($createdUser->email)->toBeNull();
 });
 
+it('stores the affiliation for teacher and tutor users', function (string $role) {
+    actingAsRole('superadmin');
+
+    $payload = makeAdminUserStorePayload([
+        'roles' => [$role],
+        'affiliation' => 'Ente formatore',
+    ]);
+
+    $this->post(route('admin.users.store'), $payload)
+        ->assertRedirect(route('admin.users.index'));
+
+    expect(User::query()->where('fiscal_code', $payload['fiscal_code'])->firstOrFail()->affiliation)
+        ->toBe('Ente formatore');
+})->with(['teacher', 'tutor']);
+
+it('updates the affiliation from the permissions section', function () {
+    actingAsRole('superadmin');
+
+    $user = makeStaffUser();
+    $user->assignRole('tutor');
+
+    $this->get(route('admin.users.edit', $user).'?section=permissions')
+        ->assertOk()
+        ->assertSee('name="affiliation"', escape: false);
+
+    $this->put(route('admin.users.permissions-section.update', $user), [
+        'roles' => ['tutor'],
+        'affiliation' => 'Nuova affiliazione',
+    ])->assertRedirect(route('admin.users.edit', ['user' => $user, 'section' => 'permissions']));
+
+    expect($user->fresh()->affiliation)->toBe('Nuova affiliazione');
+});
+
 it('marks the job unit selector as required for worker users', function () {
     actingAsRole('superadmin');
 

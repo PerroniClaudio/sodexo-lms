@@ -42,6 +42,7 @@ class UserRequest extends FormRequest
                 'size:16',
                 Rule::unique('users', 'fiscal_code')->ignore($routeUser?->getKey()),
             ],
+            'affiliation' => ['nullable', 'string', 'max:255'],
             // Campi user-only, validazione condizionale
             'is_foreigner_or_immigrant' => [$isWorker ? 'required' : 'nullable', 'boolean'],
             'declared_language_level_id' => ['nullable', 'integer', 'exists:language_levels,id'],

@@ -49,6 +49,15 @@
     @error('roles.*')<span class="text-error text-sm md:col-span-2">{{ $message }}</span>@enderror
 </div>
 
+<div class="mt-4 max-w-xl">
+    <label for="affiliation" class="label p-0 pb-2">
+        <span class="label-text font-medium">{{ __('Affiliazione') }}</span>
+        <span class="label-text-alt text-base-content/60">{{ __('Per Docente e Tutor') }}</span>
+    </label>
+    <input id="affiliation" name="affiliation" type="text" maxlength="255" value="{{ old('affiliation', $user?->affiliation) }}" class="input input-bordered w-full @error('affiliation') input-error @enderror">
+    @error('affiliation')<span class="text-error text-sm">{{ $message }}</span>@enderror
+</div>
+
 <div class="mt-4 max-w-xl" data-user-only-block>
     <label for="company_division_id" class="label p-0 pb-2">
         <span class="label-text font-medium">{{ __('Divisione aziendale') }}</span>

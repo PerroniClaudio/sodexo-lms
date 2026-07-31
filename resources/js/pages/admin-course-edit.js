@@ -2415,6 +2415,7 @@ function initializeFacultyTable(courseEditPage) {
             fragment.querySelector('[data-cell="email"]').textContent = user.email || '-';
             selectButton.addEventListener('click', () => {
                 state.selectedUser = user;
+                form.elements.affiliation.value = user.affiliation || '';
                 userResultsBody.querySelectorAll('tr').forEach((row) => row.classList.remove('bg-primary/10'));
                 selectButton.closest('tr')?.classList.add('bg-primary/10');
             });

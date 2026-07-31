@@ -4,6 +4,7 @@ use App\Models\Course;
 use App\Models\CourseFacultyMember;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     actingAsRole('admin');
@@ -26,30 +27,54 @@ function makeFacultyUser(array $attributes = []): User
 
 it('creates a faculty member from an existing user', function () {
     $course = Course::factory()->create();
+    $fiscalCode = Str::upper(Str::random(16));
     $user = makeFacultyUser([
         'name' => 'Mario',
         'surname' => 'Rossi',
-        'fiscal_code' => 'RSSMRA80A01H501Z',
+        'fiscal_code' => $fiscalCode,
+        'affiliation' => 'Affiliazione predefinita',
     ]);
 
     $response = $this->postJson(route('admin.api.courses.faculty-members.store', $course), [
         'user_id' => $user->getKey(),
         'role' => CourseFacultyMember::ROLE_TEACHER,
-        'affiliation' => 'Sodexo',
         'has_compensation' => true,
         'compensation_amount' => '120.50',
     ]);
 
     $response->assertCreated();
 
-    expect(CourseFacultyMember::query()->where([
+    $member = CourseFacultyMember::query()->where([
         'course_id' => $course->getKey(),
         'user_id' => $user->getKey(),
         'name' => 'Mario',
         'surname' => 'Rossi',
-        'fiscal_code' => 'RSSMRA80A01H501Z',
+        'fiscal_code' => $fiscalCode,
         'role' => CourseFacultyMember::ROLE_TEACHER,
-    ])->exists())->toBeTrue();
+    ])->first();
+
+    expect($member)
+        ->not->toBeNull()
+        ->affiliation->toBe('Affiliazione predefinita');
+});
+
+it('returns the user affiliation in faculty search and allows overriding it', function () {
+    $course = Course::factory()->create();
+    $user = makeFacultyUser(['affiliation' => 'Affiliazione predefinita']);
+
+    $this->getJson(route('admin.api.courses.faculty-members.search-users', ['course' => $course, 'search' => $user->fiscal_code]))
+        ->assertOk()
+        ->assertJsonPath('data.0.affiliation', 'Affiliazione predefinita');
+
+    $this->postJson(route('admin.api.courses.faculty-members.store', $course), [
+        'user_id' => $user->getKey(),
+        'role' => CourseFacultyMember::ROLE_TEACHER,
+        'affiliation' => 'Affiliazione modificata',
+        'has_compensation' => false,
+    ])->assertCreated();
+
+    expect(CourseFacultyMember::query()->whereBelongsTo($user)->firstOrFail()->affiliation)
+        ->toBe('Affiliazione modificata');
 });
 
 it('creates a manual faculty member without a user account', function () {

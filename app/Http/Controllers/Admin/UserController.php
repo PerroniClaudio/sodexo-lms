@@ -434,6 +434,7 @@ class UserController extends Controller
             'roles' => ['required', 'array', 'min:1'],
             'roles.*' => ['required', 'string', 'in:'.implode(',', $this->allowedAssignableRoles($request, $user))],
             'company_division_id' => ['nullable', 'integer', 'exists:company_divisions,id'],
+            'affiliation' => ['nullable', 'string', 'max:255'],
         ]);
         $roles = $this->resolveRoles($validated['roles']);
 
@@ -441,6 +442,7 @@ class UserController extends Controller
             $user->syncRoles($roles);
             $user->forceFill([
                 'company_division_id' => in_array('user', $roles, true) ? ($validated['company_division_id'] ?? null) : null,
+                'affiliation' => array_key_exists('affiliation', $validated) ? $validated['affiliation'] : $user->affiliation,
             ])->save();
 
             if (! in_array('user', $roles, true)) {
