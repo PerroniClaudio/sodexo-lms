@@ -147,9 +147,12 @@
                 </div>
 
                 @php
-                    $durationText = $course->course_duration_hours
-                        ? trans_choice(':count ora|:count ore', $course->course_duration_hours, ['count' => $course->course_duration_hours])
-                        : null;
+                    $duration = $course->course_duration_hours;
+                    $durationText = blank($duration)
+                        ? null
+                        : (is_numeric($duration)
+                            ? trans_choice(':count ora|:count ore', $duration, ['count' => $duration])
+                            : $duration);
 
                     $riskRequirementsText = $course->riskBasedRequirements->isNotEmpty()
                         ? $course->riskBasedRequirements

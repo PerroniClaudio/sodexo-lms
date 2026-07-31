@@ -23,7 +23,7 @@ class UpdateCourseDurationRequest extends FormRequest
             'access_closure_date' => ['nullable', Rule::date()->format('Y-m-d')],
             'reporting_date' => ['nullable', Rule::date()->format('Y-m-d')],
             'expiry_date' => ['required', Rule::date()->format('Y-m-d')],
-            'course_duration_hours' => ['nullable', 'integer', 'min:0'],
+            'course_duration_hours' => ['nullable', 'string', 'max:255'],
             'interaction_duration_minutes' => ['nullable', 'integer', 'min:0'],
         ];
     }

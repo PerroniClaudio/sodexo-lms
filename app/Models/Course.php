@@ -145,7 +145,7 @@ class Course extends Model
             'course_end_date' => 'date',
             'access_closure_date' => 'date',
             'reporting_date' => 'date',
-            'course_duration_hours' => 'integer',
+            'course_duration_hours' => 'string',
             'interaction_duration_minutes' => 'integer',
             'program_schedule' => 'array',
             'has_satisfaction_survey' => 'boolean',

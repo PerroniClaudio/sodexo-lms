@@ -148,10 +148,11 @@ it('stores downloads and deletes training path documents', function () {
 
 it('downloads the training path program pdf with course details', function () {
     Pdf::fake();
+    $trainingPathCode = 'PATH-'.str()->uuid();
 
     $trainingPath = TrainingPath::factory()->create([
         'title' => 'Percorso Sicurezza',
-        'code' => 'PATH-001',
+        'code' => $trainingPathCode,
         'description' => 'Programma completo del percorso.',
         'status' => 'published',
     ]);
@@ -162,7 +163,7 @@ it('downloads the training path program pdf with course details', function () {
         'type' => 'res',
         'status' => 'published',
         'year' => 2026,
-        'course_duration_hours' => 8,
+        'course_duration_hours' => '8 ore e 30 minuti',
         'event_type' => 'formazione obbligatoria',
     ]);
     $trainingPath->courses()->attach($course->getKey(), ['sort_order' => 1]);
@@ -186,17 +187,17 @@ it('downloads the training path program pdf with course details', function () {
 
     $response->assertOk();
 
-    Pdf::assertRespondedWithPdf(function (PdfBuilder $pdf) use ($trainingPath): bool {
+    Pdf::assertRespondedWithPdf(function (PdfBuilder $pdf) use ($trainingPath, $trainingPathCode): bool {
         $html = $pdf->getHtml();
 
         expect($pdf->viewName)->toBe('pdf.training-path-program');
         expect($pdf->viewData['trainingPath']->is($trainingPath))->toBeTrue();
         expect($pdf->downloadName)->toBe('percorso-sicurezza-programma-formativo.pdf');
         expect($html)->toContain('Percorso Sicurezza');
-        expect($html)->toContain('PATH-001');
+        expect($html)->toContain($trainingPathCode);
         expect($html)->toContain('Corso Rischio Alto');
         expect($html)->toContain('CRS-100');
-        expect($html)->toContain('8 ore');
+        expect($html)->toContain('8 ore e 30 minuti');
         expect($html)->toContain('Abilitazione Rischio Alto');
         expect($html)->toContain('Sicurezza');
         expect($html)->toContain('Partner Demo');

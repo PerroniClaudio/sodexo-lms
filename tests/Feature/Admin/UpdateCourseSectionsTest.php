@@ -31,7 +31,7 @@ it('updates only the course details through the dedicated endpoint', function ()
         'year' => 2025,
         'status' => 'draft',
         'expiry_date' => '2026-12-31',
-        'course_duration_hours' => 8,
+        'course_duration_hours' => '8 ore',
     ]);
 
     $response = $this->put(route('admin.courses.details.update', $course), [
@@ -63,7 +63,7 @@ it('updates only the course details through the dedicated endpoint', function ()
         ->and($course->is_financed)->toBeTrue()
         ->and($course->funding_entity_id)->toBe($fundingEntity->getKey())
         ->and($course->participant_presence_verification)->toBe('badge_qr')
-        ->and($course->course_duration_hours)->toBe(8);
+        ->and($course->course_duration_hours)->toBe('8 ore');
 });
 
 it('updates course details with a description longer than 255 characters', function () {
@@ -429,7 +429,7 @@ it('updates only the course duration through the dedicated endpoint', function (
         'course_end_date' => '2026-01-20',
         'access_closure_date' => '2026-02-10',
         'reporting_date' => '2026-02-20',
-        'course_duration_hours' => 6,
+        'course_duration_hours' => '6 ore',
         'interaction_duration_minutes' => 120,
         'expiry_date' => '2026-12-31',
     ]);
@@ -439,7 +439,7 @@ it('updates only the course duration through the dedicated endpoint', function (
         'course_end_date' => '2026-03-07',
         'access_closure_date' => '2026-03-31',
         'reporting_date' => '2026-04-15',
-        'course_duration_hours' => 10,
+        'course_duration_hours' => '10 ore complessive',
         'interaction_duration_minutes' => 180,
         'expiry_date' => '2027-01-31',
     ]);
@@ -452,7 +452,7 @@ it('updates only the course duration through the dedicated endpoint', function (
         ->and($course->course_end_date?->format('Y-m-d'))->toBe('2026-03-07')
         ->and($course->access_closure_date?->format('Y-m-d'))->toBe('2026-03-31')
         ->and($course->reporting_date?->format('Y-m-d'))->toBe('2026-04-15')
-        ->and($course->course_duration_hours)->toBe(10)
+        ->and($course->course_duration_hours)->toBe('10 ore complessive')
         ->and($course->interaction_duration_minutes)->toBe(180)
         ->and($course->title)->toBe('Titolo invariato');
 });

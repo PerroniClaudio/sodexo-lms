@@ -107,13 +107,12 @@
 
                 <div class="form-control flex flex-col gap-2">
                     <label for="course_duration_hours" class="label p-0">
-                        <span class="label-text font-medium">{{ __('Durata corso (ore)') }}</span>
+                        <span class="label-text font-medium">{{ __('Durata corso') }}</span>
                     </label>
                     <input
                         id="course_duration_hours"
                         name="course_duration_hours"
-                        type="number"
-                        min="0"
+                        type="text"
                         value="{{ $courseBaseValues['course_duration_hours'] }}"
                         class="input input-bordered w-full @error('course_duration_hours') input-error @enderror"
                     >
