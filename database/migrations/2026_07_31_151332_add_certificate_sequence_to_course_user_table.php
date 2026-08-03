@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    private const UNIQUE_INDEX = 'course_user_certificate_sequence_unique';
+
     /**
      * Run the migrations.
      */
@@ -25,7 +27,7 @@ return new class extends Migration
 
         if (! Schema::hasIndex('course_user', ['certificate_sequence_year', 'certificate_sequence'], 'unique')) {
             Schema::table('course_user', function (Blueprint $table): void {
-                $table->unique(['certificate_sequence_year', 'certificate_sequence']);
+                $table->unique(['certificate_sequence_year', 'certificate_sequence'], self::UNIQUE_INDEX);
             });
         }
     }
@@ -37,7 +39,7 @@ return new class extends Migration
     {
         if (Schema::hasIndex('course_user', ['certificate_sequence_year', 'certificate_sequence'], 'unique')) {
             Schema::table('course_user', function (Blueprint $table): void {
-                $table->dropUnique(['certificate_sequence_year', 'certificate_sequence']);
+                $table->dropUnique(self::UNIQUE_INDEX);
             });
         }
 
