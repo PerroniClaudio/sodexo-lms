@@ -12,7 +12,7 @@
         ->orderBy('name')
         ->pluck('name');
 
-    if ($user?->hasRole('superadmin')) {
+    if ($canManageRoles && ($user === null || $user->hasRole('superadmin'))) {
         $roles->push('superadmin');
     }
 

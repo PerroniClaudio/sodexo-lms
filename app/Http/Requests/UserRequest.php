@@ -141,7 +141,7 @@ class UserRequest extends FormRequest
 
         $roles = ['user', 'admin', 'teacher', 'docente', 'tutor'];
 
-        if ($routeUser?->hasRole('superadmin')) {
+        if ($routeUser === null || $routeUser->hasRole('superadmin')) {
             $roles[] = 'superadmin';
         }
 

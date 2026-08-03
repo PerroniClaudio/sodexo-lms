@@ -123,6 +123,21 @@ it('does not show an editable language verification field on admin user creation
     $response->assertDontSee('name="needs_language_level_verification"', escape: false);
 });
 
+it('allows a superadmin to create another superadmin', function () {
+    actingAsRole('superadmin');
+
+    $this->get(route('admin.users.create'))
+        ->assertOk()
+        ->assertSee('value="superadmin"', escape: false);
+
+    $payload = makeAdminUserStorePayload(['roles' => ['superadmin']]);
+
+    $this->post(route('admin.users.store'), $payload)
+        ->assertRedirect(route('admin.users.index'));
+
+    expect(User::query()->where('email', $payload['email'])->firstOrFail()->hasRole('superadmin'))->toBeTrue();
+});
+
 it('sets language verification automatically from immigrant field when immigrant functions are enabled', function () {
     config()->set('app.use_immigrant_functions', true);
     config()->set('app.default_check_language_knowledge', false);
