@@ -11,11 +11,23 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('course_user', function (Blueprint $table) {
-            $table->unsignedInteger('certificate_sequence')->nullable();
-            $table->unsignedSmallInteger('certificate_sequence_year')->nullable();
-            $table->unique(['certificate_sequence_year', 'certificate_sequence']);
-        });
+        if (! Schema::hasColumn('course_user', 'certificate_sequence')) {
+            Schema::table('course_user', function (Blueprint $table): void {
+                $table->unsignedInteger('certificate_sequence')->nullable();
+            });
+        }
+
+        if (! Schema::hasColumn('course_user', 'certificate_sequence_year')) {
+            Schema::table('course_user', function (Blueprint $table): void {
+                $table->unsignedSmallInteger('certificate_sequence_year')->nullable();
+            });
+        }
+
+        if (! Schema::hasIndex('course_user', ['certificate_sequence_year', 'certificate_sequence'], 'unique')) {
+            Schema::table('course_user', function (Blueprint $table): void {
+                $table->unique(['certificate_sequence_year', 'certificate_sequence']);
+            });
+        }
     }
 
     /**
@@ -23,9 +35,21 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('course_user', function (Blueprint $table) {
-            $table->dropUnique(['certificate_sequence_year', 'certificate_sequence']);
-            $table->dropColumn(['certificate_sequence', 'certificate_sequence_year']);
-        });
+        if (Schema::hasIndex('course_user', ['certificate_sequence_year', 'certificate_sequence'], 'unique')) {
+            Schema::table('course_user', function (Blueprint $table): void {
+                $table->dropUnique(['certificate_sequence_year', 'certificate_sequence']);
+            });
+        }
+
+        $columns = array_values(array_filter([
+            Schema::hasColumn('course_user', 'certificate_sequence') ? 'certificate_sequence' : null,
+            Schema::hasColumn('course_user', 'certificate_sequence_year') ? 'certificate_sequence_year' : null,
+        ]));
+
+        if ($columns !== []) {
+            Schema::table('course_user', function (Blueprint $table) use ($columns): void {
+                $table->dropColumn($columns);
+            });
+        }
     }
 };
