@@ -23,10 +23,20 @@
                     </p>
                 </div>
 
-                <button type="button" class="btn btn-primary sm:self-start" data-open-course-program-modal>
-                    <x-lucide-plus class="h-4 w-4" />
-                    <span>{{ __('Crea nuovo') }}</span>
-                </button>
+                <div class="flex flex-wrap gap-2 sm:justify-end">
+                    <a href="{{ route('admin.courses.program.template') }}" class="btn btn-outline">
+                        <x-lucide-download class="h-4 w-4" />
+                        <span>{{ __('Scarica template') }}</span>
+                    </a>
+                    <button type="button" class="btn btn-outline" data-open-course-program-import-modal>
+                        <x-lucide-file-up class="h-4 w-4" />
+                        <span>{{ __('Importa Excel') }}</span>
+                    </button>
+                    <button type="button" class="btn btn-primary" data-open-course-program-modal>
+                        <x-lucide-plus class="h-4 w-4" />
+                        <span>{{ __('Crea nuovo') }}</span>
+                    </button>
+                </div>
             </div>
 
             <form method="POST" action="{{ $updateUrl }}" class="flex flex-col gap-6" data-course-program-form>
@@ -169,6 +179,31 @@
                     <x-lucide-plus class="h-4 w-4" />
                 </button>
             </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>{{ __('Chiudi') }}</button>
+        </form>
+    </dialog>
+
+    <dialog class="modal" data-course-program-import-modal data-open="{{ $errors->has('file') ? 'true' : 'false' }}">
+        <div class="modal-box max-w-xl">
+            <h3 class="text-lg font-semibold">{{ __('Importa programma da Excel') }}</h3>
+            <p class="mt-1 text-sm text-base-content/70">{{ __('L’importazione sostituisce le righe attualmente salvate.') }}</p>
+
+            <form method="POST" action="{{ route('admin.courses.program.import', $course) }}" enctype="multipart/form-data" class="mt-6 flex flex-col gap-4">
+                @csrf
+                <label class="form-control flex flex-col gap-2">
+                    <span class="label-text font-medium">{{ __('File Excel') }}</span>
+                    <input type="file" name="file" accept=".xlsx,.xls" class="file-input file-input-bordered w-full @error('file') file-input-error @enderror" required>
+                </label>
+                @error('file')
+                    <p class="text-sm text-error">{{ $message }}</p>
+                @enderror
+                <div class="modal-action mt-0">
+                    <button type="button" class="btn btn-ghost" data-close-course-program-import-modal>{{ __('Annulla') }}</button>
+                    <button type="submit" class="btn btn-primary">{{ __('Importa') }}</button>
+                </div>
+            </form>
         </div>
         <form method="dialog" class="modal-backdrop">
             <button>{{ __('Chiudi') }}</button>

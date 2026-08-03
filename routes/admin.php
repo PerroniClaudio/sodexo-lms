@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\CourseEnrollmentDetailController;
 use App\Http\Controllers\Admin\CourseEnrollmentImportController;
 use App\Http\Controllers\Admin\CourseFacultyMemberController;
 use App\Http\Controllers\Admin\CourseModuleController;
+use App\Http\Controllers\Admin\CourseProgramImportController;
 use App\Http\Controllers\Admin\CourseStaffImportController;
 use App\Http\Controllers\Admin\CourseTeacherEnrollmentController;
 use App\Http\Controllers\Admin\CourseTutorEnrollmentController;
@@ -214,6 +215,8 @@ Route::middleware(['auth', 'active.role:admin|superadmin', 'active.company_divis
         Route::put('/courses/{course}/details', [CourseController::class, 'updateDetails'])->name('courses.details.update');
         Route::put('/courses/{course}/duration', [CourseController::class, 'updateDuration'])->name('courses.duration.update');
         Route::put('/courses/{course}/program', [CourseController::class, 'updateProgram'])->name('courses.program.update');
+        Route::get('/courses/program/template', [CourseProgramImportController::class, 'downloadTemplate'])->name('courses.program.template');
+        Route::post('/courses/{course}/program/import', [CourseProgramImportController::class, 'store'])->name('courses.program.import');
         Route::put('/courses/{course}/attachments', [CourseController::class, 'updateAttachments'])->name('courses.attachments.update');
         Route::post('/courses/{course}/documents', [CourseDocumentController::class, 'store'])->name('courses.documents.store');
         Route::get('/courses/{course}/documents/{document}', [CourseDocumentController::class, 'download'])->name('courses.documents.download');

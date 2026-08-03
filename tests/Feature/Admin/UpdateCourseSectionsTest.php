@@ -10,8 +10,13 @@ use App\Models\Module;
 use App\Models\ModuleProgress;
 use App\Models\User;
 use App\Models\Venue;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 beforeEach(function () {
     actingAsRole('admin');
@@ -596,6 +601,90 @@ it('validates course program times', function () {
         ->assertSessionHasErrors('program_schedule.0.starts_at');
 });
 
+it('offers the course program excel template with teaching method dropdowns', function () {
+    $course = Course::factory()->create();
+
+    $this->get(route('admin.courses.edit', [$course, 'section' => 'program']))
+        ->assertOk()
+        ->assertSeeText('Importa Excel')
+        ->assertSeeText('Scarica template')
+        ->assertSee(route('admin.courses.program.template'), escape: false);
+
+    $response = $this->get(route('admin.courses.program.template'));
+
+    $response->assertOk()
+        ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        ->assertDownload('template-import-programma-corso.xlsx');
+
+    $spreadsheet = IOFactory::load($response->getFile()->getPathname());
+    $sheet = $spreadsheet->getSheetByName('Programma corso');
+
+    expect($sheet?->rangeToArray('A1:E1')[0])->toBe([
+        'Argomento sessione',
+        'Ora Inizio',
+        'Ora fine',
+        'Durata (ore:minuti)',
+        'Metodologie didattiche',
+    ])->and($sheet?->getDataValidation('E2')->getType())->toBe(DataValidation::TYPE_LIST)
+        ->and($spreadsheet->getSheetByName('Metodologie')?->getCell('A2')->getValue())->toBe('Lezione frontale / video lezione');
+
+    $spreadsheet->disconnectWorksheets();
+});
+
+it('replaces the course program from an excel import with optional times', function () {
+    $course = Course::factory()->create([
+        'program_schedule' => [['topic' => 'Riga precedente']],
+    ]);
+
+    $response = $this->post(route('admin.courses.program.import', $course), [
+        'file' => courseProgramImportFile([
+            ['Argomento sessione', 'Ora Inizio', 'Ora fine', 'Durata (ore:minuti)', 'Metodologie didattiche'],
+            ['Introduzione', '09:00', '10:30', '01:30', 'Lezione frontale / video lezione'],
+            ['Esercitazione finale', null, null, '00:45', 'Esercitazione'],
+        ]),
+    ]);
+
+    $response->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'program']))
+        ->assertSessionHas('status');
+
+    expect($course->fresh()->program_schedule)->toBe([
+        [
+            'starts_at' => '09:00',
+            'ends_at' => '10:30',
+            'duration_hours' => 1,
+            'duration_minutes' => 30,
+            'teaching_method' => 'lezione_frontale_video_lezione',
+            'topic' => 'Introduzione',
+        ],
+        [
+            'starts_at' => null,
+            'ends_at' => null,
+            'duration_hours' => 0,
+            'duration_minutes' => 45,
+            'teaching_method' => 'esercitazione',
+            'topic' => 'Esercitazione finale',
+        ],
+    ]);
+});
+
+it('rejects invalid course program excel rows without changing the course', function () {
+    $course = Course::factory()->create([
+        'program_schedule' => [['topic' => 'Programma invariato']],
+    ]);
+
+    $this->from(route('admin.courses.edit', [$course, 'section' => 'program']))
+        ->post(route('admin.courses.program.import', $course), [
+            'file' => courseProgramImportFile([
+                ['Argomento sessione', 'Ora Inizio', 'Ora fine', 'Durata (ore:minuti)', 'Metodologie didattiche'],
+                ['Riga non valida', null, null, '90 minuti', 'Metodo inesistente'],
+            ]),
+        ])
+        ->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'program']))
+        ->assertSessionHasErrors();
+
+    expect($course->fresh()->program_schedule)->toBe([['topic' => 'Programma invariato']]);
+});
+
 it('updates survey settings through the dedicated endpoint and syncs the survey module', function () {
     $course = Course::factory()->create([
         'status' => 'draft',
@@ -661,3 +750,21 @@ it('validates course categorization event type', function () {
     $response->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'categorization']))
         ->assertSessionHasErrors('event_type');
 });
+
+/** @param array<int, array<int, mixed>> $rows */
+function courseProgramImportFile(array $rows): UploadedFile
+{
+    $spreadsheet = new Spreadsheet;
+    $spreadsheet->getActiveSheet()->fromArray($rows);
+    $path = tempnam(sys_get_temp_dir(), 'course-program-import-test-');
+    (new Xlsx($spreadsheet))->save($path);
+    $spreadsheet->disconnectWorksheets();
+
+    return new UploadedFile(
+        $path,
+        'programma-corso.xlsx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        null,
+        true,
+    );
+}

@@ -231,6 +231,8 @@ function initializeCourseProgram(scope) {
     const confirmModalButton = scope.querySelector('[data-confirm-course-program-modal]');
     const emptyState = scope.querySelector('[data-course-program-empty]');
     const labelsScript = scope.querySelector('[data-course-program-teaching-method-labels]');
+    const importModal = scope.querySelector('[data-course-program-import-modal]');
+    const openImportModalButton = scope.querySelector('[data-open-course-program-import-modal]');
 
     if (!form || !tbody || !(template instanceof HTMLTemplateElement) || !openModalButton || !(modal instanceof HTMLDialogElement) || !confirmModalButton) {
         return;
@@ -310,6 +312,17 @@ function initializeCourseProgram(scope) {
 
     tbody.querySelectorAll('[data-course-program-row]').forEach(bindRemove);
     renumber();
+
+    if (importModal instanceof HTMLDialogElement && openImportModalButton) {
+        openImportModalButton.addEventListener('click', () => importModal.showModal());
+        importModal.querySelectorAll('[data-close-course-program-import-modal]').forEach((button) => {
+            button.addEventListener('click', () => importModal.close());
+        });
+
+        if (importModal.dataset.open === 'true') {
+            importModal.showModal();
+        }
+    }
 
     openModalButton.addEventListener('click', () => {
         clearModal();
