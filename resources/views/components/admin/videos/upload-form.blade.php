@@ -100,7 +100,7 @@ function initVideoUploadForm() {
         var formData = new FormData();
         formData.append('title', uploadForm.title.value);
         formData.append('description', uploadForm.description.value);
-        formData.append('video_file', uploadForm.video_file.files[0]);
+        formData.append('video_filename', uploadForm.video_file.files[0].name);
         formData.append('_token', uploadForm._token.value);
         successAlert.classList.add('hidden');
         if (progressWrap) {

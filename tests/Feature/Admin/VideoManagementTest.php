@@ -3,10 +3,36 @@
 use App\Models\Course;
 use App\Models\Module;
 use App\Models\Video;
+use App\Services\MuxService;
+
+use function Pest\Laravel\mock;
 
 beforeEach(function () {
     actingAsRole('admin');
     $this->withoutVite();
+});
+
+it('creates a direct upload from metadata without sending the video through Laravel', function () {
+    $title = 'Direct upload '.fake()->uuid();
+
+    mock(MuxService::class)
+        ->shouldReceive('createDirectUpload')
+        ->once()
+        ->with('large-video.mp4')
+        ->andReturn([
+            'url' => 'https://storage.mux.test/direct-upload',
+            'upload_id' => 'mux-upload-'.fake()->uuid(),
+        ]);
+
+    $this->postJson(route('admin.videos.store'), [
+        'title' => $title,
+        'description' => 'Video grande',
+        'video_filename' => 'large-video.mp4',
+    ])->assertSuccessful()
+        ->assertJsonPath('success', true)
+        ->assertJsonPath('upload_url', 'https://storage.mux.test/direct-upload');
+
+    expect(Video::query()->where('title', $title)->exists())->toBeTrue();
 });
 
 it('shows the admin video edit page', function () {

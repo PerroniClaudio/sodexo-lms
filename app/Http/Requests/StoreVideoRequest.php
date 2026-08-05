@@ -25,8 +25,10 @@ class StoreVideoRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'video_filename' => ['required_without:video_file', 'nullable', 'string', 'max:255', 'regex:/\.(mp4|mov|mkv|webm|ogg|avi|m4v)$/i'],
             'video_file' => [
-                'required',
+                'required_without:video_filename',
+                'nullable',
                 'file',
                 'mimetypes:video/mp4,video/quicktime,video/x-matroska,video/webm,video/ogg,video/x-msvideo,video/x-m4v',
                 'mimes:mp4,mov,mkv,webm,ogg,avi,m4v',

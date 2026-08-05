@@ -164,12 +164,13 @@ class VideoController extends Controller
 
     public function store(StoreVideoRequest $request, MuxService $muxService)
     {
-        $request->validated();
+        $validated = $request->validated();
         // Crea direct upload su Mux
-        $mux = $muxService->createDirectUpload($request->file('video_file')->getClientOriginalName());
+        $filename = $validated['video_filename'] ?? $request->file('video_file')->getClientOriginalName();
+        $mux = $muxService->createDirectUpload($filename);
         $video = Video::create([
-            'title' => $request->input('title'),
-            'description' => $request->input('description'),
+            'title' => $validated['title'],
+            'description' => $validated['description'] ?? null,
             'mux_upload_id' => $mux['upload_id'],
             'mux_video_status' => 'uploading',
             'mux_asset_id' => null,
