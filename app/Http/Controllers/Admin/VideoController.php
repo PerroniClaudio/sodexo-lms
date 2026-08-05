@@ -125,6 +125,8 @@ class VideoController extends Controller
                 'title' => $video->title,
                 'modules_count' => $video->modules_count,
                 'mux_video_status' => $video->mux_video_status,
+                'mux_video_status_label' => __($video->mux_video_status),
+                'mux_error' => $video->mux_error,
                 'trashed_at' => $video->trashed_at,
             ];
         });
@@ -156,6 +158,8 @@ class VideoController extends Controller
             'title' => $video->title,
             'description' => $video->description,
             'mux_video_status' => $video->mux_video_status,
+            'mux_video_status_label' => __($video->mux_video_status),
+            'mux_error' => $video->mux_error,
             'modules_count' => $video->modules()->count(),
             'trashed_at' => $video->trashed_at,
             'duration' => $duration,

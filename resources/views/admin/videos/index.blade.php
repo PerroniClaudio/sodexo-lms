@@ -115,12 +115,25 @@
                             <span class="text-xs text-gray-500">{{ __('Non disponibile') }}</span>
                         @endif
                     </td>
-                    <td>{{ $video->mux_video_status }}</td>
+                    <td>
+                        @php
+                            $statusClass = match ($video->mux_video_status) {
+                                'ready' => 'badge-success text-white',
+                                'errored', 'failed' => 'badge-error text-white',
+                                'processing', 'uploading' => 'badge-warning',
+                                default => 'badge-neutral text-white',
+                            };
+                        @endphp
+                        <span class="badge h-fit {{ $statusClass }}">{{ __($video->mux_video_status) }}</span>
+                        @if ($video->mux_error)
+                            <div class="mt-1 max-w-xs text-xs text-error">{{ $video->mux_error }}</div>
+                        @endif
+                    </td>
                     <td>
                         @if ($video->trashed())
                             <span class="badge badge-outline badge-error h-fit">{{ __('Eliminato') }}</span>
                         @else
-                            <span class="badge badge-outline badge-success h-fit">{{ __('Attivo') }}</span>
+                            <span class="badge border-success bg-success text-white h-fit">{{ __('Attivo') }}</span>
                         @endif
                     </td>
                     <td>

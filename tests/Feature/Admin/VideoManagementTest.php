@@ -56,8 +56,8 @@ it('shows the admin video edit page', function () {
 
 it('shows the admin video library page with mux preview source urls', function () {
     $video = Video::factory()->create([
-        'title' => 'Video libreria',
-        'mux_playback_id' => 'playback-id-library',
+        'title' => 'Video libreria '.fake()->uuid(),
+        'mux_playback_id' => fake()->uuid(),
         'mux_video_status' => 'ready',
     ]);
 
@@ -65,7 +65,8 @@ it('shows the admin video library page with mux preview source urls', function (
 
     $response->assertOk()
         ->assertSeeText('Libreria Video')
-        ->assertSeeText('Video libreria')
+        ->assertSeeText('Pronto')
+        ->assertSee('border-success bg-success text-white', false)
         ->assertSee('https://stream.mux.com/${playbackId}.m3u8?token=${token}', false);
 });
 

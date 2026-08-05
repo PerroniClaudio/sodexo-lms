@@ -25,6 +25,12 @@ class SyncMuxVideosStatus extends Command
             $assetId = $muxUploadData['asset_id'] ?? null;
             $playbackId = $muxUploadData['playback_id'] ?? null;
             if (! $assetId) {
+                if (in_array($muxUploadData['status'] ?? null, ['errored', 'cancelled', 'timed_out'], true)) {
+                    $video->update([
+                        'mux_video_status' => $muxUploadData['status'],
+                        'mux_error' => $muxUploadData['error'] ?? 'Errore Mux senza dettagli.',
+                    ]);
+                }
                 $this->warn("[DEBUG] Nessun asset_id trovato per upload_id: {$video->mux_upload_id}");
             } else {
                 $this->info("[DEBUG] Trovato asset_id: $assetId per upload_id: {$video->mux_upload_id}");
@@ -39,7 +45,7 @@ class SyncMuxVideosStatus extends Command
         }
 
         // 2. Aggiorna lo stato dei video che hanno asset_id
-        $videos = Video::whereNotIn('mux_video_status', ['ready', 'errored'])
+        $videos = Video::where('mux_video_status', '!=', 'ready')
             ->whereNotNull('mux_asset_id')
             ->get();
 
@@ -48,12 +54,18 @@ class SyncMuxVideosStatus extends Command
             $muxStatus = $muxService->getAssetStatus($video->mux_asset_id);
             $durationRaw = $muxService->getAssetDuration($video->mux_asset_id);
             $durationSeconds = is_numeric($durationRaw) ? (int) round((float) $durationRaw) : null;
+            $muxError = $muxStatus === 'errored' ? $muxService->getAssetError($video->mux_asset_id) : null;
 
             if (
                 $muxStatus
-                && ($muxStatus !== $video->mux_video_status || $durationSeconds !== $video->duration_seconds)
+                && (
+                    $muxStatus !== $video->mux_video_status
+                    || $durationSeconds !== $video->duration_seconds
+                    || $muxError !== $video->mux_error
+                )
             ) {
                 $video->mux_video_status = $muxStatus;
+                $video->mux_error = $muxError;
                 $video->duration_seconds = $durationSeconds;
                 $video->save();
                 $count++;

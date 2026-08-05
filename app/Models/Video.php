@@ -17,6 +17,7 @@ class Video extends Model
         'mux_playback_id',
         'mux_upload_id',
         'mux_video_status',
+        'mux_error',
         'duration_seconds',
     ];
 

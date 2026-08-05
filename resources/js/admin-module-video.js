@@ -48,8 +48,24 @@ function renderModuleVideoTable(data) {
         img.src = `/admin/videos/${video.id}/signed-thumbnail`;
         img.alt = 'Anteprima video';
         row.querySelector('[data-preview-btn]').onclick = () => openModuleVideoPreview(video.id);
-        tds[3].textContent = video.mux_video_status;
-        tds[4].innerHTML = video.trashed_at ? '<span class="badge badge-outline badge-error h-fit">Eliminato</span>' : '<span class="badge badge-outline badge-success h-fit">Attivo</span>';
+        const statusBadge = document.createElement('span');
+        const statusClasses = {
+            ready: 'badge-success text-white',
+            errored: 'badge-error text-white',
+            failed: 'badge-error text-white',
+            processing: 'badge-warning',
+            uploading: 'badge-warning',
+        };
+        statusBadge.className = `badge h-fit ${statusClasses[video.mux_video_status] || 'badge-neutral text-white'}`;
+        statusBadge.textContent = video.mux_video_status_label;
+        tds[3].replaceChildren(statusBadge);
+        if (video.mux_error) {
+            const error = document.createElement('div');
+            error.className = 'mt-1 max-w-xs text-xs text-error';
+            error.textContent = video.mux_error;
+            tds[3].appendChild(error);
+        }
+        tds[4].innerHTML = video.trashed_at ? '<span class="badge badge-outline badge-error h-fit">Eliminato</span>' : '<span class="badge border-success bg-success text-white h-fit">Attivo</span>';
         // Azioni
         const assignBtn = row.querySelector('[data-assign-btn]');
         const unassignBtn = row.querySelector('[data-unassign-btn]');
@@ -192,7 +208,10 @@ function fetchSelectedVideo(videoId) {
             document.getElementById('selected-video-title').textContent = video.title || '';
             document.getElementById('selected-video-description').textContent = video.description || '';
             document.getElementById('selected-video-duration').textContent = video.duration ? `${formatDuration(video.duration)}` : '';
-            document.getElementById('selected-video-status').textContent = video.mux_video_status ? `${video.mux_video_status}` : '';
+            document.getElementById('selected-video-status').textContent = video.mux_video_status_label || '';
+            if (video.mux_error) {
+                document.getElementById('selected-video-status').textContent += `: ${video.mux_error}`;
+            }
             document.getElementById('selected-video-modules-count').textContent = `${video.modules_count || 0}`;
             const trashed = document.getElementById('selected-video-trashed');
             if (trashed) {

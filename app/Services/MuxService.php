@@ -80,6 +80,8 @@ class MuxService
             return [
                 'asset_id' => $assetId,
                 'playback_id' => $playbackId,
+                'status' => $data['data']['status'] ?? null,
+                'error' => $this->formatError($data['data']['error'] ?? null),
             ];
         } catch (\Exception $e) {
             return [];
@@ -192,6 +194,29 @@ class MuxService
         } catch (\Exception $e) {
             return null;
         }
+    }
+
+    public function getAssetError(string $assetId): ?string
+    {
+        try {
+            $response = $this->client->get("assets/{$assetId}");
+            $data = json_decode($response->getBody()->getContents(), true);
+
+            return $this->formatError($data['data']['errors'] ?? null);
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    private function formatError(?array $error): ?string
+    {
+        if (! $error) {
+            return null;
+        }
+
+        $messages = $error['messages'] ?? [$error['message'] ?? null];
+
+        return collect([$error['type'] ?? null, ...$messages])->filter()->implode(': ') ?: null;
     }
 
     /**

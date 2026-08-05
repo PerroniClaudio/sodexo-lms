@@ -102,7 +102,10 @@
                     @endif
 
                     <div class="space-y-2 text-sm">
-                        <p><span class="font-medium">{{ __('Stato') }}:</span> {{ $video->mux_video_status }}</p>
+                        <p><span class="font-medium">{{ __('Stato') }}:</span> {{ __($video->mux_video_status) }}</p>
+                        @if ($video->mux_error)
+                            <p class="text-error"><span class="font-medium">{{ __('Errore Mux') }}:</span> {{ $video->mux_error }}</p>
+                        @endif
                         <p><span class="font-medium">{{ __('Durata') }}:</span> {{ $video->duration_seconds ? gmdate('H:i:s', $video->duration_seconds) : __('N/D') }}</p>
                         <p><span class="font-medium">{{ __('Moduli che lo usano') }}:</span> {{ $video->modules_count }}</p>
                     </div>

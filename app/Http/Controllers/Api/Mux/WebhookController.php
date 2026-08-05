@@ -28,6 +28,7 @@ class WebhookController extends Controller
                     $video->update([
                         'mux_asset_id' => $assetId,
                         'mux_video_status' => 'processing',
+                        'mux_error' => null,
                     ]);
                 }
             }
@@ -45,6 +46,7 @@ class WebhookController extends Controller
                     $video->update([
                         'mux_playback_id' => $playbackId,
                         'mux_video_status' => 'ready',
+                        'mux_error' => null,
                         'duration_seconds' => $durationSeconds,
                     ]);
                 }
@@ -56,12 +58,32 @@ class WebhookController extends Controller
                 $video = Video::where('mux_upload_id', $uploadId)->first();
                 if ($video) {
                     $video->update([
-                        'mux_video_status' => 'failed',
+                        'mux_video_status' => 'errored',
+                        'mux_error' => $this->formatMuxError($data),
                     ]);
                 }
             }
         }
+        if ($event === 'video.asset.errored') {
+            $assetId = $data['id'] ?? null;
+            if ($assetId) {
+                Video::where('mux_asset_id', $assetId)->update([
+                    'mux_video_status' => 'errored',
+                    'mux_error' => $this->formatMuxError($data),
+                ]);
+            }
+        }
 
         return response()->json(['ok' => true]);
+    }
+
+    private function formatMuxError(array $data): string
+    {
+        $error = $data['error'] ?? $data['errors'] ?? [];
+        $messages = $error['messages'] ?? [$error['message'] ?? null];
+
+        return collect([$error['type'] ?? null, ...$messages])
+            ->filter()
+            ->implode(': ') ?: 'Errore Mux senza dettagli.';
     }
 }
