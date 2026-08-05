@@ -19,6 +19,10 @@ class Course extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $attributes = [
+        'block_mobile_access' => true,
+    ];
+
     public const DISALLOWED_MODULE_TYPES_BY_COURSE_TYPE = [
         'fad' => [
             Module::TYPE_VIDEO,
@@ -121,6 +125,7 @@ class Course extends Model
         'satisfaction_survey_required_for_certificate',
         'hasMany',
         'visible_to_all',
+        'block_mobile_access',
     ];
 
     /**
@@ -153,6 +158,7 @@ class Course extends Model
             'has_satisfaction_survey' => 'boolean',
             'satisfaction_survey_required_for_certificate' => 'boolean',
             'visible_to_all' => 'boolean',
+            'block_mobile_access' => 'boolean',
         ];
     }
 

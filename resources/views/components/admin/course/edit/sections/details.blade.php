@@ -295,6 +295,27 @@
                         <p class="text-sm text-error">{{ $message }}</p>
                     @enderror
                 </div>
+
+                <div class="form-control flex flex-col gap-2 md:col-span-2">
+                    <input type="hidden" name="block_mobile_access" value="0">
+                    <label class="label cursor-pointer justify-start gap-3 p-0">
+                        <input
+                            id="block_mobile_access"
+                            name="block_mobile_access"
+                            type="checkbox"
+                            value="1"
+                            class="toggle toggle-primary"
+                            @checked($courseBaseValues['block_mobile_access'])
+                        >
+                        <span class="label-text font-medium">{{ __('Blocca i video su tablet e cellulari') }}</span>
+                    </label>
+                    <p class="text-sm text-base-content/70">
+                        {{ __('Se attivo, i moduli video del corso saranno accessibili solo da PC.') }}
+                    </p>
+                    @error('block_mobile_access')
+                        <p class="text-sm text-error">{{ $message }}</p>
+                    @enderror
+                </div>
             </div>
 
         </div>

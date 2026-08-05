@@ -303,29 +303,6 @@ function openModuleVideoUploadModal() {
     if (typeof initVideoUploadForm === 'function') {
         initVideoUploadForm();
     }
-    // Aggiorna la tabella video dopo upload completato
-    const uploadForm = document.getElementById('video-upload-form');
-    if (uploadForm) {
-        uploadForm.onsubmit = null; // azzera eventuali handler precedenti
-        uploadForm.onsubmit = function(e) {
-            e.preventDefault();
-            const formData = new FormData(uploadForm);
-            fetch(uploadForm.action, {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.id || data.success) {
-                    closeModuleVideoUploadModal();
-                    fetchModuleVideos();
-                } else {
-                    alert('Errore caricamento video');
-                }
-            });
-        };
-    }
 }
 // Espone la funzione per l'onclick nel markup
 window.openModuleVideoUploadModal = openModuleVideoUploadModal;
@@ -338,6 +315,10 @@ function closeModuleVideoUploadModal() {
 }
 // Espone la funzione per l'onclick nel markup
 window.closeModuleVideoUploadModal = closeModuleVideoUploadModal;
+window.refreshVideoSelect = function() {
+    closeModuleVideoUploadModal();
+    fetchModuleVideos();
+};
 
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('module-video-search').addEventListener('input', function(e) {

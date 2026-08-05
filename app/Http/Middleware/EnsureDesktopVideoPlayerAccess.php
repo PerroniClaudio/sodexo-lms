@@ -28,10 +28,12 @@ class EnsureDesktopVideoPlayerAccess
      */
     public function handle(Request $request, Closure $next): Response
     {
+        $course = $request->route('course');
         $module = $request->route('module');
 
         if (
             config('app.show_courses_mobile')
+            || ($course instanceof Course && ! $course->block_mobile_access)
             || ! $module instanceof Module
             || $module->type !== Module::TYPE_VIDEO
             || ! $this->isMobileRequest($request)
@@ -39,7 +41,6 @@ class EnsureDesktopVideoPlayerAccess
             return $next($request);
         }
 
-        $course = $request->route('course');
         $trainingPathEnrollment = $request->route('trainingPathEnrollment');
 
         return $this->redirectToCourseDetail($course, $trainingPathEnrollment);

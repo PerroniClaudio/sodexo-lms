@@ -147,6 +147,17 @@ test('module player page allows mobile users when mobile access is enabled', fun
         ->assertOk();
 });
 
+test('module player page allows mobile users when the course block is disabled', function () {
+    config()->set('app.show_courses_mobile', false);
+
+    [, $course, $module] = enrollUserInCourseWithModule('video');
+    $course->update(['block_mobile_access' => false]);
+
+    $this->withHeader('User-Agent', 'Mozilla/5.0 (Android 14; Mobile)')
+        ->get(route('user.courses.modules.player', [$course, $module]))
+        ->assertOk();
+});
+
 test('training path module player redirects mobile users to training path course detail when mobile access is disabled', function () {
     config()->set('app.show_courses_mobile', false);
 

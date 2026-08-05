@@ -44,6 +44,7 @@ class UpdateCourseDetailsRequest extends FormRequest
             'regulatory_reference' => ['nullable', 'string'],
             'year' => ['required', 'integer', 'min:1900', 'max:2100'],
             'status' => ['required', 'string', Rule::in(Course::availableStatuses())],
+            'block_mobile_access' => ['required', 'boolean'],
             'detach_from_unpublished_training_paths' => ['nullable', 'boolean'],
             'required_language_level_id' => ['required', 'integer', Rule::exists('language_levels', 'id')],
             'is_language_verification_course' => ['nullable', 'boolean'],
@@ -136,6 +137,9 @@ class UpdateCourseDetailsRequest extends FormRequest
         $lowestLanguageLevelId = LanguageLevel::query()->ordered()->value('id');
 
         $this->merge([
+            'block_mobile_access' => $this->has('block_mobile_access')
+                ? $this->boolean('block_mobile_access')
+                : (bool) $this->route('course')?->block_mobile_access,
             'is_financed' => $isFinanced,
             'funding_entity_id' => $isFinanced ? $this->input('funding_entity_id') : null,
             'venue_mode' => $this->input('venue_mode') ?: null,
@@ -172,6 +176,7 @@ class UpdateCourseDetailsRequest extends FormRequest
             'regulatory_reference' => __('Riferimento normativo'),
             'year' => __('Anno del corso'),
             'status' => __('Stato'),
+            'block_mobile_access' => __('Blocco accesso da dispositivi mobili'),
             'detach_from_unpublished_training_paths' => __('Conferma rimozione dai percorsi non pubblicati'),
             'required_language_level_id' => __('Livello lingua richiesto'),
             'is_language_verification_course' => __('Corso di verifica lingua'),

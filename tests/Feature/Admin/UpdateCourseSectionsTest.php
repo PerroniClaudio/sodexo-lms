@@ -88,6 +88,32 @@ it('updates course details with a description longer than 255 characters', funct
     expect($course->fresh()->description)->toBe($description);
 });
 
+it('updates the mobile access block from course details', function () {
+    $course = Course::factory()->create(['block_mobile_access' => true]);
+    $details = [
+        'title' => $course->title,
+        'code' => $course->code,
+        'description' => $course->description,
+        'year' => $course->year,
+        'status' => $course->status,
+    ];
+
+    $this->get(route('admin.courses.edit', [$course, 'section' => 'details']))
+        ->assertOk()
+        ->assertSeeText('Blocca i video su tablet e cellulari')
+        ->assertSee('name="block_mobile_access"', false);
+
+    $this->put(route('admin.courses.details.update', $course), $details + ['block_mobile_access' => '0'])
+        ->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'details']));
+
+    expect($course->fresh()->block_mobile_access)->toBeFalse();
+
+    $this->put(route('admin.courses.details.update', $course), $details + ['block_mobile_access' => '1'])
+        ->assertRedirect(route('admin.courses.edit', [$course, 'section' => 'details']));
+
+    expect($course->fresh()->block_mobile_access)->toBeTrue();
+});
+
 it('clears funding entity when course is not financed', function () {
     $fundingEntity = FundingEntity::factory()->create();
     $course = Course::factory()->create([
