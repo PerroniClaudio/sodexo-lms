@@ -126,10 +126,10 @@
                     <thead>
                         <tr class="bg-base-200">
                         <th class="px-4 py-2 cursor-pointer" data-sort="title">{{ __('Titolo') }}</th>
-                        <th class="px-4 py-2 cursor-pointer" data-sort="modules_count">{{ __('Utilizzato da moduli') }}</th>
                         <th class="px-4 py-2">{{ __('Anteprima') }}</th>
                         <th class="px-4 py-2 cursor-pointer" data-sort="mux_video_status">{{ __('Stato') }}</th>
                         <th class="px-4 py-2 cursor-pointer" data-sort="status">{{ __('Attivo') }}</th>
+                        <th class="px-4 py-2 cursor-pointer" data-sort="modules_count">{{ __('Moduli') }}</th>
                         <th class="px-4 py-2">{{ __('Azioni') }}</th>
                         </tr>
                     </thead>
@@ -150,12 +150,12 @@
 <template id="module-video-row-template">
     <tr class="hover:bg-base-200">
         <td class="px-4 py-2 font-medium"></td>
-        <td class="px-4 py-2"></td>
         <td class="px-4 py-2">
             <button type="button" class="hover:cursor-pointer" data-preview-btn>
                 <img class="w-24 h-16 object-cover rounded border border-base-300" loading="lazy" />
             </button>
         </td>
+        <td class="px-4 py-2"></td>
         <td class="px-4 py-2"></td>
         <td class="px-4 py-2"></td>
         <td class="px-4 py-2">

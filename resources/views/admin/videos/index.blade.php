@@ -2,10 +2,10 @@
     @php
         $columns = [
             ['key' => 'title', 'label' => __('Titolo'), 'sortable' => true],
-            ['key' => 'modules_count', 'label' => __('Utilizzato da moduli'), 'sortable' => true],
             ['key' => 'preview', 'label' => __('Preview'), 'sortable' => false],
             ['key' => 'mux_video_status', 'label' => __('Stato elaborazione'), 'sortable' => true],
             ['key' => 'status', 'label' => __('Attivo/Eliminato'), 'sortable' => true],
+            ['key' => 'modules_count', 'label' => __('Moduli'), 'sortable' => true],
             ['key' => 'actions', 'label' => __('Azioni'), 'sortable' => false],
         ];
     @endphp
@@ -99,7 +99,6 @@
             @foreach ($videos as $video)
                 <tr class="hover:bg-base-200">
                     <td>{{ $video->title }}</td>
-                    <td>{{ $video->modules_count ?? $video->modules()->count() }}</td>
                     <td>
                         @if ($video->mux_playback_id && $video->mux_video_status === 'ready')
                             <button type="button" class="hover:cursor-pointer" onclick="openVideoPreview({{ $video->id }})">
@@ -136,6 +135,7 @@
                             <span class="badge border-success bg-success text-white h-fit">{{ __('Attivo') }}</span>
                         @endif
                     </td>
+                    <td>{{ $video->modules_count ?? $video->modules()->count() }}</td>
                     <td>
                         <div class="flex gap-2">
                             @if (! $video->trashed())

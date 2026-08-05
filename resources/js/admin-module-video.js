@@ -43,7 +43,7 @@ function renderModuleVideoTable(data) {
         const row = tpl.content.cloneNode(true);
         const tds = row.querySelectorAll('td');
         tds[0].textContent = video.title;
-        tds[1].textContent = video.modules_count;
+        tds[4].textContent = video.modules_count;
         const img = row.querySelector('img');
         img.src = `/admin/videos/${video.id}/signed-thumbnail`;
         img.alt = 'Anteprima video';
@@ -58,14 +58,14 @@ function renderModuleVideoTable(data) {
         };
         statusBadge.className = `badge h-fit ${statusClasses[video.mux_video_status] || 'badge-neutral text-white'}`;
         statusBadge.textContent = video.mux_video_status_label;
-        tds[3].replaceChildren(statusBadge);
+        tds[2].replaceChildren(statusBadge);
         if (video.mux_error) {
             const error = document.createElement('div');
             error.className = 'mt-1 max-w-xs text-xs text-error';
             error.textContent = video.mux_error;
-            tds[3].appendChild(error);
+            tds[2].appendChild(error);
         }
-        tds[4].innerHTML = video.trashed_at ? '<span class="badge badge-outline badge-error h-fit">Eliminato</span>' : '<span class="badge border-success bg-success text-white h-fit">Attivo</span>';
+        tds[3].innerHTML = video.trashed_at ? '<span class="badge badge-outline badge-error h-fit">Eliminato</span>' : '<span class="badge border-success bg-success text-white h-fit">Attivo</span>';
         // Azioni
         const assignBtn = row.querySelector('[data-assign-btn]');
         const unassignBtn = row.querySelector('[data-unassign-btn]');
