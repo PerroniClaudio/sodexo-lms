@@ -4,10 +4,8 @@ namespace App\Services;
 
 use App\Models\Importazione;
 use App\Models\JobUnit;
-use App\Models\Province;
 use App\Models\WorldCity;
 use App\Models\WorldCountry;
-use App\Models\WorldDivision;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -146,37 +144,18 @@ class JobUnitImportService
             ]);
         }
 
-        $regionName = (string) $this->requireValue($row['region'] ?? null, $rowNumber, __('regione obbligatoria.'));
-        $region = WorldDivision::query()
-            ->where('country_id', $countryId)
-            ->where('name', $regionName)
-            ->first();
-
-        if ($region === null) {
-            $this->fail($rowNumber, __('regione non valida: :value', ['value' => $regionName]));
-        }
-
-        $provinceName = $this->nullableString($row['province'] ?? null);
-        $province = null;
-
-        if ($provinceName !== null) {
-            $province = Province::query()
-                ->where('country_id', $countryId)
-                ->where('region_id', $region->getKey())
-                ->where('name', $provinceName)
-                ->first();
-
-            if ($province === null) {
-                $this->fail($rowNumber, __('provincia non valida: :value', ['value' => $provinceName]));
-            }
-        }
-
+        $regionName = $this->nullableString($row['region'] ?? null);
         $cityName = (string) $this->requireValue($row['city'] ?? null, $rowNumber, __('città obbligatoria.'));
-        $city = WorldCity::query()
+        $cities = WorldCity::query()
+            ->with('division:id,name')
             ->where('country_id', $countryId)
-            ->where('division_id', $region->getKey())
-            ->where('name', $cityName)
-            ->first();
+            ->whereRaw('LOWER(name) = ?', [Str::lower($cityName)])
+            ->get();
+
+        $city = $cities->count() === 1
+            ? $cities->first()
+            : $cities->first(fn (WorldCity $candidate): bool => $regionName !== null
+                && Str::lower($candidate->division?->name ?? '') === Str::lower($regionName));
 
         if ($city === null) {
             $this->fail($rowNumber, __('città non valida: :value', ['value' => $cityName]));

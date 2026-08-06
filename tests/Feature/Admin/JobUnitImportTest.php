@@ -123,21 +123,28 @@ it('imports job units from excel', function () {
         ->and($jobUnit->description)->toBe('Sede principale');
 });
 
-it('uses the city province when the imported province is inconsistent', function () {
+it('uses the city geography when imported region and province are inconsistent', function () {
     config(['filesystems.default' => 's3']);
     Storage::fake('s3');
 
     [$countryId, $regionId, $provinceId, $cityId] = ensureItalianGeography();
-    $incorrectProvinceName = 'ZZ Provincia import non coerente';
+    $incorrectRegionId = DB::table('world_divisions')->where('country_id', $countryId)->where('name', 'Piemonte')->value('id')
+        ?? DB::table('world_divisions')->insertGetId([
+            'country_id' => $countryId,
+            'name' => 'Piemonte',
+            'full_name' => 'Piemonte',
+            'code' => '01',
+            'has_city' => true,
+        ]);
 
     DB::table('provinces')->updateOrInsert(
-        ['country_id' => $countryId, 'code' => 'XZ'],
-        ['region_id' => $regionId, 'name' => $incorrectProvinceName],
+        ['country_id' => $countryId, 'code' => 'NO'],
+        ['region_id' => $incorrectRegionId, 'name' => 'Novara'],
     );
 
     Storage::disk('s3')->put('imports/job-units/inconsistent-province.xlsx', file_get_contents(
         jobUnitImportFile([
-            ['UNIT-CITY-PROVINCE', 'Sede con provincia corretta', 'IT', 'Lazio', $incorrectProvinceName, 'Roma', 'Via Roma 1', '00100', null],
+            ['UNIT-CITY-PROVINCE', 'Sede con geografia corretta', 'IT', 'Piemonte', 'Novara', 'roma', 'Via Roma 1', '00100', null],
         ])->getRealPath()
     ));
 
