@@ -172,16 +172,11 @@ class JobUnitImportService
         }
 
         $cityName = (string) $this->requireValue($row['city'] ?? null, $rowNumber, __('città obbligatoria.'));
-        $cityQuery = WorldCity::query()
+        $city = WorldCity::query()
             ->where('country_id', $countryId)
             ->where('division_id', $region->getKey())
-            ->where('name', $cityName);
-
-        if ($province !== null) {
-            $cityQuery->where('province_id', $province->getKey());
-        }
-
-        $city = $cityQuery->first();
+            ->where('name', $cityName)
+            ->first();
 
         if ($city === null) {
             $this->fail($rowNumber, __('città non valida: :value', ['value' => $cityName]));
@@ -191,8 +186,8 @@ class JobUnitImportService
             'unit_code' => $unitCode,
             'name' => $this->requireValue($row['name'] ?? null, $rowNumber, __('nome obbligatorio.')),
             'country_id' => $countryId,
-            'region_id' => $region->getKey(),
-            'province_id' => $province?->getKey(),
+            'region_id' => $city->division_id,
+            'province_id' => $city->province_id,
             'city_id' => $city->getKey(),
             'address' => $this->nullableString($row['address'] ?? null),
             'postal_code' => $this->requireValue($row['postal_code'] ?? null, $rowNumber, __('codice postale obbligatorio.')),

@@ -123,6 +123,40 @@ it('imports job units from excel', function () {
         ->and($jobUnit->description)->toBe('Sede principale');
 });
 
+it('uses the city province when the imported province is inconsistent', function () {
+    config(['filesystems.default' => 's3']);
+    Storage::fake('s3');
+
+    [$countryId, $regionId, $provinceId, $cityId] = ensureItalianGeography();
+    $incorrectProvinceName = 'ZZ Provincia import non coerente';
+
+    DB::table('provinces')->updateOrInsert(
+        ['country_id' => $countryId, 'code' => 'XZ'],
+        ['region_id' => $regionId, 'name' => $incorrectProvinceName],
+    );
+
+    Storage::disk('s3')->put('imports/job-units/inconsistent-province.xlsx', file_get_contents(
+        jobUnitImportFile([
+            ['UNIT-CITY-PROVINCE', 'Sede con provincia corretta', 'IT', 'Lazio', $incorrectProvinceName, 'Roma', 'Via Roma 1', '00100', null],
+        ])->getRealPath()
+    ));
+
+    $importazione = Importazione::query()->create([
+        'import_type' => Importazione::TYPE_JOB_UNITS,
+        'file_path' => 'imports/job-units/inconsistent-province.xlsx',
+        'original_file_name' => 'provincia-non-coerente.xlsx',
+    ]);
+
+    app(ImportJobUnitsJob::class, ['importazioneId' => $importazione->getKey()])->handle(app(JobUnitImportService::class));
+
+    $jobUnit = JobUnit::query()->where('unit_code', 'UNIT-CITY-PROVINCE')->firstOrFail();
+
+    expect($importazione->fresh()->status)->toBe(Importazione::STATUS_FINISHED)
+        ->and($jobUnit->region_id)->toBe($regionId)
+        ->and($jobUnit->province_id)->toBe($provinceId)
+        ->and($jobUnit->city_id)->toBe($cityId);
+});
+
 it('fails job unit import when required data is missing', function () {
     config(['filesystems.default' => 's3']);
     Storage::fake('s3');
